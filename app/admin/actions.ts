@@ -14,8 +14,23 @@ import {
   updateGame,
   deleteGame,
   setArchived,
-  getGameById
+  getGameById,
+  type Platform,
+  type GameType
 } from '@/lib/db';
+
+const PLATFORMS: Platform[] = ['switch1', 'switch2', 'both'];
+const GAME_TYPES: GameType[] = ['base', 'dlc', 'update'];
+
+function parsePlatform(value: FormDataEntryValue | null): Platform {
+  const v = String(value || '');
+  return (PLATFORMS as string[]).includes(v) ? (v as Platform) : 'switch2';
+}
+
+function parseGameType(value: FormDataEntryValue | null): GameType {
+  const v = String(value || '');
+  return (GAME_TYPES as string[]).includes(v) ? (v as GameType) : 'base';
+}
 
 // Server Actions can be invoked directly (e.g. a crafted request to the
 // action's endpoint), bypassing whatever check ran on the page that
@@ -77,6 +92,9 @@ export async function createGameAction(
   const hasBadge = formData.get('hasBadge') === 'on';
   const badgeText = String(formData.get('badgeText') || 'TOP').trim() || 'TOP';
   const badgeColor = String(formData.get('badgeColor') || '#4ef05f');
+  const franchise = String(formData.get('franchise') || '').trim() || null;
+  const platform = parsePlatform(formData.get('platform'));
+  const gameType = parseGameType(formData.get('gameType'));
 
   if (!name) return { error: 'Digite o nome do jogo.' };
   if (Number.isNaN(price) || price < 0) return { error: 'Preço inválido.' };
@@ -93,7 +111,10 @@ export async function createGameAction(
     image_url: imageUrl,
     has_badge: hasBadge,
     badge_text: badgeText,
-    badge_color: badgeColor
+    badge_color: badgeColor,
+    franchise,
+    platform,
+    game_type: gameType
   });
 
   revalidatePath('/admin');
@@ -117,6 +138,9 @@ export async function updateGameAction(
   const badgeText = String(formData.get('badgeText') || 'TOP').trim() || 'TOP';
   const badgeColor = String(formData.get('badgeColor') || '#4ef05f');
   const removeImage = formData.get('removeImage') === 'on';
+  const franchise = String(formData.get('franchise') || '').trim() || null;
+  const platform = parsePlatform(formData.get('platform'));
+  const gameType = parseGameType(formData.get('gameType'));
 
   if (!id) return { error: 'Jogo inválido.' };
   if (!name) return { error: 'Digite o nome do jogo.' };
@@ -150,7 +174,10 @@ export async function updateGameAction(
     image_url: imageUrl,
     has_badge: hasBadge,
     badge_text: badgeText,
-    badge_color: badgeColor
+    badge_color: badgeColor,
+    franchise,
+    platform,
+    game_type: gameType
   });
 
   revalidatePath('/admin');

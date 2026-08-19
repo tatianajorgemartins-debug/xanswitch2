@@ -2,6 +2,9 @@ import { neon } from '@neondatabase/serverless';
 
 const sql = neon(process.env.DATABASE_URL!);
 
+export type Platform = 'switch1' | 'switch2' | 'both';
+export type GameType = 'base' | 'dlc' | 'update';
+
 export type Game = {
   id: number;
   name: string;
@@ -11,6 +14,9 @@ export type Game = {
   has_badge: boolean;
   badge_text: string;
   badge_color: string;
+  franchise: string | null;
+  platform: Platform;
+  game_type: GameType;
   archived: boolean;
   created_at: string;
   updated_at: string;
@@ -43,10 +49,13 @@ export async function createGame(data: {
   has_badge: boolean;
   badge_text: string;
   badge_color: string;
+  franchise: string | null;
+  platform: Platform;
+  game_type: GameType;
 }): Promise<Game> {
   const rows = await sql`
-    INSERT INTO games (name, price, original_price, image_url, has_badge, badge_text, badge_color)
-    VALUES (${data.name}, ${data.price}, ${data.original_price}, ${data.image_url}, ${data.has_badge}, ${data.badge_text}, ${data.badge_color})
+    INSERT INTO games (name, price, original_price, image_url, has_badge, badge_text, badge_color, franchise, platform, game_type)
+    VALUES (${data.name}, ${data.price}, ${data.original_price}, ${data.image_url}, ${data.has_badge}, ${data.badge_text}, ${data.badge_color}, ${data.franchise}, ${data.platform}, ${data.game_type})
     RETURNING *
   `;
   return rows[0] as Game;
@@ -62,6 +71,9 @@ export async function updateGame(
     has_badge: boolean;
     badge_text: string;
     badge_color: string;
+    franchise: string | null;
+    platform: Platform;
+    game_type: GameType;
   }
 ): Promise<Game> {
   const rows = await sql`
@@ -73,6 +85,9 @@ export async function updateGame(
       has_badge = ${data.has_badge},
       badge_text = ${data.badge_text},
       badge_color = ${data.badge_color},
+      franchise = ${data.franchise},
+      platform = ${data.platform},
+      game_type = ${data.game_type},
       updated_at = now()
     WHERE id = ${id}
     RETURNING *

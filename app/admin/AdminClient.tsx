@@ -37,6 +37,13 @@ export default function AdminClient({ initialGames }: { initialGames: Game[] }) 
     () => games.filter((g) => g.archived).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
     [games]
   );
+  const allFranchises = useMemo(() => {
+    const set = new Set<string>();
+    games.forEach((g) => {
+      if (g.franchise) set.add(g.franchise);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [games]);
 
   function openAddPanel() {
     setEditingGame(null);
@@ -115,7 +122,12 @@ export default function AdminClient({ initialGames }: { initialGames: Game[] }) 
       </div>
 
       {panelOpen && (
-        <GameFormPanel game={editingGame} onClose={closePanel} onSaved={() => { closePanel(); router.refresh(); }} />
+        <GameFormPanel
+          game={editingGame}
+          allFranchises={allFranchises}
+          onClose={closePanel}
+          onSaved={() => { closePanel(); router.refresh(); }}
+        />
       )}
 
       {showArchived && (
@@ -215,6 +227,23 @@ function AdminGameCard({
   return (
     <div style={{ position: 'relative' }}>
       <div className="cover-frame">
+        {!game.franchise && (
+          <div
+            title="Sem franquia definida"
+            style={{
+              position: 'absolute',
+              top: 6,
+              left: 6,
+              width: 10,
+              height: 10,
+              borderRadius: '50%',
+              background: '#ffb14e',
+              boxShadow: '0 0 6px rgba(255,177,78,.7)',
+              border: '1px solid rgba(10,7,20,.6)',
+              zIndex: 4
+            }}
+          />
+        )}
         {game.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -381,10 +410,12 @@ function MenuButton({
 
 function GameFormPanel({
   game,
+  allFranchises,
   onClose,
   onSaved
 }: {
   game: Game | null;
+  allFranchises: string[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -395,17 +426,13 @@ function GameFormPanel({
   const [removeImage, setRemoveImage] = useState(false);
   const [preview, setPreview] = useState<string | null>(game?.image_url ?? null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const isFirstRender = useRef(true);
 
   useEffect(() => {
-    // useFormState's `state` is a brand-new object every time the action
-    // finishes running, so any change after the initial mount means a
-    // submission just completed — skip the mount-time firing, then treat
-    // a null error as "saved successfully".
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
+    // useActionState keeps returning the exact same `emptyFormState` object
+    // reference until an actual submission completes and hands back a new
+    // one — checking identity (rather than a "first render" ref flag) is
+    // what makes this safe under React StrictMode's double-effect-invoke.
+    if (state === emptyFormState) return;
     if (state.error === null) {
       onSaved();
     }
@@ -453,6 +480,41 @@ function GameFormPanel({
               placeholder="230.00"
               required
             />
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
+          <div>
+            <label htmlFor="franchise">Franquia</label>
+            <input
+              id="franchise"
+              name="franchise"
+              type="text"
+              list="franchise-options"
+              defaultValue={game?.franchise || ''}
+              placeholder="Ex: Mario"
+            />
+            <datalist id="franchise-options">
+              {allFranchises.map((f) => (
+                <option key={f} value={f} />
+              ))}
+            </datalist>
+          </div>
+          <div>
+            <label htmlFor="platform">Plataforma</label>
+            <select id="platform" name="platform" defaultValue={game?.platform || 'switch2'}>
+              <option value="switch1">Nintendo Switch</option>
+              <option value="switch2">Nintendo Switch 2</option>
+              <option value="both">Ambos</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="gameType">Tipo</label>
+            <select id="gameType" name="gameType" defaultValue={game?.game_type || 'base'}>
+              <option value="base">Jogo base</option>
+              <option value="dlc">DLC</option>
+              <option value="update">Atualização</option>
+            </select>
           </div>
         </div>
 

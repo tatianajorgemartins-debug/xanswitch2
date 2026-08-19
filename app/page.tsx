@@ -10,6 +10,7 @@ export default async function CatalogPage() {
   const items = games.map((g) => ({
     id: g.id,
     name: g.name,
+    price: parseFloat(g.price),
     priceLabel: formatPriceBR(g.price),
     originalPriceLabel:
       g.original_price && parseFloat(g.original_price) > parseFloat(g.price)
@@ -19,6 +20,9 @@ export default async function CatalogPage() {
     hasBadge: g.has_badge,
     badgeText: g.badge_text,
     badgeColor: g.badge_color,
+    franchise: g.franchise,
+    platform: g.platform,
+    gameType: g.game_type,
     whatsappUrl: buildWhatsAppLink(g.name, g.price)
   }));
 
