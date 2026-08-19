@@ -107,21 +107,7 @@ function GameCard({ item }: { item: Item }) {
       rel="noopener noreferrer"
       style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}
     >
-      <div
-        className="octagon"
-        style={{
-          position: 'relative',
-          aspectRatio: '1/1',
-          width: '100%',
-          background: '#150c28',
-          border: '2px solid transparent',
-          backgroundImage:
-            'linear-gradient(#150c28, #150c28), linear-gradient(135deg, var(--purple), var(--purple-2))',
-          backgroundOrigin: 'border-box',
-          backgroundClip: 'padding-box, border-box',
-          overflow: 'hidden'
-        }}
-      >
+      <div className="cover-frame">
         {item.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img

@@ -35,19 +35,24 @@ a {
   color: inherit;
 }
 
-/* Octagon frame — plain CSS clip-path works fine here since this renders
-   live in the browser (no html2canvas export step like the original tool). */
-.octagon {
-  clip-path: polygon(
-    10% 0%,
-    90% 0%,
-    100% 10%,
-    100% 90%,
-    90% 100%,
-    10% 100%,
-    0% 90%,
-    0% 10%
-  );
+/* Game cover frame — rounded card with a gradient border (drawn via a
+   layered background so it clips to the border-radius), swapping to green
+   with a soft glow on hover. */
+.cover-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 2px solid transparent;
+  background-image: linear-gradient(#150c28, #150c28), linear-gradient(135deg, var(--purple), var(--purple-2));
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  transition: background-image 0.2s ease, box-shadow 0.2s ease;
+}
+.cover-frame:hover {
+  background-image: linear-gradient(#150c28, #150c28), linear-gradient(135deg, var(--green), var(--green-2));
+  box-shadow: 0 0 14px var(--green-glow);
 }
 
 .brand {
