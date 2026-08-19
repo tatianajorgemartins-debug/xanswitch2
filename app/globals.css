@@ -55,6 +55,24 @@ a {
   box-shadow: 0 0 14px var(--green-glow);
 }
 
+.catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 20px;
+}
+@media (max-width: 480px) {
+  .catalog-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+}
+@media (min-width: 481px) and (max-width: 700px) {
+  .catalog-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+}
+
 .brand {
   font-family: 'Press Start 2P', cursive;
   font-size: 22px;

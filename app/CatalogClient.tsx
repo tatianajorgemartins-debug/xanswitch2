@@ -26,7 +26,7 @@ export default function CatalogClient({ items }: { items: Item[] }) {
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 20px 80px' }}>
-      <header style={{ marginBottom: 22 }}>
+      <header style={{ marginBottom: 22, textAlign: 'center' }}>
         <div className="brand">
           XAN<span>SWITCH</span>
         </div>
@@ -45,7 +45,7 @@ export default function CatalogClient({ items }: { items: Item[] }) {
           border: '1px solid rgba(164,99,255,.3)',
           borderRadius: 10,
           padding: '10px 14px',
-          marginBottom: 22,
+          margin: '0 auto 10px',
           maxWidth: 420
         }}
       >
@@ -62,6 +62,20 @@ export default function CatalogClient({ items }: { items: Item[] }) {
         />
       </div>
 
+      <p
+        style={{
+          textAlign: 'center',
+          fontSize: 13,
+          fontWeight: 700,
+          letterSpacing: 0.4,
+          textTransform: 'uppercase',
+          color: 'var(--ink-dim)',
+          margin: '0 0 22px'
+        }}
+      >
+        <span style={{ color: 'var(--green)' }}>{filtered.length}</span> jogos disponíveis
+      </p>
+
       {filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--ink-dim)' }}>
           <p style={{ fontSize: 15, fontWeight: 600 }}>
@@ -71,13 +85,7 @@ export default function CatalogClient({ items }: { items: Item[] }) {
           </p>
         </div>
       ) : (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-            gap: 20
-          }}
-        >
+        <div className="catalog-grid">
           {filtered.map((item) => (
             <GameCard key={item.id} item={item} />
           ))}
