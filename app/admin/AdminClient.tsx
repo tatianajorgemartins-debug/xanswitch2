@@ -218,7 +218,7 @@ function AdminGameCard({
         className="octagon"
         style={{
           position: 'relative',
-          aspectRatio: '3/4',
+          aspectRatio: '1/1',
           width: '100%',
           background: '#150c28',
           border: '2px solid transparent',
@@ -226,7 +226,6 @@ function AdminGameCard({
             'linear-gradient(#150c28, #150c28), linear-gradient(135deg, var(--purple), var(--purple-2))',
           backgroundOrigin: 'border-box',
           backgroundClip: 'padding-box, border-box',
-          filter: 'drop-shadow(0 0 10px var(--purple-glow))',
           overflow: 'hidden'
         }}
       >
@@ -341,6 +340,20 @@ function AdminGameCard({
         <p style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--ink)', margin: '0 0 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {game.name}
         </p>
+        {game.original_price && parseFloat(game.original_price) > parseFloat(game.price) && (
+          <p
+            style={{
+              fontFamily: "'Rajdhani', sans-serif",
+              fontSize: 12,
+              fontWeight: 700,
+              color: '#8b83a8',
+              textDecoration: 'line-through',
+              margin: '0 0 2px'
+            }}
+          >
+            R$ {parseFloat(game.original_price).toFixed(2).replace('.', ',')}
+          </p>
+        )}
         <p style={{ fontFamily: "'Press Start 2P', cursive", fontSize: 12, color: 'var(--green)', textShadow: '0 0 8px var(--green-glow)', margin: 0 }}>
           R$ {parseFloat(game.price).toFixed(2).replace('.', ',')}
         </p>
@@ -455,6 +468,18 @@ function GameFormPanel({
               required
             />
           </div>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label htmlFor="originalPrice">Preço original (opcional — pra mostrar como desconto)</label>
+          <input
+            id="originalPrice"
+            name="originalPrice"
+            type="text"
+            inputMode="decimal"
+            defaultValue={game?.original_price ? parseFloat(game.original_price).toFixed(2) : ''}
+            placeholder="Ex: 300.00"
+          />
         </div>
 
         <div style={{ marginBottom: 14 }}>

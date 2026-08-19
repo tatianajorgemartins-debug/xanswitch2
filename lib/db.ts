@@ -6,6 +6,7 @@ export type Game = {
   id: number;
   name: string;
   price: string; // numeric comes back as string from postgres
+  original_price: string | null;
   image_url: string | null;
   has_badge: boolean;
   badge_text: string;
@@ -37,14 +38,15 @@ export async function getGameById(id: number): Promise<Game | null> {
 export async function createGame(data: {
   name: string;
   price: number;
+  original_price: number | null;
   image_url: string | null;
   has_badge: boolean;
   badge_text: string;
   badge_color: string;
 }): Promise<Game> {
   const rows = await sql`
-    INSERT INTO games (name, price, image_url, has_badge, badge_text, badge_color)
-    VALUES (${data.name}, ${data.price}, ${data.image_url}, ${data.has_badge}, ${data.badge_text}, ${data.badge_color})
+    INSERT INTO games (name, price, original_price, image_url, has_badge, badge_text, badge_color)
+    VALUES (${data.name}, ${data.price}, ${data.original_price}, ${data.image_url}, ${data.has_badge}, ${data.badge_text}, ${data.badge_color})
     RETURNING *
   `;
   return rows[0] as Game;
@@ -55,6 +57,7 @@ export async function updateGame(
   data: {
     name: string;
     price: number;
+    original_price: number | null;
     image_url: string | null;
     has_badge: boolean;
     badge_text: string;
@@ -65,6 +68,7 @@ export async function updateGame(
     UPDATE games SET
       name = ${data.name},
       price = ${data.price},
+      original_price = ${data.original_price},
       image_url = ${data.image_url},
       has_badge = ${data.has_badge},
       badge_text = ${data.badge_text},

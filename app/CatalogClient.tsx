@@ -7,6 +7,7 @@ type Item = {
   id: number;
   name: string;
   priceLabel: string;
+  originalPriceLabel: string | null;
   imageUrl: string | null;
   hasBadge: boolean;
   badgeText: string;
@@ -110,7 +111,7 @@ function GameCard({ item }: { item: Item }) {
         className="octagon"
         style={{
           position: 'relative',
-          aspectRatio: '3/4',
+          aspectRatio: '1/1',
           width: '100%',
           background: '#150c28',
           border: '2px solid transparent',
@@ -118,7 +119,6 @@ function GameCard({ item }: { item: Item }) {
             'linear-gradient(#150c28, #150c28), linear-gradient(135deg, var(--purple), var(--purple-2))',
           backgroundOrigin: 'border-box',
           backgroundClip: 'padding-box, border-box',
-          filter: 'drop-shadow(0 0 10px var(--purple-glow))',
           overflow: 'hidden'
         }}
       >
@@ -184,6 +184,20 @@ function GameCard({ item }: { item: Item }) {
         >
           {item.name}
         </p>
+        {item.originalPriceLabel && (
+          <p
+            style={{
+              fontFamily: "'Rajdhani', sans-serif",
+              fontSize: 12,
+              fontWeight: 700,
+              color: '#8b83a8',
+              textDecoration: 'line-through',
+              margin: '0 0 2px'
+            }}
+          >
+            R$ {item.originalPriceLabel}
+          </p>
+        )}
         <p
           style={{
             fontFamily: "'Press Start 2P', cursive",

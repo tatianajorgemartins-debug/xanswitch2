@@ -72,18 +72,24 @@ export async function createGameAction(
   const name = String(formData.get('name') || '').trim();
   const priceRaw = String(formData.get('price') || '0');
   const price = parseFloat(priceRaw.replace(',', '.'));
+  const originalPriceRaw = String(formData.get('originalPrice') || '').trim();
+  const originalPrice = originalPriceRaw ? parseFloat(originalPriceRaw.replace(',', '.')) : null;
   const hasBadge = formData.get('hasBadge') === 'on';
   const badgeText = String(formData.get('badgeText') || 'TOP').trim() || 'TOP';
   const badgeColor = String(formData.get('badgeColor') || '#4ef05f');
 
   if (!name) return { error: 'Digite o nome do jogo.' };
   if (Number.isNaN(price) || price < 0) return { error: 'Preço inválido.' };
+  if (originalPrice !== null && (Number.isNaN(originalPrice) || originalPrice < 0)) {
+    return { error: 'Preço original inválido.' };
+  }
 
   const imageUrl = (await uploadImageIfPresent(formData)) ?? null;
 
   await createGame({
     name,
     price,
+    original_price: originalPrice,
     image_url: imageUrl,
     has_badge: hasBadge,
     badge_text: badgeText,
@@ -105,6 +111,8 @@ export async function updateGameAction(
   const name = String(formData.get('name') || '').trim();
   const priceRaw = String(formData.get('price') || '0');
   const price = parseFloat(priceRaw.replace(',', '.'));
+  const originalPriceRaw = String(formData.get('originalPrice') || '').trim();
+  const originalPrice = originalPriceRaw ? parseFloat(originalPriceRaw.replace(',', '.')) : null;
   const hasBadge = formData.get('hasBadge') === 'on';
   const badgeText = String(formData.get('badgeText') || 'TOP').trim() || 'TOP';
   const badgeColor = String(formData.get('badgeColor') || '#4ef05f');
@@ -113,6 +121,9 @@ export async function updateGameAction(
   if (!id) return { error: 'Jogo inválido.' };
   if (!name) return { error: 'Digite o nome do jogo.' };
   if (Number.isNaN(price) || price < 0) return { error: 'Preço inválido.' };
+  if (originalPrice !== null && (Number.isNaN(originalPrice) || originalPrice < 0)) {
+    return { error: 'Preço original inválido.' };
+  }
 
   const existing = await getGameById(id);
   if (!existing) return { error: 'Jogo não encontrado.' };
@@ -135,6 +146,7 @@ export async function updateGameAction(
   await updateGame(id, {
     name,
     price,
+    original_price: originalPrice,
     image_url: imageUrl,
     has_badge: hasBadge,
     badge_text: badgeText,

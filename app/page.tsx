@@ -11,6 +11,10 @@ export default async function CatalogPage() {
     id: g.id,
     name: g.name,
     priceLabel: formatPriceBR(g.price),
+    originalPriceLabel:
+      g.original_price && parseFloat(g.original_price) > parseFloat(g.price)
+        ? formatPriceBR(g.original_price)
+        : null,
     imageUrl: g.image_url,
     hasBadge: g.has_badge,
     badgeText: g.badge_text,
