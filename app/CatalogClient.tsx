@@ -153,7 +153,10 @@ export default function CatalogClient({ items }: { items: Item[] }) {
         </div>
 
         <button type="button" className="btn ghost" onClick={() => setFiltersOpen((v) => !v)}>
-          🎚 Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={14} height={14} style={{ flex: 'none' }}>
+            <path d="M3 4h18l-7 8v7l-4-2v-5L3 4z" strokeLinejoin="round" strokeLinecap="round" />
+          </svg>
+          Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
         </button>
       </div>
 
