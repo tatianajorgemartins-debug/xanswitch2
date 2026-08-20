@@ -118,7 +118,7 @@ export default function CatalogClient({ items }: { items: Item[] }) {
             placeholder="Buscar jogo..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            style={{ background: 'none', border: 'none', width: '100%' }}
+            style={{ background: 'none', border: 'none', padding: 0, width: '100%' }}
           />
         </div>
 
