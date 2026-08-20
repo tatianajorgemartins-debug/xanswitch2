@@ -399,23 +399,50 @@ function GameCard({ item }: { item: Item }) {
   );
 }
 
+const PLATFORM_TAG_LABEL: Record<Platform, string> = {
+  switch1: 'Switch',
+  switch2: 'Switch 2',
+  both: 'Switch 1 e 2'
+};
+
+const GAME_TYPE_TAG_LABEL: Partial<Record<GameType, string>> = {
+  dlc: 'DLC',
+  update: 'Atualização'
+};
+
 function ListRow({ item }: { item: Item }) {
+  const typeLabel = GAME_TYPE_TAG_LABEL[item.gameType];
+  const platformLabel = PLATFORM_TAG_LABEL[item.platform];
+  // Avoid showing the same word twice when the seller's own badge already
+  // says it (e.g. a "SWITCH 2" badge next to a "Switch 2" platform tag).
+  const platformRedundant =
+    item.hasBadge && item.badgeText.trim().toLowerCase() === platformLabel.toLowerCase();
+
   return (
     <a href={item.whatsappUrl} target="_blank" rel="noopener noreferrer" className="list-row">
-      <span
-        style={{
-          flex: 1,
-          minWidth: 0,
-          fontWeight: 700,
-          fontSize: 15,
-          color: 'var(--ink)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap'
-        }}
-      >
-        {item.name}
-      </span>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <span
+          style={{
+            fontWeight: 700,
+            fontSize: 15,
+            color: 'var(--ink)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          {item.name}
+        </span>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {item.hasBadge && (
+            <span className="tag" style={{ background: item.badgeColor, color: getContrastColor(item.badgeColor) }}>
+              {item.badgeText}
+            </span>
+          )}
+          {!platformRedundant && <span className="tag tag-platform">{platformLabel}</span>}
+          {typeLabel && <span className="tag tag-type">{typeLabel}</span>}
+        </div>
+      </div>
       <span style={{ flex: 'none', textAlign: 'right' }}>
         {item.originalPriceLabel && (
           <span
