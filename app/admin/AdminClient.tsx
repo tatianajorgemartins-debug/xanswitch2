@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState, useEffect, useActionState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFormStatus } from 'react-dom';
-import type { Game } from '@/lib/db';
+import type { Game, MusicSettings } from '@/lib/db';
 import { getContrastColor } from '@/lib/color';
 import {
   createGameAction,
@@ -11,15 +11,25 @@ import {
   archiveGameAction,
   deleteGameAction,
   logoutAction,
-  type GameFormState
+  uploadMusicAction,
+  type GameFormState,
+  type MusicFormState
 } from './actions';
 
 const emptyFormState: GameFormState = { error: null };
+const emptyMusicFormState: MusicFormState = { error: null };
 
-export default function AdminClient({ initialGames }: { initialGames: Game[] }) {
+export default function AdminClient({
+  initialGames,
+  music
+}: {
+  initialGames: Game[];
+  music: MusicSettings;
+}) {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
+  const [showMusicPanel, setShowMusicPanel] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingGame, setEditingGame] = useState<Game | null>(null);
 
@@ -119,7 +129,12 @@ export default function AdminClient({ initialGames }: { initialGames: Game[] }) 
         <button className="btn ghost" onClick={() => setShowArchived((s) => !s)}>
           📦 Arquivados ({archivedGames.length})
         </button>
+        <button className="btn ghost" onClick={() => setShowMusicPanel((s) => !s)}>
+          🎵 Música do dia
+        </button>
       </div>
+
+      {showMusicPanel && <MusicPanel music={music} onSaved={() => router.refresh()} />}
 
       {panelOpen && (
         <GameFormPanel
@@ -404,6 +419,60 @@ function MenuButton({
       }}
     >
       {children}
+    </button>
+  );
+}
+
+function MusicPanel({ music, onSaved }: { music: MusicSettings; onSaved: () => void }) {
+  const [state, formAction] = useActionState(uploadMusicAction, emptyMusicFormState);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (state === emptyMusicFormState) return;
+    if (state.error === null) {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      onSaved();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+
+  return (
+    <div
+      style={{
+        background: 'var(--panel)',
+        border: '1px solid rgba(164,99,255,.25)',
+        borderRadius: 14,
+        padding: 16,
+        marginBottom: 20
+      }}
+    >
+      <p style={{ color: 'var(--ink-dim)', fontSize: 13.5, fontWeight: 600, margin: '0 0 12px' }}>
+        {music.filename
+          ? <>Tocando atualmente: <strong style={{ color: 'var(--ink)' }}>{music.filename}</strong></>
+          : 'Nenhuma música enviada ainda.'}
+      </p>
+      <form action={formAction} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <input
+          ref={fileInputRef}
+          name="music"
+          type="file"
+          accept="audio/mpeg,.mp3"
+          style={{ color: 'var(--ink-dim)', fontSize: 13 }}
+        />
+        <MusicSubmitButton />
+      </form>
+      {state.error && (
+        <p style={{ color: '#ff8a8a', fontSize: 13, fontWeight: 600, margin: '10px 0 0' }}>{state.error}</p>
+      )}
+    </div>
+  );
+}
+
+function MusicSubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" className="btn primary" disabled={pending}>
+      {pending ? 'Enviando...' : 'Enviar MP3'}
     </button>
   );
 }

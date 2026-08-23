@@ -16,3 +16,9 @@ export function buildWhatsAppLink(gameName: string, price: string | number): str
   const message = `Olá! Quero comprar: ${gameName} - R$ ${formatPriceBR(price)}`;
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
 }
+
+// Plain contact link (no pre-filled message), used by the header icon.
+export function buildWhatsAppContactLink(): string | null {
+  const number = process.env.WHATSAPP_NUMBER;
+  return number ? `https://wa.me/${number}` : null;
+}

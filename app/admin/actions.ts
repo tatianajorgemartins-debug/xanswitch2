@@ -15,6 +15,8 @@ import {
   deleteGame,
   setArchived,
   getGameById,
+  getMusicSettings,
+  setMusicSettings,
   type Platform,
   type GameType
 } from '@/lib/db';
@@ -201,4 +203,37 @@ export async function deleteGameAction(id: number): Promise<void> {
   await deleteGame(id);
   revalidatePath('/admin');
   revalidatePath('/');
+}
+
+export type MusicFormState = { error: string | null };
+
+export async function uploadMusicAction(
+  _prevState: MusicFormState,
+  formData: FormData
+): Promise<MusicFormState> {
+  await requireAuth();
+
+  const file = formData.get('music');
+  if (!file || !(file instanceof File) || file.size === 0) {
+    return { error: 'Escolha um arquivo MP3.' };
+  }
+  if (!file.type.includes('audio') && !file.name.toLowerCase().endsWith('.mp3')) {
+    return { error: 'O arquivo precisa ser um MP3.' };
+  }
+
+  const existing = await getMusicSettings();
+
+  const blob = await put(`music/${Date.now()}-${file.name}`, file, {
+    access: 'public'
+  });
+
+  if (existing.url) {
+    await del(existing.url).catch(() => {});
+  }
+
+  await setMusicSettings(blob.url, file.name);
+
+  revalidatePath('/admin');
+  revalidatePath('/');
+  return { error: null };
 }

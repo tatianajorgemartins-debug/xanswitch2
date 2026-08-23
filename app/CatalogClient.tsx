@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getContrastColor } from '@/lib/color';
 import type { Platform, GameType } from '@/lib/db';
+import SiteHeader from './SiteHeader';
 
 type Item = {
   id: number;
@@ -24,7 +25,17 @@ type ViewMode = 'grid' | 'list';
 type PlatformFilter = 'all' | 'switch1' | 'switch2';
 type TypeFilter = 'all' | GameType;
 
-export default function CatalogClient({ items }: { items: Item[] }) {
+export default function CatalogClient({
+  items,
+  musicUrl,
+  musicName,
+  whatsappContactUrl
+}: {
+  items: Item[];
+  musicUrl: string | null;
+  musicName: string | null;
+  whatsappContactUrl: string | null;
+}) {
   const [query, setQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -85,11 +96,9 @@ export default function CatalogClient({ items }: { items: Item[] }) {
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 20px 80px' }}>
-      <header style={{ marginBottom: 22, textAlign: 'center' }}>
-        <div className="brand">
-          XAN<span>SWITCH</span>
-        </div>
-        <p style={{ color: 'var(--ink-dim)', fontSize: 14.5, fontWeight: 600, margin: '6px 0 0' }}>
+      <header style={{ marginBottom: 22 }}>
+        <SiteHeader musicUrl={musicUrl} musicName={musicName} whatsappContactUrl={whatsappContactUrl} />
+        <p style={{ color: 'var(--ink-dim)', fontSize: 14.5, fontWeight: 600, margin: '14px 0 0', textAlign: 'center' }}>
           Clique no jogo que você quer e a conversa já abre no WhatsApp, prontinha pra fechar o
           pedido.
         </p>

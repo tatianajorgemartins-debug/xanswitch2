@@ -1,11 +1,13 @@
-import { getActiveGames } from '@/lib/db';
-import { buildWhatsAppLink, formatPriceBR } from '@/lib/whatsapp';
+import { getActiveGames, getMusicSettings } from '@/lib/db';
+import { buildWhatsAppLink, buildWhatsAppContactLink, formatPriceBR } from '@/lib/whatsapp';
+import { formatTrackName } from '@/lib/format';
 import CatalogClient from './CatalogClient';
 
 export const dynamic = 'force-dynamic'; // always show the latest games, never a stale cached build
 
 export default async function CatalogPage() {
   const games = await getActiveGames();
+  const music = await getMusicSettings();
 
   const items = games.map((g) => ({
     id: g.id,
@@ -26,5 +28,12 @@ export default async function CatalogPage() {
     whatsappUrl: buildWhatsAppLink(g.name, g.price)
   }));
 
-  return <CatalogClient items={items} />;
+  return (
+    <CatalogClient
+      items={items}
+      musicUrl={music.url}
+      musicName={music.filename ? formatTrackName(music.filename) : null}
+      whatsappContactUrl={buildWhatsAppContactLink()}
+    />
+  );
 }

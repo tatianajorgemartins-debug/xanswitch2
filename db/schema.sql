@@ -23,6 +23,12 @@ CREATE TABLE IF NOT EXISTS games (
 CREATE INDEX IF NOT EXISTS games_sort_name_idx ON games (sort_name);
 CREATE INDEX IF NOT EXISTS games_archived_idx ON games (archived);
 
+-- Configurações globais do site (chave/valor) — usado hoje pela música do dia.
+CREATE TABLE IF NOT EXISTS site_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT
+);
+
 -- Se a tabela já existia antes do campo de preço original ser adicionado,
 -- esta linha garante que o banco seja atualizado sem perder dados.
 ALTER TABLE games ADD COLUMN IF NOT EXISTS original_price NUMERIC(10, 2);
