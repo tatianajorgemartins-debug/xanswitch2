@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState, useEffect, useActionState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFormStatus } from 'react-dom';
+import { upload } from '@vercel/blob/client';
 import type { Game, MusicSettings } from '@/lib/db';
 import { getContrastColor } from '@/lib/color';
 import {
@@ -11,13 +12,11 @@ import {
   archiveGameAction,
   deleteGameAction,
   logoutAction,
-  uploadMusicAction,
-  type GameFormState,
-  type MusicFormState
+  saveMusicSettingsAction,
+  type GameFormState
 } from './actions';
 
 const emptyFormState: GameFormState = { error: null };
-const emptyMusicFormState: MusicFormState = { error: null };
 
 export default function AdminClient({
   initialGames,
@@ -424,17 +423,43 @@ function MenuButton({
 }
 
 function MusicPanel({ music, onSaved }: { music: MusicSettings; onSaved: () => void }) {
-  const [state, formAction] = useActionState(uploadMusicAction, emptyMusicFormState);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (state === emptyMusicFormState) return;
-    if (state.error === null) {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const file = fileInputRef.current?.files?.[0];
+    if (!file) {
+      setError('Escolha um arquivo MP3.');
+      return;
+    }
+    if (!file.type.includes('audio') && !file.name.toLowerCase().endsWith('.mp3')) {
+      setError('O arquivo precisa ser um MP3.');
+      return;
+    }
+
+    setUploading(true);
+    setProgress(0);
+    setError(null);
+    try {
+      // Uploaded straight from the browser to Vercel Blob — a Server
+      // Action would hit a hard payload-size limit on files this big.
+      const blob = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/music-upload',
+        onUploadProgress: (p) => setProgress(Math.round(p.percentage))
+      });
+      await saveMusicSettingsAction(blob.url, file.name);
       if (fileInputRef.current) fileInputRef.current.value = '';
       onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha no upload.');
+    } finally {
+      setUploading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state]);
+  }
 
   return (
     <div
@@ -451,29 +476,21 @@ function MusicPanel({ music, onSaved }: { music: MusicSettings; onSaved: () => v
           ? <>Tocando atualmente: <strong style={{ color: 'var(--ink)' }}>{music.filename}</strong></>
           : 'Nenhuma música enviada ainda.'}
       </p>
-      <form action={formAction} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <input
           ref={fileInputRef}
           name="music"
           type="file"
           accept="audio/mpeg,.mp3"
+          disabled={uploading}
           style={{ color: 'var(--ink-dim)', fontSize: 13 }}
         />
-        <MusicSubmitButton />
+        <button type="submit" className="btn primary" disabled={uploading}>
+          {uploading ? `Enviando... ${progress}%` : 'Enviar MP3'}
+        </button>
       </form>
-      {state.error && (
-        <p style={{ color: '#ff8a8a', fontSize: 13, fontWeight: 600, margin: '10px 0 0' }}>{state.error}</p>
-      )}
+      {error && <p style={{ color: '#ff8a8a', fontSize: 13, fontWeight: 600, margin: '10px 0 0' }}>{error}</p>}
     </div>
-  );
-}
-
-function MusicSubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <button type="submit" className="btn primary" disabled={pending}>
-      {pending ? 'Enviando...' : 'Enviar MP3'}
-    </button>
   );
 }
 
