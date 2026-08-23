@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 
 const INSTAGRAM_URL = 'https://instagram.com/xan.switch';
 
@@ -65,8 +65,11 @@ export default function SiteHeader({
 
 function MusicPlayer({ musicUrl, musicName }: { musicUrl: string; musicName: string | null }) {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const nameBoxRef = useRef<HTMLDivElement>(null);
+  const nameTextRef = useRef<HTMLSpanElement>(null);
   const [playing, setPlaying] = useState(false);
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
+  const [marquee, setMarquee] = useState<{ shift: number; duration: number } | null>(null);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -77,6 +80,40 @@ function MusicPlayer({ musicUrl, musicName }: { musicUrl: string; musicName: str
       .then(() => setPlaying(true))
       .catch(() => setAutoplayBlocked(true));
   }, [musicUrl]);
+
+  // Pausing when the tab/window loses visibility also covers minimizing
+  // the browser — most browsers fire visibilitychange in that case too.
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (!document.hidden) return;
+      const audio = audioRef.current;
+      if (audio && !audio.paused) {
+        audio.pause();
+        setPlaying(false);
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  // Only scroll the track name if it's actually wider than its box —
+  // short names just sit still.
+  useEffect(() => {
+    function measure() {
+      const box = nameBoxRef.current;
+      const text = nameTextRef.current;
+      if (!box || !text) return;
+      const overflow = text.scrollWidth - box.clientWidth;
+      if (overflow > 4) {
+        setMarquee({ shift: overflow + 12, duration: 6 + overflow / 18 });
+      } else {
+        setMarquee(null);
+      }
+    }
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [musicName]);
 
   function toggle() {
     const audio = audioRef.current;
@@ -118,7 +155,22 @@ function MusicPlayer({ musicUrl, musicName }: { musicUrl: string; musicName: str
       </button>
       <div className="music-info">
         <span className="music-label">Música do dia</span>
-        <span className="music-name">{musicName}</span>
+        <div className="music-name" ref={nameBoxRef}>
+          <span
+            ref={nameTextRef}
+            className={`music-name-track${marquee ? ' scrolling' : ''}`}
+            style={
+              marquee
+                ? ({
+                    '--marquee-shift': `-${marquee.shift}px`,
+                    animationDuration: `${marquee.duration}s`
+                  } as CSSProperties)
+                : undefined
+            }
+          >
+            {musicName}
+          </span>
+        </div>
       </div>
     </div>
   );

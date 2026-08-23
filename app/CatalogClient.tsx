@@ -95,16 +95,20 @@ export default function CatalogClient({
   }
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 20px 80px' }}>
-      <header style={{ marginBottom: 22 }}>
-        <SiteHeader musicUrl={musicUrl} musicName={musicName} whatsappContactUrl={whatsappContactUrl} />
-        <p style={{ color: 'var(--ink-dim)', fontSize: 14.5, fontWeight: 600, margin: '14px 0 0', textAlign: 'center' }}>
+    <>
+      <header className="site-header-bar">
+        <div className="site-header-bar-inner">
+          <SiteHeader musicUrl={musicUrl} musicName={musicName} whatsappContactUrl={whatsappContactUrl} />
+        </div>
+      </header>
+
+      <div className="page-content" style={{ maxWidth: 1200, margin: '0 auto', paddingLeft: 20, paddingRight: 20, paddingBottom: 80 }}>
+        <p style={{ color: 'var(--ink-dim)', fontSize: 14.5, fontWeight: 600, margin: '0 0 22px', textAlign: 'center' }}>
           Clique no jogo que você quer e a conversa já abre no WhatsApp, prontinha pra fechar o
           pedido.
         </p>
-      </header>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
         <div
           style={{
             display: 'flex',
@@ -303,7 +307,8 @@ export default function CatalogClient({
       >
         XAN SWITCH — Nintendo mais barato
       </p>
-    </div>
+      </div>
+    </>
   );
 }
 
