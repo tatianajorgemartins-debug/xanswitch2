@@ -32,16 +32,16 @@ type QuickFilter = 'bestseller' | 'upcoming' | null;
 export default function CatalogClient({
   items,
   featuredItems,
-  bestsellerItem,
-  upcomingItem,
+  bestsellerItems,
+  upcomingItems,
   musicUrl,
   musicName,
   whatsappContactUrl
 }: {
   items: Item[];
   featuredItems: Item[];
-  bestsellerItem: Item | null;
-  upcomingItem: Item | null;
+  bestsellerItems: Item[];
+  upcomingItems: Item[];
   musicUrl: string | null;
   musicName: string | null;
   whatsappContactUrl: string | null;
@@ -283,8 +283,8 @@ export default function CatalogClient({
 
       <PromoSection
         featuredItems={featuredItems}
-        bestsellerItem={bestsellerItem}
-        upcomingItem={upcomingItem}
+        bestsellerItems={bestsellerItems}
+        upcomingItems={upcomingItems}
         onViewGame={handleViewGame}
         onFilterFlag={handleFilterFlag}
       />

@@ -219,7 +219,7 @@ a {
 }
 
 /* Carousel chrome — arrows and dot indicators over the large banner. */
-.featured-carousel {
+.promo-carousel {
   position: relative;
   width: 100%;
   height: 100%;
@@ -227,18 +227,18 @@ a {
   border-radius: 16px;
   touch-action: pan-y;
 }
-.featured-carousel-track {
+.promo-carousel-track {
   display: flex;
   width: 100%;
   height: 100%;
   transition: transform 0.4s ease;
 }
-.featured-carousel-slide {
+.promo-carousel-slide {
   flex: none;
   width: 100%;
   height: 100%;
 }
-.featured-carousel-arrow {
+.promo-carousel-arrow {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
@@ -255,17 +255,17 @@ a {
   z-index: 2;
   transition: background 0.15s, border-color 0.15s;
 }
-.featured-carousel-arrow:hover {
+.promo-carousel-arrow:hover {
   background: rgba(78, 240, 95, 0.25);
   border-color: var(--green);
 }
-.featured-carousel-arrow.left {
+.promo-carousel-arrow.left {
   left: 12px;
 }
-.featured-carousel-arrow.right {
+.promo-carousel-arrow.right {
   right: 12px;
 }
-.featured-carousel-dots {
+.promo-carousel-dots {
   position: absolute;
   bottom: 12px;
   left: 50%;
@@ -274,7 +274,7 @@ a {
   gap: 8px;
   z-index: 2;
 }
-.featured-carousel-dot {
+.promo-carousel-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -284,7 +284,7 @@ a {
   padding: 0;
   transition: background 0.2s, transform 0.2s;
 }
-.featured-carousel-dot.active {
+.promo-carousel-dot.active {
   background: var(--green);
   box-shadow: 0 0 8px var(--green-glow);
   transform: scale(1.2);
@@ -344,14 +344,14 @@ a {
   .promo-banner-small .promo-banner-name {
     font-size: 13px;
   }
-  .featured-carousel-arrow {
+  .promo-carousel-arrow {
     width: 28px;
     height: 28px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .featured-carousel-track {
+  .promo-carousel-track {
     transition: none;
   }
   .promo-banner-image {

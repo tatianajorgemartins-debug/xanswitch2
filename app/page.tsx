@@ -28,13 +28,11 @@ function toItem(g: Game): Item {
   };
 }
 
-function mostRecent(games: Game[]): Game | null {
+function byRecentFirst(games: Game[]): Game[] {
   // The Postgres driver hands back updated_at as a Date object, not the
   // string the Game type claims — compare via getTime() so it works
   // whichever shape it actually is.
-  return (
-    games.slice().sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0] ?? null
-  );
+  return games.slice().sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 }
 
 export default async function CatalogPage() {
@@ -42,16 +40,16 @@ export default async function CatalogPage() {
   const music = await getMusicSettings();
 
   const items = games.map(toItem);
-  const featuredItems = games.filter((g) => g.is_featured).map(toItem);
-  const bestsellerGame = mostRecent(games.filter((g) => g.is_bestseller));
-  const upcomingGame = mostRecent(games.filter((g) => g.is_upcoming));
+  const featuredItems = byRecentFirst(games.filter((g) => g.is_featured)).map(toItem);
+  const bestsellerItems = byRecentFirst(games.filter((g) => g.is_bestseller)).map(toItem);
+  const upcomingItems = byRecentFirst(games.filter((g) => g.is_upcoming)).map(toItem);
 
   return (
     <CatalogClient
       items={items}
       featuredItems={featuredItems}
-      bestsellerItem={bestsellerGame ? toItem(bestsellerGame) : null}
-      upcomingItem={upcomingGame ? toItem(upcomingGame) : null}
+      bestsellerItems={bestsellerItems}
+      upcomingItems={upcomingItems}
       musicUrl={music.url}
       musicName={music.filename ? formatTrackName(music.filename) : null}
       whatsappContactUrl={buildWhatsAppContactLink()}
