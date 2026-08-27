@@ -17,6 +17,9 @@ export type Game = {
   franchise: string | null;
   platform: Platform;
   game_type: GameType;
+  is_featured: boolean;
+  is_bestseller: boolean;
+  is_upcoming: boolean;
   archived: boolean;
   created_at: string;
   updated_at: string;
@@ -52,10 +55,13 @@ export async function createGame(data: {
   franchise: string | null;
   platform: Platform;
   game_type: GameType;
+  is_featured: boolean;
+  is_bestseller: boolean;
+  is_upcoming: boolean;
 }): Promise<Game> {
   const rows = await sql`
-    INSERT INTO games (name, price, original_price, image_url, has_badge, badge_text, badge_color, franchise, platform, game_type)
-    VALUES (${data.name}, ${data.price}, ${data.original_price}, ${data.image_url}, ${data.has_badge}, ${data.badge_text}, ${data.badge_color}, ${data.franchise}, ${data.platform}, ${data.game_type})
+    INSERT INTO games (name, price, original_price, image_url, has_badge, badge_text, badge_color, franchise, platform, game_type, is_featured, is_bestseller, is_upcoming)
+    VALUES (${data.name}, ${data.price}, ${data.original_price}, ${data.image_url}, ${data.has_badge}, ${data.badge_text}, ${data.badge_color}, ${data.franchise}, ${data.platform}, ${data.game_type}, ${data.is_featured}, ${data.is_bestseller}, ${data.is_upcoming})
     RETURNING *
   `;
   return rows[0] as Game;
@@ -74,6 +80,9 @@ export async function updateGame(
     franchise: string | null;
     platform: Platform;
     game_type: GameType;
+    is_featured: boolean;
+    is_bestseller: boolean;
+    is_upcoming: boolean;
   }
 ): Promise<Game> {
   const rows = await sql`
@@ -88,6 +97,9 @@ export async function updateGame(
       franchise = ${data.franchise},
       platform = ${data.platform},
       game_type = ${data.game_type},
+      is_featured = ${data.is_featured},
+      is_bestseller = ${data.is_bestseller},
+      is_upcoming = ${data.is_upcoming},
       updated_at = now()
     WHERE id = ${id}
     RETURNING *

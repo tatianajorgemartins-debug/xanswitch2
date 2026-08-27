@@ -605,6 +605,48 @@ function GameFormPanel({
         </div>
 
         <div style={{ marginBottom: 14 }}>
+          <label>Banners promocionais (opcional)</label>
+          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                id="isFeatured"
+                name="isFeatured"
+                type="checkbox"
+                defaultChecked={game?.is_featured ?? false}
+                style={{ width: 18, height: 18, accentColor: 'var(--green)' }}
+              />
+              <label htmlFor="isFeatured" style={{ margin: 0, textTransform: 'none', fontSize: 14, color: 'var(--ink)' }}>
+                Destaque da semana
+              </label>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                id="isBestseller"
+                name="isBestseller"
+                type="checkbox"
+                defaultChecked={game?.is_bestseller ?? false}
+                style={{ width: 18, height: 18, accentColor: 'var(--green)' }}
+              />
+              <label htmlFor="isBestseller" style={{ margin: 0, textTransform: 'none', fontSize: 14, color: 'var(--ink)' }}>
+                Mais vendido
+              </label>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                id="isUpcoming"
+                name="isUpcoming"
+                type="checkbox"
+                defaultChecked={game?.is_upcoming ?? false}
+                style={{ width: 18, height: 18, accentColor: 'var(--green)' }}
+              />
+              <label htmlFor="isUpcoming" style={{ margin: 0, textTransform: 'none', fontSize: 14, color: 'var(--ink)' }}>
+                Mais aguardado
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
           <label htmlFor="originalPrice">Preço original (opcional — pra mostrar como desconto)</label>
           <input
             id="originalPrice"

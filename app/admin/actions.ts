@@ -97,6 +97,9 @@ export async function createGameAction(
   const franchise = String(formData.get('franchise') || '').trim() || null;
   const platform = parsePlatform(formData.get('platform'));
   const gameType = parseGameType(formData.get('gameType'));
+  const isFeatured = formData.get('isFeatured') === 'on';
+  const isBestseller = formData.get('isBestseller') === 'on';
+  const isUpcoming = formData.get('isUpcoming') === 'on';
 
   if (!name) return { error: 'Digite o nome do jogo.' };
   if (Number.isNaN(price) || price < 0) return { error: 'Preço inválido.' };
@@ -116,7 +119,10 @@ export async function createGameAction(
     badge_color: badgeColor,
     franchise,
     platform,
-    game_type: gameType
+    game_type: gameType,
+    is_featured: isFeatured,
+    is_bestseller: isBestseller,
+    is_upcoming: isUpcoming
   });
 
   revalidatePath('/admin');
@@ -143,6 +149,9 @@ export async function updateGameAction(
   const franchise = String(formData.get('franchise') || '').trim() || null;
   const platform = parsePlatform(formData.get('platform'));
   const gameType = parseGameType(formData.get('gameType'));
+  const isFeatured = formData.get('isFeatured') === 'on';
+  const isBestseller = formData.get('isBestseller') === 'on';
+  const isUpcoming = formData.get('isUpcoming') === 'on';
 
   if (!id) return { error: 'Jogo inválido.' };
   if (!name) return { error: 'Digite o nome do jogo.' };
@@ -179,7 +188,10 @@ export async function updateGameAction(
     badge_color: badgeColor,
     franchise,
     platform,
-    game_type: gameType
+    game_type: gameType,
+    is_featured: isFeatured,
+    is_bestseller: isBestseller,
+    is_upcoming: isUpcoming
   });
 
   revalidatePath('/admin');

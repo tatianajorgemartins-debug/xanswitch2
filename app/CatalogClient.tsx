@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getContrastColor } from '@/lib/color';
 import type { Platform, GameType } from '@/lib/db';
 import SiteHeader from './SiteHeader';
+import PromoSection from './PromoSection';
 
-type Item = {
+export type Item = {
   id: number;
   name: string;
   price: number;
@@ -18,20 +19,29 @@ type Item = {
   franchise: string | null;
   platform: Platform;
   gameType: GameType;
+  isBestseller: boolean;
+  isUpcoming: boolean;
   whatsappUrl: string;
 };
 
 type ViewMode = 'grid' | 'list';
 type PlatformFilter = 'all' | 'switch1' | 'switch2';
 type TypeFilter = 'all' | GameType;
+type QuickFilter = 'bestseller' | 'upcoming' | null;
 
 export default function CatalogClient({
   items,
+  featuredItems,
+  bestsellerItem,
+  upcomingItem,
   musicUrl,
   musicName,
   whatsappContactUrl
 }: {
   items: Item[];
+  featuredItems: Item[];
+  bestsellerItem: Item | null;
+  upcomingItem: Item | null;
   musicUrl: string | null;
   musicName: string | null;
   whatsappContactUrl: string | null;
@@ -44,7 +54,9 @@ export default function CatalogClient({
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [priceMin, setPriceMin] = useState('');
   const [priceMax, setPriceMax] = useState('');
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const gridAnchorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function onScroll() {
@@ -75,16 +87,39 @@ export default function CatalogClient({
       if (typeFilter !== 'all' && it.gameType !== typeFilter) return false;
       if (min !== null && !Number.isNaN(min) && it.price < min) return false;
       if (max !== null && !Number.isNaN(max) && it.price > max) return false;
+      if (quickFilter === 'bestseller' && !it.isBestseller) return false;
+      if (quickFilter === 'upcoming' && !it.isUpcoming) return false;
       return true;
     });
-  }, [items, query, franchiseFilter, platformFilter, typeFilter, priceMin, priceMax]);
+  }, [items, query, franchiseFilter, platformFilter, typeFilter, priceMin, priceMax, quickFilter]);
 
   const activeFilterCount =
     (franchiseFilter ? 1 : 0) +
     (platformFilter !== 'all' ? 1 : 0) +
     (typeFilter !== 'all' ? 1 : 0) +
     (priceMin.trim() ? 1 : 0) +
-    (priceMax.trim() ? 1 : 0);
+    (priceMax.trim() ? 1 : 0) +
+    (quickFilter ? 1 : 0);
+
+  function scrollToGrid() {
+    gridAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function handleViewGame(name: string) {
+    setQuery(name);
+    scrollToGrid();
+  }
+
+  function handleFilterFlag(flag: 'bestseller' | 'upcoming') {
+    setQuery('');
+    setFranchiseFilter('');
+    setPlatformFilter('all');
+    setTypeFilter('all');
+    setPriceMin('');
+    setPriceMax('');
+    setQuickFilter(flag);
+    scrollToGrid();
+  }
 
   function clearFilters() {
     setFranchiseFilter('');
@@ -92,6 +127,7 @@ export default function CatalogClient({
     setTypeFilter('all');
     setPriceMin('');
     setPriceMax('');
+    setQuickFilter(null);
   }
 
   return (
@@ -242,6 +278,32 @@ export default function CatalogClient({
               ✕ Limpar filtros
             </button>
           )}
+        </div>
+      )}
+
+      <PromoSection
+        featuredItems={featuredItems}
+        bestsellerItem={bestsellerItem}
+        upcomingItem={upcomingItem}
+        onViewGame={handleViewGame}
+        onFilterFlag={handleFilterFlag}
+      />
+
+      <div ref={gridAnchorRef} className="grid-anchor" />
+
+      {quickFilter && (
+        <div style={{ textAlign: 'center', marginBottom: 14 }}>
+          <span className="tag tag-platform" style={{ fontSize: 12, padding: '5px 12px', display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+            Mostrando: {quickFilter === 'bestseller' ? 'Mais vendidos' : 'Mais aguardados'}
+            <button
+              type="button"
+              onClick={() => setQuickFilter(null)}
+              aria-label="Remover esse filtro"
+              style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, fontSize: 12, lineHeight: 1 }}
+            >
+              ✕
+            </button>
+          </span>
         </div>
       )}
 
