@@ -29,7 +29,12 @@ function toItem(g: Game): Item {
 }
 
 function mostRecent(games: Game[]): Game | null {
-  return games.slice().sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0] ?? null;
+  // The Postgres driver hands back updated_at as a Date object, not the
+  // string the Game type claims — compare via getTime() so it works
+  // whichever shape it actually is.
+  return (
+    games.slice().sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0] ?? null
+  );
 }
 
 export default async function CatalogPage() {

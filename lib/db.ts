@@ -21,8 +21,8 @@ export type Game = {
   is_bestseller: boolean;
   is_upcoming: boolean;
   archived: boolean;
-  created_at: string;
-  updated_at: string;
+  created_at: Date; // timestamptz comes back as a real Date, not a string
+  updated_at: Date;
 };
 
 export async function getActiveGames(): Promise<Game[]> {
