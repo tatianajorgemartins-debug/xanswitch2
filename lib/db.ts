@@ -135,3 +135,17 @@ export async function setMusicSettings(url: string, filename: string): Promise<v
     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
   `;
 }
+
+export async function getVisitCount(): Promise<number> {
+  const rows = await sql`SELECT value FROM site_settings WHERE key = 'visit_count'`;
+  return rows[0]?.value ? parseInt(rows[0].value as string, 10) : 0;
+}
+
+// Atomic increment (avoids losing counts if two visitors land at the same
+// instant) — the whole read-modify-write happens inside Postgres.
+export async function incrementVisitCount(): Promise<void> {
+  await sql`
+    INSERT INTO site_settings (key, value) VALUES ('visit_count', '1')
+    ON CONFLICT (key) DO UPDATE SET value = (COALESCE(site_settings.value, '0')::int + 1)::text
+  `;
+}

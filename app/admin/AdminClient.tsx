@@ -20,10 +20,12 @@ const emptyFormState: GameFormState = { error: null };
 
 export default function AdminClient({
   initialGames,
-  music
+  music,
+  visitCount
 }: {
   initialGames: Game[];
   music: MusicSettings;
+  visitCount: number;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -86,6 +88,23 @@ export default function AdminClient({
         <p style={{ color: 'var(--ink-dim)', fontSize: 14.5, fontWeight: 600, margin: 0, flex: 1 }}>
           Painel de administração — adicione, edite, arquive e exclua os jogos do catálogo.
         </p>
+        <span
+          title="Visitas no catálogo público, sem contar você (quando está com sessão ativa no admin no mesmo navegador)"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            background: 'var(--panel)',
+            border: '1px solid rgba(164,99,255,.3)',
+            borderRadius: 10,
+            padding: '9px 14px',
+            fontSize: 14,
+            fontWeight: 700,
+            color: 'var(--ink)'
+          }}
+        >
+          👁 <span style={{ color: 'var(--green)' }}>{visitCount}</span> visitas
+        </span>
         <a href="/" target="_blank" rel="noreferrer" className="btn ghost">
           🔗 Ver catálogo público
         </a>
