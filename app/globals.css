@@ -466,10 +466,10 @@ textarea:focus {
   background: var(--panel);
   border: 1px solid rgba(164, 99, 255, 0.3);
   border-radius: 14px;
-  padding: 16px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 .review-card.featured {
@@ -507,6 +507,29 @@ textarea:focus {
   color: var(--ink);
   line-height: 1.45;
   margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.review-card-comment.expanded {
+  display: block;
+  overflow: visible;
+}
+.review-card-more {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--purple);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.review-card-more:hover {
+  color: var(--green);
 }
 .review-card-author {
   display: flex;

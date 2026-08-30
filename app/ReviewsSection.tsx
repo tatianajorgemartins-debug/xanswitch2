@@ -79,6 +79,16 @@ export default function ReviewsSection({ reviews }: { reviews: ReviewItem[] }) {
 }
 
 function ReviewCard({ review }: { review: ReviewItem }) {
+  const [expanded, setExpanded] = useState(false);
+  const [overflowing, setOverflowing] = useState(false);
+  const textRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el) return;
+    setOverflowing(el.scrollHeight > el.clientHeight + 1);
+  }, [review.comment]);
+
   return (
     <div className={`review-card${review.isFeatured ? ' featured' : ''}`}>
       {review.isFeatured && <span className="review-card-featured-badge">⭐ Destaque</span>}
@@ -86,7 +96,14 @@ function ReviewCard({ review }: { review: ReviewItem }) {
         {'★'.repeat(review.rating)}
         <span className="review-card-stars-empty">{'★'.repeat(5 - review.rating)}</span>
       </div>
-      <p className="review-card-comment">&ldquo;{review.comment}&rdquo;</p>
+      <p ref={textRef} className={`review-card-comment${expanded ? ' expanded' : ''}`}>
+        &ldquo;{review.comment}&rdquo;
+      </p>
+      {overflowing && (
+        <button type="button" className="review-card-more" onClick={() => setExpanded((v) => !v)}>
+          {expanded ? 'Ler menos' : 'Ler mais'}
+        </button>
+      )}
       <div className="review-card-author">
         <span className="review-card-name">{review.name}</span>
         {review.instagram && (
