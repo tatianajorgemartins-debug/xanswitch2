@@ -357,6 +357,9 @@ a {
   .promo-banner-image {
     transition: none;
   }
+  .reviews-pages-track {
+    transition: none;
+  }
 }
 
 /* "Deixe um comentário" form panel. */
@@ -430,19 +433,20 @@ textarea:focus {
   color: var(--ink-dim);
   margin: 0 0 14px;
 }
-/* Off-screen clone of every page, used only so JS can measure heights
-   without ever letting it affect visible layout. */
-.reviews-measure {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  visibility: hidden;
-  pointer-events: none;
-  z-index: -1;
+/* Desktop: up to 4 cards per page, auto-advancing with dot indicators.
+   Every page sits side by side in `.reviews-pages-track` and slides via
+   transform; flexbox's default cross-axis stretch keeps every page the
+   height of the tallest one, so no page ever changes the row's height. */
+.reviews-carousel {
+  overflow: hidden;
 }
-/* Desktop: up to 4 cards per page, auto-advancing with dot indicators. */
+.reviews-pages-track {
+  display: flex;
+  transition: transform 0.4s ease;
+}
 .reviews-grid {
+  flex: none;
+  width: 100%;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 14px;
@@ -567,9 +571,8 @@ textarea:focus {
 }
 
 @media (max-width: 900px) {
-  .reviews-grid,
-  .reviews-dots,
-  .reviews-measure {
+  .reviews-carousel,
+  .reviews-dots {
     display: none;
   }
   .reviews-track {
