@@ -429,17 +429,40 @@ textarea:focus {
   color: var(--ink-dim);
   margin: 0 0 14px;
 }
-.reviews-track {
-  display: flex;
+/* Desktop: up to 4 cards per page, auto-advancing with dot indicators. */
+.reviews-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 14px;
-  overflow-x: auto;
-  padding-bottom: 6px;
-  scroll-snap-type: x proximity;
 }
+.reviews-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+.reviews-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s, transform 0.2s;
+}
+.reviews-dot.active {
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green-glow);
+  transform: scale(1.2);
+}
+
+/* Mobile: a free-scrolling row that nudges itself along — hidden on desktop. */
+.reviews-track {
+  display: none;
+}
+
 .review-card {
-  flex: none;
-  width: 260px;
-  scroll-snap-align: start;
   background: var(--panel);
   border: 1px solid rgba(164, 99, 255, 0.3);
   border-radius: 14px;
@@ -487,12 +510,31 @@ textarea:focus {
   color: var(--green);
 }
 
+@media (max-width: 900px) {
+  .reviews-grid,
+  .reviews-dots {
+    display: none;
+  }
+  .reviews-track {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scroll-snap-type: x proximity;
+  }
+  .reviews-track .review-card {
+    flex: none;
+    width: 260px;
+    scroll-snap-align: start;
+  }
+}
+
 @media (max-width: 480px) {
   .review-form-row {
     grid-template-columns: 1fr;
     gap: 10px;
   }
-  .review-card {
+  .reviews-track .review-card {
     width: 220px;
   }
 }
