@@ -32,6 +32,18 @@ CREATE TABLE IF NOT EXISTS site_settings (
   value TEXT
 );
 
+-- Avaliações de clientes (comentário + estrelas), aprovadas manualmente no admin.
+CREATE TABLE IF NOT EXISTS reviews (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  instagram TEXT,
+  rating SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  comment TEXT NOT NULL,
+  approved BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS reviews_approved_idx ON reviews (approved);
+
 -- Se a tabela já existia antes do campo de preço original ser adicionado,
 -- esta linha garante que o banco seja atualizado sem perder dados.
 ALTER TABLE games ADD COLUMN IF NOT EXISTS original_price NUMERIC(10, 2);

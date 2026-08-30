@@ -4,7 +4,7 @@ import { useMemo, useRef, useState, useEffect, useActionState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFormStatus } from 'react-dom';
 import { upload } from '@vercel/blob/client';
-import type { Game, MusicSettings } from '@/lib/db';
+import type { Game, MusicSettings, Review } from '@/lib/db';
 import { getContrastColor } from '@/lib/color';
 import {
   createGameAction,
@@ -13,6 +13,8 @@ import {
   deleteGameAction,
   logoutAction,
   saveMusicSettingsAction,
+  approveReviewAction,
+  deleteReviewAction,
   type GameFormState
 } from './actions';
 
@@ -21,16 +23,19 @@ const emptyFormState: GameFormState = { error: null };
 export default function AdminClient({
   initialGames,
   music,
-  visitCount
+  visitCount,
+  reviews
 }: {
   initialGames: Game[];
   music: MusicSettings;
   visitCount: number;
+  reviews: Review[];
 }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [showMusicPanel, setShowMusicPanel] = useState(false);
+  const [showReviewsPanel, setShowReviewsPanel] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingGame, setEditingGame] = useState<Game | null>(null);
 
@@ -78,6 +83,18 @@ export default function AdminClient({
     await deleteGameAction(id);
     router.refresh();
   }
+
+  async function handleApproveReview(id: number) {
+    await approveReviewAction(id);
+    router.refresh();
+  }
+  async function handleDeleteReview(id: number) {
+    if (!confirm('Excluir essa avaliação?')) return;
+    await deleteReviewAction(id);
+    router.refresh();
+  }
+
+  const pendingReviewCount = useMemo(() => reviews.filter((r) => !r.approved).length, [reviews]);
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 20px 80px' }}>
@@ -150,9 +167,16 @@ export default function AdminClient({
         <button className="btn ghost" onClick={() => setShowMusicPanel((s) => !s)}>
           🎵 Música do dia
         </button>
+        <button className="btn ghost" onClick={() => setShowReviewsPanel((s) => !s)}>
+          💬 Comentários{pendingReviewCount > 0 ? ` (${pendingReviewCount} pendente${pendingReviewCount > 1 ? 's' : ''})` : ''}
+        </button>
       </div>
 
       {showMusicPanel && <MusicPanel music={music} onSaved={() => router.refresh()} />}
+
+      {showReviewsPanel && (
+        <ReviewsPanel reviews={reviews} onApprove={handleApproveReview} onDelete={handleDeleteReview} />
+      )}
 
       {panelOpen && (
         <GameFormPanel
@@ -509,6 +533,119 @@ function MusicPanel({ music, onSaved }: { music: MusicSettings; onSaved: () => v
         </button>
       </form>
       {error && <p style={{ color: '#ff8a8a', fontSize: 13, fontWeight: 600, margin: '10px 0 0' }}>{error}</p>}
+    </div>
+  );
+}
+
+function StarsDisplay({ rating }: { rating: number }) {
+  return (
+    <span style={{ color: '#ffd24e', fontSize: 14, letterSpacing: 1 }}>
+      {'★'.repeat(rating)}
+      <span style={{ color: 'rgba(255,255,255,.2)' }}>{'★'.repeat(5 - rating)}</span>
+    </span>
+  );
+}
+
+function ReviewsPanel({
+  reviews,
+  onApprove,
+  onDelete
+}: {
+  reviews: Review[];
+  onApprove: (id: number) => void;
+  onDelete: (id: number) => void;
+}) {
+  const pending = reviews.filter((r) => !r.approved);
+  const approved = reviews.filter((r) => r.approved);
+
+  return (
+    <div
+      style={{
+        background: 'var(--panel)',
+        border: '1px solid rgba(164,99,255,.25)',
+        borderRadius: 14,
+        padding: 16,
+        marginBottom: 20
+      }}
+    >
+      <h4 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--ink-dim)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+        Pendentes de aprovação ({pending.length})
+      </h4>
+      {pending.length === 0 ? (
+        <p style={{ color: 'var(--ink-dim)', fontSize: 14, padding: '6px 2px', margin: '0 0 20px' }}>
+          Nenhum comentário pendente.
+        </p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+          {pending.map((r) => (
+            <div
+              key={r.id}
+              style={{ background: 'var(--panel-2)', borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <strong style={{ fontSize: 14.5 }}>{r.name}</strong>
+                  {r.instagram && (
+                    <span style={{ color: 'var(--ink-dim)', fontSize: 13 }}>@{r.instagram.replace(/^@/, '')}</span>
+                  )}
+                  <StarsDisplay rating={r.rating} />
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn green" onClick={() => onApprove(r.id)}>
+                    ✓ Aprovar
+                  </button>
+                  <button className="btn ghost" onClick={() => onDelete(r.id)}>
+                    🗑
+                  </button>
+                </div>
+              </div>
+              <p style={{ margin: 0, fontSize: 14, color: 'var(--ink)' }}>{r.comment}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <h4 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--ink-dim)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+        Já aprovados no site ({approved.length})
+      </h4>
+      {approved.length === 0 ? (
+        <p style={{ color: 'var(--ink-dim)', fontSize: 14, padding: '6px 2px', margin: 0 }}>Nenhum ainda.</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {approved.map((r) => (
+            <div
+              key={r.id}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: 10,
+                padding: '8px 4px',
+                borderBottom: '1px solid rgba(255,255,255,.06)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                <strong style={{ fontSize: 14, flex: 'none' }}>{r.name}</strong>
+                <StarsDisplay rating={r.rating} />
+                <span
+                  style={{
+                    color: 'var(--ink-dim)',
+                    fontSize: 13,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {r.comment}
+                </span>
+              </div>
+              <button className="btn ghost" onClick={() => onDelete(r.id)}>
+                🗑
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -5,6 +5,8 @@ import { getContrastColor } from '@/lib/color';
 import type { Platform, GameType } from '@/lib/db';
 import SiteHeader from './SiteHeader';
 import PromoSection from './PromoSection';
+import ReviewsSection from './ReviewsSection';
+import ReviewForm from './ReviewForm';
 
 export type Item = {
   id: number;
@@ -24,6 +26,14 @@ export type Item = {
   whatsappUrl: string;
 };
 
+export type ReviewItem = {
+  id: number;
+  name: string;
+  instagram: string | null;
+  rating: number;
+  comment: string;
+};
+
 type ViewMode = 'grid' | 'list';
 type PlatformFilter = 'all' | 'switch1' | 'switch2';
 type TypeFilter = 'all' | GameType;
@@ -34,6 +44,7 @@ export default function CatalogClient({
   featuredItems,
   bestsellerItems,
   upcomingItems,
+  reviews,
   musicUrl,
   musicName,
   whatsappContactUrl
@@ -42,6 +53,7 @@ export default function CatalogClient({
   featuredItems: Item[];
   bestsellerItems: Item[];
   upcomingItems: Item[];
+  reviews: ReviewItem[];
   musicUrl: string | null;
   musicName: string | null;
   whatsappContactUrl: string | null;
@@ -49,6 +61,7 @@ export default function CatalogClient({
   const [query, setQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [reviewFormOpen, setReviewFormOpen] = useState(false);
   const [franchiseFilter, setFranchiseFilter] = useState('');
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>('all');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
@@ -207,7 +220,16 @@ export default function CatalogClient({
           </svg>
           Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
         </button>
+
+        <button type="button" className="btn ghost" onClick={() => setReviewFormOpen((v) => !v)}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={14} height={14} style={{ flex: 'none' }}>
+            <path d="M4 4h16v12H8l-4 4V4z" strokeLinejoin="round" strokeLinecap="round" />
+          </svg>
+          Deixe um comentário
+        </button>
       </div>
+
+      {reviewFormOpen && <ReviewForm onSubmitted={() => setReviewFormOpen(false)} />}
 
       {filtersOpen && (
         <div className="filters-panel">
@@ -288,6 +310,8 @@ export default function CatalogClient({
         onViewGame={handleViewGame}
         onFilterFlag={handleFilterFlag}
       />
+
+      <ReviewsSection reviews={reviews} />
 
       <div ref={gridAnchorRef} className="grid-anchor" />
 

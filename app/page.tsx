@@ -1,7 +1,7 @@
-import { getActiveGames, getMusicSettings, type Game } from '@/lib/db';
+import { getActiveGames, getMusicSettings, getApprovedReviews, type Game } from '@/lib/db';
 import { buildWhatsAppLink, buildWhatsAppContactLink, formatPriceBR } from '@/lib/whatsapp';
 import { formatTrackName } from '@/lib/format';
-import CatalogClient, { type Item } from './CatalogClient';
+import CatalogClient, { type Item, type ReviewItem } from './CatalogClient';
 
 export const dynamic = 'force-dynamic'; // always show the latest games, never a stale cached build
 
@@ -35,9 +35,20 @@ function byRecentFirst(games: Game[]): Game[] {
   return games.slice().sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 }
 
+function toReviewItem(r: Awaited<ReturnType<typeof getApprovedReviews>>[number]): ReviewItem {
+  return {
+    id: r.id,
+    name: r.name,
+    instagram: r.instagram,
+    rating: r.rating,
+    comment: r.comment
+  };
+}
+
 export default async function CatalogPage() {
   const games = await getActiveGames();
   const music = await getMusicSettings();
+  const reviews = await getApprovedReviews();
 
   const items = games.map(toItem);
   const featuredItems = byRecentFirst(games.filter((g) => g.is_featured)).map(toItem);
@@ -50,6 +61,7 @@ export default async function CatalogPage() {
       featuredItems={featuredItems}
       bestsellerItems={bestsellerItems}
       upcomingItems={upcomingItems}
+      reviews={reviews.map(toReviewItem)}
       musicUrl={music.url}
       musicName={music.filename ? formatTrackName(music.filename) : null}
       whatsappContactUrl={buildWhatsAppContactLink()}

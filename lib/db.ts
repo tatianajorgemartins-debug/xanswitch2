@@ -149,3 +149,45 @@ export async function incrementVisitCount(): Promise<void> {
     ON CONFLICT (key) DO UPDATE SET value = (COALESCE(site_settings.value, '0')::int + 1)::text
   `;
 }
+
+export type Review = {
+  id: number;
+  name: string;
+  instagram: string | null;
+  rating: number;
+  comment: string;
+  approved: boolean;
+  created_at: Date;
+};
+
+export async function getApprovedReviews(): Promise<Review[]> {
+  const rows = await sql`SELECT * FROM reviews WHERE approved = TRUE ORDER BY created_at DESC`;
+  return rows as Review[];
+}
+
+export async function getAllReviews(): Promise<Review[]> {
+  const rows = await sql`SELECT * FROM reviews ORDER BY approved ASC, created_at DESC`;
+  return rows as Review[];
+}
+
+export async function createReview(data: {
+  name: string;
+  instagram: string | null;
+  rating: number;
+  comment: string;
+}): Promise<Review> {
+  const rows = await sql`
+    INSERT INTO reviews (name, instagram, rating, comment)
+    VALUES (${data.name}, ${data.instagram}, ${data.rating}, ${data.comment})
+    RETURNING *
+  `;
+  return rows[0] as Review;
+}
+
+export async function setReviewApproved(id: number, approved: boolean): Promise<void> {
+  await sql`UPDATE reviews SET approved = ${approved} WHERE id = ${id}`;
+}
+
+export async function deleteReview(id: number): Promise<void> {
+  await sql`DELETE FROM reviews WHERE id = ${id}`;
+}

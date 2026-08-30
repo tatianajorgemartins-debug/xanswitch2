@@ -17,6 +17,8 @@ import {
   getGameById,
   getMusicSettings,
   setMusicSettings,
+  setReviewApproved,
+  deleteReview,
   type Platform,
   type GameType
 } from '@/lib/db';
@@ -231,6 +233,20 @@ export async function saveMusicSettingsAction(url: string, filename: string): Pr
 
   await setMusicSettings(url, filename);
 
+  revalidatePath('/admin');
+  revalidatePath('/');
+}
+
+export async function approveReviewAction(id: number): Promise<void> {
+  await requireAuth();
+  await setReviewApproved(id, true);
+  revalidatePath('/admin');
+  revalidatePath('/');
+}
+
+export async function deleteReviewAction(id: number): Promise<void> {
+  await requireAuth();
+  await deleteReview(id);
   revalidatePath('/admin');
   revalidatePath('/');
 }
