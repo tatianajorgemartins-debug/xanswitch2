@@ -418,6 +418,7 @@ textarea:focus {
 
 /* Approved customer reviews — a horizontally scrolling row of cards. */
 .reviews-section {
+  position: relative;
   margin-bottom: 26px;
 }
 .reviews-title {
@@ -428,6 +429,17 @@ textarea:focus {
   text-transform: uppercase;
   color: var(--ink-dim);
   margin: 0 0 14px;
+}
+/* Off-screen clone of every page, used only so JS can measure heights
+   without ever letting it affect visible layout. */
+.reviews-measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: -1;
 }
 /* Desktop: up to 4 cards per page, auto-advancing with dot indicators. */
 .reviews-grid {
@@ -556,7 +568,8 @@ textarea:focus {
 
 @media (max-width: 900px) {
   .reviews-grid,
-  .reviews-dots {
+  .reviews-dots,
+  .reviews-measure {
     display: none;
   }
   .reviews-track {

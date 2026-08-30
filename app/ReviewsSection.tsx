@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReviewItem } from './CatalogClient';
 
 const ITEMS_PER_PAGE = 4;
@@ -10,9 +10,40 @@ export default function ReviewsSection({ reviews }: { reviews: ReviewItem[] }) {
   const [page, setPage] = useState(0);
   const [pagedPaused, setPagedPaused] = useState(false);
   const [scrollPaused, setScrollPaused] = useState(false);
+  const [gridMinHeight, setGridMinHeight] = useState<number | undefined>(undefined);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
 
-  const totalPages = Math.max(1, Math.ceil(reviews.length / ITEMS_PER_PAGE));
+  const pages = useMemo(() => {
+    const chunks: ReviewItem[][] = [];
+    for (let i = 0; i < reviews.length; i += ITEMS_PER_PAGE) {
+      chunks.push(reviews.slice(i, i + ITEMS_PER_PAGE));
+    }
+    return chunks;
+  }, [reviews]);
+  const totalPages = Math.max(1, pages.length);
+
+  // Every page has a different tallest card, so the grid's natural height
+  // would otherwise jump each time it auto-advances. A hidden copy of every
+  // page (collapsed, same width) is measured so the visible grid can be
+  // locked to whichever page needs the most room. A ResizeObserver (rather
+  // than a one-off measurement) is what makes this reliable: each card's
+  // own "Ler mais" button only appears after its own effect runs, one tick
+  // after this component mounts, so the very first measurement always
+  // undercounts — the observer just re-measures whenever that settles.
+  useEffect(() => {
+    const container = measureRef.current;
+    if (!container) return;
+    const groups = Array.from(container.children) as HTMLElement[];
+    if (groups.length === 0) return;
+
+    const observer = new ResizeObserver(() => {
+      const max = groups.reduce((m, g) => Math.max(m, g.offsetHeight), 0);
+      setGridMinHeight((prev) => (max > 0 ? max : prev));
+    });
+    groups.forEach((g) => observer.observe(g));
+    return () => observer.disconnect();
+  }, [pages]);
 
   // Desktop: page through groups of 4 cards.
   useEffect(() => {
@@ -38,13 +69,29 @@ export default function ReviewsSection({ reviews }: { reviews: ReviewItem[] }) {
 
   if (reviews.length === 0) return null;
 
-  const visiblePage = reviews.slice(page * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE + ITEMS_PER_PAGE);
+  const visiblePage = pages[page] ?? [];
 
   return (
     <div className="reviews-section">
       <p className="reviews-title">O que os clientes estão dizendo</p>
 
-      <div className="reviews-grid" onMouseEnter={() => setPagedPaused(true)} onMouseLeave={() => setPagedPaused(false)}>
+      {/* Off-screen: every page rendered once, collapsed, just to measure heights. */}
+      <div className="reviews-measure" aria-hidden="true" ref={measureRef}>
+        {pages.map((group, i) => (
+          <div className="reviews-grid" key={i}>
+            {group.map((r) => (
+              <ReviewCard key={r.id} review={r} />
+            ))}
+          </div>
+        ))}
+      </div>
+
+      <div
+        className="reviews-grid"
+        style={{ minHeight: gridMinHeight }}
+        onMouseEnter={() => setPagedPaused(true)}
+        onMouseLeave={() => setPagedPaused(false)}
+      >
         {visiblePage.map((r) => (
           <ReviewCard key={r.id} review={r} />
         ))}
