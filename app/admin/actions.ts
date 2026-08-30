@@ -18,6 +18,7 @@ import {
   getMusicSettings,
   setMusicSettings,
   setReviewApproved,
+  setReviewFeatured,
   deleteReview,
   type Platform,
   type GameType
@@ -247,6 +248,13 @@ export async function approveReviewAction(id: number): Promise<void> {
 export async function deleteReviewAction(id: number): Promise<void> {
   await requireAuth();
   await deleteReview(id);
+  revalidatePath('/admin');
+  revalidatePath('/');
+}
+
+export async function setReviewFeaturedAction(id: number, featured: boolean): Promise<void> {
+  await requireAuth();
+  await setReviewFeatured(id, featured);
   revalidatePath('/admin');
   revalidatePath('/');
 }

@@ -157,11 +157,14 @@ export type Review = {
   rating: number;
   comment: string;
   approved: boolean;
+  is_featured: boolean;
   created_at: Date;
 };
 
 export async function getApprovedReviews(): Promise<Review[]> {
-  const rows = await sql`SELECT * FROM reviews WHERE approved = TRUE ORDER BY created_at DESC`;
+  const rows = await sql`
+    SELECT * FROM reviews WHERE approved = TRUE ORDER BY is_featured DESC, created_at DESC
+  `;
   return rows as Review[];
 }
 
@@ -186,6 +189,10 @@ export async function createReview(data: {
 
 export async function setReviewApproved(id: number, approved: boolean): Promise<void> {
   await sql`UPDATE reviews SET approved = ${approved} WHERE id = ${id}`;
+}
+
+export async function setReviewFeatured(id: number, featured: boolean): Promise<void> {
+  await sql`UPDATE reviews SET is_featured = ${featured} WHERE id = ${id}`;
 }
 
 export async function deleteReview(id: number): Promise<void> {

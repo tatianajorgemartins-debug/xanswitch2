@@ -41,7 +41,8 @@ function toReviewItem(r: Awaited<ReturnType<typeof getApprovedReviews>>[number])
     name: r.name,
     instagram: r.instagram,
     rating: r.rating,
-    comment: r.comment
+    comment: r.comment,
+    isFeatured: r.is_featured
   };
 }
 

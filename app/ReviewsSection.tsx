@@ -80,7 +80,8 @@ export default function ReviewsSection({ reviews }: { reviews: ReviewItem[] }) {
 
 function ReviewCard({ review }: { review: ReviewItem }) {
   return (
-    <div className="review-card">
+    <div className={`review-card${review.isFeatured ? ' featured' : ''}`}>
+      {review.isFeatured && <span className="review-card-featured-badge">⭐ Destaque</span>}
       <div className="review-card-stars">
         {'★'.repeat(review.rating)}
         <span className="review-card-stars-empty">{'★'.repeat(5 - review.rating)}</span>

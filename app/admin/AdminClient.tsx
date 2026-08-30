@@ -15,6 +15,7 @@ import {
   saveMusicSettingsAction,
   approveReviewAction,
   deleteReviewAction,
+  setReviewFeaturedAction,
   type GameFormState
 } from './actions';
 
@@ -91,6 +92,10 @@ export default function AdminClient({
   async function handleDeleteReview(id: number) {
     if (!confirm('Excluir essa avaliação?')) return;
     await deleteReviewAction(id);
+    router.refresh();
+  }
+  async function handleToggleFeaturedReview(id: number, featured: boolean) {
+    await setReviewFeaturedAction(id, featured);
     router.refresh();
   }
 
@@ -175,7 +180,12 @@ export default function AdminClient({
       {showMusicPanel && <MusicPanel music={music} onSaved={() => router.refresh()} />}
 
       {showReviewsPanel && (
-        <ReviewsPanel reviews={reviews} onApprove={handleApproveReview} onDelete={handleDeleteReview} />
+        <ReviewsPanel
+          reviews={reviews}
+          onApprove={handleApproveReview}
+          onDelete={handleDeleteReview}
+          onToggleFeatured={handleToggleFeaturedReview}
+        />
       )}
 
       {panelOpen && (
@@ -546,14 +556,35 @@ function StarsDisplay({ rating }: { rating: number }) {
   );
 }
 
+function FeaturedToggleButton({
+  featured,
+  onClick
+}: {
+  featured: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className="btn ghost"
+      onClick={onClick}
+      title={featured ? 'Remover destaque' : 'Marcar como comentário destaque'}
+      style={featured ? { borderColor: '#ffd24e', color: '#ffd24e' } : undefined}
+    >
+      {featured ? '★ Destacado' : '☆ Destacar'}
+    </button>
+  );
+}
+
 function ReviewsPanel({
   reviews,
   onApprove,
-  onDelete
+  onDelete,
+  onToggleFeatured
 }: {
   reviews: Review[];
   onApprove: (id: number) => void;
   onDelete: (id: number) => void;
+  onToggleFeatured: (id: number, featured: boolean) => void;
 }) {
   const pending = reviews.filter((r) => !r.approved);
   const approved = reviews.filter((r) => r.approved);
@@ -591,6 +622,7 @@ function ReviewsPanel({
                   <StarsDisplay rating={r.rating} />
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
+                  <FeaturedToggleButton featured={r.is_featured} onClick={() => onToggleFeatured(r.id, !r.is_featured)} />
                   <button className="btn green" onClick={() => onApprove(r.id)}>
                     ✓ Aprovar
                   </button>
@@ -639,9 +671,12 @@ function ReviewsPanel({
                   {r.comment}
                 </span>
               </div>
-              <button className="btn ghost" onClick={() => onDelete(r.id)}>
-                🗑
-              </button>
+              <div style={{ display: 'flex', gap: 8, flex: 'none' }}>
+                <FeaturedToggleButton featured={r.is_featured} onClick={() => onToggleFeatured(r.id, !r.is_featured)} />
+                <button className="btn ghost" onClick={() => onDelete(r.id)}>
+                  🗑
+                </button>
+              </div>
             </div>
           ))}
         </div>

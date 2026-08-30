@@ -32,6 +32,7 @@ export type ReviewItem = {
   instagram: string | null;
   rating: number;
   comment: string;
+  isFeatured: boolean;
 };
 
 type ViewMode = 'grid' | 'list';
