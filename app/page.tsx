@@ -24,6 +24,8 @@ function toItem(g: Game): Item {
     gameType: g.game_type,
     isBestseller: g.is_bestseller,
     isUpcoming: g.is_upcoming,
+    description: g.description,
+    screenshots: g.screenshots,
     whatsappPaymentUrl: buildWhatsAppPaymentLink(g.name, g.price)
   };
 }

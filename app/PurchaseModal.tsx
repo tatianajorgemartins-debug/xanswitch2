@@ -33,6 +33,12 @@ export default function PurchaseModal({ item, onClose }: { item: Item; onClose: 
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
 
+  // Índice da captura de tela aberta em tela cheia (a "lightbox"), ou null
+  // se nenhuma estiver aberta. Fica aqui em cima (não dentro do StepSummary)
+  // porque o Esc precisa saber se é pra fechar só a lightbox ou o modal
+  // inteiro — ver o useEffect logo abaixo.
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
   // Evita gerar o Pix (e registrar o pedido) mais de uma vez para o mesmo
   // modal, mesmo que o efeito abaixo rode duas vezes em desenvolvimento
   // (o React faz isso de propósito em StrictMode, só pra achar bugs — refs
@@ -40,14 +46,20 @@ export default function PurchaseModal({ item, onClose }: { item: Item; onClose: 
   const startedRef = useRef(false);
 
   // Fecha o modal com a tecla Esc, como qualquer modal "de verdade" do
-  // navegador.
+  // navegador — mas se a lightbox de capturas de tela estiver aberta, o
+  // primeiro Esc fecha só ela, não o modal inteiro por trás.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
+      if (e.key !== 'Escape') return;
+      if (lightboxIndex !== null) {
+        setLightboxIndex(null);
+      } else {
+        onClose();
+      }
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+  }, [onClose, lightboxIndex]);
 
   // Trava o scroll da página de fundo enquanto o modal está aberto, senão
   // dá pra rolar o catálogo "por trás" dele, o que é estranho no celular.
@@ -124,7 +136,14 @@ export default function PurchaseModal({ item, onClose }: { item: Item; onClose: 
         </div>
 
         <div className="purchase-modal-body">
-          {step === 1 && <StepSummary item={item} priceLabel={priceLabel} onNext={() => setStep(2)} />}
+          {step === 1 && (
+            <StepSummary
+              item={item}
+              priceLabel={priceLabel}
+              onNext={() => setStep(2)}
+              onOpenScreenshot={setLightboxIndex}
+            />
+          )}
 
           {step === 2 && (
             <StepChecklist
@@ -152,35 +171,152 @@ export default function PurchaseModal({ item, onClose }: { item: Item; onClose: 
           {step === 4 && <StepConfirm item={item} onClose={onClose} />}
         </div>
       </div>
+
+      {lightboxIndex !== null && (
+        <Lightbox
+          screenshots={item.screenshots}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onNavigate={setLightboxIndex}
+        />
+      )}
     </div>
   );
 }
 
-// Etapa 1 — resumo do jogo: capa, nome e preço (dados que já vêm do
-// catálogo, nada novo é buscado aqui).
-function StepSummary({ item, priceLabel, onNext }: { item: Item; priceLabel: string; onNext: () => void }) {
+// Etapa 1 — resumo do jogo: capa, nome, preço, descrição (se cadastrada no
+// admin) e uma galeria de capturas de tela (se houver alguma). Tudo isso já
+// vem pronto do catálogo — nada é buscado de novo aqui.
+function StepSummary({
+  item,
+  priceLabel,
+  onNext,
+  onOpenScreenshot
+}: {
+  item: Item;
+  priceLabel: string;
+  onNext: () => void;
+  onOpenScreenshot: (index: number) => void;
+}) {
   return (
     <>
-      <div className="purchase-summary-cover">
-        <div className="cover-frame">
-          {item.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={item.imageUrl}
-              alt={item.name}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            />
-          ) : null}
+      <div className="purchase-hero">
+        <div className="purchase-hero-cover">
+          <div className="cover-frame">
+            {item.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={item.imageUrl}
+                alt={item.name}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              />
+            ) : null}
+          </div>
+        </div>
+        <div className="purchase-hero-info">
+          <p className="purchase-hero-name">{item.name}</p>
+          <span className="purchase-hero-price">R$ {priceLabel}</span>
         </div>
       </div>
-      <p className="purchase-summary-name">{item.name}</p>
-      <p className="purchase-summary-price">R$ {priceLabel}</p>
+
+      {item.description && (
+        <div className="purchase-description">
+          <p className="purchase-description-label">Sobre o jogo</p>
+          <p className="purchase-description-text">{item.description}</p>
+        </div>
+      )}
+
+      {item.screenshots.length > 0 && (
+        <div className="purchase-gallery">
+          {item.screenshots.map((url, i) => (
+            <button
+              key={url}
+              type="button"
+              className="purchase-gallery-thumb"
+              onClick={() => onOpenScreenshot(i)}
+              aria-label={`Ver captura de tela ${i + 1} em tamanho maior`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt="" />
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="purchase-modal-actions">
         <button type="button" className="btn primary" onClick={onNext}>
           Comprar agora
         </button>
       </div>
     </>
+  );
+}
+
+// Visualização ampliada de uma captura de tela, aberta por cima do próprio
+// modal. Dá pra passar pra próxima/anterior sem fechar e reabrir.
+function Lightbox({
+  screenshots,
+  index,
+  onClose,
+  onNavigate
+}: {
+  screenshots: string[];
+  index: number;
+  onClose: () => void;
+  onNavigate: (index: number) => void;
+}) {
+  const hasMultiple = screenshots.length > 1;
+
+  return (
+    // stopPropagation aqui é o que impede um clique no fundo da lightbox de
+    // "vazar" pro overlay do modal por trás e fechar tudo de uma vez.
+    <div className="purchase-lightbox-overlay" onClick={(e) => { e.stopPropagation(); onClose(); }}>
+      <button
+        type="button"
+        className="purchase-lightbox-close"
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+        aria-label="Fechar"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={18} height={18}>
+          <path d="M5 5l14 14M19 5L5 19" strokeLinecap="round" />
+        </svg>
+      </button>
+
+      {hasMultiple && (
+        <button
+          type="button"
+          className="purchase-lightbox-nav prev"
+          onClick={(e) => {
+            e.stopPropagation();
+            onNavigate((index - 1 + screenshots.length) % screenshots.length);
+          }}
+          aria-label="Captura de tela anterior"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={20} height={20}>
+            <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      )}
+
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={screenshots[index]} alt="" onClick={(e) => e.stopPropagation()} />
+
+      {hasMultiple && (
+        <button
+          type="button"
+          className="purchase-lightbox-nav next"
+          onClick={(e) => {
+            e.stopPropagation();
+            onNavigate((index + 1) % screenshots.length);
+          }}
+          aria-label="Próxima captura de tela"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={20} height={20}>
+            <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      )}
+    </div>
   );
 }
 

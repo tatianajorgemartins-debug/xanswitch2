@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS games (
   is_bestseller BOOLEAN NOT NULL DEFAULT FALSE,
   is_upcoming BOOLEAN NOT NULL DEFAULT FALSE,
   archived BOOLEAN NOT NULL DEFAULT FALSE,
+  description TEXT,
+  screenshots JSONB NOT NULL DEFAULT '[]',
   sort_name TEXT GENERATED ALWAYS AS (lower(name)) STORED,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -60,3 +62,7 @@ CREATE INDEX IF NOT EXISTS orders_created_at_idx ON orders (created_at DESC);
 -- Se a tabela já existia antes do campo de preço original ser adicionado,
 -- esta linha garante que o banco seja atualizado sem perder dados.
 ALTER TABLE games ADD COLUMN IF NOT EXISTS original_price NUMERIC(10, 2);
+
+-- Idem para descrição e capturas de tela (ver db/migration-game-details.sql).
+ALTER TABLE games ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE games ADD COLUMN IF NOT EXISTS screenshots JSONB NOT NULL DEFAULT '[]';

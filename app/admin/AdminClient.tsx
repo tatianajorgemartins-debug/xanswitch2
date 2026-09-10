@@ -960,6 +960,23 @@ function GameFormPanel({
           )}
         </div>
 
+        <div style={{ marginBottom: 14 }}>
+          <label htmlFor="description">Descrição do jogo (aparece na tela de compra)</label>
+          <textarea
+            id="description"
+            name="description"
+            rows={4}
+            maxLength={1000}
+            defaultValue={game?.description ?? ''}
+            placeholder="Conte um pouco sobre o jogo: gênero, modo de jogo, o que o cliente vai encontrar..."
+          />
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label>Capturas de tela (aparecem numa galeria na tela de compra)</label>
+          <ScreenshotsField initialScreenshots={game?.screenshots ?? []} />
+        </div>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
           <input
             id="hasBadge"
@@ -998,6 +1015,127 @@ function GameFormPanel({
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+// Gerencia a lista de capturas de tela dentro do formulário de jogo. Cada
+// imagem escolhida é enviada direto do navegador pro Vercel Blob (mesma
+// técnica da música — veja MusicPanel acima) assim que é selecionada, sem
+// esperar o formulário ser salvo. As URLs já prontas viram inputs
+// escondidos (<input type="hidden" name="screenshots">), que é como o
+// Server Action (createGameAction/updateGameAction) recebe a lista quando
+// o formulário inteiro é enviado.
+function ScreenshotsField({ initialScreenshots }: { initialScreenshots: string[] }) {
+  const [urls, setUrls] = useState<string[]>(initialScreenshots);
+  const [uploadingCount, setUploadingCount] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleFilesChosen(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    setError(null);
+
+    const remaining = 10 - urls.length;
+    if (remaining <= 0) {
+      setError('Máximo de 10 capturas de tela por jogo.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    const toUpload = files.slice(0, remaining);
+
+    setUploadingCount(toUpload.length);
+    try {
+      // Envia todas em paralelo — são imagens pequenas, e cada uma já é uma
+      // chamada HTTP independente pro Vercel Blob.
+      const uploaded = await Promise.all(
+        toUpload.map((file) =>
+          upload(file.name, file, {
+            access: 'public',
+            handleUploadUrl: '/api/screenshot-upload'
+          })
+        )
+      );
+      setUrls((prev) => [...prev, ...uploaded.map((b) => b.url)]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao enviar uma das imagens.');
+    } finally {
+      setUploadingCount(0);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  function handleRemove(url: string) {
+    setUrls((prev) => prev.filter((u) => u !== url));
+    // Repare que isso só tira a imagem da lista aqui no formulário — o
+    // arquivo em si só é apagado do Vercel Blob quando o formulário é
+    // salvo (updateGameAction compara a lista antiga com a nova).
+  }
+
+  return (
+    <div>
+      {urls.length > 0 && (
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+          {urls.map((url) => (
+            <div key={url} style={{ position: 'relative' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={url}
+                alt=""
+                style={{ width: 84, height: 63, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(164,99,255,.3)' }}
+              />
+              <button
+                type="button"
+                onClick={() => handleRemove(url)}
+                aria-label="Remover essa captura de tela"
+                title="Remover"
+                style={{
+                  position: 'absolute',
+                  top: -6,
+                  right: -6,
+                  width: 20,
+                  height: 20,
+                  borderRadius: '50%',
+                  background: '#ff5a5a',
+                  color: '#fff',
+                  border: '2px solid var(--panel)',
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  lineHeight: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 0
+                }}
+              >
+                ✕
+              </button>
+              {/* Isso é o que realmente chega no Server Action quando o formulário é enviado. */}
+              <input type="hidden" name="screenshots" value={url} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        disabled={uploadingCount > 0 || urls.length >= 10}
+        onChange={handleFilesChosen}
+        style={{ color: 'var(--ink-dim)', fontSize: 13 }}
+      />
+      {uploadingCount > 0 && (
+        <p style={{ color: 'var(--ink-dim)', fontSize: 12.5, margin: '6px 0 0' }}>
+          Enviando {uploadingCount} imagem{uploadingCount > 1 ? 'ns' : ''}...
+        </p>
+      )}
+      {error && <p style={{ color: '#ff8a8a', fontSize: 12.5, fontWeight: 600, margin: '6px 0 0' }}>{error}</p>}
+      <p style={{ color: 'var(--ink-dim)', fontSize: 12, margin: '6px 0 0' }}>
+        {urls.length}/10 capturas de tela
+      </p>
     </div>
   );
 }

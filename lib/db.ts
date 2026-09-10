@@ -30,6 +30,8 @@ export type Game = {
   is_bestseller: boolean;
   is_upcoming: boolean;
   archived: boolean;
+  description: string | null;
+  screenshots: string[]; // guardado como JSONB — o driver já devolve como array pronto
   created_at: Date; // timestamptz comes back as a real Date, not a string
   updated_at: Date;
 };
@@ -67,10 +69,12 @@ export async function createGame(data: {
   is_featured: boolean;
   is_bestseller: boolean;
   is_upcoming: boolean;
+  description: string | null;
+  screenshots: string[];
 }): Promise<Game> {
   const rows = await getSql()`
-    INSERT INTO games (name, price, original_price, image_url, has_badge, badge_text, badge_color, franchise, platform, game_type, is_featured, is_bestseller, is_upcoming)
-    VALUES (${data.name}, ${data.price}, ${data.original_price}, ${data.image_url}, ${data.has_badge}, ${data.badge_text}, ${data.badge_color}, ${data.franchise}, ${data.platform}, ${data.game_type}, ${data.is_featured}, ${data.is_bestseller}, ${data.is_upcoming})
+    INSERT INTO games (name, price, original_price, image_url, has_badge, badge_text, badge_color, franchise, platform, game_type, is_featured, is_bestseller, is_upcoming, description, screenshots)
+    VALUES (${data.name}, ${data.price}, ${data.original_price}, ${data.image_url}, ${data.has_badge}, ${data.badge_text}, ${data.badge_color}, ${data.franchise}, ${data.platform}, ${data.game_type}, ${data.is_featured}, ${data.is_bestseller}, ${data.is_upcoming}, ${data.description}, ${JSON.stringify(data.screenshots)}::jsonb)
     RETURNING *
   `;
   return rows[0] as Game;
@@ -92,6 +96,8 @@ export async function updateGame(
     is_featured: boolean;
     is_bestseller: boolean;
     is_upcoming: boolean;
+    description: string | null;
+    screenshots: string[];
   }
 ): Promise<Game> {
   const rows = await getSql()`
@@ -109,6 +115,8 @@ export async function updateGame(
       is_featured = ${data.is_featured},
       is_bestseller = ${data.is_bestseller},
       is_upcoming = ${data.is_upcoming},
+      description = ${data.description},
+      screenshots = ${JSON.stringify(data.screenshots)}::jsonb,
       updated_at = now()
     WHERE id = ${id}
     RETURNING *

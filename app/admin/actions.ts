@@ -27,6 +27,19 @@ import {
 
 const PLATFORMS: Platform[] = ['switch1', 'switch2', 'both'];
 const GAME_TYPES: GameType[] = ['base', 'dlc', 'update'];
+const MAX_SCREENSHOTS = 10;
+
+// As capturas de tela já chegam como URLs prontas (o navegador faz o upload
+// direto pro Vercel Blob antes de enviar o formulário — veja o componente
+// ScreenshotsField no AdminClient.tsx), então aqui é só ler a lista de
+// campos hidden "screenshots" que o formulário manda.
+function parseScreenshots(formData: FormData): string[] {
+  return formData
+    .getAll('screenshots')
+    .map((v) => String(v).trim())
+    .filter(Boolean)
+    .slice(0, MAX_SCREENSHOTS);
+}
 
 function parsePlatform(value: FormDataEntryValue | null): Platform {
   const v = String(value || '');
@@ -104,6 +117,8 @@ export async function createGameAction(
   const isFeatured = formData.get('isFeatured') === 'on';
   const isBestseller = formData.get('isBestseller') === 'on';
   const isUpcoming = formData.get('isUpcoming') === 'on';
+  const description = String(formData.get('description') || '').trim() || null;
+  const screenshots = parseScreenshots(formData);
 
   if (!name) return { error: 'Digite o nome do jogo.' };
   if (Number.isNaN(price) || price < 0) return { error: 'Preço inválido.' };
@@ -126,7 +141,9 @@ export async function createGameAction(
     game_type: gameType,
     is_featured: isFeatured,
     is_bestseller: isBestseller,
-    is_upcoming: isUpcoming
+    is_upcoming: isUpcoming,
+    description,
+    screenshots
   });
 
   revalidatePath('/admin');
@@ -156,6 +173,8 @@ export async function updateGameAction(
   const isFeatured = formData.get('isFeatured') === 'on';
   const isBestseller = formData.get('isBestseller') === 'on';
   const isUpcoming = formData.get('isUpcoming') === 'on';
+  const description = String(formData.get('description') || '').trim() || null;
+  const screenshots = parseScreenshots(formData);
 
   if (!id) return { error: 'Jogo inválido.' };
   if (!name) return { error: 'Digite o nome do jogo.' };
@@ -182,6 +201,12 @@ export async function updateGameAction(
     imageUrl = null;
   }
 
+  // Qualquer captura de tela que estava salva antes mas não veio na lista
+  // nova foi removida pelo admin — apaga o arquivo do Vercel Blob também,
+  // senão ele fica ocupando espaço pra sempre sem ninguém usar.
+  const removedScreenshots = existing.screenshots.filter((url) => !screenshots.includes(url));
+  await Promise.all(removedScreenshots.map((url) => del(url).catch(() => {})));
+
   await updateGame(id, {
     name,
     price,
@@ -195,7 +220,9 @@ export async function updateGameAction(
     game_type: gameType,
     is_featured: isFeatured,
     is_bestseller: isBestseller,
-    is_upcoming: isUpcoming
+    is_upcoming: isUpcoming,
+    description,
+    screenshots
   });
 
   revalidatePath('/admin');
@@ -215,6 +242,9 @@ export async function deleteGameAction(id: number): Promise<void> {
   const existing = await getGameById(id);
   if (existing?.image_url) {
     await del(existing.image_url).catch(() => {});
+  }
+  if (existing?.screenshots.length) {
+    await Promise.all(existing.screenshots.map((url) => del(url).catch(() => {})));
   }
   await deleteGame(id);
   revalidatePath('/admin');

@@ -1074,19 +1074,39 @@ label {
   justify-content: center;
   padding: 20px;
   z-index: 200; /* acima do site-header-bar (z-index 100) */
+  animation: purchase-fade-in 0.18s ease;
 }
 
 /* A "caixa" flutuante do modal em si — mesmo fundo roxo-escuro (--panel) e
    borda roxa dos outros painéis do site (filtros, formulário de comentário). */
 .purchase-modal {
   width: 100%;
-  max-width: 460px;
+  max-width: 480px;
   max-height: 90vh;
   overflow-y: auto;
   background: var(--panel);
   border: 1px solid rgba(164, 99, 255, 0.35);
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: purchase-pop-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes purchase-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes purchase-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .purchase-modal-overlay,
+  .purchase-modal {
+    animation: none;
+  }
 }
 
 .purchase-modal-header {
@@ -1132,27 +1152,162 @@ label {
   padding: 18px;
 }
 
-/* Etapa 1 — resumo do jogo: capa quadrada + nome + preço, igual ao estilo
-   dos cards do catálogo (mesma .cover-frame), só que maior. */
-.purchase-summary-cover {
-  width: 100%;
-  max-width: 220px;
-  margin: 0 auto 16px;
+/* Etapa 1 — resumo do jogo. A "hero" fica com a capa ao lado do nome/preço
+   (ao invés de tudo empilhado), pra aproveitar melhor o espaço e abrir
+   lugar pra descrição e galeria de capturas de tela logo abaixo. */
+.purchase-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
 }
-.purchase-summary-name {
-  text-align: center;
+.purchase-hero-cover {
+  width: 104px;
+  flex: none;
+}
+.purchase-hero-info {
+  min-width: 0;
+  flex: 1;
+}
+.purchase-hero-name {
   font-weight: 800;
-  font-size: 18px;
+  font-size: 17px;
   color: var(--ink);
-  margin: 0 0 6px;
+  margin: 0 0 8px;
+  line-height: 1.25;
 }
-.purchase-summary-price {
-  text-align: center;
+.purchase-hero-price {
+  display: inline-block;
   font-family: 'Press Start 2P', cursive;
-  font-size: 18px;
+  font-size: 15px;
   color: var(--green);
   text-shadow: 0 0 10px var(--green-glow);
-  margin: 0 0 20px;
+  background: rgba(78, 240, 95, 0.08);
+  border: 1px solid rgba(78, 240, 95, 0.3);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+/* Descrição do jogo (opcional — só aparece se cadastrada no admin). */
+.purchase-description {
+  background: var(--panel-2);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+}
+.purchase-description-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--ink-dim);
+  margin: 0 0 6px;
+}
+.purchase-description-text {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.55;
+  margin: 0;
+  white-space: pre-line; /* preserva quebras de linha digitadas no admin */
+}
+
+/* Galeria de capturas de tela — tira horizontal com scroll, do jeito que
+   funciona bem tanto no celular (arrastando com o dedo) quanto no PC. */
+.purchase-gallery {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 18px;
+  scroll-snap-type: x proximity;
+}
+.purchase-gallery-thumb {
+  flex: none;
+  width: 120px;
+  height: 90px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  background: #150c28;
+  padding: 0;
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: border-color 0.15s;
+}
+.purchase-gallery-thumb:hover,
+.purchase-gallery-thumb:focus-visible {
+  border-color: var(--green);
+}
+.purchase-gallery-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Lightbox — visualização ampliada de uma captura de tela, aberta por cima
+   do próprio modal de compra (por isso o z-index maior). */
+.purchase-lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 2, 8, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 300;
+  animation: purchase-fade-in 0.15s ease;
+}
+.purchase-lightbox-overlay img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+.purchase-lightbox-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.purchase-lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+.purchase-lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.purchase-lightbox-nav:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+.purchase-lightbox-nav.prev {
+  left: 14px;
+}
+.purchase-lightbox-nav.next {
+  right: 14px;
 }
 
 /* Etapa 2 — checklist. Cada item é uma linha clicável (checkbox + texto),
@@ -1292,5 +1447,15 @@ label {
   .purchase-pix-qr-wrap img {
     width: 190px;
     height: 190px;
+  }
+  .purchase-hero-cover {
+    width: 84px;
+  }
+  .purchase-hero-name {
+    font-size: 15.5px;
+  }
+  .purchase-lightbox-nav {
+    width: 38px;
+    height: 38px;
   }
 }
