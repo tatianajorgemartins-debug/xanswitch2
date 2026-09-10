@@ -1,6 +1,15 @@
-import { neon } from '@neondatabase/serverless';
+import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
 
-const sql = neon(process.env.DATABASE_URL!);
+// Criado só na primeira consulta, não quando este arquivo é importado — assim,
+// nada quebra em ambientes que importam este módulo sem nunca chamar
+// nenhuma função dele mas também não têm DATABASE_URL configurada.
+let sqlInstance: NeonQueryFunction<false, false> | null = null;
+function getSql(): NeonQueryFunction<false, false> {
+  if (!sqlInstance) {
+    sqlInstance = neon(process.env.DATABASE_URL!);
+  }
+  return sqlInstance;
+}
 
 export type Platform = 'switch1' | 'switch2' | 'both';
 export type GameType = 'base' | 'dlc' | 'update';
@@ -26,21 +35,21 @@ export type Game = {
 };
 
 export async function getActiveGames(): Promise<Game[]> {
-  const rows = await sql`
+  const rows = await getSql()`
     SELECT * FROM games WHERE archived = FALSE ORDER BY sort_name ASC
   `;
   return rows as Game[];
 }
 
 export async function getAllGames(): Promise<Game[]> {
-  const rows = await sql`
+  const rows = await getSql()`
     SELECT * FROM games ORDER BY archived ASC, sort_name ASC
   `;
   return rows as Game[];
 }
 
 export async function getGameById(id: number): Promise<Game | null> {
-  const rows = await sql`SELECT * FROM games WHERE id = ${id}`;
+  const rows = await getSql()`SELECT * FROM games WHERE id = ${id}`;
   return (rows[0] as Game) ?? null;
 }
 
@@ -59,7 +68,7 @@ export async function createGame(data: {
   is_bestseller: boolean;
   is_upcoming: boolean;
 }): Promise<Game> {
-  const rows = await sql`
+  const rows = await getSql()`
     INSERT INTO games (name, price, original_price, image_url, has_badge, badge_text, badge_color, franchise, platform, game_type, is_featured, is_bestseller, is_upcoming)
     VALUES (${data.name}, ${data.price}, ${data.original_price}, ${data.image_url}, ${data.has_badge}, ${data.badge_text}, ${data.badge_color}, ${data.franchise}, ${data.platform}, ${data.game_type}, ${data.is_featured}, ${data.is_bestseller}, ${data.is_upcoming})
     RETURNING *
@@ -85,7 +94,7 @@ export async function updateGame(
     is_upcoming: boolean;
   }
 ): Promise<Game> {
-  const rows = await sql`
+  const rows = await getSql()`
     UPDATE games SET
       name = ${data.name},
       price = ${data.price},
@@ -108,17 +117,17 @@ export async function updateGame(
 }
 
 export async function setArchived(id: number, archived: boolean): Promise<void> {
-  await sql`UPDATE games SET archived = ${archived}, updated_at = now() WHERE id = ${id}`;
+  await getSql()`UPDATE games SET archived = ${archived}, updated_at = now() WHERE id = ${id}`;
 }
 
 export async function deleteGame(id: number): Promise<void> {
-  await sql`DELETE FROM games WHERE id = ${id}`;
+  await getSql()`DELETE FROM games WHERE id = ${id}`;
 }
 
 export type MusicSettings = { url: string | null; filename: string | null };
 
 export async function getMusicSettings(): Promise<MusicSettings> {
-  const rows = await sql`
+  const rows = await getSql()`
     SELECT key, value FROM site_settings WHERE key IN ('music_url', 'music_filename')
   `;
   const map = new Map(rows.map((r) => [r.key as string, r.value as string]));
@@ -126,25 +135,25 @@ export async function getMusicSettings(): Promise<MusicSettings> {
 }
 
 export async function setMusicSettings(url: string, filename: string): Promise<void> {
-  await sql`
+  await getSql()`
     INSERT INTO site_settings (key, value) VALUES ('music_url', ${url})
     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
   `;
-  await sql`
+  await getSql()`
     INSERT INTO site_settings (key, value) VALUES ('music_filename', ${filename})
     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
   `;
 }
 
 export async function getVisitCount(): Promise<number> {
-  const rows = await sql`SELECT value FROM site_settings WHERE key = 'visit_count'`;
+  const rows = await getSql()`SELECT value FROM site_settings WHERE key = 'visit_count'`;
   return rows[0]?.value ? parseInt(rows[0].value as string, 10) : 0;
 }
 
 // Atomic increment (avoids losing counts if two visitors land at the same
 // instant) — the whole read-modify-write happens inside Postgres.
 export async function incrementVisitCount(): Promise<void> {
-  await sql`
+  await getSql()`
     INSERT INTO site_settings (key, value) VALUES ('visit_count', '1')
     ON CONFLICT (key) DO UPDATE SET value = (COALESCE(site_settings.value, '0')::int + 1)::text
   `;
@@ -162,14 +171,14 @@ export type Review = {
 };
 
 export async function getApprovedReviews(): Promise<Review[]> {
-  const rows = await sql`
+  const rows = await getSql()`
     SELECT * FROM reviews WHERE approved = TRUE ORDER BY is_featured DESC, created_at DESC
   `;
   return rows as Review[];
 }
 
 export async function getAllReviews(): Promise<Review[]> {
-  const rows = await sql`SELECT * FROM reviews ORDER BY approved ASC, created_at DESC`;
+  const rows = await getSql()`SELECT * FROM reviews ORDER BY approved ASC, created_at DESC`;
   return rows as Review[];
 }
 
@@ -179,7 +188,7 @@ export async function createReview(data: {
   rating: number;
   comment: string;
 }): Promise<Review> {
-  const rows = await sql`
+  const rows = await getSql()`
     INSERT INTO reviews (name, instagram, rating, comment)
     VALUES (${data.name}, ${data.instagram}, ${data.rating}, ${data.comment})
     RETURNING *
@@ -188,13 +197,49 @@ export async function createReview(data: {
 }
 
 export async function setReviewApproved(id: number, approved: boolean): Promise<void> {
-  await sql`UPDATE reviews SET approved = ${approved} WHERE id = ${id}`;
+  await getSql()`UPDATE reviews SET approved = ${approved} WHERE id = ${id}`;
 }
 
 export async function setReviewFeatured(id: number, featured: boolean): Promise<void> {
-  await sql`UPDATE reviews SET is_featured = ${featured} WHERE id = ${id}`;
+  await getSql()`UPDATE reviews SET is_featured = ${featured} WHERE id = ${id}`;
 }
 
 export async function deleteReview(id: number): Promise<void> {
-  await sql`DELETE FROM reviews WHERE id = ${id}`;
+  await getSql()`DELETE FROM reviews WHERE id = ${id}`;
+}
+
+// Pedidos: um registro é criado cada vez que alguém gera um QR Code Pix no
+// modal de compra. Não é uma confirmação de pagamento — é só um histórico
+// de "intenção de compra" pra você não perder o rastro se alguém pagar e
+// esquecer de chamar no WhatsApp.
+export type Order = {
+  id: number;
+  game_id: number | null;
+  game_name: string;
+  price: string; // numeric comes back as string from postgres
+  created_at: Date;
+};
+
+export async function createOrder(data: {
+  game_id: number | null;
+  game_name: string;
+  price: number;
+}): Promise<Order> {
+  const rows = await getSql()`
+    INSERT INTO orders (game_id, game_name, price)
+    VALUES (${data.game_id}, ${data.game_name}, ${data.price})
+    RETURNING *
+  `;
+  return rows[0] as Order;
+}
+
+export async function getRecentOrders(limit = 100): Promise<Order[]> {
+  const rows = await getSql()`
+    SELECT * FROM orders ORDER BY created_at DESC LIMIT ${limit}
+  `;
+  return rows as Order[];
+}
+
+export async function deleteOrder(id: number): Promise<void> {
+  await getSql()`DELETE FROM orders WHERE id = ${id}`;
 }

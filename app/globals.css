@@ -637,6 +637,13 @@ textarea:focus {
   color: inherit;
   cursor: pointer;
   transition: background 0.15s;
+  /* Este elemento virou um <button> (abre o modal de compra em vez de um
+     link externo) — as linhas abaixo tiram o visual padrão de botão do
+     navegador pra ele continuar parecendo uma linha de lista normal. */
+  width: 100%;
+  background: none;
+  font: inherit;
+  text-align: left;
 }
 .list-row:last-child {
   border-bottom: none;
@@ -1044,4 +1051,246 @@ label {
   letter-spacing: 0.4px;
   color: var(--ink-dim);
   margin-bottom: 6px;
+}
+
+/* ==========================================================================
+   Modal de compra (PurchaseModal.tsx)
+   Abre por cima da página quando um jogo é clicado no catálogo. Reaproveita
+   as mesmas cores/bordas/fontes do resto do site pra parecer parte dele, e
+   não um componente genérico colado por cima.
+   ========================================================================== */
+
+/* Fundo escurecido atrás do modal — cobre a tela inteira e fecha o modal se
+   clicado (ver onClick no PurchaseModal.tsx). position: fixed é o que faz
+   ele flutuar por cima do catálogo sem mexer no scroll da página. */
+.purchase-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 3, 12, 0.8);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 200; /* acima do site-header-bar (z-index 100) */
+}
+
+/* A "caixa" flutuante do modal em si — mesmo fundo roxo-escuro (--panel) e
+   borda roxa dos outros painéis do site (filtros, formulário de comentário). */
+.purchase-modal {
+  width: 100%;
+  max-width: 460px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid rgba(164, 99, 255, 0.35);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.purchase-modal-header {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 18px;
+  background: var(--panel);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 1;
+}
+.purchase-modal-title {
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.purchase-modal-close {
+  flex: none;
+  background: none;
+  border: none;
+  color: var(--ink-dim);
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.purchase-modal-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink);
+}
+
+.purchase-modal-body {
+  padding: 18px;
+}
+
+/* Etapa 1 — resumo do jogo: capa quadrada + nome + preço, igual ao estilo
+   dos cards do catálogo (mesma .cover-frame), só que maior. */
+.purchase-summary-cover {
+  width: 100%;
+  max-width: 220px;
+  margin: 0 auto 16px;
+}
+.purchase-summary-name {
+  text-align: center;
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--ink);
+  margin: 0 0 6px;
+}
+.purchase-summary-price {
+  text-align: center;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 18px;
+  color: var(--green);
+  text-shadow: 0 0 10px var(--green-glow);
+  margin: 0 0 20px;
+}
+
+/* Etapa 2 — checklist. Cada item é uma linha clicável (checkbox + texto),
+   com destaque verde suave quando marcado — reforça visualmente que aquele
+   requisito já está OK. */
+.purchase-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.purchase-checklist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--bg-dark);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.purchase-checklist-item:has(input:checked) {
+  border-color: var(--green);
+  background: rgba(78, 240, 95, 0.08);
+}
+.purchase-checklist-item input[type='checkbox'] {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  accent-color: var(--green);
+  cursor: pointer;
+}
+.purchase-checklist-item span {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+/* Etapa 3 — pagamento Pix. */
+.purchase-pix-amount {
+  text-align: center;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 20px;
+  color: var(--green);
+  text-shadow: 0 0 10px var(--green-glow);
+  margin: 0 0 16px;
+}
+.purchase-pix-qr-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.purchase-pix-qr-wrap img {
+  width: 220px;
+  height: 220px;
+  background: #fff; /* QR code precisa de fundo branco pra escanear direito */
+  padding: 10px;
+  border-radius: 12px;
+}
+.purchase-pix-copy-label {
+  margin-bottom: 8px;
+}
+.purchase-pix-copy-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.purchase-pix-copy-row input {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-family: monospace;
+}
+.purchase-pix-copy-row button {
+  flex: none;
+}
+
+/* Confirmação "código copiado" — mesmo verde usado no resto do site pra
+   feedback positivo. */
+.purchase-copy-feedback {
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--green);
+  margin: -12px 0 18px;
+}
+
+/* Etapa 4 / aviso fixo — reforça o que NUNCA acontece automaticamente. Usa
+   um tom de aviso (não é erro, é só um lembrete importante). */
+.purchase-warning-box {
+  background: rgba(255, 210, 78, 0.08);
+  border: 1px solid rgba(255, 210, 78, 0.35);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+}
+.purchase-warning-box p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffd24e;
+  line-height: 1.5;
+}
+
+.purchase-modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.purchase-modal-actions .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.purchase-step-back {
+  background: none;
+  border: none;
+  color: var(--ink-dim);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 8px 0 0;
+  text-align: center;
+  width: 100%;
+}
+.purchase-step-back:hover {
+  color: var(--ink);
+}
+
+@media (max-width: 480px) {
+  .purchase-modal {
+    max-width: 100%;
+  }
+  .purchase-pix-qr-wrap img {
+    width: 190px;
+    height: 190px;
+  }
 }

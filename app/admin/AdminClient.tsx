@@ -4,8 +4,9 @@ import { useMemo, useRef, useState, useEffect, useActionState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFormStatus } from 'react-dom';
 import { upload } from '@vercel/blob/client';
-import type { Game, MusicSettings, Review } from '@/lib/db';
+import type { Game, MusicSettings, Review, Order } from '@/lib/db';
 import { getContrastColor } from '@/lib/color';
+import { formatPriceBR } from '@/lib/whatsapp';
 import {
   createGameAction,
   updateGameAction,
@@ -16,6 +17,7 @@ import {
   approveReviewAction,
   deleteReviewAction,
   setReviewFeaturedAction,
+  deleteOrderAction,
   type GameFormState
 } from './actions';
 
@@ -25,18 +27,21 @@ export default function AdminClient({
   initialGames,
   music,
   visitCount,
-  reviews
+  reviews,
+  orders
 }: {
   initialGames: Game[];
   music: MusicSettings;
   visitCount: number;
   reviews: Review[];
+  orders: Order[];
 }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [showMusicPanel, setShowMusicPanel] = useState(false);
   const [showReviewsPanel, setShowReviewsPanel] = useState(false);
+  const [showOrdersPanel, setShowOrdersPanel] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingGame, setEditingGame] = useState<Game | null>(null);
 
@@ -96,6 +101,11 @@ export default function AdminClient({
   }
   async function handleToggleFeaturedReview(id: number, featured: boolean) {
     await setReviewFeaturedAction(id, featured);
+    router.refresh();
+  }
+  async function handleDeleteOrder(id: number) {
+    if (!confirm('Remover este pedido do histórico?')) return;
+    await deleteOrderAction(id);
     router.refresh();
   }
 
@@ -175,6 +185,9 @@ export default function AdminClient({
         <button className="btn ghost" onClick={() => setShowReviewsPanel((s) => !s)}>
           💬 Comentários{pendingReviewCount > 0 ? ` (${pendingReviewCount} pendente${pendingReviewCount > 1 ? 's' : ''})` : ''}
         </button>
+        <button className="btn ghost" onClick={() => setShowOrdersPanel((s) => !s)}>
+          📋 Pedidos ({orders.length})
+        </button>
       </div>
 
       {showMusicPanel && <MusicPanel music={music} onSaved={() => router.refresh()} />}
@@ -187,6 +200,8 @@ export default function AdminClient({
           onToggleFeatured={handleToggleFeaturedReview}
         />
       )}
+
+      {showOrdersPanel && <OrdersPanel orders={orders} onDelete={handleDeleteOrder} />}
 
       {panelOpen && (
         <GameFormPanel
@@ -572,6 +587,65 @@ function FeaturedToggleButton({
     >
       {featured ? '★ Destacado' : '☆ Destacar'}
     </button>
+  );
+}
+
+// Histórico de "intenção de compra": uma linha aparece aqui toda vez que
+// alguém gera um QR Code Pix no modal de compra do catálogo. NÃO é uma
+// confirmação de pagamento — serve pra você não perder o rastro se alguém
+// pagar e esquecer de chamar no WhatsApp depois. A confirmação de verdade
+// continua sendo feita manualmente, vendo o Pix cair na sua conta.
+function OrdersPanel({ orders, onDelete }: { orders: Order[]; onDelete: (id: number) => void }) {
+  return (
+    <div
+      style={{
+        background: 'var(--panel)',
+        border: '1px solid rgba(164,99,255,.25)',
+        borderRadius: 14,
+        padding: 16,
+        marginBottom: 20
+      }}
+    >
+      <h4 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--ink-dim)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+        Pedidos gerados (mais recentes primeiro)
+      </h4>
+      {orders.length === 0 ? (
+        <p style={{ color: 'var(--ink-dim)', fontSize: 14, padding: '6px 2px', margin: 0 }}>
+          Nenhum pedido registrado ainda.
+        </p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {orders.map((o) => (
+            <div
+              key={o.id}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: 10,
+                padding: '8px 4px',
+                borderBottom: '1px solid rgba(255,255,255,.06)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                <strong style={{ fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {o.game_name}
+                </strong>
+                <span style={{ color: 'var(--green)', fontWeight: 700, fontSize: 13.5, flex: 'none' }}>
+                  R$ {formatPriceBR(o.price)}
+                </span>
+                <span style={{ color: 'var(--ink-dim)', fontSize: 12.5, flex: 'none' }}>
+                  {new Date(o.created_at).toLocaleString('pt-BR')}
+                </span>
+              </div>
+              <button className="btn ghost" onClick={() => onDelete(o.id)} style={{ flex: 'none' }}>
+                🗑
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

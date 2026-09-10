@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { getAllGames, getMusicSettings, getVisitCount, getAllReviews } from '@/lib/db';
+import { getAllGames, getMusicSettings, getVisitCount, getAllReviews, getRecentOrders } from '@/lib/db';
 import { isAuthenticated } from '@/lib/auth';
 import AdminClient from './AdminClient';
 
@@ -17,5 +17,14 @@ export default async function AdminPage() {
   const music = await getMusicSettings();
   const visitCount = await getVisitCount();
   const reviews = await getAllReviews();
-  return <AdminClient initialGames={games} music={music} visitCount={visitCount} reviews={reviews} />;
+  const orders = await getRecentOrders();
+  return (
+    <AdminClient
+      initialGames={games}
+      music={music}
+      visitCount={visitCount}
+      reviews={reviews}
+      orders={orders}
+    />
+  );
 }

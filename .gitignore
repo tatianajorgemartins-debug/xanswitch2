@@ -4,6 +4,12 @@ node_modules
 .env.local
 .vercel
 *.log
+*.tsbuildinfo
+
+# Sobras locais da ferramenta de sorteio (projeto cancelado) que não deram
+# pra apagar do disco nesta máquina — não fazem sentido no repositório.
+db/sorteio.db
+db/sorteio.db-*
 
 .vercel
 .env*

@@ -20,6 +20,7 @@ import {
   setReviewApproved,
   setReviewFeatured,
   deleteReview,
+  deleteOrder,
   type Platform,
   type GameType
 } from '@/lib/db';
@@ -257,4 +258,14 @@ export async function setReviewFeaturedAction(id: number, featured: boolean): Pr
   await setReviewFeatured(id, featured);
   revalidatePath('/admin');
   revalidatePath('/');
+}
+
+// Apaga um registro do histórico de pedidos (ex: depois de já ter
+// conversado com o cliente no WhatsApp e resolvido tudo, pra deixar a lista
+// limpa). Isso NÃO cancela nem estorna nada — é só um histórico local, sem
+// ligação com pagamento de verdade.
+export async function deleteOrderAction(id: number): Promise<void> {
+  await requireAuth();
+  await deleteOrder(id);
+  revalidatePath('/admin');
 }

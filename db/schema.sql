@@ -45,6 +45,18 @@ CREATE TABLE IF NOT EXISTS reviews (
 );
 CREATE INDEX IF NOT EXISTS reviews_approved_idx ON reviews (approved);
 
+-- Registro de pedidos: cada vez que um cliente gera um QR Code Pix, uma linha
+-- é salva aqui. Não confirma pagamento — é só um histórico de "intenção de
+-- compra", útil se alguém pagar e esquecer de chamar no WhatsApp depois.
+CREATE TABLE IF NOT EXISTS orders (
+  id SERIAL PRIMARY KEY,
+  game_id INTEGER,
+  game_name TEXT NOT NULL,
+  price NUMERIC(10, 2) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS orders_created_at_idx ON orders (created_at DESC);
+
 -- Se a tabela já existia antes do campo de preço original ser adicionado,
 -- esta linha garante que o banco seja atualizado sem perder dados.
 ALTER TABLE games ADD COLUMN IF NOT EXISTS original_price NUMERIC(10, 2);

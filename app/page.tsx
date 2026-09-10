@@ -1,5 +1,5 @@
 import { getActiveGames, getMusicSettings, getApprovedReviews, type Game } from '@/lib/db';
-import { buildWhatsAppLink, buildWhatsAppContactLink, formatPriceBR } from '@/lib/whatsapp';
+import { buildWhatsAppPaymentLink, buildWhatsAppContactLink, formatPriceBR } from '@/lib/whatsapp';
 import { formatTrackName } from '@/lib/format';
 import CatalogClient, { type Item, type ReviewItem } from './CatalogClient';
 
@@ -24,7 +24,7 @@ function toItem(g: Game): Item {
     gameType: g.game_type,
     isBestseller: g.is_bestseller,
     isUpcoming: g.is_upcoming,
-    whatsappUrl: buildWhatsAppLink(g.name, g.price)
+    whatsappPaymentUrl: buildWhatsAppPaymentLink(g.name, g.price)
   };
 }
 

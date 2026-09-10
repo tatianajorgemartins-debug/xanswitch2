@@ -7,6 +7,7 @@ import SiteHeader from './SiteHeader';
 import PromoSection from './PromoSection';
 import ReviewsSection from './ReviewsSection';
 import ReviewForm from './ReviewForm';
+import PurchaseModal from './PurchaseModal';
 
 export type Item = {
   id: number;
@@ -23,7 +24,10 @@ export type Item = {
   gameType: GameType;
   isBestseller: boolean;
   isUpcoming: boolean;
-  whatsappUrl: string;
+  // Link do WhatsApp usado no PASSO FINAL da compra (depois que o cliente já
+  // pagou o Pix) — não é mais usado como link direto do card, que agora abre
+  // o modal de compra em vez de navegar pra fora do site.
+  whatsappPaymentUrl: string;
 };
 
 export type ReviewItem = {
@@ -71,6 +75,11 @@ export default function CatalogClient({
   const [quickFilter, setQuickFilter] = useState<QuickFilter>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const gridAnchorRef = useRef<HTMLDivElement>(null);
+
+  // Jogo clicado no momento (null = nenhum modal aberto). É só esse estado
+  // que controla o modal de compra — abrir um jogo é simplesmente colocar o
+  // Item aqui, fechar é voltar pra null. Nada de navegação/URL nova.
+  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
 
   useEffect(() => {
     function onScroll() {
@@ -154,8 +163,7 @@ export default function CatalogClient({
 
       <div className="page-content" style={{ maxWidth: 1200, margin: '0 auto', paddingLeft: 20, paddingRight: 20, paddingBottom: 80 }}>
         <p style={{ color: 'var(--ink-dim)', fontSize: 14.5, fontWeight: 600, margin: '0 0 22px', textAlign: 'center' }}>
-          Clique no jogo que você quer e a conversa já abre no WhatsApp, prontinha pra fechar o
-          pedido.
+          Clique no jogo que você quer pra ver os detalhes e pagar com Pix, direto por aqui.
         </p>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
@@ -357,16 +365,21 @@ export default function CatalogClient({
       ) : viewMode === 'grid' ? (
         <div className="catalog-grid">
           {filtered.map((item) => (
-            <GameCard key={item.id} item={item} />
+            <GameCard key={item.id} item={item} onSelect={() => setSelectedItem(item)} />
           ))}
         </div>
       ) : (
         <div className="catalog-list">
           {filtered.map((item) => (
-            <ListRow key={item.id} item={item} />
+            <ListRow key={item.id} item={item} onSelect={() => setSelectedItem(item)} />
           ))}
         </div>
       )}
+
+      {/* O modal de compra só existe na tela quando um jogo foi clicado.
+          Ele fica fora do fluxo normal da página (position: fixed no CSS),
+          então não bagunça o layout do catálogo por trás dele. */}
+      {selectedItem && <PurchaseModal item={selectedItem} onClose={() => setSelectedItem(null)} />}
 
       {showBackToTop && (
         <button
@@ -399,13 +412,26 @@ export default function CatalogClient({
   );
 }
 
-function GameCard({ item }: { item: Item }) {
+function GameCard({ item, onSelect }: { item: Item; onSelect: () => void }) {
   return (
-    <a
-      href={item.whatsappUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}
+    // Antes esse card era um link <a> que abria o WhatsApp direto. Agora ele
+    // só abre o modal de compra (que fica na mesma página) — por isso virou
+    // um <button>, que é o elemento certo pra algo clicável que NÃO navega
+    // pra lugar nenhum.
+    <button
+      type="button"
+      onClick={onSelect}
+      style={{
+        textDecoration: 'none',
+        color: 'inherit',
+        cursor: 'pointer',
+        background: 'none',
+        border: 'none',
+        padding: 0,
+        textAlign: 'left',
+        font: 'inherit',
+        width: '100%'
+      }}
     >
       <div className="cover-frame">
         {item.imageUrl ? (
@@ -496,7 +522,7 @@ function GameCard({ item }: { item: Item }) {
           R$ {item.priceLabel}
         </p>
       </div>
-    </a>
+    </button>
   );
 }
 
@@ -511,7 +537,7 @@ const GAME_TYPE_TAG_LABEL: Partial<Record<GameType, string>> = {
   update: 'Atualização'
 };
 
-function ListRow({ item }: { item: Item }) {
+function ListRow({ item, onSelect }: { item: Item; onSelect: () => void }) {
   const typeLabel = GAME_TYPE_TAG_LABEL[item.gameType];
   const platformLabel = PLATFORM_TAG_LABEL[item.platform];
   // Avoid showing the same word twice when the seller's own badge already
@@ -520,7 +546,9 @@ function ListRow({ item }: { item: Item }) {
     item.hasBadge && item.badgeText.trim().toLowerCase() === platformLabel.toLowerCase();
 
   return (
-    <a href={item.whatsappUrl} target="_blank" rel="noopener noreferrer" className="list-row">
+    // Assim como o GameCard, essa linha agora abre o modal de compra em vez
+    // de ir direto pro WhatsApp — por isso é um <button>, não um link <a>.
+    <button type="button" onClick={onSelect} className="list-row">
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
         <span
           style={{
@@ -569,6 +597,6 @@ function ListRow({ item }: { item: Item }) {
           R$ {item.priceLabel}
         </span>
       </span>
-    </a>
+    </button>
   );
 }

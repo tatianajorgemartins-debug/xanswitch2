@@ -4,16 +4,19 @@ export function formatPriceBR(price: string | number): string {
   return n.toFixed(2).replace('.', ',');
 }
 
-// Builds a wa.me link with a pre-filled message for a given game.
-// WHATSAPP_NUMBER should be set with country code, digits only, e.g. 5521999999999.
-export function buildWhatsAppLink(gameName: string, price: string | number): string {
+// Monta o link do wa.me usado depois que o cliente diz "já paguei" no modal
+// de compra (etapa 4). A mensagem já vem com os dados do pedido preenchidos,
+// pra você não precisar perguntar "qual jogo?" e "quanto pagou?" de novo —
+// e pra continuar a conversa de forma organizada até a verificação manual.
+// WHATSAPP_NUMBER deve ter o DDI, só números, ex: 5521999999999.
+export function buildWhatsAppPaymentLink(gameName: string, price: string | number): string {
   const number = process.env.WHATSAPP_NUMBER;
   if (!number) {
     throw new Error(
       'WHATSAPP_NUMBER não está configurada. Adicione essa variável de ambiente no painel da Vercel (com o DDI, ex: 5521999999999).'
     );
   }
-  const message = `Olá! Quero comprar: ${gameName} - R$ ${formatPriceBR(price)}`;
+  const message = `Acabei de pagar via Pix, segue meu comprovante:\n\nJogo: ${gameName}\nValor: R$ ${formatPriceBR(price)}`;
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
 }
 

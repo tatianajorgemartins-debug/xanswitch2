@@ -3,9 +3,15 @@
 Site com duas partes:
 
 - **`/` — Catálogo público**: seus clientes acessam, veem os jogos e, ao clicar em
-  qualquer um, abrem o WhatsApp com uma mensagem pronta (nome do jogo + preço).
+  qualquer um, abre uma janela de compra na própria página com um checklist
+  rápido, pagamento via Pix (QR Code de verdade, gerado na hora) e, depois
+  que o cliente confirma que pagou, a conversa segue no WhatsApp pra você
+  fazer a verificação manual antes de enviar o código. Veja a seção
+  "Como funciona a compra pelo site (Pix + WhatsApp)" mais abaixo pro passo
+  a passo completo.
 - **`/admin` — Painel de administração**: protegido por senha. É onde você
-  adiciona, edita, arquiva e exclui jogos do catálogo.
+  adiciona, edita, arquiva e exclui jogos do catálogo, além de acompanhar
+  comentários e o histórico de pedidos.
 
 Este guia assume que você **nunca usou Vercel nem terminal antes**. Vai
 funcionar, só siga a ordem.
@@ -92,22 +98,35 @@ funcionar, só siga a ordem.
 ## Passo 5 — Configurar suas variáveis (senha e WhatsApp)
 
 1. No seu projeto na Vercel, vá em **Settings → Environment Variables**.
-2. Adicione estas duas variáveis (as outras duas — `DATABASE_URL` e
-   `BLOB_READ_WRITE_TOKEN` — já foram criadas sozinhas nos passos
-   anteriores):
+2. Adicione estas variáveis (`DATABASE_URL` e `BLOB_READ_WRITE_TOKEN` já
+   foram criadas sozinhas nos passos anteriores):
 
    | Nome | Valor | Exemplo |
    |---|---|---|
    | `ADMIN_PASSWORD` | A senha que você vai digitar pra entrar em `/admin` | `MinhaSenh@Forte123` |
    | `WHATSAPP_NUMBER` | Seu número com DDI, só números | `5521999999999` |
+   | `NEXT_PUBLIC_PIX_KEY` | Sua chave Pix (CPF, e-mail, telefone ou aleatória) | `17738585722` |
+   | `NEXT_PUBLIC_PIX_RECEIVER_NAME` | Seu nome, como está na conta do banco (máx. 25 caracteres, sem acento) | `JOAO C ABREU ALEXANDRE` |
+   | `NEXT_PUBLIC_PIX_RECEIVER_CITY` | Cidade da sua conta, sem acento (máx. 15 caracteres) | `NITEROI` |
 
-   Marque **Production**, **Preview** e **Development** pras duas.
+   Marque **Production**, **Preview** e **Development** em todas.
 
 3. Clique em **Save**.
 
 > **Dica:** escolha uma senha só sua pro `ADMIN_PASSWORD`, de preferência
 > diferente de outras senhas que você já usa. Qualquer pessoa com essa
 > senha consegue adicionar/editar/excluir jogos do catálogo.
+
+> **Sobre as variáveis do Pix:** o padrão do Banco Central limita o nome do
+> recebedor a 25 caracteres e a cidade a 15, sem acentos (Ç, Ã, Õ etc.). Se
+> seu nome completo não couber, abrevie como no exemplo acima — isso só
+> muda como seu nome aparece no app do banco de quem está pagando, não afeta
+> o valor nem o recebimento do dinheiro. Essas três variáveis começam com
+> `NEXT_PUBLIC_` de propósito: elas precisam chegar até o navegador do
+> cliente, porque é lá (no computador ou celular dele) que o QR Code é
+> desenhado — sem isso o Pix nem apareceria na tela dele. Isso é seguro:
+> nome, cidade e chave Pix não são segredos, é exatamente o que qualquer
+> pessoa vê ao te mandar um Pix pelo aplicativo do banco dela.
 
 ---
 
@@ -141,6 +160,53 @@ funcionar, só siga a ordem.
 
 ---
 
+## Como funciona a compra pelo site (Pix + WhatsApp)
+
+Quando um cliente clica em qualquer jogo do catálogo, abre uma janela
+flutuante (modal) na própria página — sem sair do site nem trocar de link —
+com 4 telas em sequência:
+
+1. **Resumo do jogo** — capa, nome e preço (os mesmos dados já cadastrados
+   no admin). Botão **"Comprar agora"**.
+2. **Checklist rápido** — as 3 confirmações que vocês já combinavam por
+   WhatsApp (conta sem saldo, pode trocar região, entende que a verificação
+   é manual). O botão de continuar só libera com as 3 marcadas.
+3. **Pagamento via Pix** — o site gera, na hora e no próprio navegador do
+   cliente, um QR Code Pix de verdade (padrão do Banco Central, o mesmo tipo
+   que você geraria no app do seu banco) já com o valor exato do jogo. Junto
+   aparece o texto "Pix Copia e Cola" com um botão de copiar, pra quem não
+   consegue escanear QR Code pela tela do computador.
+4. **Confirmação** — o botão **"Já paguei — confirmar no WhatsApp"** abre
+   uma conversa no WhatsApp com o nome do jogo, o preço e um aviso de que o
+   cliente acabou de pagar, pra vocês seguirem a conversa organizados.
+
+**O ponto mais importante:** o site **nunca** envia nem mostra o código do
+jogo automaticamente, em etapa nenhuma. Ele só gera o Pix e te avisa que
+alguém disse que pagou — a conferência de que a conta do cliente está
+pronta pra resgatar (região, saldo etc.) e o envio do código em si continuam
+100% manuais, feitos por você no WhatsApp, exatamente como já era antes.
+Isso existe de propósito: é o que te protege de um cliente resgatar o
+código e depois pedir estorno alegando que "não recebeu nada".
+
+**Onde configurar sua chave Pix e seus dados de recebedor:** nas variáveis
+`NEXT_PUBLIC_PIX_KEY`, `NEXT_PUBLIC_PIX_RECEIVER_NAME` e
+`NEXT_PUBLIC_PIX_RECEIVER_CITY`, explicadas no Passo 5 acima (na Vercel) e
+no arquivo `.env.example` (se for rodar na sua máquina). É só ali — não tem
+nenhum outro lugar no código pra mexer nesses dados.
+
+**Onde fica o histórico de pedidos:** toda vez que um cliente chega na tela
+de pagamento (ou seja, o QR Code foi gerado), o site salva uma linha numa
+tabela chamada `orders` no mesmo banco Postgres (Neon) que já guarda os
+jogos e os comentários — não é um arquivo separado nem outro banco. Você
+acompanha esse histórico direto no admin, no botão **"📋 Pedidos"**: aparece
+o jogo, o valor e a data/hora de cada tentativa de compra. Isso **não é uma
+confirmação de pagamento** — é só um registro de "alguém gerou um Pix pra
+este jogo", útil caso alguém pague e esqueça de te chamar no WhatsApp depois
+(você vê o pedido na lista e pode entrar em contato). A confirmação real
+continua sendo você ver o Pix cair na sua conta.
+
+---
+
 ## Domínio próprio (opcional)
 
 Se você tiver ou comprar um domínio (tipo `xanswitch.com.br`), dá pra
@@ -167,21 +233,25 @@ Abre em `http://localhost:3000`.
 
 ```
 app/
-  page.tsx              → catálogo público (busca + cards + link do WhatsApp)
-  CatalogClient.tsx      → a parte interativa do catálogo público
-  layout.tsx, globals.css → visual (cores, fontes, estilo geral)
+  page.tsx              → catálogo público (busca + cards + dados de cada jogo)
+  CatalogClient.tsx      → a parte interativa do catálogo público (abre o modal de compra)
+  PurchaseModal.tsx       → o modal de compra (resumo → checklist → Pix → WhatsApp)
+  orderActions.ts          → Server Action que registra cada tentativa de compra
+  layout.tsx, globals.css → visual (cores, fontes, estilo geral, CSS do modal de compra)
   admin/
     page.tsx             → painel admin (protegido)
-    AdminClient.tsx       → toda a interface do admin (grade, formulário, etc)
-    actions.ts            → as ações de adicionar/editar/arquivar/excluir
+    AdminClient.tsx       → toda a interface do admin (grade, formulário, pedidos, etc)
+    actions.ts            → as ações de adicionar/editar/arquivar/excluir/registrar pedido
     login/page.tsx         → tela de login
 lib/
-  db.ts        → funções que conversam com o banco de dados
-  auth.ts      → login/sessão (senha + cookie assinado)
-  whatsapp.ts  → monta o link do WhatsApp com a mensagem certa
-  color.ts     → escolhe texto claro/escuro pra contrastar com a cor da etiqueta
-db/schema.sql  → o script que cria a tabela de jogos no banco
-proxy.ts       → protege as páginas /admin (redireciona pro login se não tiver sessão)
+  db.ts               → funções que conversam com o banco de dados (catálogo, Postgres/Neon)
+  auth.ts             → login/sessão (senha + cookie assinado) — usado por /admin
+  whatsapp.ts         → monta os links do WhatsApp (contato do cabeçalho e confirmação de pagamento)
+  pix.ts              → monta o Pix (BR Code + QR Code) usando seus dados de recebedor
+  color.ts            → escolhe texto claro/escuro pra contrastar com a cor da etiqueta
+db/schema.sql          → cria as tabelas do catálogo (jogos, avaliações, pedidos etc) — rodado uma vez no Neon
+db/migration-orders.sql → só a tabela de pedidos, caso o site já exista e você só precise adicionar essa parte
+proxy.ts       → protege a página /admin (redireciona pro login se não tiver sessão)
 ```
 
 ## Sobre a segurança do login
