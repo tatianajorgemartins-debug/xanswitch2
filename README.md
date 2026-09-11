@@ -22,8 +22,10 @@ funcionar, só siga a ordem.
 
 1. Uma conta na [Vercel](https://vercel.com) (pode entrar com GitHub, Google ou e-mail)
 2. Uma conta no [GitHub](https://github.com) (pra guardar o código)
-3. Isso é tudo — o banco de dados (Neon) e o armazenamento de imagens (Vercel Blob)
-   são criados de dentro do próprio painel da Vercel, sem precisar de outra conta.
+3. Uma conta no [Supabase](https://supabase.com) (pode entrar com GitHub também) —
+   é onde ficam guardadas as capas dos jogos e as capturas de tela.
+4. O banco de dados (Neon) é criado de dentro do próprio painel da Vercel,
+   sem precisar de outra conta.
 
 ---
 
@@ -84,22 +86,58 @@ funcionar, só siga a ordem.
 
 ---
 
-## Passo 4 — Criar o armazenamento de imagens (Vercel Blob)
+## Passo 4 — Criar o armazenamento de imagens (Supabase)
 
-1. Ainda na aba **Storage** do seu projeto na Vercel, clique em
-   **"Create Database"** de novo (ou **"Connect Store"**) e escolha
-   **Blob**.
-2. Dê um nome (ex: `xan-catalogo-imagens`) e conecte ao mesmo projeto.
-3. Isso injeta automaticamente a variável `BLOB_READ_WRITE_TOKEN` — de novo,
-   não precisa copiar nada manualmente.
+As capas dos jogos e as capturas de tela ficam guardadas no
+[Supabase Storage](https://supabase.com) — um serviço separado da Vercel,
+com plano gratuito próprio.
+
+1. Entre em [supabase.com](https://supabase.com) e crie uma conta (dá pra
+   entrar direto com GitHub).
+2. Clique em **"New project"**. Escolha um nome (ex: `xan-switch`), crie
+   uma senha de banco (você não vai precisar dela pra nada neste projeto,
+   mas o Supabase exige) e escolha uma região perto do Brasil (ex:
+   `South America (São Paulo)`). Espere alguns minutos até o projeto ficar
+   pronto.
+3. No menu lateral, vá em **Storage** → **"New bucket"**.
+   - Nome do bucket: `game-images` (exatamente assim, tudo minúsculo — é
+     esse nome que o código já espera).
+   - Marque **"Public bucket"** (as imagens precisam ser acessíveis por
+     link direto, sem senha — é assim que aparecem no site).
+   - Em "Additional configuration", pode limitar o tamanho máximo por
+     arquivo pra, digamos, `10 MB` (o site já comprime as imagens antes de
+     enviar, então isso é só uma margem de segurança) e restringir os
+     tipos permitidos a `image/*`.
+   - Clique em **"Save"**.
+4. Agora pegue as 3 informações que o site precisa pra conversar com o
+   Supabase: vá em **Settings** (ícone de engrenagem, menu lateral) →
+   **"API Keys"** (em projetos mais novos) ou **"API"** (em projetos mais
+   antigos).
+   - **Project URL** → vai na variável `NEXT_PUBLIC_SUPABASE_URL`
+   - **Publishable key** (ou **anon / public**, em telas mais antigas) →
+     vai na variável `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - **Secret key** (ou **service_role**, clique em "Reveal" pra ver) →
+     vai na variável `SUPABASE_SERVICE_ROLE_KEY`
+
+> **Atenção com a Secret key / service_role**: ela dá acesso total ao seu
+> projeto Supabase. Nunca cole ela em nenhum lugar público (sites, chats,
+> repositórios abertos) — só nas variáveis de ambiente da Vercel e no seu
+> `.env.local`.
+
+5. Por último, ainda no Supabase, vá em **SQL Editor** (menu lateral),
+   clique em **"New query"**, cole o conteúdo do arquivo
+   `db/migration-supabase-keepalive.sql` deste projeto e clique em **Run**.
+   Isso cria uma tabelinha pequena chamada `keepalive` — ela existe só pra
+   evitar que o Supabase pause seu projeto por "inatividade" (explico
+   melhor logo abaixo, na seção "Por que existe uma rotina diária de
+   manutenção").
 
 ---
 
 ## Passo 5 — Configurar suas variáveis (senha e WhatsApp)
 
 1. No seu projeto na Vercel, vá em **Settings → Environment Variables**.
-2. Adicione estas variáveis (`DATABASE_URL` e `BLOB_READ_WRITE_TOKEN` já
-   foram criadas sozinhas nos passos anteriores):
+2. Adicione estas variáveis (`DATABASE_URL` já foi criada sozinha no Passo 3):
 
    | Nome | Valor | Exemplo |
    |---|---|---|
@@ -108,6 +146,10 @@ funcionar, só siga a ordem.
    | `NEXT_PUBLIC_PIX_KEY` | Sua chave Pix (CPF, e-mail, telefone ou aleatória) | `17738585722` |
    | `NEXT_PUBLIC_PIX_RECEIVER_NAME` | Seu nome, como está na conta do banco (máx. 25 caracteres, sem acento) | `JOAO C ABREU ALEXANDRE` |
    | `NEXT_PUBLIC_PIX_RECEIVER_CITY` | Cidade da sua conta, sem acento (máx. 15 caracteres) | `NITEROI` |
+   | `NEXT_PUBLIC_SUPABASE_URL` | A "Project URL" do seu projeto Supabase (Passo 4) | `https://xxxxxxxx.supabase.co` |
+   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | A "Publishable key" (ou "anon") do Supabase (Passo 4) | `sb_publishable_...` |
+   | `SUPABASE_SERVICE_ROLE_KEY` | A "Secret key" (ou "service_role") do Supabase (Passo 4) | `sb_secret_...` |
+   | `CRON_SECRET` | Uma senha aleatória qualquer, só pra uso interno (veja explicação abaixo) | `um texto longo e aleatório` |
 
    Marque **Production**, **Preview** e **Development** em todas.
 
@@ -216,9 +258,10 @@ continua sendo você ver o Pix cair na sua conta.
 
 ## Por que as imagens são comprimidas automaticamente
 
-O que "pesa" no Vercel Blob não é o espaço ocupado pelos arquivos — é
-quantas vezes cada visitante baixa essas imagens. Uma foto de celular sem
-comprimir pode ter vários MB, e isso se repete a cada visita ao site.
+O que "pesa" no armazenamento de imagens não é o espaço ocupado pelos
+arquivos — é quantas vezes cada visitante baixa essas imagens. Uma foto de
+celular sem comprimir pode ter vários MB, e isso se repete a cada visita
+ao site.
 
 Por isso, toda capa de jogo e toda captura de tela que você sobe no admin
 passa por uma compressão automática antes de ser salva:
@@ -229,15 +272,77 @@ passa por uma compressão automática antes de ser salva:
 - **Capturas de tela**: redimensionadas pra no máximo 1600px e também
   convertidas pra WebP — só que isso acontece no NAVEGADOR, antes mesmo do
   arquivo ser enviado (em `lib/imageCompression.ts`), porque essas imagens
-  vão direto do seu computador pro Vercel Blob, sem passar pelo servidor.
+  vão direto do seu computador pro Supabase Storage, sem passar pelo servidor.
 
 Você não precisa fazer nada diferente — é só escolher a imagem normalmente
 que ela já sai comprimida do seu lado. Isso reduz o consumo de banda em
 mais de 80% na prática, sem mudar a aparência das imagens no site.
 
-> **Nota:** essa compressão vale só pra imagens novas, enviadas a partir de
-> agora. As imagens que já estavam no catálogo antes continuam do jeito que
-> foram enviadas originalmente.
+> **Nota:** as imagens que já existiam antes da migração pro Supabase
+> também são comprimidas — isso acontece uma vez, durante a própria
+> migração (veja "Migrando as imagens do Vercel Blob pro Supabase" logo
+> abaixo).
+
+---
+
+## Migrando as imagens do Vercel Blob pro Supabase
+
+Se você já tinha jogos cadastrados com capas no Vercel Blob (a forma como o
+site guardava imagens antes), existe um script pronto que copia tudo pro
+Supabase automaticamente, comprimindo cada imagem no processo.
+
+**Antes de rodar**, você precisa:
+1. Ter completado o Passo 4 (criar o projeto Supabase, o bucket
+   `game-images`, e configurado as 3 variáveis `NEXT_PUBLIC_SUPABASE_URL`,
+   `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` no seu
+   `.env.local`).
+2. Ter certeza de que sua Blob Store antiga na Vercel **não está
+   suspensa** — se você chegou a estourar o limite de banda e ela ficou
+   suspensa por cobrança, precisa reativá-la (ou esperar os 30 dias do
+   plano gratuito) antes de conseguir migrar, porque o script precisa
+   conseguir *baixar* as imagens de lá.
+
+Depois disso, na sua máquina, dentro da pasta do projeto:
+
+```bash
+npm install
+node scripts/migrate-images-to-supabase.mjs
+```
+
+O script mostra o progresso jogo por jogo e, no final, um resumo de
+quantas imagens foram migradas, quantas já estavam migradas (ele é seguro
+de rodar mais de uma vez) e quantas falharam. Se alguma falhar, é só rodar
+de novo depois — ele pula o que já deu certo e tenta de novo só o resto.
+
+**O script não apaga nada do Vercel Blob.** Depois de conferir no site que
+todas as imagens estão aparecendo certinho (vindas do Supabase agora), você
+pode excluir a Blob Store antiga pelo painel da Vercel
+(**Storage → sua store → Settings → Delete**) pra não correr o risco de
+ela voltar a gerar cobrança.
+
+---
+
+## Por que existe uma rotina diária de manutenção
+
+O plano gratuito do Supabase pausa automaticamente qualquer projeto que
+fique **7 dias sem atividade de banco de dados**. O problema é que este
+site usa o Supabase só pra guardar imagens (Storage) — nunca consulta o
+banco de dados dele diretamente — então, mesmo com o catálogo recebendo
+visitas normalmente, o projeto correria risco de ser pausado por
+"inatividade" do jeito que o Supabase mede isso. Se isso acontecesse,
+**todas as imagens do site parariam de carregar** até alguém entrar no
+painel do Supabase e reativar manualmente.
+
+Pra evitar isso, existe uma rotina automática que roda uma vez por dia
+(configurada em `vercel.json`, na chave `"crons"`) e chama a rota
+`app/api/cron/keepalive/route.ts`, que só insere uma linha bem pequena
+numa tabela chamada `keepalive` (criada no Passo 4) — o suficiente pra
+contar como "atividade" e manter o projeto sempre ativo. A variável
+`CRON_SECRET` existe só pra confirmar que quem está chamando essa rota é
+realmente a Vercel, e não outra pessoa que descobriu o link.
+
+Você não precisa fazer nada no dia a dia — uma vez configurado (Passo 4 +
+a variável `CRON_SECRET` no Passo 5), isso roda sozinho pra sempre.
 
 ---
 
@@ -278,7 +383,8 @@ app/
     actions.ts            → as ações de adicionar/editar/arquivar/excluir/registrar pedido
     login/page.tsx         → tela de login
   api/
-    screenshot-upload/route.ts   → autoriza o upload das capturas de tela direto do navegador pro Vercel Blob
+    screenshot-upload/route.ts   → autoriza o upload das capturas de tela direto do navegador pro Supabase
+    cron/keepalive/route.ts       → rotina diária que mantém o projeto Supabase ativo
 lib/
   db.ts               → funções que conversam com o banco de dados (catálogo, Postgres/Neon)
   auth.ts             → login/sessão (senha + cookie assinado) — usado por /admin
@@ -287,10 +393,16 @@ lib/
   color.ts            → escolhe texto claro/escuro pra contrastar com a cor da etiqueta
   imageResize.ts       → comprime a capa do jogo no servidor antes de salvar (usa a lib "sharp")
   imageCompression.ts  → comprime as capturas de tela no navegador antes de enviar (usa <canvas>)
+  supabaseAdmin.ts      → sobe/apaga imagens no Supabase Storage (usa a chave secreta — só roda no servidor)
+  supabaseBrowser.ts    → faz o upload da captura de tela direto do navegador pro Supabase
+  supabaseImagesConfig.ts → só o nome do bucket, compartilhado entre os dois arquivos acima
+scripts/migrate-images-to-supabase.mjs → migração única das imagens do Vercel Blob pro Supabase
 db/schema.sql                 → cria as tabelas do catálogo (jogos, avaliações, pedidos etc) — rodado uma vez no Neon
 db/migration-orders.sql        → só a tabela de pedidos, caso o site já exista e você só precise adicionar essa parte
 db/migration-game-details.sql → só a descrição/capturas de tela, mesmo caso acima
+db/migration-supabase-keepalive.sql → cria a tabela usada pela rotina diária (roda no Supabase, não no Neon)
 proxy.ts       → protege a página /admin (redireciona pro login se não tiver sessão)
+vercel.json    → agenda a rotina diária de manutenção (cron job)
 ```
 
 ## Sobre a segurança do login

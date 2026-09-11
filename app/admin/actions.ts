@@ -2,7 +2,7 @@
 
 import { revalidatePath, updateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { put, del } from '@vercel/blob';
+import { uploadImageBuffer, deleteImageByUrl } from '@/lib/supabaseAdmin';
 import { compressImage } from '@/lib/imageResize';
 import {
   checkPassword,
@@ -29,9 +29,9 @@ const GAME_TYPES: GameType[] = ['base', 'dlc', 'update'];
 const MAX_SCREENSHOTS = 10;
 
 // As capturas de tela já chegam como URLs prontas (o navegador faz o upload
-// direto pro Vercel Blob antes de enviar o formulário — veja o componente
-// ScreenshotsField no AdminClient.tsx), então aqui é só ler a lista de
-// campos hidden "screenshots" que o formulário manda.
+// direto pro Supabase Storage antes de enviar o formulário — veja o
+// componente ScreenshotsField no AdminClient.tsx), então aqui é só ler a
+// lista de campos hidden "screenshots" que o formulário manda.
 function parseScreenshots(formData: FormData): string[] {
   return formData
     .getAll('screenshots')
@@ -95,11 +95,7 @@ async function uploadImageIfPresent(formData: FormData): Promise<string | null |
   const originalBytes = Buffer.from(await file.arrayBuffer());
   const { buffer, contentType, extension } = await compressImage(originalBytes, 900, 80);
 
-  const blob = await put(`games/${Date.now()}-capa.${extension}`, buffer, {
-    access: 'public',
-    contentType
-  });
-  return blob.url;
+  return uploadImageBuffer(`games/${Date.now()}-capa.${extension}`, buffer, contentType);
 }
 
 export type GameFormState = { error: string | null };
@@ -199,12 +195,12 @@ export async function updateGameAction(
   if (newImageUrl !== undefined) {
     // a new file was uploaded — replace, and clean up the old blob if any
     if (existing.image_url) {
-      await del(existing.image_url).catch(() => {});
+      await deleteImageByUrl(existing.image_url).catch(() => {});
     }
     imageUrl = newImageUrl;
   } else if (removeImage) {
     if (existing.image_url) {
-      await del(existing.image_url).catch(() => {});
+      await deleteImageByUrl(existing.image_url).catch(() => {});
     }
     imageUrl = null;
   }
@@ -213,7 +209,7 @@ export async function updateGameAction(
   // nova foi removida pelo admin — apaga o arquivo do Vercel Blob também,
   // senão ele fica ocupando espaço pra sempre sem ninguém usar.
   const removedScreenshots = existing.screenshots.filter((url) => !screenshots.includes(url));
-  await Promise.all(removedScreenshots.map((url) => del(url).catch(() => {})));
+  await Promise.all(removedScreenshots.map((url) => deleteImageByUrl(url).catch(() => {})));
 
   await updateGame(id, {
     name,
@@ -251,10 +247,10 @@ export async function deleteGameAction(id: number): Promise<void> {
   await requireAuth();
   const existing = await getGameById(id);
   if (existing?.image_url) {
-    await del(existing.image_url).catch(() => {});
+    await deleteImageByUrl(existing.image_url).catch(() => {});
   }
   if (existing?.screenshots.length) {
-    await Promise.all(existing.screenshots.map((url) => del(url).catch(() => {})));
+    await Promise.all(existing.screenshots.map((url) => deleteImageByUrl(url).catch(() => {})));
   }
   await deleteGame(id);
   revalidatePath('/admin');

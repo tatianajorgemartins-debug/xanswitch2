@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState, useEffect, useActionState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFormStatus } from 'react-dom';
-import { upload } from '@vercel/blob/client';
+import { uploadToSignedTicket } from '@/lib/supabaseBrowser';
 import type { Game, Review, Order } from '@/lib/db';
 import { getContrastColor } from '@/lib/color';
 import { formatPriceBR } from '@/lib/whatsapp';
@@ -972,17 +972,29 @@ function ScreenshotsField({ initialScreenshots }: { initialScreenshots: string[]
       // Comprime cada imagem no navegador ANTES de enviar (ver
       // lib/imageCompression.ts) — é isso que evita que fotos de celular
       // de vários MB cada sejam baixadas na íntegra por todo visitante do
-      // site depois. Só o arquivo já reduzido vai pro Vercel Blob.
+      // site depois. Só o arquivo já reduzido vai pro Supabase Storage.
       const uploaded = await Promise.all(
         toUpload.map(async (file) => {
           const compressed = await compressImageFile(file, 1600, 78);
-          return upload(compressed.name, compressed, {
-            access: 'public',
-            handleUploadUrl: '/api/screenshot-upload'
+
+          // Passo 1: pede pro servidor uma "autorização de upload" (o
+          // servidor confere login e gera um token de uso único do
+          // Supabase — veja app/api/screenshot-upload/route.ts).
+          const res = await fetch('/api/screenshot-upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename: compressed.name })
           });
+          const ticket = await res.json();
+          if (!res.ok) throw new Error(ticket.error || 'Falha ao autorizar upload.');
+
+          // Passo 2: com o token em mãos, o navegador manda o arquivo
+          // direto pro Supabase — sem passar pelo nosso servidor de novo.
+          await uploadToSignedTicket(ticket.path, ticket.token, compressed);
+          return ticket.publicUrl as string;
         })
       );
-      setUrls((prev) => [...prev, ...uploaded.map((b) => b.url)]);
+      setUrls((prev) => [...prev, ...uploaded]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao enviar uma das imagens.');
     } finally {
@@ -994,7 +1006,7 @@ function ScreenshotsField({ initialScreenshots }: { initialScreenshots: string[]
   function handleRemove(url: string) {
     setUrls((prev) => prev.filter((u) => u !== url));
     // Repare que isso só tira a imagem da lista aqui no formulário — o
-    // arquivo em si só é apagado do Vercel Blob quando o formulário é
+    // arquivo em si só é apagado do Supabase Storage quando o formulário é
     // salvo (updateGameAction compara a lista antiga com a nova).
   }
 

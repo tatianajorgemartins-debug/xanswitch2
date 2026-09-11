@@ -1,39 +1,28 @@
-import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { NextResponse } from 'next/server';
 import { isAuthenticated } from '@/lib/auth';
+import { createSignedUploadTicket, getPublicUrl } from '@/lib/supabaseAdmin';
 
-// Várias capturas de tela de uma vez podem somar vários MB, o que estoura
-// o limite de tamanho de requisição de uma Server Action. Por isso o
-// navegador envia cada imagem direto pro Vercel Blob, e esta rota só cuida
-// da parte de autorizar o envio — nunca vê os bytes da imagem em si.
+// O navegador chama esta rota ANTES de enviar a imagem em si — ela só
+// autoriza o upload (confere login e devolve um "ticket" de upload de uso
+// único do Supabase). O arquivo em si nunca passa por aqui, vai direto do
+// navegador pro Supabase Storage — é assim que se evita o limite de
+// tamanho de requisição de uma Server Action normal.
 export async function POST(request: Request): Promise<NextResponse> {
-  const body = (await request.json()) as HandleUploadBody;
+  const authed = await isAuthenticated();
+  if (!authed) {
+    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
+  }
+
+  const body = await request.json();
+  const rawName = String(body?.filename || 'imagem');
+  // Só letras, números, ponto, hífen e underscore no nome do arquivo —
+  // evita problemas com espaços, acentos ou caracteres especiais na URL.
+  const safeName = rawName.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+  const path = `screenshots/${Date.now()}-${safeName}`;
 
   try {
-    const jsonResponse = await handleUpload({
-      body,
-      request,
-      onBeforeGenerateToken: async () => {
-        const authed = await isAuthenticated();
-        if (!authed) {
-          throw new Error('Não autorizado.');
-        }
-        return {
-          allowedContentTypes: ['image/png', 'image/jpeg', 'image/webp', 'image/avif', 'image/gif'],
-          // O navegador já comprime a imagem antes de enviar (veja
-          // lib/imageCompression.ts) — um WebP de 1600px raramente passa de
-          // 1-2MB, então 5MB já é uma folga generosa, não um limite apertado.
-          maximumSizeInBytes: 5 * 1024 * 1024,
-          addRandomSuffix: true
-        };
-      },
-      onUploadCompleted: async () => {
-        // No-op: o painel admin guarda a URL retornada assim que o upload()
-        // no navegador termina. Esse callback também nunca dispara em
-        // desenvolvimento local, porque a Vercel não alcança o localhost.
-      }
-    });
-    return NextResponse.json(jsonResponse);
+    const ticket = await createSignedUploadTicket(path);
+    return NextResponse.json({ ...ticket, publicUrl: getPublicUrl(path) });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Falha no upload.' },
