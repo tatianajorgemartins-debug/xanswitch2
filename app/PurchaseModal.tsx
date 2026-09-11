@@ -14,6 +14,8 @@
 
 import { useEffect, useRef, useState, startTransition } from 'react';
 import type { Item } from './CatalogClient';
+import type { Platform, GameType } from '@/lib/db';
+import { getContrastColor } from '@/lib/color';
 import { generatePixPayload, type PixPayload } from '@/lib/pix';
 import { logOrderAttempt } from './orderActions';
 
@@ -184,9 +186,24 @@ export default function PurchaseModal({ item, onClose }: { item: Item; onClose: 
   );
 }
 
-// Etapa 1 — resumo do jogo: capa, nome, preço, descrição (se cadastrada no
-// admin) e uma galeria de capturas de tela (se houver alguma). Tudo isso já
-// vem pronto do catálogo — nada é buscado de novo aqui.
+// Nomes de exibição pra plataforma e tipo de jogo, pra montar a "ficha
+// técnica" (Plataforma / Tipo / Formato) — mesma ideia das etiquetas que já
+// existem no card do catálogo, só que por extenso aqui, que tem mais espaço.
+const PLATFORM_LABEL: Record<Platform, string> = {
+  switch1: 'Nintendo Switch',
+  switch2: 'Nintendo Switch 2',
+  both: 'Switch 1 e 2'
+};
+const GAME_TYPE_LABEL: Record<GameType, string> = {
+  base: 'Jogo base',
+  dlc: 'DLC',
+  update: 'Atualização'
+};
+
+// Etapa 1 — resumo do jogo, no estilo de uma página de produto de loja:
+// capa grande com faixa de destaque, galeria de fotos, título, preço e uma
+// "ficha técnica" curta, antes da descrição e do botão de compra. Tudo isso
+// já vem pronto do catálogo — nada é buscado de novo aqui.
 function StepSummary({
   item,
   priceLabel,
@@ -198,24 +215,90 @@ function StepSummary({
   onNext: () => void;
   onOpenScreenshot: (index: number) => void;
 }) {
+  const galleryRef = useRef<HTMLDivElement>(null);
+
+  // As setinhas da galeria só rolam a tira de miniaturas — a largura de uma
+  // miniatura + o espaçamento entre elas, então cada clique anda "uma foto"
+  // por vez, tanto faz o tamanho da tela.
+  function scrollGallery(direction: 1 | -1) {
+    galleryRef.current?.scrollBy({ left: direction * 124, behavior: 'smooth' });
+  }
+
   return (
     <>
-      <div className="purchase-hero">
-        <div className="purchase-hero-cover">
-          <div className="cover-frame">
-            {item.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={item.imageUrl}
-                alt={item.name}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-              />
-            ) : null}
+      <div className="product-hero-cover">
+        {item.hasBadge && (
+          <div
+            className="product-hero-ribbon"
+            style={{ background: item.badgeColor, color: getContrastColor(item.badgeColor) }}
+          >
+            {item.badgeText}
           </div>
+        )}
+        {item.imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={item.imageUrl} alt={item.name} />
+        )}
+      </div>
+
+      {item.screenshots.length > 0 && (
+        <div className="product-gallery-row">
+          <button
+            type="button"
+            className="product-gallery-arrow"
+            onClick={() => scrollGallery(-1)}
+            aria-label="Rolar capturas de tela pra esquerda"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={14} height={14}>
+              <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <div className="purchase-gallery" ref={galleryRef}>
+            {item.screenshots.map((url, i) => (
+              <button
+                key={url}
+                type="button"
+                className="purchase-gallery-thumb"
+                onClick={() => onOpenScreenshot(i)}
+                aria-label={`Ver captura de tela ${i + 1} em tamanho maior`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt="" loading="lazy" />
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="product-gallery-arrow"
+            onClick={() => scrollGallery(1)}
+            aria-label="Rolar capturas de tela pra direita"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={14} height={14}>
+              <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
         </div>
-        <div className="purchase-hero-info">
-          <p className="purchase-hero-name">{item.name}</p>
-          <span className="purchase-hero-price">R$ {priceLabel}</span>
+      )}
+
+      {item.franchise && <p className="product-eyebrow">{item.franchise}</p>}
+      <h2 className="product-title">{item.name}</h2>
+      <div className="product-price-row">
+        {item.originalPriceLabel && <span className="product-price-old">R$ {item.originalPriceLabel}</span>}
+        <span className="product-price">R$ {priceLabel}</span>
+      </div>
+
+      <div className="product-meta-grid">
+        <div className="product-meta-chip">
+          <p className="product-meta-chip-label">Plataforma</p>
+          <p className="product-meta-chip-value">{PLATFORM_LABEL[item.platform]}</p>
+        </div>
+        <div className="product-meta-chip">
+          <p className="product-meta-chip-label">Tipo</p>
+          <p className="product-meta-chip-value">{GAME_TYPE_LABEL[item.gameType]}</p>
+        </div>
+        <div className="product-meta-chip">
+          <p className="product-meta-chip-label">Formato</p>
+          <p className="product-meta-chip-value">Código digital</p>
         </div>
       </div>
 
@@ -226,25 +309,13 @@ function StepSummary({
         </div>
       )}
 
-      {item.screenshots.length > 0 && (
-        <div className="purchase-gallery">
-          {item.screenshots.map((url, i) => (
-            <button
-              key={url}
-              type="button"
-              className="purchase-gallery-thumb"
-              onClick={() => onOpenScreenshot(i)}
-              aria-label={`Ver captura de tela ${i + 1} em tamanho maior`}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt="" loading="lazy" />
-            </button>
-          ))}
-        </div>
-      )}
-
       <div className="purchase-modal-actions">
-        <button type="button" className="btn primary" onClick={onNext}>
+        <button type="button" className="btn primary product-cta" onClick={onNext}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={17} height={17}>
+            <circle cx="9" cy="21" r="1.4" fill="currentColor" stroke="none" />
+            <circle cx="18" cy="21" r="1.4" fill="currentColor" stroke="none" />
+            <path d="M2.5 3h2.4l2.4 12.4a2 2 0 002 1.6h8.8a2 2 0 002-1.6L21.5 7H6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
           Comprar agora
         </button>
       </div>

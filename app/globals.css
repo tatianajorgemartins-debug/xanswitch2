@@ -976,7 +976,7 @@ label {
    borda roxa dos outros painéis do site (filtros, formulário de comentário). */
 .purchase-modal {
   width: 100%;
-  max-width: 480px;
+  max-width: 540px;
   max-height: 90vh;
   overflow-y: auto;
   background: var(--panel);
@@ -1047,40 +1047,168 @@ label {
   padding: 18px;
 }
 
-/* Etapa 1 — resumo do jogo. A "hero" fica com a capa ao lado do nome/preço
-   (ao invés de tudo empilhado), pra aproveitar melhor o espaço e abrir
-   lugar pra descrição e galeria de capturas de tela logo abaixo. */
-.purchase-hero {
+/* Etapa 1 — resumo do jogo, com estrutura de "página de produto de loja":
+   capa grande em cima (com uma faixa de destaque colada nela, tipo etiqueta
+   de vitrine), miniaturas logo abaixo, depois nome/preço/informações. */
+.product-hero-cover {
+  position: relative;
+  margin: -18px -18px 0; /* estica até a borda do modal, sem o padding do body */
+  border-radius: 0;
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+  background: #150c28;
+}
+.product-hero-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.product-hero-ribbon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 7px 18px;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-align: center;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* Galeria de capturas de tela — tira horizontal com scroll, mais setinhas
+   de navegação nas pontas (o site já tinha o scroll; as setas são só uma
+   forma mais "clicável" de fazer a mesma coisa, pra quem não pensa em
+   arrastar com o dedo/mouse). */
+.product-gallery-row {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 18px;
+  gap: 6px;
+  margin: 14px 0 6px;
 }
-.purchase-hero-cover {
-  width: 104px;
-  flex: none;
-}
-.purchase-hero-info {
-  min-width: 0;
+.purchase-gallery {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scroll-snap-type: x proximity;
+  scroll-behavior: smooth;
   flex: 1;
+  min-width: 0;
 }
-.purchase-hero-name {
+.purchase-gallery-thumb {
+  flex: none;
+  width: 108px;
+  height: 81px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  background: #150c28;
+  padding: 0;
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: border-color 0.15s;
+}
+.purchase-gallery-thumb:hover,
+.purchase-gallery-thumb:focus-visible {
+  border-color: var(--green);
+}
+.purchase-gallery-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.product-gallery-arrow {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(164, 99, 255, 0.35);
+  background: var(--panel-2);
+  color: var(--ink-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.product-gallery-arrow:hover {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+/* Categoria/franquia (só aparece se o jogo tiver uma cadastrada). */
+.product-eyebrow {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--purple);
+  margin: 18px 0 4px;
+}
+.product-title {
   font-weight: 800;
-  font-size: 17px;
+  font-size: 21px;
   color: var(--ink);
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   line-height: 1.25;
+  text-wrap: balance;
 }
-.purchase-hero-price {
-  display: inline-block;
+.product-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.product-price-old {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #8b83a8;
+  text-decoration: line-through;
+}
+.product-price {
   font-family: 'Press Start 2P', cursive;
-  font-size: 15px;
+  font-size: 19px;
   color: var(--green);
   text-shadow: 0 0 10px var(--green-glow);
-  background: rgba(78, 240, 95, 0.08);
-  border: 1px solid rgba(78, 240, 95, 0.3);
-  border-radius: 8px;
-  padding: 6px 10px;
+}
+
+/* Grade de "ficha técnica" — Plataforma / Tipo / Formato, no estilo das
+   páginas de loja oficiais (cada campo com um rótulo pequeno em cima e o
+   valor em baixo). */
+.product-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.product-meta-chip {
+  background: var(--panel-2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 9px 10px;
+  min-width: 0;
+}
+.product-meta-chip-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--ink-dim);
+  margin: 0 0 3px;
+}
+.product-meta-chip-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Descrição do jogo (opcional — só aparece se cadastrada no admin). */
@@ -1107,38 +1235,13 @@ label {
   white-space: pre-line; /* preserva quebras de linha digitadas no admin */
 }
 
-/* Galeria de capturas de tela — tira horizontal com scroll, do jeito que
-   funciona bem tanto no celular (arrastando com o dedo) quanto no PC. */
-.purchase-gallery {
+.product-cta {
   display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  margin-bottom: 18px;
-  scroll-snap-type: x proximity;
-}
-.purchase-gallery-thumb {
-  flex: none;
-  width: 120px;
-  height: 90px;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 2px solid transparent;
-  background: #150c28;
-  padding: 0;
-  cursor: pointer;
-  scroll-snap-align: start;
-  transition: border-color 0.15s;
-}
-.purchase-gallery-thumb:hover,
-.purchase-gallery-thumb:focus-visible {
-  border-color: var(--green);
-}
-.purchase-gallery-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  font-size: 15px;
+  padding: 14px 16px;
 }
 
 /* Lightbox — visualização ampliada de uma captura de tela, aberta por cima
@@ -1343,11 +1446,14 @@ label {
     width: 190px;
     height: 190px;
   }
-  .purchase-hero-cover {
-    width: 84px;
+  .product-title {
+    font-size: 18px;
   }
-  .purchase-hero-name {
-    font-size: 15.5px;
+  .product-meta-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .product-meta-chip:last-child {
+    grid-column: 1 / -1;
   }
   .purchase-lightbox-nav {
     width: 38px;
