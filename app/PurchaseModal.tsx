@@ -122,7 +122,7 @@ export default function PurchaseModal({ item, onClose }: { item: Item; onClose: 
     // qualquer usuário já espera de um modal.
     <div className="purchase-modal-overlay" onClick={onClose}>
       <div
-        className="purchase-modal"
+        className={`purchase-modal${step === 1 ? ' is-product-step' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-label={`Comprar ${item.name}`}
@@ -225,101 +225,108 @@ function StepSummary({
   }
 
   return (
-    <>
-      <div className="product-hero-cover">
-        {item.hasBadge && (
-          <div
-            className="product-hero-ribbon"
-            style={{ background: item.badgeColor, color: getContrastColor(item.badgeColor) }}
-          >
-            {item.badgeText}
+    // Em telas largas isso vira duas colunas (foto/galeria de um lado,
+    // informações do outro — como numa página de produto de loja de
+    // verdade); no celular, uma coluna só, tudo empilhado na mesma ordem.
+    <div className="product-layout">
+      <div className="product-media">
+        <div className="product-hero-cover">
+          {item.hasBadge && (
+            <div
+              className="product-hero-ribbon"
+              style={{ background: item.badgeColor, color: getContrastColor(item.badgeColor) }}
+            >
+              {item.badgeText}
+            </div>
+          )}
+          {item.imageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={item.imageUrl} alt={item.name} />
+          )}
+        </div>
+
+        {item.screenshots.length > 0 && (
+          <div className="product-gallery-row">
+            <button
+              type="button"
+              className="product-gallery-arrow"
+              onClick={() => scrollGallery(-1)}
+              aria-label="Rolar capturas de tela pra esquerda"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={14} height={14}>
+                <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <div className="purchase-gallery" ref={galleryRef}>
+              {item.screenshots.map((url, i) => (
+                <button
+                  key={url}
+                  type="button"
+                  className="purchase-gallery-thumb"
+                  onClick={() => onOpenScreenshot(i)}
+                  aria-label={`Ver captura de tela ${i + 1} em tamanho maior`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt="" loading="lazy" />
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="product-gallery-arrow"
+              onClick={() => scrollGallery(1)}
+              aria-label="Rolar capturas de tela pra direita"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={14} height={14}>
+                <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
           </div>
         )}
-        {item.imageUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.imageUrl} alt={item.name} />
-        )}
       </div>
 
-      {item.screenshots.length > 0 && (
-        <div className="product-gallery-row">
-          <button
-            type="button"
-            className="product-gallery-arrow"
-            onClick={() => scrollGallery(-1)}
-            aria-label="Rolar capturas de tela pra esquerda"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={14} height={14}>
-              <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <div className="purchase-gallery" ref={galleryRef}>
-            {item.screenshots.map((url, i) => (
-              <button
-                key={url}
-                type="button"
-                className="purchase-gallery-thumb"
-                onClick={() => onOpenScreenshot(i)}
-                aria-label={`Ver captura de tela ${i + 1} em tamanho maior`}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt="" loading="lazy" />
-              </button>
-            ))}
+      <div className="product-info">
+        {item.franchise && <p className="product-eyebrow">{item.franchise}</p>}
+        <h2 className="product-title">{item.name}</h2>
+        <div className="product-price-row">
+          {item.originalPriceLabel && <span className="product-price-old">R$ {item.originalPriceLabel}</span>}
+          <span className="product-price">R$ {priceLabel}</span>
+        </div>
+
+        <div className="product-meta-grid">
+          <div className="product-meta-chip">
+            <p className="product-meta-chip-label">Plataforma</p>
+            <p className="product-meta-chip-value">{PLATFORM_LABEL[item.platform]}</p>
           </div>
-          <button
-            type="button"
-            className="product-gallery-arrow"
-            onClick={() => scrollGallery(1)}
-            aria-label="Rolar capturas de tela pra direita"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={14} height={14}>
-              <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+          <div className="product-meta-chip">
+            <p className="product-meta-chip-label">Tipo</p>
+            <p className="product-meta-chip-value">{GAME_TYPE_LABEL[item.gameType]}</p>
+          </div>
+          <div className="product-meta-chip">
+            <p className="product-meta-chip-label">Formato</p>
+            <p className="product-meta-chip-value">Código digital</p>
+          </div>
+        </div>
+
+        {item.description && (
+          <div className="purchase-description">
+            <p className="purchase-description-label">Sobre o jogo</p>
+            <p className="purchase-description-text">{item.description}</p>
+          </div>
+        )}
+
+        <div className="purchase-modal-actions">
+          <button type="button" className="btn primary product-cta" onClick={onNext}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={17} height={17}>
+              <circle cx="9" cy="21" r="1.4" fill="currentColor" stroke="none" />
+              <circle cx="18" cy="21" r="1.4" fill="currentColor" stroke="none" />
+              <path d="M2.5 3h2.4l2.4 12.4a2 2 0 002 1.6h8.8a2 2 0 002-1.6L21.5 7H6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
+            Comprar agora
           </button>
         </div>
-      )}
-
-      {item.franchise && <p className="product-eyebrow">{item.franchise}</p>}
-      <h2 className="product-title">{item.name}</h2>
-      <div className="product-price-row">
-        {item.originalPriceLabel && <span className="product-price-old">R$ {item.originalPriceLabel}</span>}
-        <span className="product-price">R$ {priceLabel}</span>
       </div>
-
-      <div className="product-meta-grid">
-        <div className="product-meta-chip">
-          <p className="product-meta-chip-label">Plataforma</p>
-          <p className="product-meta-chip-value">{PLATFORM_LABEL[item.platform]}</p>
-        </div>
-        <div className="product-meta-chip">
-          <p className="product-meta-chip-label">Tipo</p>
-          <p className="product-meta-chip-value">{GAME_TYPE_LABEL[item.gameType]}</p>
-        </div>
-        <div className="product-meta-chip">
-          <p className="product-meta-chip-label">Formato</p>
-          <p className="product-meta-chip-value">Código digital</p>
-        </div>
-      </div>
-
-      {item.description && (
-        <div className="purchase-description">
-          <p className="purchase-description-label">Sobre o jogo</p>
-          <p className="purchase-description-text">{item.description}</p>
-        </div>
-      )}
-
-      <div className="purchase-modal-actions">
-        <button type="button" className="btn primary product-cta" onClick={onNext}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={17} height={17}>
-            <circle cx="9" cy="21" r="1.4" fill="currentColor" stroke="none" />
-            <circle cx="18" cy="21" r="1.4" fill="currentColor" stroke="none" />
-            <path d="M2.5 3h2.4l2.4 12.4a2 2 0 002 1.6h8.8a2 2 0 002-1.6L21.5 7H6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Comprar agora
-        </button>
-      </div>
-    </>
+    </div>
   );
 }
 

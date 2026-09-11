@@ -976,7 +976,7 @@ label {
    borda roxa dos outros painéis do site (filtros, formulário de comentário). */
 .purchase-modal {
   width: 100%;
-  max-width: 540px;
+  max-width: 480px;
   max-height: 90vh;
   overflow-y: auto;
   background: var(--panel);
@@ -984,6 +984,21 @@ label {
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   animation: purchase-pop-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: max-width 0.25s ease;
+}
+/* Na Etapa 1 (resumo do jogo), o modal fica mais largo — é o que dá espaço
+   pra colocar a foto/galeria ao lado das informações em vez de empilhado.
+   Isso só faz sentido em telas largas o bastante pra caber duas colunas —
+   por isso essa regra fica dentro do "min-width" abaixo, em vez de valer
+   sempre: assim, no celular, nada disputa com a regra que deixa o modal
+   ocupando a tela inteira (@media max-width: 480px mais abaixo) — duas
+   regras de tamanho pro mesmo elemento poderiam entrar em conflito aí.
+   Nas outras etapas (checklist, pagamento) o modal fica sempre no tamanho
+   normal, mais estreito e focado. */
+@media (min-width: 640px) {
+  .purchase-modal.is-product-step {
+    max-width: 760px;
+  }
 }
 
 @keyframes purchase-fade-in {
@@ -1047,16 +1062,42 @@ label {
   padding: 18px;
 }
 
-/* Etapa 1 — resumo do jogo, com estrutura de "página de produto de loja":
-   capa grande em cima (com uma faixa de destaque colada nela, tipo etiqueta
-   de vitrine), miniaturas logo abaixo, depois nome/preço/informações. */
+/* Etapa 1 — resumo do jogo, com estrutura de "página de produto de loja".
+   Em telas largas, a foto/galeria ficam numa coluna e as informações
+   (nome, preço, ficha técnica, descrição, botão) em outra, lado a lado —
+   por isso o .is-product-step deixa o modal mais largo (ver acima). No
+   celular (tela estreita), essa grade vira uma coluna só, tudo empilhado,
+   igual já era antes. */
+.product-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+/* Itens de grid têm uma "largura mínima automática" por padrão, que ignora
+   o overflow:hidden/auto dos elementos de dentro — sem isso aqui, a tira de
+   miniaturas (que rola por dentro) força a coluna inteira, e o modal
+   junto, a ficar larga demais e vazar pra fora da tela no celular. */
+.product-media,
+.product-info {
+  min-width: 0;
+}
+@media (min-width: 640px) {
+  .product-layout {
+    grid-template-columns: 280px 1fr;
+    align-items: start;
+  }
+}
+
 .product-hero-cover {
   position: relative;
-  margin: -18px -18px 0; /* estica até a borda do modal, sem o padding do body */
-  border-radius: 0;
+  border-radius: 14px;
   overflow: hidden;
   aspect-ratio: 1 / 1;
   background: #150c28;
+  border: 2px solid transparent;
+  background-image: linear-gradient(#150c28, #150c28), linear-gradient(135deg, var(--purple), var(--purple-2));
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
 }
 .product-hero-cover img {
   width: 100%;
@@ -1082,22 +1123,41 @@ label {
 /* Galeria de capturas de tela — tira horizontal com scroll, mais setinhas
    de navegação nas pontas (o site já tinha o scroll; as setas são só uma
    forma mais "clicável" de fazer a mesma coisa, pra quem não pensa em
-   arrastar com o dedo/mouse). */
+   arrastar com o dedo/mouse). A barra de rolagem em si também é estilizada
+   (regras ::-webkit-scrollbar logo abaixo) pra combinar com o resto do
+   site, em vez da barra cinza padrão do navegador. */
 .product-gallery-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 14px 0 6px;
+  margin-top: 10px;
 }
 .purchase-gallery {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding-bottom: 4px;
+  padding-bottom: 8px;
   scroll-snap-type: x proximity;
   scroll-behavior: smooth;
   flex: 1;
   min-width: 0;
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: var(--purple) rgba(255, 255, 255, 0.08);
+}
+.purchase-gallery::-webkit-scrollbar {
+  height: 6px;
+}
+.purchase-gallery::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+.purchase-gallery::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, var(--purple), var(--purple-2));
+  border-radius: 999px;
+}
+.purchase-gallery::-webkit-scrollbar-thumb:hover {
+  background: var(--green);
 }
 .purchase-gallery-thumb {
   flex: none;
@@ -1148,7 +1208,7 @@ label {
   text-transform: uppercase;
   letter-spacing: 0.6px;
   color: var(--purple);
-  margin: 18px 0 4px;
+  margin: 0 0 4px;
 }
 .product-title {
   font-weight: 800;
