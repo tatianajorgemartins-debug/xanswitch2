@@ -1,13 +1,13 @@
 'use client';
 
-// Modal de conta do cliente: login por e-mail (link mágico, sem senha),
-// campo opcional de Instagram, e a lista de desejos de quem está logado.
-// Reaproveita o mesmo "esqueleto" de modal do PurchaseModal.tsx (fundo
-// escurecido, fecha com Esc ou clicando fora, trava o scroll da página).
+// Modal de conta do cliente: login com e-mail e senha, campo opcional de
+// Instagram, e a lista de desejos de quem está logado. Reaproveita o
+// mesmo "esqueleto" de modal do PurchaseModal.tsx (fundo escurecido,
+// fecha com Esc ou clicando fora, trava o scroll da página).
 import { useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import type { Item } from './CatalogClient';
-import { sendMagicLink, signOut, getInstagramHandle, saveInstagramHandle } from '@/lib/wishlist';
+import { signUp, signIn, signOut, getInstagramHandle, saveInstagramHandle } from '@/lib/wishlist';
 
 export default function AccountModal({
   open,
@@ -80,36 +80,69 @@ export default function AccountModal({
   );
 }
 
-// Tela de login: só um campo de e-mail. Sem senha — a pessoa recebe um
-// link no e-mail e, ao clicar, já entra logada automaticamente (se for a
-// primeira vez, a conta é criada nesse mesmo clique).
+// Traduz as mensagens de erro do Supabase (vêm em inglês) pras mais comuns
+// que um cliente pode ver aqui, sem gerar um texto técnico na tela dele.
+function translateAuthError(message: string): string {
+  const known: Record<string, string> = {
+    'Invalid login credentials': 'E-mail ou senha incorretos.',
+    'User already registered': 'Esse e-mail já tem uma conta — tenta entrar em vez de criar uma nova.',
+    'Password should be at least 6 characters': 'A senha precisa ter pelo menos 6 caracteres.',
+    'Email not confirmed': 'Esse e-mail ainda não foi confirmado — verifica sua caixa de entrada.'
+  };
+  return known[message] ?? message;
+}
+
+// Tela de entrar/criar conta: só e-mail e senha, sem link nenhum pra
+// clicar. Alterna entre os dois modos (entrar / criar conta) no mesmo
+// formulário. Quando o login/cadastro dá certo, essa tela nem chega a
+// mostrar nada — o AccountModal já troca sozinho pra LoggedInView assim
+// que o `user` muda lá em cima, no CatalogClient.
 function LoginForm() {
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [password, setPassword] = useState('');
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'needsConfirmation' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+
+  function switchMode(next: 'login' | 'signup') {
+    setMode(next);
+    setStatus('idle');
+    setErrorMessage('');
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setStatus('sending');
+    setStatus('submitting');
     try {
-      await sendMagicLink(email.trim());
-      setStatus('sent');
+      if (mode === 'signup') {
+        const { confirmedImmediately } = await signUp(email.trim(), password);
+        if (!confirmedImmediately) {
+          // Só acontece se "Confirm email" ainda estiver ligado no
+          // Supabase (veja o README) — a conta foi criada, mas precisa
+          // confirmar o e-mail antes de conseguir entrar.
+          setStatus('needsConfirmation');
+          return;
+        }
+      } else {
+        await signIn(email.trim(), password);
+      }
+      setStatus('idle');
     } catch (err) {
       setStatus('error');
-      setErrorMessage(err instanceof Error ? err.message : 'Não foi possível enviar o link.');
+      setErrorMessage(translateAuthError(err instanceof Error ? err.message : 'Não foi possível continuar.'));
     }
   }
 
-  if (status === 'sent') {
+  if (status === 'needsConfirmation') {
     return (
       <div style={{ textAlign: 'center', padding: '10px 0' }}>
         <p style={{ fontSize: 34, marginBottom: 10 }}>✉️</p>
         <p style={{ fontWeight: 700, fontSize: 15, color: 'var(--ink)', marginBottom: 6 }}>
-          Enviamos um link pro seu e-mail!
+          Falta confirmar seu e-mail
         </p>
         <p style={{ fontSize: 13.5, color: 'var(--ink-dim)', lineHeight: 1.5 }}>
           Abre a caixa de entrada de <strong style={{ color: 'var(--ink)' }}>{email}</strong> e clica no
-          link — você já entra automaticamente, sem precisar de senha.
+          link de confirmação pra poder entrar.
         </p>
       </div>
     );
@@ -118,8 +151,9 @@ function LoginForm() {
   return (
     <form onSubmit={handleSubmit}>
       <p style={{ fontSize: 13.5, color: 'var(--ink-dim)', lineHeight: 1.5, marginBottom: 16 }}>
-        Entre com seu e-mail pra salvar jogos na sua lista de desejos. Sem senha — a gente manda um
-        link de acesso direto pra sua caixa de entrada.
+        {mode === 'signup'
+          ? 'Cria sua conta com e-mail e senha pra salvar jogos na sua lista de desejos.'
+          : 'Entre com seu e-mail e senha pra ver sua lista de desejos.'}
       </p>
       <label htmlFor="account-email">Seu e-mail</label>
       <input
@@ -129,16 +163,46 @@ function LoginForm() {
         placeholder="voce@email.com"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        disabled={status === 'sending'}
+        disabled={status === 'submitting'}
+        style={{ marginBottom: 14 }}
+      />
+      <label htmlFor="account-password">Sua senha</label>
+      <input
+        id="account-password"
+        type="password"
+        required
+        minLength={6}
+        placeholder="Pelo menos 6 caracteres"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        disabled={status === 'submitting'}
+        autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
       />
       {status === 'error' && (
         <p style={{ color: '#ff8a8a', fontSize: 13, fontWeight: 600, margin: '10px 0 0' }}>{errorMessage}</p>
       )}
       <div className="purchase-modal-actions" style={{ marginTop: 16 }}>
-        <button type="submit" className="btn primary" disabled={status === 'sending'}>
-          {status === 'sending' ? 'Enviando...' : 'Enviar link de acesso'}
+        <button type="submit" className="btn primary" disabled={status === 'submitting'}>
+          {status === 'submitting' ? 'Só um instante...' : mode === 'signup' ? 'Criar conta' : 'Entrar'}
         </button>
       </div>
+      <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--ink-dim)', marginTop: 4 }}>
+        {mode === 'signup' ? (
+          <>
+            Já tem conta?{' '}
+            <button type="button" className="account-mode-switch" onClick={() => switchMode('login')}>
+              Entrar
+            </button>
+          </>
+        ) : (
+          <>
+            Ainda não tem conta?{' '}
+            <button type="button" className="account-mode-switch" onClick={() => switchMode('signup')}>
+              Criar conta
+            </button>
+          </>
+        )}
+      </p>
     </form>
   );
 }

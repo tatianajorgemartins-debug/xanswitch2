@@ -10,15 +10,29 @@
 import type { User } from '@supabase/supabase-js';
 import { getSupabaseBrowser } from './supabaseBrowser';
 
-// Manda o "link mágico" pro e-mail informado. Não existe senha nesse tipo
-// de login — a pessoa clica no link do e-mail e já entra logada. Se o
-// e-mail nunca foi usado antes, a conta é criada automaticamente nesse
-// mesmo passo (não tem uma etapa separada de "cadastro").
-export async function sendMagicLink(email: string): Promise<void> {
-  const { error } = await getSupabaseBrowser().auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: window.location.origin }
-  });
+// Cria a conta com e-mail e senha, direto no site — sem link nenhum pra
+// clicar. (Antes era um "link mágico" por e-mail, mas isso dava problema
+// quando o cliente abria o link em um navegador ou aparelho diferente de
+// onde pediu o login — o Supabase amarra esse link ao navegador de
+// origem. E-mail + senha não tem esse problema.)
+//
+// Se o seu projeto Supabase estiver com a opção "Confirm email" ligada
+// (Authentication → Providers → Email), essa função ainda cria a conta,
+// mas a pessoa só consegue entrar depois de clicar num link de
+// confirmação — o que reintroduz o mesmo problema. Por isso o passo a
+// passo do README pede pra deixar essa opção DESLIGADA: assim, ao criar a
+// conta, a pessoa já entra na hora, sem etapa nenhuma de e-mail.
+export async function signUp(email: string, password: string): Promise<{ confirmedImmediately: boolean }> {
+  const { data, error } = await getSupabaseBrowser().auth.signUp({ email, password });
+  if (error) throw new Error(error.message);
+  // Se "Confirm email" estiver desligado no Supabase, já vem uma sessão
+  // pronta aqui. Se estiver ligado, data.session vem vazio (a pessoa
+  // precisa confirmar o e-mail antes de conseguir entrar).
+  return { confirmedImmediately: !!data.session };
+}
+
+export async function signIn(email: string, password: string): Promise<void> {
+  const { error } = await getSupabaseBrowser().auth.signInWithPassword({ email, password });
   if (error) throw new Error(error.message);
 }
 

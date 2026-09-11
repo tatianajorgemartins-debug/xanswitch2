@@ -138,12 +138,14 @@ com plano gratuito próprio.
    lista de desejos", mais abaixo). Sem rodar essa migração, o botão de
    conta no site continua aparecendo, mas ninguém consegue logar de
    verdade.
-7. Por padrão, o Supabase manda o e-mail do link mágico de login com o
-   remetente `noreply@mail.app.supabase.io` e um limite baixo de e-mails
-   por hora — funciona bem pra testar, mas em produção, se muitos clientes
-   forem logar no mesmo dia, alguns e-mails podem demorar ou não chegar.
-   Se isso acontecer, o Supabase explica como configurar um remetente
-   próprio em **Authentication** → **Emails** → **SMTP Settings**.
+7. **Importante:** ainda no Supabase, vá em **Authentication** →
+   **Providers** (ou **Sign In / Providers**, em telas mais antigas) →
+   **Email**, e deixe a opção **"Confirm email" DESLIGADA**. O login do
+   site é com e-mail e senha direto na hora — sem mandar nenhum e-mail de
+   confirmação — e essa opção precisa estar desligada pra funcionar assim.
+   Se ficar ligada, o cliente cria a conta mas só consegue entrar depois
+   de clicar num link de confirmação, o que pode falhar se ele abrir esse
+   link num navegador ou aparelho diferente de onde criou a conta.
 
 ---
 
@@ -275,11 +277,14 @@ No canto superior direito do site (ao lado do Instagram e do WhatsApp) tem
 um ícone de pessoa — é por ali que o cliente entra na conta dele e vê a
 lista de jogos que favoritou.
 
-**O login é só por e-mail, sem senha ("link mágico"):** o cliente digita o
-e-mail, o Supabase manda um link pra caixa de entrada dele, e ao clicar
-nesse link ele já entra logado — automaticamente, na primeira vez, cria a
-conta também. Não existe senha pra ninguém esquecer ou você ter que
-resetar.
+**O login é com e-mail e senha, direto no site:** o cliente escolhe uma
+senha (mínimo 6 caracteres) ao criar a conta e usa e-mail + senha pra
+entrar depois — sem nenhum link ou e-mail de confirmação no meio do
+caminho. (A primeira versão disso usava "link mágico" — um link que
+chegava por e-mail — mas isso dava problema quando o cliente abria o link
+num navegador ou aparelho diferente de onde tinha pedido o login. E-mail e
+senha resolve isso, desde que a opção "Confirm email" esteja desligada no
+Supabase — ver Passo 4, item 7.)
 
 **Por que não é login com Instagram de verdade:** perguntei sobre isso —
 hoje em dia não existe nenhum jeito oficial de "Entrar com o Instagram"
@@ -433,7 +438,7 @@ app/
   page.tsx              → catálogo público (busca + cards + dados de cada jogo)
   CatalogClient.tsx      → a parte interativa do catálogo público (abre o modal de compra, login, lista de desejos)
   PurchaseModal.tsx       → o modal de compra (resumo → checklist → Pix → WhatsApp)
-  AccountModal.tsx         → o popup de login (link mágico) e da lista de desejos do cliente
+  AccountModal.tsx         → o popup de login (e-mail e senha) e da lista de desejos do cliente
   SiteHeader.tsx           → logo + ícone de conta (com o número da lista de desejos) + redes sociais
   orderActions.ts          → Server Action que registra cada tentativa de compra
   layout.tsx, globals.css → visual (cores, fontes, estilo geral, CSS do modal de compra e do popup de conta)
@@ -448,7 +453,7 @@ app/
 lib/
   db.ts               → funções que conversam com o banco de dados (catálogo, Postgres/Neon)
   auth.ts             → login/sessão (senha + cookie assinado) — usado por /admin
-  wishlist.ts          → login do cliente (link mágico) e lista de desejos — roda no navegador, fala direto com o Supabase
+  wishlist.ts          → login do cliente (e-mail e senha) e lista de desejos — roda no navegador, fala direto com o Supabase
   whatsapp.ts         → monta os links do WhatsApp (contato do cabeçalho e confirmação de pagamento)
   pix.ts              → monta o Pix (BR Code + QR Code) usando seus dados de recebedor
   color.ts            → escolhe texto claro/escuro pra contrastar com a cor da etiqueta
