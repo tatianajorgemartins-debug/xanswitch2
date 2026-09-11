@@ -896,7 +896,8 @@ textarea:focus {
 
 input[type='text'],
 input[type='number'],
-input[type='password'] {
+input[type='password'],
+input[type='email'] {
   width: 100%;
   background: var(--bg-dark);
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -1519,4 +1520,224 @@ label {
     width: 38px;
     height: 38px;
   }
+}
+
+/* ==========================================================================
+   Conta do cliente e lista de desejos (AccountModal.tsx, SiteHeader.tsx,
+   coração de favoritar no CatalogClient.tsx). O rosa/vermelho aqui é uma cor
+   nova, só pra "desejo" — separada do roxo/verde da marca, pra não competir
+   com o botão de comprar (verde) nem com os detalhes decorativos (roxo).
+   ========================================================================== */
+:root {
+  --wishlist-pink: #ff5c8a;
+  --wishlist-pink-glow: rgba(255, 92, 138, 0.45);
+}
+
+/* Botão de conta no cabeçalho — mesmo tamanho/estilo do .social-icon, com um
+   selinho de contagem (quantos jogos estão na lista de desejos) por cima. */
+.account-button {
+  position: relative;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid rgba(164, 99, 255, 0.35);
+  background: var(--panel);
+  color: var(--ink-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.account-button svg {
+  width: 18px;
+  height: 18px;
+}
+.account-button:hover {
+  border-color: var(--green);
+  color: var(--green);
+  background: rgba(78, 240, 95, 0.08);
+}
+.account-button-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--wishlist-pink);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 17px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--panel);
+}
+@media (max-width: 480px) {
+  .account-button {
+    width: 30px;
+    height: 30px;
+  }
+  .account-button svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* Coração de favoritar em cima da capa do card (grade) — círculo escuro
+   translúcido flutuando no canto superior direito, oposto à faixa de selo
+   (que fica no canto superior esquerdo). */
+.wishlist-heart-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(10, 7, 22, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, transform 0.1s;
+}
+.wishlist-heart-button:hover {
+  background: rgba(10, 7, 22, 0.8);
+  transform: scale(1.08);
+}
+.wishlist-heart-button.active {
+  color: var(--wishlist-pink);
+}
+.wishlist-heart-button.active svg {
+  filter: drop-shadow(0 0 6px var(--wishlist-pink-glow));
+}
+
+/* Mesmo coração, só que na visão em lista — não flutua sobre imagem
+   nenhuma, então fica sem fundo, alinhado com o resto da linha. */
+.wishlist-heart-button.list-row-heart {
+  position: static;
+  flex: none;
+  background: none;
+  width: 26px;
+  height: 26px;
+  color: var(--ink-dim);
+}
+.wishlist-heart-button.list-row-heart:hover {
+  background: rgba(255, 92, 138, 0.12);
+  transform: none;
+}
+.wishlist-heart-button.list-row-heart.active {
+  color: var(--wishlist-pink);
+}
+
+/* Popup de login/conta — mesmo "esqueleto" visual do modal de compra
+   (.purchase-modal), só que mais estreito porque o conteúdo aqui é bem mais
+   simples (um campo de e-mail, ou a lista de desejos). */
+.account-modal {
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid rgba(164, 99, 255, 0.35);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: purchase-pop-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (max-width: 480px) {
+  .account-modal {
+    max-width: 100%;
+  }
+}
+
+/* Lista de desejos dentro do popup — uma linha por jogo, com miniatura da
+   capa, nome, preço, e um X pra remover sem precisar abrir o jogo. */
+.wishlist-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.wishlist-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.wishlist-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  padding: 6px;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: background 0.15s;
+}
+.wishlist-row-main:hover {
+  background: rgba(164, 99, 255, 0.1);
+}
+.wishlist-row-cover {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-dark);
+}
+.wishlist-row-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.wishlist-row-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.wishlist-row-name {
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wishlist-row-price {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--green);
+}
+.wishlist-row-remove {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: none;
+  background: none;
+  color: var(--ink-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.wishlist-row-remove:hover {
+  background: rgba(255, 92, 138, 0.12);
+  color: var(--wishlist-pink);
 }

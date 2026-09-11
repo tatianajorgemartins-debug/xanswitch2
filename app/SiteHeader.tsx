@@ -1,8 +1,20 @@
 'use client';
 
+import type { User } from '@supabase/supabase-js';
+
 const INSTAGRAM_URL = 'https://instagram.com/xan.switch';
 
-export default function SiteHeader({ whatsappContactUrl }: { whatsappContactUrl: string | null }) {
+export default function SiteHeader({
+  whatsappContactUrl,
+  user,
+  wishlistCount,
+  onOpenAccount
+}: {
+  whatsappContactUrl: string | null;
+  user: User | null;
+  wishlistCount: number;
+  onOpenAccount: () => void;
+}) {
   return (
     <div className="site-header">
       <div className="site-header-logo">
@@ -11,6 +23,20 @@ export default function SiteHeader({ whatsappContactUrl }: { whatsappContactUrl:
       </div>
 
       <div className="site-header-icons">
+        <button
+          type="button"
+          className="account-button"
+          onClick={onOpenAccount}
+          aria-label={user ? 'Minha conta' : 'Entrar'}
+          title={user ? 'Minha conta' : 'Entrar'}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="8" r="3.4" />
+            <path d="M4.5 20c1.4-3.8 4.4-6 7.5-6s6.1 2.2 7.5 6" strokeLinecap="round" />
+          </svg>
+          {wishlistCount > 0 && <span className="account-button-badge">{wishlistCount}</span>}
+        </button>
+
         <a
           href={INSTAGRAM_URL}
           target="_blank"

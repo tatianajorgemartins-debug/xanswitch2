@@ -131,6 +131,19 @@ com plano gratuito próprio.
    evitar que o Supabase pause seu projeto por "inatividade" (explico
    melhor logo abaixo, na seção "Por que existe uma rotina diária de
    manutenção").
+6. Ainda no **SQL Editor**, abra **"New query"** de novo, cole o conteúdo
+   do arquivo `db/migration-wishlist.sql` deste projeto e clique em **Run**.
+   Isso cria as tabelas usadas pelo login do cliente e pela lista de
+   desejos (explico como isso funciona na seção "Como funciona o login e a
+   lista de desejos", mais abaixo). Sem rodar essa migração, o botão de
+   conta no site continua aparecendo, mas ninguém consegue logar de
+   verdade.
+7. Por padrão, o Supabase manda o e-mail do link mágico de login com o
+   remetente `noreply@mail.app.supabase.io` e um limite baixo de e-mails
+   por hora — funciona bem pra testar, mas em produção, se muitos clientes
+   forem logar no mesmo dia, alguns e-mails podem demorar ou não chegar.
+   Se isso acontecer, o Supabase explica como configurar um remetente
+   próprio em **Authentication** → **Emails** → **SMTP Settings**.
 
 ---
 
@@ -256,6 +269,51 @@ continua sendo você ver o Pix cair na sua conta.
 
 ---
 
+## Como funciona o login e a lista de desejos
+
+No canto superior direito do site (ao lado do Instagram e do WhatsApp) tem
+um ícone de pessoa — é por ali que o cliente entra na conta dele e vê a
+lista de jogos que favoritou.
+
+**O login é só por e-mail, sem senha ("link mágico"):** o cliente digita o
+e-mail, o Supabase manda um link pra caixa de entrada dele, e ao clicar
+nesse link ele já entra logado — automaticamente, na primeira vez, cria a
+conta também. Não existe senha pra ninguém esquecer ou você ter que
+resetar.
+
+**Por que não é login com Instagram de verdade:** perguntei sobre isso —
+hoje em dia não existe nenhum jeito oficial de "Entrar com o Instagram"
+pra um site como esse (nem o Supabase nem praticamente nenhum provedor de
+login oferece isso pro Instagram). Por isso, o Instagram vira um campo
+opcional que o cliente preenche depois de logado (dentro do mesmo popup) —
+assim você ainda consegue ver o @ de quem favoritou cada jogo, só que como
+informação de perfil, não como forma de login.
+
+**A lista de desejos:** em cada jogo do catálogo (tanto na grade quanto na
+lista) tem um coração — clicando, o jogo entra ou sai da lista de desejos
+do cliente. Se ninguém estiver logado, clicar no coração abre o popup de
+login em vez de favoritar (sem conta não tem como saber de quem é a lista).
+O número ao lado do ícone de pessoa no cabeçalho mostra quantos jogos o
+cliente logado tem na lista dele no momento.
+
+**Onde você vê quais são os jogos mais desejados:** no admin, no botão
+**"❤️ Mais desejados"** — um ranking com todos os jogos que já foram
+favoritados por pelo menos um cliente, do mais pro menos desejado, com a
+contagem de quantas pessoas favoritaram cada um. É esse número que ajuda a
+decidir quais jogos vale a pena ter sempre em estoque, colocar em
+promoção, ou destacar na página inicial.
+
+**Onde ficam guardados esses dados:** diferente dos jogos e comentários
+(que ficam no banco Neon), a conta do cliente e a lista de desejos ficam
+guardadas no mesmo projeto Supabase que já guarda as imagens — numa parte
+diferente dele (o banco de dados do Supabase, não o Storage). Cada cliente
+só consegue ver a própria lista — nunca a de outra pessoa — porque o banco
+tem uma trava de segurança (chamada "Row Level Security") configurada
+direto nas tabelas, então mesmo se alguém tentasse burlar o site pelo
+navegador, não conseguiria ler a lista de outro cliente.
+
+---
+
 ## Por que as imagens são comprimidas automaticamente
 
 O que "pesa" no armazenamento de imagens não é o espaço ocupado pelos
@@ -373,13 +431,15 @@ Abre em `http://localhost:3000`.
 ```
 app/
   page.tsx              → catálogo público (busca + cards + dados de cada jogo)
-  CatalogClient.tsx      → a parte interativa do catálogo público (abre o modal de compra)
+  CatalogClient.tsx      → a parte interativa do catálogo público (abre o modal de compra, login, lista de desejos)
   PurchaseModal.tsx       → o modal de compra (resumo → checklist → Pix → WhatsApp)
+  AccountModal.tsx         → o popup de login (link mágico) e da lista de desejos do cliente
+  SiteHeader.tsx           → logo + ícone de conta (com o número da lista de desejos) + redes sociais
   orderActions.ts          → Server Action que registra cada tentativa de compra
-  layout.tsx, globals.css → visual (cores, fontes, estilo geral, CSS do modal de compra)
+  layout.tsx, globals.css → visual (cores, fontes, estilo geral, CSS do modal de compra e do popup de conta)
   admin/
     page.tsx             → painel admin (protegido)
-    AdminClient.tsx       → toda a interface do admin (grade, formulário, pedidos, etc)
+    AdminClient.tsx       → toda a interface do admin (grade, formulário, pedidos, mais desejados, etc)
     actions.ts            → as ações de adicionar/editar/arquivar/excluir/registrar pedido
     login/page.tsx         → tela de login
   api/
@@ -388,19 +448,21 @@ app/
 lib/
   db.ts               → funções que conversam com o banco de dados (catálogo, Postgres/Neon)
   auth.ts             → login/sessão (senha + cookie assinado) — usado por /admin
+  wishlist.ts          → login do cliente (link mágico) e lista de desejos — roda no navegador, fala direto com o Supabase
   whatsapp.ts         → monta os links do WhatsApp (contato do cabeçalho e confirmação de pagamento)
   pix.ts              → monta o Pix (BR Code + QR Code) usando seus dados de recebedor
   color.ts            → escolhe texto claro/escuro pra contrastar com a cor da etiqueta
   imageResize.ts       → comprime a capa do jogo no servidor antes de salvar (usa a lib "sharp")
   imageCompression.ts  → comprime as capturas de tela no navegador antes de enviar (usa <canvas>)
-  supabaseAdmin.ts      → sobe/apaga imagens no Supabase Storage (usa a chave secreta — só roda no servidor)
-  supabaseBrowser.ts    → faz o upload da captura de tela direto do navegador pro Supabase
+  supabaseAdmin.ts      → sobe/apaga imagens e lê a contagem de "mais desejados" no Supabase (chave secreta — só roda no servidor)
+  supabaseBrowser.ts    → cliente Supabase do navegador — upload de captura de tela, login e lista de desejos
   supabaseImagesConfig.ts → só o nome do bucket, compartilhado entre os dois arquivos acima
 scripts/migrate-images-to-supabase.mjs → migração única das imagens do Vercel Blob pro Supabase
 db/schema.sql                 → cria as tabelas do catálogo (jogos, avaliações, pedidos etc) — rodado uma vez no Neon
 db/migration-orders.sql        → só a tabela de pedidos, caso o site já exista e você só precise adicionar essa parte
 db/migration-game-details.sql → só a descrição/capturas de tela, mesmo caso acima
 db/migration-supabase-keepalive.sql → cria a tabela usada pela rotina diária (roda no Supabase, não no Neon)
+db/migration-wishlist.sql     → cria as tabelas de conta do cliente e lista de desejos (roda no Supabase, não no Neon)
 proxy.ts       → protege a página /admin (redireciona pro login se não tiver sessão)
 vercel.json    → agenda a rotina diária de manutenção (cron job)
 ```

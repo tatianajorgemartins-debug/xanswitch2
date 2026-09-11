@@ -27,18 +27,21 @@ export default function AdminClient({
   initialGames,
   visitCount,
   reviews,
-  orders
+  orders,
+  wishlistCounts
 }: {
   initialGames: Game[];
   visitCount: number;
   reviews: Review[];
   orders: Order[];
+  wishlistCounts: Record<number, number>;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [showReviewsPanel, setShowReviewsPanel] = useState(false);
   const [showOrdersPanel, setShowOrdersPanel] = useState(false);
+  const [showWishlistPanel, setShowWishlistPanel] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingGame, setEditingGame] = useState<Game | null>(null);
 
@@ -107,6 +110,17 @@ export default function AdminClient({
   }
 
   const pendingReviewCount = useMemo(() => reviews.filter((r) => !r.approved).length, [reviews]);
+
+  // Ranking de "mais desejados" — cruza a contagem que vem do Supabase
+  // (wishlistCounts, um total por game_id) com os dados do jogo em si
+  // (nome, capa, preço), que ficam no Neon. Só entram jogos com pelo menos
+  // 1 favorito, do mais pro menos desejado.
+  const mostWantedGames = useMemo(() => {
+    return games
+      .map((g) => ({ game: g, count: wishlistCounts[g.id] ?? 0 }))
+      .filter((entry) => entry.count > 0)
+      .sort((a, b) => b.count - a.count);
+  }, [games, wishlistCounts]);
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 20px 80px' }}>
@@ -182,6 +196,9 @@ export default function AdminClient({
         <button className="btn ghost" onClick={() => setShowOrdersPanel((s) => !s)}>
           📋 Pedidos ({orders.length})
         </button>
+        <button className="btn ghost" onClick={() => setShowWishlistPanel((s) => !s)}>
+          ❤️ Mais desejados ({mostWantedGames.length})
+        </button>
       </div>
 
       {showReviewsPanel && (
@@ -194,6 +211,8 @@ export default function AdminClient({
       )}
 
       {showOrdersPanel && <OrdersPanel orders={orders} onDelete={handleDeleteOrder} />}
+
+      {showWishlistPanel && <WishlistPanel entries={mostWantedGames} />}
 
       {panelOpen && (
         <GameFormPanel
@@ -563,6 +582,74 @@ function OrdersPanel({ orders, onDelete }: { orders: Order[]; onDelete: (id: num
               <button className="btn ghost" onClick={() => onDelete(o.id)} style={{ flex: 'none' }}>
                 🗑
               </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WishlistPanel({ entries }: { entries: { game: Game; count: number }[] }) {
+  return (
+    <div
+      style={{
+        background: 'var(--panel)',
+        border: '1px solid rgba(164,99,255,.25)',
+        borderRadius: 14,
+        padding: 16,
+        marginBottom: 20
+      }}
+    >
+      <h4 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--ink-dim)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+        Jogos mais favoritados pelos clientes (mais desejado primeiro)
+      </h4>
+      {entries.length === 0 ? (
+        <p style={{ color: 'var(--ink-dim)', fontSize: 14, padding: '6px 2px', margin: 0 }}>
+          Ninguém favoritou nenhum jogo ainda.
+        </p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {entries.map(({ game, count }, index) => (
+            <div
+              key={game.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '8px 4px',
+                borderBottom: '1px solid rgba(255,255,255,.06)'
+              }}
+            >
+              <span style={{ flex: 'none', width: 22, textAlign: 'center', color: 'var(--ink-dim)', fontSize: 13, fontWeight: 700 }}>
+                {index + 1}º
+              </span>
+              {game.image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={game.image_url}
+                  alt=""
+                  style={{ width: 34, height: 34, borderRadius: 6, objectFit: 'cover', flex: 'none' }}
+                />
+              ) : (
+                <span style={{ width: 34, height: 34, borderRadius: 6, background: 'var(--panel-2)', flex: 'none' }} />
+              )}
+              <strong style={{ fontSize: 14, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {game.name}
+              </strong>
+              <span
+                style={{
+                  flex: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  color: '#ff5c8a',
+                  fontWeight: 800,
+                  fontSize: 13.5
+                }}
+              >
+                ❤️ {count}
+              </span>
             </div>
           ))}
         </div>

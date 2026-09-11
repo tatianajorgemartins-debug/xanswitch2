@@ -1,13 +1,16 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { User } from '@supabase/supabase-js';
 import { getContrastColor } from '@/lib/color';
 import type { Platform, GameType } from '@/lib/db';
+import { getCurrentUser, onAuthChange, getWishlistGameIds, addToWishlist, removeFromWishlist } from '@/lib/wishlist';
 import SiteHeader from './SiteHeader';
 import PromoSection from './PromoSection';
 import ReviewsSection from './ReviewsSection';
 import ReviewForm from './ReviewForm';
 import PurchaseModal from './PurchaseModal';
+import AccountModal from './AccountModal';
 
 export type Item = {
   id: number;
@@ -79,6 +82,14 @@ export default function CatalogClient({
   // Item aqui, fechar é voltar pra null. Nada de navegação/URL nova.
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
 
+  // Conta do cliente (login por e-mail) e lista de desejos dele. `user` fica
+  // null enquanto ninguém logou. `wishlistIds` guarda só os ids dos jogos
+  // favoritados, pra checar rapidinho (Set.has) se cada card deve mostrar o
+  // coração preenchido ou vazio.
+  const [user, setUser] = useState<User | null>(null);
+  const [wishlistIds, setWishlistIds] = useState<Set<number>>(new Set());
+  const [accountModalOpen, setAccountModalOpen] = useState(false);
+
   useEffect(() => {
     function onScroll() {
       setShowBackToTop(window.scrollY > 400);
@@ -86,6 +97,65 @@ export default function CatalogClient({
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  // Checa quem está logado assim que a página carrega, e continua escutando
+  // pra qualquer mudança (login, logout, ou o clique no link mágico do
+  // e-mail confirmando o login em outra aba).
+  useEffect(() => {
+    getCurrentUser()
+      .then(setUser)
+      .catch(() => {});
+    return onAuthChange(setUser);
+  }, []);
+
+  // Sempre que alguém loga, busca a lista de desejos dela no Supabase. Ao
+  // deslogar, some com a lista local também (senão ficaria mostrando os
+  // favoritos de quem acabou de sair pra quem entrar depois no mesmo
+  // navegador).
+  useEffect(() => {
+    if (!user) {
+      setWishlistIds(new Set());
+      return;
+    }
+    getWishlistGameIds()
+      .then((ids) => setWishlistIds(new Set(ids)))
+      .catch(() => {});
+  }, [user]);
+
+  // Alterna um jogo na lista de desejos. Se ninguém estiver logado, abre o
+  // popup de login em vez de tentar salvar (não tem lista de desejos sem
+  // conta). Atualiza o estado local na hora (otimista) pro coração responder
+  // no mesmo clique, sem esperar a resposta do servidor.
+  async function toggleWishlist(gameId: number) {
+    if (!user) {
+      setAccountModalOpen(true);
+      return;
+    }
+    const alreadyIn = wishlistIds.has(gameId);
+    setWishlistIds((prev) => {
+      const next = new Set(prev);
+      if (alreadyIn) next.delete(gameId);
+      else next.add(gameId);
+      return next;
+    });
+    try {
+      if (alreadyIn) await removeFromWishlist(gameId);
+      else await addToWishlist(gameId);
+    } catch {
+      // Se der erro, desfaz a mudança otimista.
+      setWishlistIds((prev) => {
+        const next = new Set(prev);
+        if (alreadyIn) next.add(gameId);
+        else next.delete(gameId);
+        return next;
+      });
+    }
+  }
+
+  const wishlistItems = useMemo(
+    () => items.filter((it) => wishlistIds.has(it.id)),
+    [items, wishlistIds]
+  );
 
   const franchises = useMemo(() => {
     const set = new Set<string>();
@@ -155,7 +225,12 @@ export default function CatalogClient({
     <>
       <header className="site-header-bar">
         <div className="site-header-bar-inner">
-          <SiteHeader whatsappContactUrl={whatsappContactUrl} />
+          <SiteHeader
+            whatsappContactUrl={whatsappContactUrl}
+            user={user}
+            wishlistCount={wishlistIds.size}
+            onOpenAccount={() => setAccountModalOpen(true)}
+          />
         </div>
       </header>
 
@@ -363,13 +438,25 @@ export default function CatalogClient({
       ) : viewMode === 'grid' ? (
         <div className="catalog-grid">
           {filtered.map((item) => (
-            <GameCard key={item.id} item={item} onSelect={() => setSelectedItem(item)} />
+            <GameCard
+              key={item.id}
+              item={item}
+              onSelect={() => setSelectedItem(item)}
+              wishlisted={wishlistIds.has(item.id)}
+              onToggleWishlist={() => toggleWishlist(item.id)}
+            />
           ))}
         </div>
       ) : (
         <div className="catalog-list">
           {filtered.map((item) => (
-            <ListRow key={item.id} item={item} onSelect={() => setSelectedItem(item)} />
+            <ListRow
+              key={item.id}
+              item={item}
+              onSelect={() => setSelectedItem(item)}
+              wishlisted={wishlistIds.has(item.id)}
+              onToggleWishlist={() => toggleWishlist(item.id)}
+            />
           ))}
         </div>
       )}
@@ -378,6 +465,17 @@ export default function CatalogClient({
           Ele fica fora do fluxo normal da página (position: fixed no CSS),
           então não bagunça o layout do catálogo por trás dele. */}
       {selectedItem && <PurchaseModal item={selectedItem} onClose={() => setSelectedItem(null)} />}
+
+      {/* Popup de login/conta — mesma lógica: só existe na tela quando
+          aberto, fica por cima de tudo via position: fixed. */}
+      <AccountModal
+        open={accountModalOpen}
+        onClose={() => setAccountModalOpen(false)}
+        user={user}
+        wishlistItems={wishlistItems}
+        onOpenGame={setSelectedItem}
+        onRemoveFromWishlist={toggleWishlist}
+      />
 
       {showBackToTop && (
         <button
@@ -410,15 +508,33 @@ export default function CatalogClient({
   );
 }
 
-function GameCard({ item, onSelect }: { item: Item; onSelect: () => void }) {
+function GameCard({
+  item,
+  onSelect,
+  wishlisted,
+  onToggleWishlist
+}: {
+  item: Item;
+  onSelect: () => void;
+  wishlisted: boolean;
+  onToggleWishlist: () => void;
+}) {
   return (
-    // Antes esse card era um link <a> que abria o WhatsApp direto. Agora ele
-    // só abre o modal de compra (que fica na mesma página) — por isso virou
-    // um <button>, que é o elemento certo pra algo clicável que NÃO navega
-    // pra lugar nenhum.
-    <button
-      type="button"
+    // Esse card precisa conter DOIS elementos clicáveis (o card inteiro, que
+    // abre o modal de compra, e o coração de favoritar) — HTML não permite
+    // um <button> dentro de outro <button>, então o card virou uma <div>
+    // com role="button" (pra continuar acessível: leitor de tela anuncia
+    // como botão, e o teclado consegue ativar com Enter/Espaço).
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
       style={{
         textDecoration: 'none',
         color: 'inherit',
@@ -428,10 +544,26 @@ function GameCard({ item, onSelect }: { item: Item; onSelect: () => void }) {
         padding: 0,
         textAlign: 'left',
         font: 'inherit',
-        width: '100%'
+        width: '100%',
+        position: 'relative'
       }}
     >
       <div className="cover-frame">
+        <button
+          type="button"
+          className={`wishlist-heart-button${wishlisted ? ' active' : ''}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleWishlist();
+          }}
+          aria-label={wishlisted ? `Remover ${item.name} da lista de desejos` : `Adicionar ${item.name} à lista de desejos`}
+          title={wishlisted ? 'Remover dos desejos' : 'Adicionar aos desejos'}
+        >
+          <svg viewBox="0 0 24 24" fill={wishlisted ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" width={16} height={16}>
+            <path d="M12 20.5s-7.5-4.6-10-9.3C.5 7.8 2.3 4.5 5.6 4c2-.3 3.9.6 5 2.3a5.3 5.3 0 015-2.3c3.3.5 5.1 3.8 3.6 7.2-2.5 4.7-10 9.3-10 9.3z" strokeLinejoin="round" />
+          </svg>
+        </button>
+
         {item.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -521,7 +653,7 @@ function GameCard({ item, onSelect }: { item: Item; onSelect: () => void }) {
           R$ {item.priceLabel}
         </p>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -536,7 +668,17 @@ const GAME_TYPE_TAG_LABEL: Partial<Record<GameType, string>> = {
   update: 'Atualização'
 };
 
-function ListRow({ item, onSelect }: { item: Item; onSelect: () => void }) {
+function ListRow({
+  item,
+  onSelect,
+  wishlisted,
+  onToggleWishlist
+}: {
+  item: Item;
+  onSelect: () => void;
+  wishlisted: boolean;
+  onToggleWishlist: () => void;
+}) {
   const typeLabel = GAME_TYPE_TAG_LABEL[item.gameType];
   const platformLabel = PLATFORM_TAG_LABEL[item.platform];
   // Avoid showing the same word twice when the seller's own badge already
@@ -545,9 +687,34 @@ function ListRow({ item, onSelect }: { item: Item; onSelect: () => void }) {
     item.hasBadge && item.badgeText.trim().toLowerCase() === platformLabel.toLowerCase();
 
   return (
-    // Assim como o GameCard, essa linha agora abre o modal de compra em vez
-    // de ir direto pro WhatsApp — por isso é um <button>, não um link <a>.
-    <button type="button" onClick={onSelect} className="list-row">
+    // Mesmo motivo do GameCard: precisa de um coração clicável dentro da
+    // linha, então a linha virou uma <div role="button"> em vez de <button>.
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+      className="list-row"
+    >
+      <button
+        type="button"
+        className={`wishlist-heart-button list-row-heart${wishlisted ? ' active' : ''}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleWishlist();
+        }}
+        aria-label={wishlisted ? `Remover ${item.name} da lista de desejos` : `Adicionar ${item.name} à lista de desejos`}
+        title={wishlisted ? 'Remover dos desejos' : 'Adicionar aos desejos'}
+      >
+        <svg viewBox="0 0 24 24" fill={wishlisted ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" width={16} height={16}>
+          <path d="M12 20.5s-7.5-4.6-10-9.3C.5 7.8 2.3 4.5 5.6 4c2-.3 3.9.6 5 2.3a5.3 5.3 0 015-2.3c3.3.5 5.1 3.8 3.6 7.2-2.5 4.7-10 9.3-10 9.3z" strokeLinejoin="round" />
+        </svg>
+      </button>
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
         <span
           style={{
@@ -596,6 +763,6 @@ function ListRow({ item, onSelect }: { item: Item; onSelect: () => void }) {
           R$ {item.priceLabel}
         </span>
       </span>
-    </button>
+    </div>
   );
 }

@@ -87,6 +87,26 @@ export async function createSignedUploadTicket(
   return data;
 }
 
+// Devolve quantas vezes cada jogo foi favoritado, dos mais pra menos
+// desejados. Usa a service role key de propósito, porque o Row Level
+// Security da tabela "wishlists" (db/migration-wishlist.sql) só deixa cada
+// cliente ver a PRÓPRIA lista — pra ver o total de todo mundo (o que
+// interessa aqui, pra saber quais jogos são mais procurados), precisa da
+// chave que ignora essa trava, e só o painel admin deveria ter acesso a
+// isso.
+export async function getWishlistCounts(): Promise<Map<number, number>> {
+  const { data, error } = await getAdminClient().from('wishlists').select('game_id');
+  if (error) {
+    throw new Error(`Falha ao buscar a lista de desejos: ${error.message}`);
+  }
+  const counts = new Map<number, number>();
+  for (const row of data ?? []) {
+    const gameId = row.game_id as number;
+    counts.set(gameId, (counts.get(gameId) ?? 0) + 1);
+  }
+  return counts;
+}
+
 // Insere uma linha na tabela "keepalive" (veja db/migration-supabase-keepalive.sql).
 // Usado pelo Cron Job diário em app/api/cron/keepalive/route.ts — sem isso,
 // o projeto gratuito do Supabase pode ser pausado por "inatividade" mesmo
