@@ -1,27 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
-
 const INSTAGRAM_URL = 'https://instagram.com/xan.switch';
 
-export default function SiteHeader({
-  musicUrl,
-  musicName,
-  whatsappContactUrl
-}: {
-  musicUrl: string | null;
-  musicName: string | null;
-  whatsappContactUrl: string | null;
-}) {
+export default function SiteHeader({ whatsappContactUrl }: { whatsappContactUrl: string | null }) {
   return (
     <div className="site-header">
       <div className="site-header-logo">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.png" alt="XAN Switch" />
-      </div>
-
-      <div className="site-header-center">
-        {musicUrl && <MusicPlayer musicUrl={musicUrl} musicName={musicName} />}
       </div>
 
       <div className="site-header-icons">
@@ -58,119 +44,6 @@ export default function SiteHeader({
             </svg>
           </a>
         )}
-      </div>
-    </div>
-  );
-}
-
-function MusicPlayer({ musicUrl, musicName }: { musicUrl: string; musicName: string | null }) {
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const nameBoxRef = useRef<HTMLDivElement>(null);
-  const nameTextRef = useRef<HTMLSpanElement>(null);
-  const [playing, setPlaying] = useState(false);
-  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
-  const [marquee, setMarquee] = useState<{ shift: number; duration: number } | null>(null);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.volume = 0.5;
-    audio
-      .play()
-      .then(() => setPlaying(true))
-      .catch(() => setAutoplayBlocked(true));
-  }, [musicUrl]);
-
-  // Pausing when the tab/window loses visibility also covers minimizing
-  // the browser — most browsers fire visibilitychange in that case too.
-  useEffect(() => {
-    function handleVisibilityChange() {
-      if (!document.hidden) return;
-      const audio = audioRef.current;
-      if (audio && !audio.paused) {
-        audio.pause();
-        setPlaying(false);
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
-
-  // Only scroll the track name if it's actually wider than its box —
-  // short names just sit still.
-  useEffect(() => {
-    function measure() {
-      const box = nameBoxRef.current;
-      const text = nameTextRef.current;
-      if (!box || !text) return;
-      const overflow = text.scrollWidth - box.clientWidth;
-      if (overflow > 4) {
-        setMarquee({ shift: overflow + 12, duration: 6 + overflow / 18 });
-      } else {
-        setMarquee(null);
-      }
-    }
-    measure();
-    window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
-  }, [musicName]);
-
-  function toggle() {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (playing) {
-      audio.pause();
-      setPlaying(false);
-    } else {
-      audio
-        .play()
-        .then(() => {
-          setPlaying(true);
-          setAutoplayBlocked(false);
-        })
-        .catch(() => {});
-    }
-  }
-
-  return (
-    <div className="music-player">
-      <audio ref={audioRef} src={musicUrl} loop />
-      <button
-        type="button"
-        className={`music-toggle${autoplayBlocked ? ' attention' : ''}`}
-        onClick={toggle}
-        aria-label={playing ? 'Pausar música' : 'Tocar música'}
-        title={playing ? 'Pausar' : 'Tocar'}
-      >
-        {playing ? (
-          <svg viewBox="0 0 24 24" fill="currentColor" width={14} height={14}>
-            <rect x="5" y="4" width="5" height="16" rx="1.5" />
-            <rect x="14" y="4" width="5" height="16" rx="1.5" />
-          </svg>
-        ) : (
-          <svg viewBox="0 0 24 24" fill="currentColor" width={14} height={14}>
-            <path d="M6 4.5v15l14-7.5-14-7.5z" />
-          </svg>
-        )}
-      </button>
-      <div className="music-info">
-        <span className="music-label">Música do dia</span>
-        <div className="music-name" ref={nameBoxRef}>
-          <span
-            ref={nameTextRef}
-            className={`music-name-track${marquee ? ' scrolling' : ''}`}
-            style={
-              marquee
-                ? ({
-                    '--marquee-shift': `-${marquee.shift}px`,
-                    animationDuration: `${marquee.duration}s`
-                  } as CSSProperties)
-                : undefined
-            }
-          >
-            {musicName}
-          </span>
-        </div>
       </div>
     </div>
   );

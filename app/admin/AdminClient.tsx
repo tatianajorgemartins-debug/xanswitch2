@@ -4,16 +4,16 @@ import { useMemo, useRef, useState, useEffect, useActionState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFormStatus } from 'react-dom';
 import { upload } from '@vercel/blob/client';
-import type { Game, MusicSettings, Review, Order } from '@/lib/db';
+import type { Game, Review, Order } from '@/lib/db';
 import { getContrastColor } from '@/lib/color';
 import { formatPriceBR } from '@/lib/whatsapp';
+import { compressImageFile } from '@/lib/imageCompression';
 import {
   createGameAction,
   updateGameAction,
   archiveGameAction,
   deleteGameAction,
   logoutAction,
-  saveMusicSettingsAction,
   approveReviewAction,
   deleteReviewAction,
   setReviewFeaturedAction,
@@ -25,13 +25,11 @@ const emptyFormState: GameFormState = { error: null };
 
 export default function AdminClient({
   initialGames,
-  music,
   visitCount,
   reviews,
   orders
 }: {
   initialGames: Game[];
-  music: MusicSettings;
   visitCount: number;
   reviews: Review[];
   orders: Order[];
@@ -39,7 +37,6 @@ export default function AdminClient({
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
-  const [showMusicPanel, setShowMusicPanel] = useState(false);
   const [showReviewsPanel, setShowReviewsPanel] = useState(false);
   const [showOrdersPanel, setShowOrdersPanel] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -179,9 +176,6 @@ export default function AdminClient({
         <button className="btn ghost" onClick={() => setShowArchived((s) => !s)}>
           📦 Arquivados ({archivedGames.length})
         </button>
-        <button className="btn ghost" onClick={() => setShowMusicPanel((s) => !s)}>
-          🎵 Música do dia
-        </button>
         <button className="btn ghost" onClick={() => setShowReviewsPanel((s) => !s)}>
           💬 Comentários{pendingReviewCount > 0 ? ` (${pendingReviewCount} pendente${pendingReviewCount > 1 ? 's' : ''})` : ''}
         </button>
@@ -189,8 +183,6 @@ export default function AdminClient({
           📋 Pedidos ({orders.length})
         </button>
       </div>
-
-      {showMusicPanel && <MusicPanel music={music} onSaved={() => router.refresh()} />}
 
       {showReviewsPanel && (
         <ReviewsPanel
@@ -487,78 +479,6 @@ function MenuButton({
     >
       {children}
     </button>
-  );
-}
-
-function MusicPanel({ music, onSaved }: { music: MusicSettings; onSaved: () => void }) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const file = fileInputRef.current?.files?.[0];
-    if (!file) {
-      setError('Escolha um arquivo MP3.');
-      return;
-    }
-    if (!file.type.includes('audio') && !file.name.toLowerCase().endsWith('.mp3')) {
-      setError('O arquivo precisa ser um MP3.');
-      return;
-    }
-
-    setUploading(true);
-    setProgress(0);
-    setError(null);
-    try {
-      // Uploaded straight from the browser to Vercel Blob — a Server
-      // Action would hit a hard payload-size limit on files this big.
-      const blob = await upload(file.name, file, {
-        access: 'public',
-        handleUploadUrl: '/api/music-upload',
-        onUploadProgress: (p) => setProgress(Math.round(p.percentage))
-      });
-      await saveMusicSettingsAction(blob.url, file.name);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      onSaved();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Falha no upload.');
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  return (
-    <div
-      style={{
-        background: 'var(--panel)',
-        border: '1px solid rgba(164,99,255,.25)',
-        borderRadius: 14,
-        padding: 16,
-        marginBottom: 20
-      }}
-    >
-      <p style={{ color: 'var(--ink-dim)', fontSize: 13.5, fontWeight: 600, margin: '0 0 12px' }}>
-        {music.filename
-          ? <>Tocando atualmente: <strong style={{ color: 'var(--ink)' }}>{music.filename}</strong></>
-          : 'Nenhuma música enviada ainda.'}
-      </p>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <input
-          ref={fileInputRef}
-          name="music"
-          type="file"
-          accept="audio/mpeg,.mp3"
-          disabled={uploading}
-          style={{ color: 'var(--ink-dim)', fontSize: 13 }}
-        />
-        <button type="submit" className="btn primary" disabled={uploading}>
-          {uploading ? `Enviando... ${progress}%` : 'Enviar MP3'}
-        </button>
-      </form>
-      {error && <p style={{ color: '#ff8a8a', fontSize: 13, fontWeight: 600, margin: '10px 0 0' }}>{error}</p>}
-    </div>
   );
 }
 
@@ -1020,12 +940,12 @@ function GameFormPanel({
 }
 
 // Gerencia a lista de capturas de tela dentro do formulário de jogo. Cada
-// imagem escolhida é enviada direto do navegador pro Vercel Blob (mesma
-// técnica da música — veja MusicPanel acima) assim que é selecionada, sem
-// esperar o formulário ser salvo. As URLs já prontas viram inputs
-// escondidos (<input type="hidden" name="screenshots">), que é como o
-// Server Action (createGameAction/updateGameAction) recebe a lista quando
-// o formulário inteiro é enviado.
+// imagem escolhida é comprimida no navegador (ver lib/imageCompression.ts —
+// isso é o que evita estourar a banda do Vercel Blob) e enviada direto pro
+// Blob assim que é selecionada, sem esperar o formulário ser salvo. As URLs
+// já prontas viram inputs escondidos (<input type="hidden" name="screenshots">),
+// que é como o Server Action (createGameAction/updateGameAction) recebe a
+// lista quando o formulário inteiro é enviado.
 function ScreenshotsField({ initialScreenshots }: { initialScreenshots: string[] }) {
   const [urls, setUrls] = useState<string[]>(initialScreenshots);
   const [uploadingCount, setUploadingCount] = useState(0);
@@ -1047,15 +967,18 @@ function ScreenshotsField({ initialScreenshots }: { initialScreenshots: string[]
 
     setUploadingCount(toUpload.length);
     try {
-      // Envia todas em paralelo — são imagens pequenas, e cada uma já é uma
-      // chamada HTTP independente pro Vercel Blob.
+      // Comprime cada imagem no navegador ANTES de enviar (ver
+      // lib/imageCompression.ts) — é isso que evita que fotos de celular
+      // de vários MB cada sejam baixadas na íntegra por todo visitante do
+      // site depois. Só o arquivo já reduzido vai pro Vercel Blob.
       const uploaded = await Promise.all(
-        toUpload.map((file) =>
-          upload(file.name, file, {
+        toUpload.map(async (file) => {
+          const compressed = await compressImageFile(file, 1600, 78);
+          return upload(compressed.name, compressed, {
             access: 'public',
             handleUploadUrl: '/api/screenshot-upload'
-          })
-        )
+          });
+        })
       );
       setUrls((prev) => [...prev, ...uploaded.map((b) => b.url)]);
     } catch (err) {

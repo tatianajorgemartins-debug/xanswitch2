@@ -1,6 +1,5 @@
-import { getActiveGames, getMusicSettings, getApprovedReviews, type Game } from '@/lib/db';
+import { getActiveGames, getApprovedReviews, type Game } from '@/lib/db';
 import { buildWhatsAppPaymentLink, buildWhatsAppContactLink, formatPriceBR } from '@/lib/whatsapp';
-import { formatTrackName } from '@/lib/format';
 import CatalogClient, { type Item, type ReviewItem } from './CatalogClient';
 
 export const dynamic = 'force-dynamic'; // always show the latest games, never a stale cached build
@@ -50,7 +49,6 @@ function toReviewItem(r: Awaited<ReturnType<typeof getApprovedReviews>>[number])
 
 export default async function CatalogPage() {
   const games = await getActiveGames();
-  const music = await getMusicSettings();
   const reviews = await getApprovedReviews();
 
   const items = games.map(toItem);
@@ -65,8 +63,6 @@ export default async function CatalogPage() {
       bestsellerItems={bestsellerItems}
       upcomingItems={upcomingItems}
       reviews={reviews.map(toReviewItem)}
-      musicUrl={music.url}
-      musicName={music.filename ? formatTrackName(music.filename) : null}
       whatsappContactUrl={buildWhatsAppContactLink()}
     />
   );

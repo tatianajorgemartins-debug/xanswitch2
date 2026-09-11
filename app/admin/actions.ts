@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { put, del } from '@vercel/blob';
+import { compressImage } from '@/lib/imageResize';
 import {
   checkPassword,
   createSession,
@@ -15,8 +16,6 @@ import {
   deleteGame,
   setArchived,
   getGameById,
-  getMusicSettings,
-  setMusicSettings,
   setReviewApproved,
   setReviewFeatured,
   deleteReview,
@@ -89,8 +88,16 @@ async function uploadImageIfPresent(formData: FormData): Promise<string | null |
     // no new image chosen — caller decides whether to keep the existing one
     return undefined;
   }
-  const blob = await put(`games/${Date.now()}-${file.name}`, file, {
-    access: 'public'
+  // Capas são sempre mostradas pequenas (cards, miniaturas) — não faz
+  // sentido guardar (e reenviar pra cada visitante) a foto original em
+  // resolução de câmera. 900px já é mais do que suficiente mesmo em telas
+  // retina, e o WebP fica bem mais leve que o JPEG/PNG original.
+  const originalBytes = Buffer.from(await file.arrayBuffer());
+  const { buffer, contentType, extension } = await compressImage(originalBytes, 900, 80);
+
+  const blob = await put(`games/${Date.now()}-capa.${extension}`, buffer, {
+    access: 'public',
+    contentType
   });
   return blob.url;
 }
@@ -247,24 +254,6 @@ export async function deleteGameAction(id: number): Promise<void> {
     await Promise.all(existing.screenshots.map((url) => del(url).catch(() => {})));
   }
   await deleteGame(id);
-  revalidatePath('/admin');
-  revalidatePath('/');
-}
-
-// The file itself is uploaded straight from the browser to Vercel Blob
-// (see app/api/music-upload/route.ts) — this action only ever receives the
-// resulting URL and filename, so it stays far under any request size limit
-// no matter how big the MP3 is.
-export async function saveMusicSettingsAction(url: string, filename: string): Promise<void> {
-  await requireAuth();
-
-  const existing = await getMusicSettings();
-  if (existing.url && existing.url !== url) {
-    await del(existing.url).catch(() => {});
-  }
-
-  await setMusicSettings(url, filename);
-
   revalidatePath('/admin');
   revalidatePath('/');
 }

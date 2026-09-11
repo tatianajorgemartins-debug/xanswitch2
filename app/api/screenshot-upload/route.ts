@@ -2,9 +2,8 @@ import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { NextResponse } from 'next/server';
 import { isAuthenticated } from '@/lib/auth';
 
-// Mesma ideia do upload de música (veja app/api/music-upload/route.ts):
-// várias capturas de tela de uma vez podem somar vários MB, o que estoura o
-// limite de tamanho de requisição de uma Server Action. Por isso o
+// Várias capturas de tela de uma vez podem somar vários MB, o que estoura
+// o limite de tamanho de requisição de uma Server Action. Por isso o
 // navegador envia cada imagem direto pro Vercel Blob, e esta rota só cuida
 // da parte de autorizar o envio — nunca vê os bytes da imagem em si.
 export async function POST(request: Request): Promise<NextResponse> {
@@ -21,7 +20,10 @@ export async function POST(request: Request): Promise<NextResponse> {
         }
         return {
           allowedContentTypes: ['image/png', 'image/jpeg', 'image/webp', 'image/avif', 'image/gif'],
-          maximumSizeInBytes: 15 * 1024 * 1024,
+          // O navegador já comprime a imagem antes de enviar (veja
+          // lib/imageCompression.ts) — um WebP de 1600px raramente passa de
+          // 1-2MB, então 5MB já é uma folga generosa, não um limite apertado.
+          maximumSizeInBytes: 5 * 1024 * 1024,
           addRandomSuffix: true
         };
       },

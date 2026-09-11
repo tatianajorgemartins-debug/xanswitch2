@@ -52,8 +52,6 @@ export default function CatalogClient({
   bestsellerItems,
   upcomingItems,
   reviews,
-  musicUrl,
-  musicName,
   whatsappContactUrl
 }: {
   items: Item[];
@@ -61,8 +59,6 @@ export default function CatalogClient({
   bestsellerItems: Item[];
   upcomingItems: Item[];
   reviews: ReviewItem[];
-  musicUrl: string | null;
-  musicName: string | null;
   whatsappContactUrl: string | null;
 }) {
   const [query, setQuery] = useState('');
@@ -159,7 +155,7 @@ export default function CatalogClient({
     <>
       <header className="site-header-bar">
         <div className="site-header-bar-inner">
-          <SiteHeader musicUrl={musicUrl} musicName={musicName} whatsappContactUrl={whatsappContactUrl} />
+          <SiteHeader whatsappContactUrl={whatsappContactUrl} />
         </div>
       </header>
 

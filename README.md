@@ -214,6 +214,33 @@ continua sendo você ver o Pix cair na sua conta.
 
 ---
 
+## Por que as imagens são comprimidas automaticamente
+
+O que "pesa" no Vercel Blob não é o espaço ocupado pelos arquivos — é
+quantas vezes cada visitante baixa essas imagens. Uma foto de celular sem
+comprimir pode ter vários MB, e isso se repete a cada visita ao site.
+
+Por isso, toda capa de jogo e toda captura de tela que você sobe no admin
+passa por uma compressão automática antes de ser salva:
+
+- **Capa do jogo**: redimensionada pra no máximo 900px no lado maior e
+  convertida pra WebP (formato mais leve que JPEG/PNG, sem perda visível de
+  qualidade). Acontece no servidor, em `lib/imageResize.ts`.
+- **Capturas de tela**: redimensionadas pra no máximo 1600px e também
+  convertidas pra WebP — só que isso acontece no NAVEGADOR, antes mesmo do
+  arquivo ser enviado (em `lib/imageCompression.ts`), porque essas imagens
+  vão direto do seu computador pro Vercel Blob, sem passar pelo servidor.
+
+Você não precisa fazer nada diferente — é só escolher a imagem normalmente
+que ela já sai comprimida do seu lado. Isso reduz o consumo de banda em
+mais de 80% na prática, sem mudar a aparência das imagens no site.
+
+> **Nota:** essa compressão vale só pra imagens novas, enviadas a partir de
+> agora. As imagens que já estavam no catálogo antes continuam do jeito que
+> foram enviadas originalmente.
+
+---
+
 ## Domínio próprio (opcional)
 
 Se você tiver ou comprar um domínio (tipo `xanswitch.com.br`), dá pra
@@ -251,14 +278,15 @@ app/
     actions.ts            → as ações de adicionar/editar/arquivar/excluir/registrar pedido
     login/page.tsx         → tela de login
   api/
-    music-upload/route.ts       → autoriza o upload da música direto do navegador pro Vercel Blob
-    screenshot-upload/route.ts   → mesma coisa, para as capturas de tela dos jogos
+    screenshot-upload/route.ts   → autoriza o upload das capturas de tela direto do navegador pro Vercel Blob
 lib/
   db.ts               → funções que conversam com o banco de dados (catálogo, Postgres/Neon)
   auth.ts             → login/sessão (senha + cookie assinado) — usado por /admin
   whatsapp.ts         → monta os links do WhatsApp (contato do cabeçalho e confirmação de pagamento)
   pix.ts              → monta o Pix (BR Code + QR Code) usando seus dados de recebedor
   color.ts            → escolhe texto claro/escuro pra contrastar com a cor da etiqueta
+  imageResize.ts       → comprime a capa do jogo no servidor antes de salvar (usa a lib "sharp")
+  imageCompression.ts  → comprime as capturas de tela no navegador antes de enviar (usa <canvas>)
 db/schema.sql                 → cria as tabelas do catálogo (jogos, avaliações, pedidos etc) — rodado uma vez no Neon
 db/migration-orders.sql        → só a tabela de pedidos, caso o site já exista e você só precise adicionar essa parte
 db/migration-game-details.sql → só a descrição/capturas de tela, mesmo caso acima

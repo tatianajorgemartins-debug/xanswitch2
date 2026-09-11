@@ -132,27 +132,6 @@ export async function deleteGame(id: number): Promise<void> {
   await getSql()`DELETE FROM games WHERE id = ${id}`;
 }
 
-export type MusicSettings = { url: string | null; filename: string | null };
-
-export async function getMusicSettings(): Promise<MusicSettings> {
-  const rows = await getSql()`
-    SELECT key, value FROM site_settings WHERE key IN ('music_url', 'music_filename')
-  `;
-  const map = new Map(rows.map((r) => [r.key as string, r.value as string]));
-  return { url: map.get('music_url') ?? null, filename: map.get('music_filename') ?? null };
-}
-
-export async function setMusicSettings(url: string, filename: string): Promise<void> {
-  await getSql()`
-    INSERT INTO site_settings (key, value) VALUES ('music_url', ${url})
-    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
-  `;
-  await getSql()`
-    INSERT INTO site_settings (key, value) VALUES ('music_filename', ${filename})
-    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
-  `;
-}
-
 export async function getVisitCount(): Promise<number> {
   const rows = await getSql()`SELECT value FROM site_settings WHERE key = 'visit_count'`;
   return rows[0]?.value ? parseInt(rows[0].value as string, 10) : 0;
