@@ -2,7 +2,12 @@ import { getActiveGames, getApprovedReviews, type Game } from '@/lib/db';
 import { buildWhatsAppPaymentLink, buildWhatsAppContactLink, formatPriceBR } from '@/lib/whatsapp';
 import CatalogClient, { type Item, type ReviewItem } from './CatalogClient';
 
-export const dynamic = 'force-dynamic'; // always show the latest games, never a stale cached build
+// Antes esta página era "force-dynamic" (nunca cacheada — cada visita
+// refazia a consulta ao banco do zero, o que ajudou a estourar o limite de
+// banda do Vercel Blob). Agora o cache acontece dentro de getActiveGames e
+// getApprovedReviews (lib/db.ts), com invalidação instantânea sempre que
+// algo muda no admin — então essa página pode ser cacheada normalmente sem
+// nunca mostrar dado desatualizado pra você.
 
 function toItem(g: Game): Item {
   return {

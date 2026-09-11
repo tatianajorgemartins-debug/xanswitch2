@@ -237,7 +237,7 @@ function StepSummary({
               aria-label={`Ver captura de tela ${i + 1} em tamanho maior`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt="" />
+              <img src={url} alt="" loading="lazy" />
             </button>
           ))}
         </div>

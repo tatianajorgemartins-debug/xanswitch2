@@ -234,6 +234,7 @@ export default function AdminClient({
                 <img
                   src={g.image_url || ''}
                   alt=""
+                  loading="lazy"
                   style={{
                     width: 36,
                     height: 36,
@@ -323,6 +324,7 @@ function AdminGameCard({
           <img
             src={game.image_url}
             alt={game.name}
+            loading="lazy"
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
         ) : (
@@ -1006,6 +1008,7 @@ function ScreenshotsField({ initialScreenshots }: { initialScreenshots: string[]
               <img
                 src={url}
                 alt=""
+                loading="lazy"
                 style={{ width: 84, height: 63, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(164,99,255,.3)' }}
               />
               <button

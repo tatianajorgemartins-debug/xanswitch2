@@ -20,7 +20,7 @@ export default function PromoBanner({
     <button type="button" className={`promo-banner promo-banner-${size}`} onClick={onClick}>
       {item.imageUrl && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={item.imageUrl} alt={item.name} className="promo-banner-image" />
+        <img src={item.imageUrl} alt={item.name} loading="lazy" className="promo-banner-image" />
       )}
       <div className="promo-banner-overlay" />
       <div className="promo-banner-content">

@@ -1,4 +1,5 @@
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
+import { unstable_cache } from 'next/cache';
 
 // Criado só na primeira consulta, não quando este arquivo é importado — assim,
 // nada quebra em ambientes que importam este módulo sem nunca chamar
@@ -36,12 +37,25 @@ export type Game = {
   updated_at: Date;
 };
 
-export async function getActiveGames(): Promise<Game[]> {
-  const rows = await getSql()`
-    SELECT * FROM games WHERE archived = FALSE ORDER BY sort_name ASC
-  `;
-  return rows as Game[];
-}
+// Esta é a consulta que roda no catálogo PÚBLICO (a página que os clientes
+// veem) — por isso é cacheada. Antes, a página inteira era marcada como
+// "force-dynamic" (nunca cacheada, refazia tudo do zero a cada visita), o
+// que multiplicava o consumo de banda por cada visitante. Agora o resultado
+// fica em cache até 1 hora (o "revalidate" abaixo), MAS qualquer alteração
+// feita no admin (adicionar/editar/arquivar/excluir jogo) já invalida esse
+// cache na hora, via updateTag('games') em app/admin/actions.ts — ou
+// seja, a lista continua atualizada instantaneamente pra você, só deixa de
+// reconsultar o banco a cada visitante que não mudou nada.
+export const getActiveGames = unstable_cache(
+  async (): Promise<Game[]> => {
+    const rows = await getSql()`
+      SELECT * FROM games WHERE archived = FALSE ORDER BY sort_name ASC
+    `;
+    return rows as Game[];
+  },
+  ['active-games'],
+  { tags: ['games'], revalidate: 3600 }
+);
 
 export async function getAllGames(): Promise<Game[]> {
   const rows = await getSql()`
@@ -157,12 +171,19 @@ export type Review = {
   created_at: Date;
 };
 
-export async function getApprovedReviews(): Promise<Review[]> {
-  const rows = await getSql()`
-    SELECT * FROM reviews WHERE approved = TRUE ORDER BY is_featured DESC, created_at DESC
-  `;
-  return rows as Review[];
-}
+// Mesma lógica de cache de getActiveGames acima — esta é a consulta usada
+// no catálogo público. Invalidada na hora por updateTag('reviews')
+// sempre que você aprova/destaca/exclui um comentário no admin.
+export const getApprovedReviews = unstable_cache(
+  async (): Promise<Review[]> => {
+    const rows = await getSql()`
+      SELECT * FROM reviews WHERE approved = TRUE ORDER BY is_featured DESC, created_at DESC
+    `;
+    return rows as Review[];
+  },
+  ['approved-reviews'],
+  { tags: ['reviews'], revalidate: 3600 }
+);
 
 export async function getAllReviews(): Promise<Review[]> {
   const rows = await getSql()`SELECT * FROM reviews ORDER BY approved ASC, created_at DESC`;

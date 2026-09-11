@@ -437,6 +437,7 @@ function GameCard({ item, onSelect }: { item: Item; onSelect: () => void }) {
           <img
             src={item.imageUrl}
             alt={item.name}
+            loading="lazy"
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
         ) : (
