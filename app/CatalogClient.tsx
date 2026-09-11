@@ -89,6 +89,11 @@ export default function CatalogClient({
   const [user, setUser] = useState<User | null>(null);
   const [wishlistIds, setWishlistIds] = useState<Set<number>>(new Set());
   const [accountModalOpen, setAccountModalOpen] = useState(false);
+  // Mensagem de erro ao favoritar/desfavoritar (ex: banco de dados da lista
+  // de desejos ainda não configurado). Sem isso, um erro aqui ficava
+  // completamente invisível — o coração só "piscava" e voltava, sem
+  // explicar o motivo.
+  const [wishlistError, setWishlistError] = useState<string | null>(null);
 
   useEffect(() => {
     function onScroll() {
@@ -141,16 +146,25 @@ export default function CatalogClient({
     try {
       if (alreadyIn) await removeFromWishlist(gameId);
       else await addToWishlist(gameId);
-    } catch {
-      // Se der erro, desfaz a mudança otimista.
+    } catch (err) {
+      // Se der erro, desfaz a mudança otimista e mostra o motivo (ex: a
+      // migração db/migration-wishlist.sql ainda não foi rodada no
+      // Supabase) — sem isso, o coração só "piscava" sem explicar nada.
       setWishlistIds((prev) => {
         const next = new Set(prev);
         if (alreadyIn) next.add(gameId);
         else next.delete(gameId);
         return next;
       });
+      setWishlistError(err instanceof Error ? err.message : 'Não foi possível salvar o favorito.');
     }
   }
+
+  useEffect(() => {
+    if (!wishlistError) return;
+    const timer = setTimeout(() => setWishlistError(null), 6000);
+    return () => clearTimeout(timer);
+  }, [wishlistError]);
 
   const wishlistItems = useMemo(
     () => items.filter((it) => wishlistIds.has(it.id)),
@@ -476,6 +490,12 @@ export default function CatalogClient({
         onOpenGame={setSelectedItem}
         onRemoveFromWishlist={toggleWishlist}
       />
+
+      {wishlistError && (
+        <div className="toast-error" role="alert">
+          Não foi possível salvar o favorito: {wishlistError}
+        </div>
+      )}
 
       {showBackToTop && (
         <button

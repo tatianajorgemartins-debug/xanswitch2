@@ -1757,3 +1757,25 @@ label {
   background: rgba(255, 92, 138, 0.12);
   color: var(--wishlist-pink);
 }
+
+/* Avisozinho flutuante quando favoritar/desfavoritar falha (ex: banco da
+   lista de desejos ainda não configurado no Supabase) — some sozinho
+   depois de alguns segundos (ver CatalogClient.tsx). */
+.toast-error {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  max-width: min(92vw, 420px);
+  background: #2a0f18;
+  border: 1px solid rgba(255, 92, 138, 0.5);
+  color: #ffd4de;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  padding: 12px 16px;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  z-index: 300;
+  animation: purchase-fade-in 0.18s ease;
+}

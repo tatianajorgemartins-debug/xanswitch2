@@ -225,6 +225,7 @@ function LoggedInView({
   const [loadingInstagram, setLoadingInstagram] = useState(true);
   const [savingInstagram, setSavingInstagram] = useState(false);
   const [savedFeedback, setSavedFeedback] = useState(false);
+  const [instagramError, setInstagramError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -243,13 +244,16 @@ function LoggedInView({
   async function handleSaveInstagram(e: React.FormEvent) {
     e.preventDefault();
     setSavingInstagram(true);
+    setInstagramError('');
     try {
       await saveInstagramHandle(instagram.trim().replace(/^@/, ''));
       setSavedFeedback(true);
       setTimeout(() => setSavedFeedback(false), 2000);
-    } catch {
-      // Se falhar, a pessoa só tenta salvar de novo — não é uma informação
-      // crítica pro funcionamento do site.
+    } catch (err) {
+      // Antes esse erro era escondido (a pessoa clicava em "Salvar" e nada
+      // parecia acontecer) — agora mostra o motivo, pra dar pra perceber
+      // se falta rodar a migração do banco no Supabase, por exemplo.
+      setInstagramError(err instanceof Error ? err.message : 'Não foi possível salvar.');
     } finally {
       setSavingInstagram(false);
     }
@@ -280,6 +284,9 @@ function LoggedInView({
           </button>
         </div>
         {savedFeedback && <p className="purchase-copy-feedback" style={{ margin: '8px 0 0' }}>✓ Salvo!</p>}
+        {instagramError && (
+          <p style={{ color: '#ff8a8a', fontSize: 12.5, fontWeight: 600, margin: '8px 0 0' }}>{instagramError}</p>
+        )}
       </form>
 
       <p className="purchase-description-label" style={{ marginBottom: 10 }}>
