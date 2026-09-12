@@ -669,13 +669,15 @@ export default function CatalogClient({
   );
 }
 
-// Cores de ouro/prata/bronze pro 1º, 2º e 3º lugar da vitrine de mais
-// desejados — só usadas ali, por isso ficam num Record em vez de virar
-// classes CSS separadas.
-const RANK_BADGE_STYLE: Record<number, { background: string; color: string }> = {
-  1: { background: 'linear-gradient(135deg, #ffe27a, #d4a017)', color: '#3a2a00' },
-  2: { background: 'linear-gradient(135deg, #e8e8e8, #a3a3a3)', color: '#2a2a2a' },
-  3: { background: 'linear-gradient(135deg, #e0a06a, #9c5a24)', color: '#2e1500' }
+// Cores do 1º, 2º e 3º lugar da vitrine de mais desejados — em vez de
+// ouro/prata/bronze "de verdade" (que destoava do resto do site), usa as
+// mesmas cores que o site já usa pra "destaque" (verde), marca (roxo) e
+// desejo (rosa), com o mesmo tipo de brilho que já aparece em outros
+// lugares (preço, capa em hover).
+const RANK_BADGE_STYLE: Record<number, { background: string; color: string; glow: string }> = {
+  1: { background: 'var(--green)', color: '#07230c', glow: 'var(--green-glow)' },
+  2: { background: 'var(--purple)', color: '#fff', glow: 'var(--purple-glow)' },
+  3: { background: 'var(--wishlist-pink)', color: '#fff', glow: 'var(--wishlist-pink-glow)' }
 };
 
 function GameCard({
@@ -744,21 +746,19 @@ function GameCard({
           <div
             style={{
               position: 'absolute',
-              bottom: 8,
-              left: 8,
+              bottom: 7,
+              left: 7,
               zIndex: 2,
-              width: 28,
-              height: 28,
-              borderRadius: '50%',
+              padding: '3px 7px',
+              borderRadius: 6,
               background: rankStyle.background,
               color: rankStyle.color,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontFamily: "'Press Start 2P', cursive",
-              fontSize: 10,
-              boxShadow: '0 2px 8px rgba(0,0,0,.5)',
-              border: '2px solid rgba(0,0,0,.25)'
+              fontSize: 9,
+              boxShadow: `0 0 8px ${rankStyle.glow}`
             }}
             title={`${rank}º lugar entre os mais desejados`}
           >
