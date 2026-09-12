@@ -16,7 +16,8 @@ export default function AccountModal({
   wishlistItems,
   onOpenGame,
   onRemoveFromWishlist,
-  onBulkPurchase
+  onBulkPurchase,
+  onInstagramSaved
 }: {
   open: boolean;
   onClose: () => void;
@@ -25,6 +26,10 @@ export default function AccountModal({
   onOpenGame: (item: Item) => void;
   onRemoveFromWishlist: (gameId: number) => void;
   onBulkPurchase: (items: Item[]) => void;
+  // Avisa o CatalogClient assim que o Instagram é salvo, pra atualizar o
+  // texto do botão de conta no cabeçalho na hora, sem esperar reabrir o
+  // popup.
+  onInstagramSaved: (handle: string) => void;
 }) {
   // Fecha com Esc, trava o scroll de fundo — mesmo comportamento de
   // qualquer outro modal do site.
@@ -76,6 +81,7 @@ export default function AccountModal({
                 onClose();
                 onBulkPurchase(items);
               }}
+              onInstagramSaved={onInstagramSaved}
             />
           ) : (
             <LoginForm />
@@ -222,13 +228,15 @@ function LoggedInView({
   wishlistItems,
   onOpenGame,
   onRemoveFromWishlist,
-  onBulkPurchase
+  onBulkPurchase,
+  onInstagramSaved
 }: {
   user: User;
   wishlistItems: Item[];
   onOpenGame: (item: Item) => void;
   onRemoveFromWishlist: (gameId: number) => void;
   onBulkPurchase: (items: Item[]) => void;
+  onInstagramSaved: (handle: string) => void;
 }) {
   const [instagram, setInstagram] = useState('');
   const [loadingInstagram, setLoadingInstagram] = useState(true);
@@ -262,7 +270,9 @@ function LoggedInView({
     setSavingInstagram(true);
     setInstagramError('');
     try {
-      await saveInstagramHandle(instagram.trim().replace(/^@/, ''));
+      const cleaned = instagram.trim().replace(/^@/, '');
+      await saveInstagramHandle(cleaned);
+      onInstagramSaved(cleaned);
       setSavedFeedback(true);
       setTimeout(() => setSavedFeedback(false), 2000);
     } catch (err) {

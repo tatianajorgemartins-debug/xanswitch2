@@ -4,7 +4,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { getContrastColor } from '@/lib/color';
 import type { Platform, GameType } from '@/lib/db';
-import { getCurrentUser, onAuthChange, getWishlistGameIds, addToWishlist, removeFromWishlist } from '@/lib/wishlist';
+import {
+  getCurrentUser,
+  onAuthChange,
+  getWishlistGameIds,
+  addToWishlist,
+  removeFromWishlist,
+  getInstagramHandle
+} from '@/lib/wishlist';
 import SiteHeader from './SiteHeader';
 import PromoSection from './PromoSection';
 import ReviewsSection from './ReviewsSection';
@@ -105,6 +112,26 @@ export default function CatalogClient({
   // completamente invisível — o coração só "piscava" e voltava, sem
   // explicar o motivo.
   const [wishlistError, setWishlistError] = useState<string | null>(null);
+  // Contagem de favoritos por jogo, buscada direto do navegador (não vem
+  // mais só do servidor) — assim a vitrine "Mais desejados" reflete
+  // favoritos/desfavoritos na hora, em vez de esperar o cache da página
+  // (até 1h) expirar. Começa null e usa mostWantedItems (calculado no
+  // servidor) como uma prévia, até a primeira busca terminar.
+  const [wishlistCounts, setWishlistCounts] = useState<Record<number, number> | null>(null);
+  // @ do Instagram de quem está logado (pra mostrar no botão "Minha conta"
+  // do cabeçalho) — null enquanto não logou ou ainda não carregou.
+  const [instagramHandle, setInstagramHandle] = useState<string | null>(null);
+
+  function refreshWishlistCounts() {
+    fetch('/api/wishlist-counts', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => setWishlistCounts(data.counts ?? {}))
+      .catch(() => {});
+  }
+
+  useEffect(() => {
+    refreshWishlistCounts();
+  }, []);
 
   useEffect(() => {
     function onScroll() {
@@ -138,6 +165,18 @@ export default function CatalogClient({
       .catch(() => {});
   }, [user]);
 
+  // Mesma ideia, mas pro @ do Instagram — usado só pra decidir o texto do
+  // botão de conta no cabeçalho (ver accountLabel mais abaixo).
+  useEffect(() => {
+    if (!user) {
+      setInstagramHandle(null);
+      return;
+    }
+    getInstagramHandle()
+      .then(setInstagramHandle)
+      .catch(() => {});
+  }, [user]);
+
   // Alterna um jogo na lista de desejos. Se ninguém estiver logado, abre o
   // popup de login em vez de tentar salvar (não tem lista de desejos sem
   // conta). Atualiza o estado local na hora (otimista) pro coração responder
@@ -157,6 +196,9 @@ export default function CatalogClient({
     try {
       if (alreadyIn) await removeFromWishlist(gameId);
       else await addToWishlist(gameId);
+      // Atualiza a contagem de "mais desejados" na hora, refletindo esse
+      // favorito/desfavorito — sem esperar o cache da página expirar.
+      refreshWishlistCounts();
     } catch (err) {
       // Se der erro, desfaz a mudança otimista e mostra o motivo (ex: a
       // migração db/migration-wishlist.sql ainda não foi rodada no
@@ -181,6 +223,23 @@ export default function CatalogClient({
     () => items.filter((it) => wishlistIds.has(it.id)),
     [items, wishlistIds]
   );
+
+  // Enquanto a contagem buscada no navegador não chega, usa a prévia que já
+  // veio pronta do servidor (mostWantedItems) — assim a vitrine não fica
+  // vazia por um instante ao carregar a página.
+  const liveMostWantedItems = useMemo(() => {
+    if (!wishlistCounts) return mostWantedItems;
+    return items
+      .map((item) => ({ item, count: wishlistCounts[item.id] ?? 0 }))
+      .filter((entry) => entry.count > 0)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+      .map((entry) => entry.item);
+  }, [items, wishlistCounts, mostWantedItems]);
+
+  // Texto do botão de conta no cabeçalho: prioriza o @ do Instagram, depois
+  // a inicial do e-mail, e só mostra "Minha conta" pra quem não está logado.
+  const accountLabel = user ? (instagramHandle ? `@${instagramHandle}` : user.email?.charAt(0).toUpperCase() ?? 'Minha conta') : 'Minha conta';
 
   const franchises = useMemo(() => {
     const set = new Set<string>();
@@ -217,6 +276,12 @@ export default function CatalogClient({
     (priceMax.trim() ? 1 : 0) +
     (quickFilter ? 1 : 0);
 
+  // Verdadeiro sempre que a pessoa está filtrando ou buscando algo — usado
+  // pra esconder a vitrine "Mais desejados" (que é uma sugestão pro
+  // catálogo inteiro, não faz sentido junto de uma busca filtrada) e pra
+  // decidir quando mostrar o botão de limpar tudo.
+  const isFiltering = activeFilterCount > 0 || query.trim() !== '';
+
   function scrollToGrid() {
     gridAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -246,6 +311,14 @@ export default function CatalogClient({
     setQuickFilter(null);
   }
 
+  // Limpa filtros E a busca de uma vez — o botão "Limpar filtros" de dentro
+  // do painel só limpava os filtros, deixando a busca de fora; esse aqui
+  // fica na barra principal, sempre visível quando tem algo ativo.
+  function clearEverything() {
+    setQuery('');
+    clearFilters();
+  }
+
   return (
     <>
       <header className="site-header-bar">
@@ -253,6 +326,7 @@ export default function CatalogClient({
           <SiteHeader
             whatsappContactUrl={whatsappContactUrl}
             wishlistCount={wishlistIds.size}
+            accountLabel={accountLabel}
             onOpenAccount={() => setAccountModalOpen(true)}
           />
         </div>
@@ -288,6 +362,27 @@ export default function CatalogClient({
             onChange={(e) => setQuery(e.target.value)}
             style={{ background: 'none', border: 'none', padding: 0, width: '100%' }}
           />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              aria-label="Limpar busca"
+              title="Limpar busca"
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--ink-dim)',
+                cursor: 'pointer',
+                padding: 0,
+                flex: 'none',
+                display: 'flex'
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={14} height={14}>
+                <path d="M5 5l14 14M19 5L5 19" strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
         </div>
 
         <div className="view-toggle">
@@ -326,6 +421,12 @@ export default function CatalogClient({
           </svg>
           Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
         </button>
+
+        {isFiltering && (
+          <button type="button" className="btn ghost" onClick={clearEverything}>
+            ✕ Limpar tudo
+          </button>
+        )}
 
         <button type="button" className="btn ghost" onClick={() => setReviewFormOpen((v) => !v)}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={14} height={14} style={{ flex: 'none' }}>
@@ -411,7 +512,7 @@ export default function CatalogClient({
 
       <PromoSection
         featuredItems={featuredItems}
-        mostWantedItems={mostWantedItems.slice(0, 3)}
+        mostWantedItems={liveMostWantedItems.slice(0, 3)}
         upcomingItems={upcomingItems}
         onViewGame={handleViewGame}
         onFilterFlag={handleFilterFlag}
@@ -437,18 +538,19 @@ export default function CatalogClient({
         </div>
       )}
 
-      {mostWantedItems.length > 0 && (
+      {!isFiltering && liveMostWantedItems.length > 0 && (
         <div className="most-wanted-section">
           <h2 className="most-wanted-heading">❤️ Mais desejados pelos clientes</h2>
           <div className="catalog-grid">
-            {mostWantedItems.slice(0, 4).map((item) => (
-              <GameCard
-                key={item.id}
-                item={item}
-                onSelect={() => setSelectedItem(item)}
-                wishlisted={wishlistIds.has(item.id)}
-                onToggleWishlist={() => toggleWishlist(item.id)}
-              />
+            {liveMostWantedItems.slice(0, 5).map((item, index) => (
+              <div key={item.id} className={index === 4 ? 'most-wanted-fifth' : undefined}>
+                <GameCard
+                  item={item}
+                  onSelect={() => setSelectedItem(item)}
+                  wishlisted={wishlistIds.has(item.id)}
+                  onToggleWishlist={() => toggleWishlist(item.id)}
+                />
+              </div>
             ))}
           </div>
           <hr className="section-divider" />
@@ -518,6 +620,7 @@ export default function CatalogClient({
         onOpenGame={setSelectedItem}
         onRemoveFromWishlist={toggleWishlist}
         onBulkPurchase={setBulkPurchaseItems}
+        onInstagramSaved={setInstagramHandle}
       />
 
       {/* Compra em lote de vários jogos da lista de desejos de uma vez —

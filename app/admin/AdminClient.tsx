@@ -70,10 +70,15 @@ export default function AdminClient({
   function openAddPanel() {
     setEditingGame(null);
     setPanelOpen(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   function openEditPanel(game: Game) {
     setEditingGame(game);
     setPanelOpen(true);
+    // O formulário abre no topo da página — sem isso, editar um jogo mais
+    // pra baixo na lista abria o formulário fora da tela, obrigando a
+    // rolar manualmente pra cima pra vê-lo.
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   function closePanel() {
     setPanelOpen(false);

@@ -5,10 +5,15 @@ const INSTAGRAM_URL = 'https://instagram.com/xan.switch';
 export default function SiteHeader({
   whatsappContactUrl,
   wishlistCount,
+  accountLabel,
   onOpenAccount
 }: {
   whatsappContactUrl: string | null;
   wishlistCount: number;
+  // "Minha conta" pra quem não logou; @instagram ou a inicial do e-mail pra
+  // quem já logou (calculado em CatalogClient.tsx, que sabe quem é o
+  // usuário e o Instagram salvo dele).
+  accountLabel: string;
   onOpenAccount: () => void;
 }) {
   return (
@@ -24,7 +29,7 @@ export default function SiteHeader({
             <circle cx="12" cy="8" r="3.4" />
             <path d="M4.5 20c1.4-3.8 4.4-6 7.5-6s6.1 2.2 7.5 6" strokeLinecap="round" />
           </svg>
-          <span className="account-button-label">Minha conta</span>
+          <span className="account-button-label">{accountLabel}</span>
           {wishlistCount > 0 && <span className="account-button-badge">{wishlistCount}</span>}
         </button>
 

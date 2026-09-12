@@ -22,6 +22,12 @@ html,
 body {
   margin: 0;
   padding: 0;
+  /* Rede de segurança contra qualquer elemento que acabe passando 1px (ou
+     mais) da largura da tela — em alguns celulares (iPhone principalmente)
+     isso criava uma rolagem horizontal minúscula que cortava a margem
+     direita do site. Sem esconder nada visualmente relevante, porque o
+     layout inteiro já é pensado pra caber na largura da tela. */
+  overflow-x: hidden;
 }
 
 body {
@@ -29,6 +35,7 @@ body {
   color: var(--ink);
   font-family: 'Rajdhani', sans-serif;
   min-height: 100vh;
+  width: 100%;
 }
 
 a {
@@ -619,7 +626,9 @@ textarea:focus {
 
 /* Vitrine com os jogos mais favoritados de todos os clientes, mostrada
    antes do catálogo completo (ver CatalogClient.tsx) — reaproveita o mesmo
-   .catalog-grid dos cards normais, só que limitado a 4 jogos. */
+   .catalog-grid dos cards normais. No computador mostra até 5 jogos; no
+   celular só 4 (o 5º fica escondido, ver .most-wanted-fifth), porque 5 não
+   divide bem numa grade de 2 colunas. */
 .most-wanted-section {
   margin-bottom: 26px;
 }
@@ -630,6 +639,11 @@ textarea:focus {
   text-shadow: 0 0 10px var(--wishlist-pink-glow, rgba(255, 92, 138, 0.45));
   text-align: center;
   margin: 0 0 18px;
+}
+@media (max-width: 700px) {
+  .most-wanted-fifth {
+    display: none;
+  }
 }
 .section-divider {
   border: none;
@@ -1585,6 +1599,16 @@ label {
 }
 .account-button-label {
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Trava a largura do texto (o @ do Instagram pode ser bem mais comprido
+     que "Minha conta") pra nunca empurrar o cabeçalho pra fora da tela. */
+  max-width: 110px;
+}
+@media (max-width: 480px) {
+  .account-button-label {
+    max-width: 74px;
+  }
 }
 .account-button:hover {
   filter: brightness(1.12);
