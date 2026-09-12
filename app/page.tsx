@@ -1,5 +1,6 @@
 import { getActiveGames, getApprovedReviews, type Game } from '@/lib/db';
 import { buildWhatsAppPaymentLink, buildWhatsAppContactLink, formatPriceBR } from '@/lib/whatsapp';
+import { getWishlistCounts } from '@/lib/supabaseAdmin';
 import CatalogClient, { type Item, type ReviewItem } from './CatalogClient';
 
 // Antes esta página era "force-dynamic" (nunca cacheada — cada visita
@@ -61,12 +62,24 @@ export default async function CatalogPage() {
   const bestsellerItems = byRecentFirst(games.filter((g) => g.is_bestseller)).map(toItem);
   const upcomingItems = byRecentFirst(games.filter((g) => g.is_upcoming)).map(toItem);
 
+  // Se o banco da lista de desejos ainda não estiver configurado (por
+  // exemplo, a migração db/migration-wishlist.sql ainda não foi rodada),
+  // não deixa isso quebrar o catálogo inteiro — só mostra sem essa vitrine.
+  const wishlistCounts = await getWishlistCounts().catch(() => new Map<number, number>());
+  const mostWantedItems = items
+    .map((item) => ({ item, count: wishlistCounts.get(item.id) ?? 0 }))
+    .filter((entry) => entry.count > 0)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 4)
+    .map((entry) => entry.item);
+
   return (
     <CatalogClient
       items={items}
       featuredItems={featuredItems}
       bestsellerItems={bestsellerItems}
       upcomingItems={upcomingItems}
+      mostWantedItems={mostWantedItems}
       reviews={reviews.map(toReviewItem)}
       whatsappContactUrl={buildWhatsAppContactLink()}
     />

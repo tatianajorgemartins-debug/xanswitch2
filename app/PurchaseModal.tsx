@@ -398,12 +398,15 @@ function Lightbox({
   );
 }
 
-type Checklist = { semSaldo: boolean; podeTrocarRegiao: boolean; entendeVerificacao: boolean };
+export type Checklist = { semSaldo: boolean; podeTrocarRegiao: boolean; entendeVerificacao: boolean };
 
 // Etapa 2 — checklist obrigatório antes de mostrar qualquer forma de
 // pagamento. Reaproveita as mesmas 3 regras que já eram combinadas com os
 // clientes por WhatsApp, só que agora confirmadas aqui antes de seguir.
-function StepChecklist({
+// Exportado porque a compra em lote da lista de desejos (BulkPurchaseModal)
+// usa exatamente o mesmo checklist, uma única vez pra todos os jogos
+// selecionados, em vez de repetir por jogo.
+export function StepChecklist({
   checklist,
   setChecklist,
   allChecked,

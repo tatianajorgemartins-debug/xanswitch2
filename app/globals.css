@@ -617,6 +617,27 @@ textarea:focus {
   }
 }
 
+/* Vitrine com os jogos mais favoritados de todos os clientes, mostrada
+   antes do catálogo completo (ver CatalogClient.tsx) — reaproveita o mesmo
+   .catalog-grid dos cards normais, só que limitado a 4 jogos. */
+.most-wanted-section {
+  margin-bottom: 26px;
+}
+.most-wanted-heading {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 13px;
+  color: var(--ink);
+  text-shadow: 0 0 10px var(--wishlist-pink-glow, rgba(255, 92, 138, 0.45));
+  text-align: center;
+  margin: 0 0 18px;
+}
+.section-divider {
+  border: none;
+  height: 1px;
+  margin: 26px 0 0;
+  background: linear-gradient(90deg, transparent, rgba(164, 99, 255, 0.4), transparent);
+}
+
 /* Compact list view — one clean row per game, name left / price right. */
 .catalog-list {
   display: flex;
@@ -1533,56 +1554,69 @@ label {
   --wishlist-pink-glow: rgba(255, 92, 138, 0.45);
 }
 
-/* Botão de conta no cabeçalho — mesmo tamanho/estilo do .social-icon, com um
-   selinho de contagem (quantos jogos estão na lista de desejos) por cima. */
+/* Botão de conta no cabeçalho — de propósito maior e mais chamativo que os
+   ícones de rede social ao lado: é a primeira coisa que precisa saltar aos
+   olhos de quem chega no site, pra saber que dá pra criar uma conta e
+   favoritar jogos. Por isso tem texto (não só ícone) e o gradiente roxo da
+   marca, em vez do estilo discreto dos ícones sociais. */
 .account-button {
   position: relative;
   flex: none;
-  width: 38px;
-  height: 38px;
-  border-radius: 999px;
-  border: 1px solid rgba(164, 99, 255, 0.35);
-  background: var(--panel);
-  color: var(--ink-dim);
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 7px;
+  height: 40px;
+  padding: 0 16px 0 13px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, var(--purple), var(--purple-2));
+  color: #fff;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  box-shadow: 0 4px 16px rgba(164, 99, 255, 0.4);
+  transition: filter 0.15s, transform 0.15s, box-shadow 0.15s;
 }
 .account-button svg {
-  width: 18px;
-  height: 18px;
+  width: 19px;
+  height: 19px;
+  flex: none;
+}
+.account-button-label {
+  white-space: nowrap;
 }
 .account-button:hover {
-  border-color: var(--green);
-  color: var(--green);
-  background: rgba(78, 240, 95, 0.08);
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(164, 99, 255, 0.55);
 }
 .account-button-badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
-  min-width: 17px;
-  height: 17px;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
   padding: 0 4px;
   border-radius: 999px;
   background: var(--wishlist-pink);
   color: #fff;
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 800;
-  line-height: 17px;
+  line-height: 18px;
   text-align: center;
-  box-shadow: 0 0 0 2px var(--panel);
+  box-shadow: 0 0 0 2px var(--bg-dark);
 }
 @media (max-width: 480px) {
   .account-button {
-    width: 30px;
-    height: 30px;
+    height: 32px;
+    padding: 0 11px 0 9px;
+    gap: 5px;
+    font-size: 11.5px;
   }
   .account-button svg {
-    width: 14px;
-    height: 14px;
+    width: 15px;
+    height: 15px;
   }
 }
 
@@ -1756,6 +1790,177 @@ label {
 .wishlist-row-remove:hover {
   background: rgba(255, 92, 138, 0.12);
   color: var(--wishlist-pink);
+}
+.wishlist-row-checkbox {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--wishlist-pink);
+  cursor: pointer;
+}
+.wishlist-row.is-selected .wishlist-row-main {
+  background: rgba(255, 92, 138, 0.07);
+}
+
+/* ==========================================================================
+   Redesenho da tela "Minha conta" (AccountModal.tsx) — cabeçalho com avatar,
+   campo de Instagram com ícone, e a barra de compra em lote no rodapé da
+   lista de desejos.
+   ========================================================================== */
+
+/* Cabeçalho com um "avatar" (as iniciais do e-mail, já que não pedimos nome
+   nenhum no cadastro) num círculo com o gradiente da marca. */
+.account-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.account-avatar {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--purple), var(--purple-2));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 15px;
+  box-shadow: 0 4px 16px rgba(164, 99, 255, 0.4);
+}
+.account-profile-email {
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--ink);
+  margin: 0 0 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-profile-sub {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--green);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin: 0;
+}
+
+/* Campo de Instagram com o ícone da rede social dentro do próprio campo,
+   pra ficar claro do que se trata sem precisar só do texto do label. */
+.account-instagram-field {
+  margin-bottom: 24px;
+}
+.account-instagram-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-dark);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 0 4px 0 12px;
+  transition: border-color 0.15s;
+}
+.account-instagram-row:focus-within {
+  border-color: var(--purple);
+}
+.account-instagram-prefix {
+  flex: none;
+  display: flex;
+  color: var(--ink-dim);
+}
+.account-instagram-row input {
+  border: none;
+  background: none;
+  padding: 10px 0;
+}
+.account-instagram-row .btn {
+  flex: none;
+  margin: 4px 0;
+}
+
+.account-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.account-select-all {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--purple);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.account-select-all:hover {
+  color: var(--green);
+}
+
+.account-wishlist-empty {
+  text-align: center;
+  background: var(--panel-2);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 22px 16px;
+  margin-bottom: 18px;
+  color: var(--ink-dim);
+  font-size: 13.5px;
+}
+
+/* Barra fixa no rodapé da lista, mostrando quantos jogos estão marcados e o
+   total — só aparece quando a lista de desejos tem pelo menos 1 jogo. */
+.account-bulk-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--panel-2);
+  border: 1px solid rgba(78, 240, 95, 0.25);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 20px;
+}
+.account-bulk-total {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-dim);
+}
+.account-bulk-bar .btn {
+  flex: none;
+}
+@media (max-width: 400px) {
+  .account-bulk-bar {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+}
+
+/* Linha de total no resumo da compra em lote (BulkPurchaseModal.tsx),
+   logo abaixo da lista read-only de jogos selecionados. */
+.bulk-total-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--ink);
+  padding: 10px 4px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 18px;
+}
+.bulk-total-row span:last-child {
+  color: var(--green);
+  font-family: 'Press Start 2P', cursive;
+  font-size: 13px;
 }
 
 /* Avisozinho flutuante quando favoritar/desfavoritar falha (ex: banco da

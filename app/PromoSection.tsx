@@ -3,19 +3,19 @@ import type { Item } from './CatalogClient';
 
 export default function PromoSection({
   featuredItems,
-  bestsellerItems,
+  mostWantedItems,
   upcomingItems,
   onViewGame,
   onFilterFlag
 }: {
   featuredItems: Item[];
-  bestsellerItems: Item[];
+  mostWantedItems: Item[];
   upcomingItems: Item[];
   onViewGame: (name: string) => void;
   onFilterFlag: (flag: 'bestseller' | 'upcoming') => void;
 }) {
   const hasFeatured = featuredItems.length > 0;
-  const hasSide = bestsellerItems.length > 0 || upcomingItems.length > 0;
+  const hasSide = mostWantedItems.length > 0 || upcomingItems.length > 0;
   if (!hasFeatured && !hasSide) return null;
 
   return (
@@ -34,14 +34,14 @@ export default function PromoSection({
       )}
       {hasSide && (
         <div className="promo-section-side">
-          {bestsellerItems.length > 0 && (
+          {mostWantedItems.length > 0 && (
             <PromoCarousel
-              items={bestsellerItems}
+              items={mostWantedItems}
               intervalMs={4000}
               size="small"
-              category="🔥 Mais vendidos"
+              category="❤️ Mais desejados"
               showControls={false}
-              onItemClick={() => onFilterFlag('bestseller')}
+              onItemClick={(item) => onViewGame(item.name)}
             />
           )}
           {upcomingItems.length > 0 && (

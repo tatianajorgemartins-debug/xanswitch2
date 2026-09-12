@@ -308,6 +308,24 @@ contagem de quantas pessoas favoritaram cada um. É esse número que ajuda a
 decidir quais jogos vale a pena ter sempre em estoque, colocar em
 promoção, ou destacar na página inicial.
 
+**Onde isso aparece pro cliente:** os 4 jogos mais favoritados de todos os
+clientes (não só os dele) aparecem numa vitrine "❤️ Mais desejados pelos
+clientes" logo antes do catálogo completo, separada por uma linha, e os 3
+primeiros também entram no carrossel pequeno "❤️ Mais desejados" perto do
+topo da página — no lugar de onde antes ficava "🔥 Mais vendidos". O campo
+"Mais vendido" continua existindo no formulário de cada jogo (caso você
+queira usar de novo no futuro), só que não aparece em nenhum lugar do site
+por enquanto.
+
+**Comprar vários jogos de uma vez:** dentro do popup de conta, cada jogo da
+lista de desejos tem uma caixinha de marcar (vem tudo marcado por padrão) —
+a pessoa desmarca o que não quiser levar agora e clica em **"Comprar
+selecionados"**. Isso abre um Pix único com o valor total, e depois de
+pagar a mensagem do WhatsApp já vem com a lista de todos os jogos e o total,
+igual já acontecia com um jogo só. No histórico do admin (📋 Pedidos), cada
+jogo desse pedido continua aparecendo como uma linha separada — só que
+todas criadas no mesmo instante.
+
 **Onde ficam guardados esses dados:** diferente dos jogos e comentários
 (que ficam no banco Neon), a conta do cliente e a lista de desejos ficam
 guardadas no mesmo projeto Supabase que já guarda as imagens — numa parte
@@ -437,7 +455,8 @@ Abre em `http://localhost:3000`.
 app/
   page.tsx              → catálogo público (busca + cards + dados de cada jogo)
   CatalogClient.tsx      → a parte interativa do catálogo público (abre o modal de compra, login, lista de desejos)
-  PurchaseModal.tsx       → o modal de compra (resumo → checklist → Pix → WhatsApp)
+  PurchaseModal.tsx       → o modal de compra de UM jogo (resumo → checklist → Pix → WhatsApp)
+  BulkPurchaseModal.tsx    → o modal de compra de VÁRIOS jogos da lista de desejos de uma vez
   AccountModal.tsx         → o popup de login (e-mail e senha) e da lista de desejos do cliente
   SiteHeader.tsx           → logo + ícone de conta (com o número da lista de desejos) + redes sociais
   orderActions.ts          → Server Action que registra cada tentativa de compra

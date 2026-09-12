@@ -20,6 +20,24 @@ export function buildWhatsAppPaymentLink(gameName: string, price: string | numbe
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
 }
 
+// Mesma ideia de buildWhatsAppPaymentLink, só que pra quando o cliente compra
+// vários jogos de uma vez pela lista de desejos (ver BulkPurchaseModal.tsx) —
+// a mensagem lista cada jogo com o preço individual, e fecha com o total.
+export function buildWhatsAppBulkPaymentLink(
+  items: { name: string; price: number }[],
+  total: number
+): string {
+  const number = process.env.WHATSAPP_NUMBER;
+  if (!number) {
+    throw new Error(
+      'WHATSAPP_NUMBER não está configurada. Adicione essa variável de ambiente no painel da Vercel (com o DDI, ex: 5521999999999).'
+    );
+  }
+  const list = items.map((it) => `- ${it.name} (R$ ${formatPriceBR(it.price)})`).join('\n');
+  const message = `Acabei de pagar via Pix, segue meu comprovante:\n\nJogos:\n${list}\n\nTotal: R$ ${formatPriceBR(total)}`;
+  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+}
+
 // Plain contact link (no pre-filled message), used by the header icon.
 export function buildWhatsAppContactLink(): string | null {
   const number = process.env.WHATSAPP_NUMBER;

@@ -15,7 +15,8 @@ export default function AccountModal({
   user,
   wishlistItems,
   onOpenGame,
-  onRemoveFromWishlist
+  onRemoveFromWishlist,
+  onBulkPurchase
 }: {
   open: boolean;
   onClose: () => void;
@@ -23,6 +24,7 @@ export default function AccountModal({
   wishlistItems: Item[];
   onOpenGame: (item: Item) => void;
   onRemoveFromWishlist: (gameId: number) => void;
+  onBulkPurchase: (items: Item[]) => void;
 }) {
   // Fecha com Esc, trava o scroll de fundo — mesmo comportamento de
   // qualquer outro modal do site.
@@ -70,6 +72,10 @@ export default function AccountModal({
                 onOpenGame(item);
               }}
               onRemoveFromWishlist={onRemoveFromWishlist}
+              onBulkPurchase={(items) => {
+                onClose();
+                onBulkPurchase(items);
+              }}
             />
           ) : (
             <LoginForm />
@@ -207,25 +213,35 @@ function LoginForm() {
   );
 }
 
-// Tela de quem já está logado: e-mail da conta, campo de Instagram
-// (opcional — só ajuda você a reconhecer o cliente depois) e a lista de
-// desejos dele.
+// Tela de quem já está logado: um cabeçalho com avatar + e-mail, o campo de
+// Instagram (opcional — só ajuda você a reconhecer o cliente depois) e a
+// lista de desejos dele, com caixinhas de seleção pra comprar vários jogos
+// de uma vez (ver BulkPurchaseModal.tsx).
 function LoggedInView({
   user,
   wishlistItems,
   onOpenGame,
-  onRemoveFromWishlist
+  onRemoveFromWishlist,
+  onBulkPurchase
 }: {
   user: User;
   wishlistItems: Item[];
   onOpenGame: (item: Item) => void;
   onRemoveFromWishlist: (gameId: number) => void;
+  onBulkPurchase: (items: Item[]) => void;
 }) {
   const [instagram, setInstagram] = useState('');
   const [loadingInstagram, setLoadingInstagram] = useState(true);
   const [savingInstagram, setSavingInstagram] = useState(false);
   const [savedFeedback, setSavedFeedback] = useState(false);
   const [instagramError, setInstagramError] = useState('');
+  // Todo mundo começa marcado (é mais comum querer comprar tudo do que só
+  // uma parte) — a pessoa desmarca o que não quiser levar agora. O modal
+  // reabre do zero toda vez, então não precisa reagir a itens removidos
+  // enquanto está aberto (não dá pra tirar/favoritar nada com ele aberto).
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(
+    () => new Set(wishlistItems.map((item) => item.id))
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -259,18 +275,46 @@ function LoggedInView({
     }
   }
 
+  function toggleSelected(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  const allSelected = wishlistItems.length > 0 && wishlistItems.every((item) => selectedIds.has(item.id));
+  function toggleSelectAll() {
+    setSelectedIds(allSelected ? new Set() : new Set(wishlistItems.map((item) => item.id)));
+  }
+
+  const selectedItems = wishlistItems.filter((item) => selectedIds.has(item.id));
+  const selectedTotalLabel = selectedItems.reduce((sum, item) => sum + item.price, 0).toFixed(2).replace('.', ',');
+  const initials = user.email ? user.email.slice(0, 2).toUpperCase() : '?';
+
   return (
     <>
-      <div style={{ marginBottom: 18 }}>
-        <p className="purchase-description-label" style={{ marginBottom: 4 }}>
-          Logado como
-        </p>
-        <p style={{ fontWeight: 700, fontSize: 14.5, color: 'var(--ink)' }}>{user.email}</p>
+      <div className="account-profile-header">
+        <div className="account-avatar" aria-hidden="true">
+          {initials}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <p className="account-profile-email">{user.email}</p>
+          <p className="account-profile-sub">Cliente XAN Switch</p>
+        </div>
       </div>
 
-      <form onSubmit={handleSaveInstagram} style={{ marginBottom: 22 }}>
+      <form onSubmit={handleSaveInstagram} className="account-instagram-field">
         <label htmlFor="account-instagram">Seu Instagram (opcional)</label>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="account-instagram-row">
+          <span className="account-instagram-prefix">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={15} height={15}>
+              <rect x="3" y="3" width="18" height="18" rx="5" />
+              <circle cx="12" cy="12" r="4" />
+              <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+            </svg>
+          </span>
           <input
             id="account-instagram"
             type="text"
@@ -289,44 +333,77 @@ function LoggedInView({
         )}
       </form>
 
-      <p className="purchase-description-label" style={{ marginBottom: 10 }}>
-        Sua lista de desejos {wishlistItems.length > 0 ? `(${wishlistItems.length})` : ''}
-      </p>
+      <div className="account-section-header">
+        <p className="purchase-description-label" style={{ margin: 0 }}>
+          ❤️ Lista de desejos {wishlistItems.length > 0 ? `(${wishlistItems.length})` : ''}
+        </p>
+        {wishlistItems.length > 1 && (
+          <button type="button" className="account-select-all" onClick={toggleSelectAll}>
+            {allSelected ? 'Desmarcar todos' : 'Selecionar todos'}
+          </button>
+        )}
+      </div>
 
       {wishlistItems.length === 0 ? (
-        <p style={{ fontSize: 13.5, color: 'var(--ink-dim)', marginBottom: 18 }}>
-          Ainda vazia — clica no ♡ de qualquer jogo do catálogo pra favoritar.
-        </p>
-      ) : (
-        <div className="wishlist-list">
-          {wishlistItems.map((item) => (
-            <div key={item.id} className="wishlist-row">
-              <button type="button" className="wishlist-row-main" onClick={() => onOpenGame(item)}>
-                <span className="wishlist-row-cover">
-                  {item.imageUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.imageUrl} alt="" loading="lazy" />
-                  )}
-                </span>
-                <span className="wishlist-row-info">
-                  <span className="wishlist-row-name">{item.name}</span>
-                  <span className="wishlist-row-price">R$ {item.priceLabel}</span>
-                </span>
-              </button>
-              <button
-                type="button"
-                className="wishlist-row-remove"
-                onClick={() => onRemoveFromWishlist(item.id)}
-                aria-label={`Remover ${item.name} da lista de desejos`}
-                title="Remover"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={15} height={15}>
-                  <path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a1 1 0 01-1 1H7a1 1 0 01-1-1V6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-            </div>
-          ))}
+        <div className="account-wishlist-empty">
+          <p style={{ fontSize: 30, margin: '0 0 6px' }}>🤍</p>
+          <p style={{ margin: 0 }}>Ainda vazia — clica no ♡ de qualquer jogo do catálogo pra favoritar.</p>
         </div>
+      ) : (
+        <>
+          <div className="wishlist-list">
+            {wishlistItems.map((item) => (
+              <div key={item.id} className={`wishlist-row${selectedIds.has(item.id) ? ' is-selected' : ''}`}>
+                <input
+                  type="checkbox"
+                  className="wishlist-row-checkbox"
+                  checked={selectedIds.has(item.id)}
+                  onChange={() => toggleSelected(item.id)}
+                  aria-label={`Selecionar ${item.name} pra comprar`}
+                />
+                <button type="button" className="wishlist-row-main" onClick={() => onOpenGame(item)}>
+                  <span className="wishlist-row-cover">
+                    {item.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={item.imageUrl} alt="" loading="lazy" />
+                    )}
+                  </span>
+                  <span className="wishlist-row-info">
+                    <span className="wishlist-row-name">{item.name}</span>
+                    <span className="wishlist-row-price">R$ {item.priceLabel}</span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="wishlist-row-remove"
+                  onClick={() => onRemoveFromWishlist(item.id)}
+                  aria-label={`Remover ${item.name} da lista de desejos`}
+                  title="Remover"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={15} height={15}>
+                    <path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a1 1 0 01-1 1H7a1 1 0 01-1-1V6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="account-bulk-bar">
+            <span className="account-bulk-total">
+              {selectedItems.length === 0
+                ? 'Nenhum selecionado'
+                : `${selectedItems.length} selecionado${selectedItems.length > 1 ? 's' : ''} · R$ ${selectedTotalLabel}`}
+            </span>
+            <button
+              type="button"
+              className="btn green"
+              disabled={selectedItems.length === 0}
+              onClick={() => onBulkPurchase(selectedItems)}
+            >
+              Comprar selecionados
+            </button>
+          </div>
+        </>
       )}
 
       <div className="purchase-modal-actions">

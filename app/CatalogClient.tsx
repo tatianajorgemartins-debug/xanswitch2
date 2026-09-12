@@ -11,6 +11,7 @@ import ReviewsSection from './ReviewsSection';
 import ReviewForm from './ReviewForm';
 import PurchaseModal from './PurchaseModal';
 import AccountModal from './AccountModal';
+import BulkPurchaseModal from './BulkPurchaseModal';
 
 export type Item = {
   id: number;
@@ -54,6 +55,7 @@ export default function CatalogClient({
   featuredItems,
   bestsellerItems,
   upcomingItems,
+  mostWantedItems,
   reviews,
   whatsappContactUrl
 }: {
@@ -61,6 +63,12 @@ export default function CatalogClient({
   featuredItems: Item[];
   bestsellerItems: Item[];
   upcomingItems: Item[];
+  // Os jogos mais favoritados do site inteiro (todos os clientes), do mais
+  // pro menos desejado — calculado no servidor (app/page.tsx) a partir da
+  // tabela wishlists do Supabase. Os 3 primeiros alimentam o carrossel
+  // "❤️ Mais desejados" e os 4 primeiros a vitrine antes do catálogo
+  // completo, mais abaixo.
+  mostWantedItems: Item[];
   reviews: ReviewItem[];
   whatsappContactUrl: string | null;
 }) {
@@ -89,6 +97,9 @@ export default function CatalogClient({
   const [user, setUser] = useState<User | null>(null);
   const [wishlistIds, setWishlistIds] = useState<Set<number>>(new Set());
   const [accountModalOpen, setAccountModalOpen] = useState(false);
+  // Jogos selecionados pra compra em lote (null = modal fechado) — disparado
+  // a partir da lista de desejos, dentro do popup de conta.
+  const [bulkPurchaseItems, setBulkPurchaseItems] = useState<Item[] | null>(null);
   // Mensagem de erro ao favoritar/desfavoritar (ex: banco de dados da lista
   // de desejos ainda não configurado). Sem isso, um erro aqui ficava
   // completamente invisível — o coração só "piscava" e voltava, sem
@@ -241,7 +252,6 @@ export default function CatalogClient({
         <div className="site-header-bar-inner">
           <SiteHeader
             whatsappContactUrl={whatsappContactUrl}
-            user={user}
             wishlistCount={wishlistIds.size}
             onOpenAccount={() => setAccountModalOpen(true)}
           />
@@ -401,7 +411,7 @@ export default function CatalogClient({
 
       <PromoSection
         featuredItems={featuredItems}
-        bestsellerItems={bestsellerItems}
+        mostWantedItems={mostWantedItems.slice(0, 3)}
         upcomingItems={upcomingItems}
         onViewGame={handleViewGame}
         onFilterFlag={handleFilterFlag}
@@ -424,6 +434,24 @@ export default function CatalogClient({
               ✕
             </button>
           </span>
+        </div>
+      )}
+
+      {mostWantedItems.length > 0 && (
+        <div className="most-wanted-section">
+          <h2 className="most-wanted-heading">❤️ Mais desejados pelos clientes</h2>
+          <div className="catalog-grid">
+            {mostWantedItems.slice(0, 4).map((item) => (
+              <GameCard
+                key={item.id}
+                item={item}
+                onSelect={() => setSelectedItem(item)}
+                wishlisted={wishlistIds.has(item.id)}
+                onToggleWishlist={() => toggleWishlist(item.id)}
+              />
+            ))}
+          </div>
+          <hr className="section-divider" />
         </div>
       )}
 
@@ -489,7 +517,14 @@ export default function CatalogClient({
         wishlistItems={wishlistItems}
         onOpenGame={setSelectedItem}
         onRemoveFromWishlist={toggleWishlist}
+        onBulkPurchase={setBulkPurchaseItems}
       />
+
+      {/* Compra em lote de vários jogos da lista de desejos de uma vez —
+          disparada de dentro do popup de conta (ver onBulkPurchase acima). */}
+      {bulkPurchaseItems && (
+        <BulkPurchaseModal items={bulkPurchaseItems} onClose={() => setBulkPurchaseItems(null)} />
+      )}
 
       {wishlistError && (
         <div className="toast-error" role="alert">
