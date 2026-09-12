@@ -344,6 +344,13 @@ function LoggedInView({
         )}
       </div>
 
+      {wishlistItems.length > 0 && (
+        <p className="account-wishlist-hint">
+          A caixinha é só pra escolher o que comprar agora — pra tirar um jogo da lista de desejos,
+          clica no coração ❤️.
+        </p>
+      )}
+
       {wishlistItems.length === 0 ? (
         <div className="account-wishlist-empty">
           <p style={{ fontSize: 30, margin: '0 0 6px' }}>🤍</p>
@@ -375,13 +382,13 @@ function LoggedInView({
                 </button>
                 <button
                   type="button"
-                  className="wishlist-row-remove"
+                  className="wishlist-heart-button list-row-heart active"
                   onClick={() => onRemoveFromWishlist(item.id)}
-                  aria-label={`Remover ${item.name} da lista de desejos`}
-                  title="Remover"
+                  aria-label={`Tirar ${item.name} da lista de desejos`}
+                  title="Tirar dos favoritos"
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={15} height={15}>
-                    <path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a1 1 0 01-1 1H7a1 1 0 01-1-1V6" strokeLinecap="round" strokeLinejoin="round" />
+                  <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" width={16} height={16}>
+                    <path d="M12 20.5s-7.5-4.6-10-9.3C.5 7.8 2.3 4.5 5.6 4c2-.3 3.9.6 5 2.3a5.3 5.3 0 015-2.3c3.3.5 5.1 3.8 3.6 7.2-2.5 4.7-10 9.3-10 9.3z" strokeLinejoin="round" />
                   </svg>
                 </button>
               </div>

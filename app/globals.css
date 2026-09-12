@@ -1773,24 +1773,6 @@ label {
   font-weight: 700;
   color: var(--green);
 }
-.wishlist-row-remove {
-  flex: none;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  border: none;
-  background: none;
-  color: var(--ink-dim);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s, color 0.15s;
-}
-.wishlist-row-remove:hover {
-  background: rgba(255, 92, 138, 0.12);
-  color: var(--wishlist-pink);
-}
 .wishlist-row-checkbox {
   flex: none;
   width: 18px;
@@ -1902,6 +1884,16 @@ label {
 }
 .account-select-all:hover {
   color: var(--green);
+}
+
+/* Explica a diferença entre a caixinha (seleção pra comprar) e o coração
+   (tirar da lista de desejos) — sem isso, era comum confundir as duas
+   coisas e achar que desmarcar a caixinha desfavoritava o jogo. */
+.account-wishlist-hint {
+  font-size: 11.5px;
+  color: var(--ink-dim);
+  line-height: 1.4;
+  margin: -6px 0 12px;
 }
 
 .account-wishlist-empty {
