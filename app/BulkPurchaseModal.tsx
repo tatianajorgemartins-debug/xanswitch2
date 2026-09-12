@@ -10,8 +10,8 @@ import { useEffect, useRef, useState, startTransition } from 'react';
 import type { Item } from './CatalogClient';
 import { StepChecklist, type Checklist } from './PurchaseModal';
 import { generatePixPayload, type PixPayload } from '@/lib/pix';
-import { logOrderAttempt } from './orderActions';
-import { buildWhatsAppBulkPaymentLink, formatPriceBR } from '@/lib/whatsapp';
+import { logOrderAttempt, getBulkWhatsAppLink } from './orderActions';
+import { formatPriceBR } from '@/lib/whatsapp';
 
 type Step = 1 | 2 | 3;
 
@@ -28,11 +28,16 @@ export default function BulkPurchaseModal({ items, onClose }: { items: Item[]; o
   const [pixError, setPixError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
+  // O link do WhatsApp precisa vir do servidor (ver getBulkWhatsAppLink em
+  // orderActions.ts) — WHATSAPP_NUMBER é uma variável sem o prefixo
+  // NEXT_PUBLIC_, então só existe no servidor; gerar esse link direto aqui
+  // no componente (que roda no navegador) sempre dava erro.
+  const [whatsappUrl, setWhatsappUrl] = useState<string | null>(null);
+  const [whatsappError, setWhatsappError] = useState<string | null>(null);
   const startedRef = useRef(false);
 
   const total = items.reduce((sum, it) => sum + it.price, 0);
   const totalLabel = total.toFixed(2).replace('.', ',');
-  const whatsappUrl = buildWhatsAppBulkPaymentLink(items, total);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -62,6 +67,13 @@ export default function BulkPurchaseModal({ items, onClose }: { items: Item[]; o
     generatePixPayload(total, `${items.length} jogos`)
       .then(setPix)
       .catch((err: Error) => setPixError(err.message));
+
+    getBulkWhatsAppLink(
+      items.map((it) => ({ name: it.name, price: it.price })),
+      total
+    )
+      .then(setWhatsappUrl)
+      .catch((err: Error) => setWhatsappError(err.message));
 
     startTransition(() => {
       Promise.all(items.map((it) => logOrderAttempt(it.id, it.name, it.price))).catch(() => {});
@@ -148,7 +160,9 @@ export default function BulkPurchaseModal({ items, onClose }: { items: Item[]; o
             />
           )}
 
-          {step === 3 && <BulkStepConfirm whatsappUrl={whatsappUrl} onClose={onClose} />}
+          {step === 3 && (
+            <BulkStepConfirm whatsappUrl={whatsappUrl} whatsappError={whatsappError} onClose={onClose} />
+          )}
         </div>
       </div>
     </div>
@@ -236,14 +250,34 @@ function BulkStepPayment({
   );
 }
 
-function BulkStepConfirm({ whatsappUrl, onClose }: { whatsappUrl: string; onClose: () => void }) {
+function BulkStepConfirm({
+  whatsappUrl,
+  whatsappError,
+  onClose
+}: {
+  whatsappUrl: string | null;
+  whatsappError: string | null;
+  onClose: () => void;
+}) {
   const openedRef = useRef(false);
 
   useEffect(() => {
-    if (openedRef.current) return;
+    if (!whatsappUrl || openedRef.current) return;
     openedRef.current = true;
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
   }, [whatsappUrl]);
+
+  if (whatsappError) {
+    return (
+      <p style={{ color: '#ff8a8a', fontSize: 14, fontWeight: 600, textAlign: 'center' }}>
+        Não foi possível abrir o WhatsApp: {whatsappError}
+      </p>
+    );
+  }
+
+  if (!whatsappUrl) {
+    return <p style={{ textAlign: 'center', color: 'var(--ink-dim)', fontWeight: 600 }}>Só um instante...</p>;
+  }
 
   return (
     <>
