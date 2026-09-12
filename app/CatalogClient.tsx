@@ -551,6 +551,7 @@ export default function CatalogClient({
                   onSelect={() => setSelectedItem(item)}
                   wishlisted={wishlistIds.has(item.id)}
                   onToggleWishlist={() => toggleWishlist(item.id)}
+                  rank={index < 3 ? index + 1 : undefined}
                 />
               </div>
             ))}
@@ -668,17 +669,32 @@ export default function CatalogClient({
   );
 }
 
+// Cores de ouro/prata/bronze pro 1º, 2º e 3º lugar da vitrine de mais
+// desejados — só usadas ali, por isso ficam num Record em vez de virar
+// classes CSS separadas.
+const RANK_BADGE_STYLE: Record<number, { background: string; color: string }> = {
+  1: { background: 'linear-gradient(135deg, #ffe27a, #d4a017)', color: '#3a2a00' },
+  2: { background: 'linear-gradient(135deg, #e8e8e8, #a3a3a3)', color: '#2a2a2a' },
+  3: { background: 'linear-gradient(135deg, #e0a06a, #9c5a24)', color: '#2e1500' }
+};
+
 function GameCard({
   item,
   onSelect,
   wishlisted,
-  onToggleWishlist
+  onToggleWishlist,
+  rank
 }: {
   item: Item;
   onSelect: () => void;
   wishlisted: boolean;
   onToggleWishlist: () => void;
+  // Posição no ranking de mais desejados (1, 2 ou 3) — só é passado pros
+  // 3 primeiros cards da vitrine "Mais desejados", em nenhum outro lugar
+  // do catálogo.
+  rank?: number;
 }) {
+  const rankStyle = rank ? RANK_BADGE_STYLE[rank] : undefined;
   return (
     // Esse card precisa conter DOIS elementos clicáveis (o card inteiro, que
     // abre o modal de compra, e o coração de favoritar) — HTML não permite
@@ -723,6 +739,32 @@ function GameCard({
             <path d="M12 20.5s-7.5-4.6-10-9.3C.5 7.8 2.3 4.5 5.6 4c2-.3 3.9.6 5 2.3a5.3 5.3 0 015-2.3c3.3.5 5.1 3.8 3.6 7.2-2.5 4.7-10 9.3-10 9.3z" strokeLinejoin="round" />
           </svg>
         </button>
+
+        {rankStyle && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 8,
+              left: 8,
+              zIndex: 2,
+              width: 28,
+              height: 28,
+              borderRadius: '50%',
+              background: rankStyle.background,
+              color: rankStyle.color,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontFamily: "'Press Start 2P', cursive",
+              fontSize: 10,
+              boxShadow: '0 2px 8px rgba(0,0,0,.5)',
+              border: '2px solid rgba(0,0,0,.25)'
+            }}
+            title={`${rank}º lugar entre os mais desejados`}
+          >
+            {rank}º
+          </div>
+        )}
 
         {item.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
