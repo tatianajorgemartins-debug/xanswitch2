@@ -436,7 +436,9 @@ export default function CatalogClient({
         </button>
       </div>
 
-      {reviewFormOpen && <ReviewForm onSubmitted={() => setReviewFormOpen(false)} />}
+      {reviewFormOpen && (
+        <ReviewForm onSubmitted={() => setReviewFormOpen(false)} instagramHandle={instagramHandle} />
+      )}
 
       {filtersOpen && (
         <div className="filters-panel">

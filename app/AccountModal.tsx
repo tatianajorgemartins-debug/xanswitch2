@@ -9,6 +9,8 @@ import type { User } from '@supabase/supabase-js';
 import type { Item } from './CatalogClient';
 import { signUp, signIn, signOut, getInstagramHandle, saveInstagramHandle } from '@/lib/wishlist';
 
+const WISHLIST_PREVIEW_LIMIT = 5;
+
 export default function AccountModal({
   open,
   onClose,
@@ -250,6 +252,10 @@ function LoggedInView({
   const [selectedIds, setSelectedIds] = useState<Set<number>>(
     () => new Set(wishlistItems.map((item) => item.id))
   );
+  // Mostra só os 5 primeiros favoritos por padrão — a lista pode ficar
+  // enorme, e isso evita o popup crescer sem fim. A seleção pra comprar
+  // continua valendo pra lista inteira, mesmo com o resto escondido.
+  const [showAllWishlist, setShowAllWishlist] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -257,6 +263,7 @@ function LoggedInView({
       .then((value) => {
         if (!cancelled) setInstagram(value ?? '');
       })
+      .catch(() => {})
       .finally(() => {
         if (!cancelled) setLoadingInstagram(false);
       });
@@ -302,6 +309,8 @@ function LoggedInView({
   const selectedItems = wishlistItems.filter((item) => selectedIds.has(item.id));
   const selectedTotalLabel = selectedItems.reduce((sum, item) => sum + item.price, 0).toFixed(2).replace('.', ',');
   const initials = user.email ? user.email.slice(0, 2).toUpperCase() : '?';
+  const visibleWishlistItems = showAllWishlist ? wishlistItems : wishlistItems.slice(0, WISHLIST_PREVIEW_LIMIT);
+  const hiddenWishlistCount = wishlistItems.length - visibleWishlistItems.length;
 
   return (
     <>
@@ -369,7 +378,7 @@ function LoggedInView({
       ) : (
         <>
           <div className="wishlist-list">
-            {wishlistItems.map((item) => (
+            {visibleWishlistItems.map((item) => (
               <div key={item.id} className={`wishlist-row${selectedIds.has(item.id) ? ' is-selected' : ''}`}>
                 <input
                   type="checkbox"
@@ -404,6 +413,17 @@ function LoggedInView({
               </div>
             ))}
           </div>
+
+          {hiddenWishlistCount > 0 && (
+            <button type="button" className="account-show-all-wishlist" onClick={() => setShowAllWishlist(true)}>
+              Ver todos os favoritos ({wishlistItems.length})
+            </button>
+          )}
+          {showAllWishlist && wishlistItems.length > WISHLIST_PREVIEW_LIMIT && (
+            <button type="button" className="account-show-all-wishlist" onClick={() => setShowAllWishlist(false)}>
+              Ver menos
+            </button>
+          )}
 
           <div className="account-bulk-bar">
             <span className="account-bulk-total">

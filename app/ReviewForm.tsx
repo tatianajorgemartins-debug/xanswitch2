@@ -6,7 +6,17 @@ import { submitReviewAction, type ReviewFormState } from './reviewActions';
 
 const emptyState: ReviewFormState = { error: null, success: false };
 
-export default function ReviewForm({ onSubmitted }: { onSubmitted: () => void }) {
+export default function ReviewForm({
+  onSubmitted,
+  instagramHandle
+}: {
+  onSubmitted: () => void;
+  // @ do Instagram de quem está logado (sem o "@"), se tiver salvo no
+  // perfil — usado só pra pré-preencher o formulário, poupando de digitar
+  // de novo algo que a pessoa já informou uma vez. Ela ainda pode apagar
+  // ou trocar antes de enviar.
+  instagramHandle?: string | null;
+}) {
   const [state, formAction] = useActionState(submitReviewAction, emptyState);
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -37,11 +47,26 @@ export default function ReviewForm({ onSubmitted }: { onSubmitted: () => void })
           <div className="review-form-row">
             <div>
               <label htmlFor="review-name">Seu nome</label>
-              <input id="review-name" name="name" type="text" maxLength={60} required placeholder="Ex: João" />
+              <input
+                id="review-name"
+                name="name"
+                type="text"
+                maxLength={60}
+                required
+                placeholder="Ex: João"
+                defaultValue={instagramHandle ?? ''}
+              />
             </div>
             <div>
               <label htmlFor="review-instagram">Instagram (opcional)</label>
-              <input id="review-instagram" name="instagram" type="text" maxLength={40} placeholder="@seuinstagram" />
+              <input
+                id="review-instagram"
+                name="instagram"
+                type="text"
+                maxLength={40}
+                placeholder="@seuinstagram"
+                defaultValue={instagramHandle ? `@${instagramHandle}` : ''}
+              />
             </div>
           </div>
 
