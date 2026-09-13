@@ -216,12 +216,39 @@ function StepSummary({
   onOpenScreenshot: (index: number) => void;
 }) {
   const galleryRef = useRef<HTMLDivElement>(null);
+  const [shareCopied, setShareCopied] = useState(false);
 
   // As setinhas da galeria só rolam a tira de miniaturas — a largura de uma
   // miniatura + o espaçamento entre elas, então cada clique anda "uma foto"
   // por vez, tanto faz o tamanho da tela.
   function scrollGallery(direction: 1 | -1) {
     galleryRef.current?.scrollBy({ left: direction * 124, behavior: 'smooth' });
+  }
+
+  // Cada jogo tem um link próprio (/jogo/<id>) que já abre direto nessa
+  // mesma tela — é o que dá pra compartilhar nas redes sociais e mostrar
+  // uma prévia com a capa e o nome do jogo (ver generateMetadata em
+  // app/jogo/[id]/page.tsx). No celular, usa o menu de compartilhar nativo
+  // quando disponível; senão, copia o link (mesmo padrão do "Copiar" do
+  // Pix, mais abaixo no modal).
+  async function handleShare() {
+    const url = `${window.location.origin}/jogo/${item.id}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: item.name, text: `Dá uma olhada em ${item.name} na XAN Switch!`, url });
+      } catch {
+        // Cancelar o compartilhamento não é um erro — só não faz nada.
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2500);
+    } catch {
+      // Sem clipboard disponível, não tem fallback silencioso melhor do
+      // que simplesmente não fazer nada.
+    }
   }
 
   return (
@@ -323,6 +350,12 @@ function StepSummary({
               <path d="M2.5 3h2.4l2.4 12.4a2 2 0 002 1.6h8.8a2 2 0 002-1.6L21.5 7H6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             Comprar agora
+          </button>
+          <button type="button" className="btn ghost" onClick={handleShare}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={15} height={15}>
+              <path d="M4 12v6a2 2 0 002 2h12a2 2 0 002-2v-6M16 6l-4-4-4 4M12 2v14" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {shareCopied ? 'Link copiado!' : 'Compartilhar este jogo'}
           </button>
         </div>
       </div>

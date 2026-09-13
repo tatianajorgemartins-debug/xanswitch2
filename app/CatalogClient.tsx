@@ -64,7 +64,8 @@ export default function CatalogClient({
   upcomingItems,
   mostWantedItems,
   reviews,
-  whatsappContactUrl
+  whatsappContactUrl,
+  initialGameId
 }: {
   items: Item[];
   featuredItems: Item[];
@@ -78,6 +79,10 @@ export default function CatalogClient({
   mostWantedItems: Item[];
   reviews: ReviewItem[];
   whatsappContactUrl: string | null;
+  // Só vem preenchido quando a página é acessada pelo link direto de um
+  // jogo (app/jogo/[id]/page.tsx) — abre o modal de compra desse jogo
+  // assim que a página carrega, sem precisar clicar em nada.
+  initialGameId?: number;
 }) {
   const [query, setQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
@@ -94,8 +99,33 @@ export default function CatalogClient({
 
   // Jogo clicado no momento (null = nenhum modal aberto). É só esse estado
   // que controla o modal de compra — abrir um jogo é simplesmente colocar o
-  // Item aqui, fechar é voltar pra null. Nada de navegação/URL nova.
+  // Item aqui, fechar é voltar pra null.
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+
+  // Abre o modal de compra E deixa o link da página (a URL no navegador)
+  // apontando pro link direto desse jogo (/jogo/<id>) — assim, a qualquer
+  // momento, a pessoa pode simplesmente copiar o link da barra de endereço
+  // pra compartilhar aquele jogo específico. Usa replaceState (não
+  // pushState) de propósito: só troca o que aparece na barra, sem criar
+  // uma parada a mais no histórico — o botão "voltar" do navegador continua
+  // se comportando exatamente como antes.
+  function openGame(item: Item) {
+    setSelectedItem(item);
+    window.history.replaceState(null, '', `/jogo/${item.id}`);
+  }
+  function closeGame() {
+    setSelectedItem(null);
+    window.history.replaceState(null, '', '/');
+  }
+
+  // Quando a página é acessada pelo link direto de um jogo
+  // (app/jogo/[id]/page.tsx), abre o modal dele sozinho ao carregar.
+  useEffect(() => {
+    if (initialGameId === undefined) return;
+    const item = items.find((it) => it.id === initialGameId);
+    if (item) setSelectedItem(item);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialGameId]);
 
   // Conta do cliente (login por e-mail) e lista de desejos dele. `user` fica
   // null enquanto ninguém logou. `wishlistIds` guarda só os ids dos jogos
@@ -548,7 +578,7 @@ export default function CatalogClient({
               <div key={item.id} className={index === 4 ? 'most-wanted-fifth' : undefined}>
                 <GameCard
                   item={item}
-                  onSelect={() => setSelectedItem(item)}
+                  onSelect={() => openGame(item)}
                   wishlisted={wishlistIds.has(item.id)}
                   onToggleWishlist={() => toggleWishlist(item.id)}
                   rank={index < 3 ? index + 1 : undefined}
@@ -588,7 +618,7 @@ export default function CatalogClient({
             <GameCard
               key={item.id}
               item={item}
-              onSelect={() => setSelectedItem(item)}
+              onSelect={() => openGame(item)}
               wishlisted={wishlistIds.has(item.id)}
               onToggleWishlist={() => toggleWishlist(item.id)}
             />
@@ -600,7 +630,7 @@ export default function CatalogClient({
             <ListRow
               key={item.id}
               item={item}
-              onSelect={() => setSelectedItem(item)}
+              onSelect={() => openGame(item)}
               wishlisted={wishlistIds.has(item.id)}
               onToggleWishlist={() => toggleWishlist(item.id)}
             />
@@ -611,7 +641,7 @@ export default function CatalogClient({
       {/* O modal de compra só existe na tela quando um jogo foi clicado.
           Ele fica fora do fluxo normal da página (position: fixed no CSS),
           então não bagunça o layout do catálogo por trás dele. */}
-      {selectedItem && <PurchaseModal item={selectedItem} onClose={() => setSelectedItem(null)} />}
+      {selectedItem && <PurchaseModal item={selectedItem} onClose={closeGame} />}
 
       {/* Popup de login/conta — mesma lógica: só existe na tela quando
           aberto, fica por cima de tudo via position: fixed. */}
@@ -620,7 +650,7 @@ export default function CatalogClient({
         onClose={() => setAccountModalOpen(false)}
         user={user}
         wishlistItems={wishlistItems}
-        onOpenGame={setSelectedItem}
+        onOpenGame={openGame}
         onRemoveFromWishlist={toggleWishlist}
         onBulkPurchase={setBulkPurchaseItems}
         onInstagramSaved={setInstagramHandle}

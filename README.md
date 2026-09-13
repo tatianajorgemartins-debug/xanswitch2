@@ -271,6 +271,26 @@ continua sendo você ver o Pix cair na sua conta.
 
 ---
 
+## Link direto de cada jogo (pra compartilhar nas redes sociais)
+
+Todo jogo tem um link próprio, no formato `seusite.com/jogo/123` (o número é
+o id do jogo) — quem clicar nesse link cai direto no site já com aquele
+jogo aberto no modal de compra, sem precisar procurar no catálogo.
+
+**Como pegar o link:** abre qualquer jogo no site (como cliente veria) e
+clica em **"Compartilhar este jogo"**, no fim da primeira tela. No celular,
+isso abre o menu nativo de compartilhamento (pra mandar direto pro
+WhatsApp, Instagram etc.); no computador, copia o link automaticamente,
+com um aviso "Link copiado!".
+
+**Por que isso ajuda a vender mais:** quando você cola esse link no
+WhatsApp ou Instagram, ele já vem com uma prévia bonita — a capa do jogo,
+o nome e uma descrição — em vez de só um link seco. Isso é configurado
+automaticamente a partir dos dados que você já cadastra no admin (capa e
+descrição), sem precisar fazer nada a mais.
+
+---
+
 ## Como funciona o login e a lista de desejos
 
 No canto superior direito do site (ao lado do Instagram e do WhatsApp) tem
@@ -454,12 +474,13 @@ Abre em `http://localhost:3000`.
 ```
 app/
   page.tsx              → catálogo público (busca + cards + dados de cada jogo)
+  jogo/[id]/page.tsx      → link direto de um jogo específico (abre o catálogo já com o modal dele aberto, com prévia pra redes sociais)
   CatalogClient.tsx      → a parte interativa do catálogo público (abre o modal de compra, login, lista de desejos)
-  PurchaseModal.tsx       → o modal de compra de UM jogo (resumo → checklist → Pix → WhatsApp)
+  PurchaseModal.tsx       → o modal de compra de UM jogo (resumo → checklist → Pix → WhatsApp → compartilhar)
   BulkPurchaseModal.tsx    → o modal de compra de VÁRIOS jogos da lista de desejos de uma vez
   AccountModal.tsx         → o popup de login (e-mail e senha) e da lista de desejos do cliente
   SiteHeader.tsx           → logo + ícone de conta (com o número da lista de desejos) + redes sociais
-  orderActions.ts          → Server Action que registra cada tentativa de compra
+  orderActions.ts          → Server Action que registra cada tentativa de compra e monta o link de compartilhar da compra em lote
   layout.tsx, globals.css → visual (cores, fontes, estilo geral, CSS do modal de compra e do popup de conta)
   admin/
     page.tsx             → painel admin (protegido)
@@ -469,7 +490,9 @@ app/
   api/
     screenshot-upload/route.ts   → autoriza o upload das capturas de tela direto do navegador pro Supabase
     cron/keepalive/route.ts       → rotina diária que mantém o projeto Supabase ativo
+    wishlist-counts/route.ts      → contagem de favoritos por jogo, buscada direto do navegador pra vitrine "Mais desejados"
 lib/
+  catalogData.ts       → busca os dados do catálogo (jogos, avaliações, mais desejados) — usado tanto pela página principal quanto pelo link direto de um jogo
   db.ts               → funções que conversam com o banco de dados (catálogo, Postgres/Neon)
   auth.ts             → login/sessão (senha + cookie assinado) — usado por /admin
   wishlist.ts          → login do cliente (e-mail e senha) e lista de desejos — roda no navegador, fala direto com o Supabase
