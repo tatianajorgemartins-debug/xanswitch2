@@ -74,13 +74,15 @@ a {
 }
 
 /* Promo banners — featured carousel (left, ~65%) + bestseller/upcoming
-   stacked on the right (~35%). Kept short on purpose: this is a teaser
-   strip above the catalog, not a hero section. */
+   stacked on the right (~35%). A altura aqui foi calculada pra bater com
+   a proporção 16:9 do banner principal na largura que ele ocupa (~65% de
+   um catálogo de 1200px) — o mesmo formato de "arte de capa" larga usada
+   em lojas de jogos de verdade. */
 .promo-section {
   display: grid;
   grid-template-columns: 65% 1fr;
   gap: 16px;
-  height: 340px;
+  height: 424px;
   margin-bottom: 26px;
 }
 .promo-section-main {
@@ -304,11 +306,14 @@ a {
     height: auto;
   }
   .promo-section-main {
-    height: 220px;
+    /* Nessa largura o banner principal ocupa a tela inteira (não mais
+       65%), então a altura 16:9 correspondente é bem maior que nos
+       320px de antes. */
+    height: 400px;
   }
   .promo-section-side {
     flex-direction: row;
-    height: 130px;
+    height: 195px;
   }
 }
 
@@ -318,14 +323,14 @@ a {
     margin-bottom: 18px;
   }
   .promo-section-main {
-    height: 150px;
+    height: 200px;
   }
   .promo-section-side {
     flex-direction: column;
     height: auto;
   }
   .promo-banner-small {
-    height: 90px;
+    height: 200px;
     flex: none;
   }
   .promo-banner-content {
