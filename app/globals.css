@@ -96,6 +96,13 @@ a {
   height: 100%;
   min-width: 0;
 }
+/* No celular (ver @media max-width:600px), a versão "wide" (duas faixas
+   empilhadas) some e dá lugar a um carrossel único que revezada entre as
+   duas categorias — dois banners cheios embaixo do de destaque deixavam a
+   tela poluída antes de chegar no catálogo. */
+.promo-section-side-compact {
+  display: none;
+}
 
 .promo-banner {
   position: relative;
@@ -325,13 +332,12 @@ a {
   .promo-section-main {
     height: 200px;
   }
-  .promo-section-side {
-    flex-direction: column;
-    height: auto;
+  .promo-section-side-wide {
+    display: none;
   }
-  .promo-banner-small {
-    height: 200px;
-    flex: none;
+  .promo-section-side-compact {
+    display: block;
+    height: 110px;
   }
   .promo-banner-content {
     padding: 14px 16px;
@@ -592,12 +598,17 @@ textarea:focus {
     gap: 14px;
     overflow-x: auto;
     padding-bottom: 6px;
-    scroll-snap-type: x proximity;
+    /* "mandatory" (não "proximity") força cada swipe a parar exatamente
+       num cartão — antes ficava meio cartão visível dos dois lados, o
+       que parecia poluído. */
+    scroll-snap-type: x mandatory;
   }
   .reviews-track .review-card {
+    /* Um cartão por vez, ocupando a largura visível inteira. */
     flex: none;
-    width: 260px;
-    scroll-snap-align: start;
+    width: 100%;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
   }
 }
 
@@ -605,9 +616,6 @@ textarea:focus {
   .review-form-row {
     grid-template-columns: 1fr;
     gap: 10px;
-  }
-  .reviews-track .review-card {
-    width: 220px;
   }
 }
 

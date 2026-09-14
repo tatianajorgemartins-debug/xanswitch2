@@ -1,4 +1,4 @@
-import PromoCarousel from './PromoCarousel';
+import PromoCarousel, { type PromoSlide } from './PromoCarousel';
 import type { Item } from './CatalogClient';
 
 export default function PromoSection({
@@ -18,44 +18,58 @@ export default function PromoSection({
   const hasSide = mostWantedItems.length > 0 || upcomingItems.length > 0;
   if (!hasFeatured && !hasSide) return null;
 
+  const featuredSlides: PromoSlide[] = featuredItems.map((item) => ({
+    item,
+    category: 'Destaque da semana',
+    ctaLabel: 'Ver jogo',
+    onClick: () => onViewGame(item.name)
+  }));
+
+  const mostWantedSlides: PromoSlide[] = mostWantedItems.map((item) => ({
+    item,
+    category: '❤️ Mais desejados',
+    onClick: () => onViewGame(item.name)
+  }));
+
+  const upcomingSlides: PromoSlide[] = upcomingItems.map((item) => ({
+    item,
+    category: '👀 Mais aguardados',
+    priceOverride: 'EM BREVE',
+    onClick: () => onFilterFlag('upcoming')
+  }));
+
   return (
     <div className="promo-section">
       {hasFeatured && (
         <div className="promo-section-main">
-          <PromoCarousel
-            items={featuredItems}
-            intervalMs={6000}
-            size="large"
-            category="Destaque da semana"
-            ctaLabel="Ver jogo"
-            onItemClick={(item) => onViewGame(item.name)}
-          />
+          <PromoCarousel slides={featuredSlides} intervalMs={6000} size="large" />
         </div>
       )}
       {hasSide && (
-        <div className="promo-section-side">
-          {mostWantedItems.length > 0 && (
+        <>
+          {/* Computador/tablet: as duas categorias empilhadas, cada uma
+              com seu próprio carrossel. */}
+          <div className="promo-section-side promo-section-side-wide">
+            {mostWantedSlides.length > 0 && (
+              <PromoCarousel slides={mostWantedSlides} intervalMs={4000} size="small" showControls={false} />
+            )}
+            {upcomingSlides.length > 0 && (
+              <PromoCarousel slides={upcomingSlides} intervalMs={4000} size="small" showControls={false} />
+            )}
+          </div>
+          {/* Celular: as duas categorias juntas, revezando num carrossel
+              só — evita empilhar dois banners inteiros embaixo do de
+              destaque, o que deixava a tela poluída antes de chegar no
+              catálogo em si. */}
+          <div className="promo-section-side-compact">
             <PromoCarousel
-              items={mostWantedItems}
-              intervalMs={4000}
+              slides={[...mostWantedSlides, ...upcomingSlides]}
+              intervalMs={3500}
               size="small"
-              category="❤️ Mais desejados"
               showControls={false}
-              onItemClick={(item) => onViewGame(item.name)}
             />
-          )}
-          {upcomingItems.length > 0 && (
-            <PromoCarousel
-              items={upcomingItems}
-              intervalMs={4000}
-              size="small"
-              category="👀 Mais aguardados"
-              priceOverride="EM BREVE"
-              showControls={false}
-              onItemClick={() => onFilterFlag('upcoming')}
-            />
-          )}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

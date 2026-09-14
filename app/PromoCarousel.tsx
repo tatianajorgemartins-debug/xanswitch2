@@ -4,24 +4,28 @@ import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import PromoBanner from './PromoBanner';
 import type { Item } from './CatalogClient';
 
-export default function PromoCarousel({
-  items,
-  intervalMs,
-  size,
-  category,
-  ctaLabel,
-  priceOverride,
-  showControls = true,
-  onItemClick
-}: {
-  items: Item[];
-  intervalMs: number;
-  size: 'large' | 'small';
+// Cada "slide" já vem com a categoria/preço/clique prontos — isso existe
+// pra dar pra misturar jogos de categorias diferentes (tipo "Mais
+// desejados" + "Mais aguardados") num carrossel só, cada um mostrando sua
+// própria etiqueta, em vez de um carrossel só servir uma categoria fixa.
+export type PromoSlide = {
+  item: Item;
   category: string;
   ctaLabel?: string;
   priceOverride?: string;
+  onClick: () => void;
+};
+
+export default function PromoCarousel({
+  slides,
+  intervalMs,
+  size,
+  showControls = true
+}: {
+  slides: PromoSlide[];
+  intervalMs: number;
+  size: 'large' | 'small';
   showControls?: boolean;
-  onItemClick: (item: Item) => void;
 }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -33,19 +37,19 @@ export default function PromoCarousel({
   }, []);
 
   useEffect(() => {
-    if (items.length < 2 || reducedMotion.current || paused) return;
+    if (slides.length < 2 || reducedMotion.current || paused) return;
     const timer = setInterval(() => {
-      setIndex((i) => (i + 1) % items.length);
+      setIndex((i) => (i + 1) % slides.length);
     }, intervalMs);
     return () => clearInterval(timer);
     // `index` is intentionally in the deps: any manual navigation resets
     // this interval, so the next autoplay tick is always a full intervalMs
     // away from the user's last interaction rather than from page load.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items.length, index, paused, intervalMs]);
+  }, [slides.length, index, paused, intervalMs]);
 
   function go(next: number) {
-    const total = items.length;
+    const total = slides.length;
     setIndex(((next % total) + total) % total);
   }
 
@@ -60,7 +64,7 @@ export default function PromoCarousel({
     go(delta > 0 ? index - 1 : index + 1);
   }
 
-  if (items.length === 0) return null;
+  if (slides.length === 0) return null;
 
   return (
     <div
@@ -71,21 +75,21 @@ export default function PromoCarousel({
       onMouseLeave={() => setPaused(false)}
     >
       <div className="promo-carousel-track" style={{ transform: `translateX(-${index * 100}%)` }}>
-        {items.map((item) => (
-          <div className="promo-carousel-slide" key={item.id}>
+        {slides.map((slide) => (
+          <div className="promo-carousel-slide" key={slide.item.id}>
             <PromoBanner
-              item={item}
-              category={category}
-              ctaLabel={ctaLabel}
-              priceOverride={priceOverride}
+              item={slide.item}
+              category={slide.category}
+              ctaLabel={slide.ctaLabel}
+              priceOverride={slide.priceOverride}
               size={size}
-              onClick={() => onItemClick(item)}
+              onClick={slide.onClick}
             />
           </div>
         ))}
       </div>
 
-      {showControls && items.length > 1 && (
+      {showControls && slides.length > 1 && (
         <>
           <button
             type="button"
@@ -109,9 +113,9 @@ export default function PromoCarousel({
           </button>
 
           <div className="promo-carousel-dots">
-            {items.map((item, i) => (
+            {slides.map((slide, i) => (
               <button
-                key={item.id}
+                key={slide.item.id}
                 type="button"
                 className={`promo-carousel-dot${i === index ? ' active' : ''}`}
                 onClick={() => go(i)}
