@@ -16,11 +16,16 @@ export default function PromoBanner({
   onClick: () => void;
   size: 'large' | 'small';
 }) {
+  // Usa a imagem própria do banner quando cadastrada no admin; sem ela,
+  // cai de volta pra capa quadrada normal (esticada/cortada pra caber no
+  // formato largo), exatamente como já funcionava antes desse campo existir.
+  const bannerImage = item.bannerImageUrl ?? item.imageUrl;
+
   return (
     <button type="button" className={`promo-banner promo-banner-${size}`} onClick={onClick}>
-      {item.imageUrl && (
+      {bannerImage && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={item.imageUrl} alt={item.name} loading="lazy" className="promo-banner-image" />
+        <img src={bannerImage} alt={item.name} loading="lazy" className="promo-banner-image" />
       )}
       <div className="promo-banner-overlay" />
       <div className="promo-banner-content">

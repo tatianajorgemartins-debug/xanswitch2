@@ -21,6 +21,10 @@ export type Game = {
   price: string; // numeric comes back as string from postgres
   original_price: string | null;
   image_url: string | null;
+  // Imagem separada só pros banners largos (Destaque da semana / Mais
+  // aguardados) — se estiver vazia, esses banners caem de volta pra
+  // image_url (a capa quadrada normal), esticada/cortada pra caber.
+  banner_image_url: string | null;
   has_badge: boolean;
   badge_text: string;
   badge_color: string;
@@ -74,6 +78,7 @@ export async function createGame(data: {
   price: number;
   original_price: number | null;
   image_url: string | null;
+  banner_image_url: string | null;
   has_badge: boolean;
   badge_text: string;
   badge_color: string;
@@ -87,8 +92,8 @@ export async function createGame(data: {
   screenshots: string[];
 }): Promise<Game> {
   const rows = await getSql()`
-    INSERT INTO games (name, price, original_price, image_url, has_badge, badge_text, badge_color, franchise, platform, game_type, is_featured, is_bestseller, is_upcoming, description, screenshots)
-    VALUES (${data.name}, ${data.price}, ${data.original_price}, ${data.image_url}, ${data.has_badge}, ${data.badge_text}, ${data.badge_color}, ${data.franchise}, ${data.platform}, ${data.game_type}, ${data.is_featured}, ${data.is_bestseller}, ${data.is_upcoming}, ${data.description}, ${JSON.stringify(data.screenshots)}::jsonb)
+    INSERT INTO games (name, price, original_price, image_url, banner_image_url, has_badge, badge_text, badge_color, franchise, platform, game_type, is_featured, is_bestseller, is_upcoming, description, screenshots)
+    VALUES (${data.name}, ${data.price}, ${data.original_price}, ${data.image_url}, ${data.banner_image_url}, ${data.has_badge}, ${data.badge_text}, ${data.badge_color}, ${data.franchise}, ${data.platform}, ${data.game_type}, ${data.is_featured}, ${data.is_bestseller}, ${data.is_upcoming}, ${data.description}, ${JSON.stringify(data.screenshots)}::jsonb)
     RETURNING *
   `;
   return rows[0] as Game;
@@ -101,6 +106,7 @@ export async function updateGame(
     price: number;
     original_price: number | null;
     image_url: string | null;
+    banner_image_url: string | null;
     has_badge: boolean;
     badge_text: string;
     badge_color: string;
@@ -120,6 +126,7 @@ export async function updateGame(
       price = ${data.price},
       original_price = ${data.original_price},
       image_url = ${data.image_url},
+      banner_image_url = ${data.banner_image_url},
       has_badge = ${data.has_badge},
       badge_text = ${data.badge_text},
       badge_color = ${data.badge_color},

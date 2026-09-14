@@ -25,6 +25,7 @@ function toItem(g: Game): Item {
         ? formatPriceBR(g.original_price)
         : null,
     imageUrl: g.image_url,
+    bannerImageUrl: g.banner_image_url,
     hasBadge: g.has_badge,
     badgeText: g.badge_text,
     badgeColor: g.badge_color,

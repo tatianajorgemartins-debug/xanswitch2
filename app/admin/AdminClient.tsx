@@ -791,6 +791,9 @@ function GameFormPanel({
   const [removeImage, setRemoveImage] = useState(false);
   const [preview, setPreview] = useState<string | null>(game?.image_url ?? null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [removeBannerImage, setRemoveBannerImage] = useState(false);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(game?.banner_image_url ?? null);
+  const bannerFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // useActionState keeps returning the exact same `emptyFormState` object
@@ -810,6 +813,15 @@ function GameFormPanel({
     setRemoveImage(false);
     const reader = new FileReader();
     reader.onload = (ev) => setPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  function handleBannerFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setRemoveBannerImage(false);
+    const reader = new FileReader();
+    reader.onload = (ev) => setBannerPreview(ev.target?.result as string);
     reader.readAsDataURL(file);
   }
 
@@ -969,6 +981,48 @@ function GameFormPanel({
               />
               <label htmlFor="removeImage" style={{ margin: 0, textTransform: 'none', fontSize: 13, color: 'var(--ink)' }}>
                 Remover a imagem atual
+              </label>
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label>Imagem do banner — Destaque da semana / Mais aguardados (opcional)</label>
+          <p style={{ margin: '0 0 8px', fontSize: 12.5, color: 'var(--ink-dim)' }}>
+            Uma foto separada, mais larga, só pra esses dois banners no topo do site. Se não
+            cadastrar, eles usam a capa do jogo esticada/cortada pra caber — funciona, mas uma
+            imagem própria (tipo uma arte promocional do jogo) costuma ficar bem melhor.
+          </p>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            {bannerPreview && !removeBannerImage && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={bannerPreview}
+                alt=""
+                style={{ width: 128, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid rgba(164,99,255,.3)' }}
+              />
+            )}
+            <input
+              ref={bannerFileInputRef}
+              name="bannerImage"
+              type="file"
+              accept="image/*"
+              onChange={handleBannerFileChange}
+              style={{ color: 'var(--ink-dim)', fontSize: 13 }}
+            />
+          </div>
+          {isEditing && game?.banner_image_url && (
+            <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                id="removeBannerImage"
+                name="removeBannerImage"
+                type="checkbox"
+                checked={removeBannerImage}
+                onChange={(e) => setRemoveBannerImage(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: 'var(--green)' }}
+              />
+              <label htmlFor="removeBannerImage" style={{ margin: 0, textTransform: 'none', fontSize: 13, color: 'var(--ink)' }}>
+                Remover a imagem do banner (volta a usar a capa)
               </label>
             </div>
           )}

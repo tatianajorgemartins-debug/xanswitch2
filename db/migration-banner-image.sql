@@ -1,0 +1,12 @@
+-- XAN Switch — rode isso no SQL Editor do NEON (o mesmo banco dos jogos,
+-- não é o do Supabase). É seguro rodar mais de uma vez.
+--
+-- Adiciona uma imagem separada pra usar nos banners largos (o "Destaque da
+-- semana" e o "Mais aguardados", na parte de cima do site) — até agora
+-- eles usavam a mesma capa quadrada dos cards do catálogo, esticada/
+-- cortada pra caber no formato largo, o que nem sempre fica bom.
+--
+-- Esse campo é opcional: se você não cadastrar uma imagem de banner pra um
+-- jogo, o site continua usando a capa normal ali, exatamente como já
+-- funcionava antes.
+ALTER TABLE games ADD COLUMN IF NOT EXISTS banner_image_url TEXT;

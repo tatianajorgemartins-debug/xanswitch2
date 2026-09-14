@@ -510,6 +510,7 @@ db/migration-orders.sql        → só a tabela de pedidos, caso o site já exis
 db/migration-game-details.sql → só a descrição/capturas de tela, mesmo caso acima
 db/migration-supabase-keepalive.sql → cria a tabela usada pela rotina diária (roda no Supabase, não no Neon)
 db/migration-wishlist.sql     → cria as tabelas de conta do cliente e lista de desejos (roda no Supabase, não no Neon)
+db/migration-banner-image.sql → adiciona a imagem separada pros banners (Destaque da semana / Mais aguardados), no Neon
 proxy.ts       → protege a página /admin (redireciona pro login se não tiver sessão)
 vercel.json    → agenda a rotina diária de manutenção (cron job)
 ```

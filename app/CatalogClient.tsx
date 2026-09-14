@@ -27,6 +27,10 @@ export type Item = {
   priceLabel: string;
   originalPriceLabel: string | null;
   imageUrl: string | null;
+  // Imagem separada pros banners largos (Destaque da semana / Mais
+  // aguardados) — quando vazia, esses banners usam imageUrl (a capa
+  // quadrada) como já faziam antes.
+  bannerImageUrl: string | null;
   hasBadge: boolean;
   badgeText: string;
   badgeColor: string;

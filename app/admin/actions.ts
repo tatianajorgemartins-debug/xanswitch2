@@ -98,6 +98,21 @@ async function uploadImageIfPresent(formData: FormData): Promise<string | null |
   return uploadImageBuffer(`games/${Date.now()}-capa.${extension}`, buffer, contentType);
 }
 
+async function uploadBannerImageIfPresent(formData: FormData): Promise<string | null | undefined> {
+  const file = formData.get('bannerImage');
+  if (!file || !(file instanceof File) || file.size === 0) {
+    return undefined;
+  }
+  // Os banners (Destaque da semana / Mais aguardados) são bem mais largos
+  // que os cards do catálogo, então essa imagem pode ficar um pouco maior
+  // que a capa (900px) sem pesar muito — ainda é uma fração do tamanho de
+  // uma foto original.
+  const originalBytes = Buffer.from(await file.arrayBuffer());
+  const { buffer, contentType, extension } = await compressImage(originalBytes, 1400, 78);
+
+  return uploadImageBuffer(`games/${Date.now()}-banner.${extension}`, buffer, contentType);
+}
+
 export type GameFormState = { error: string | null };
 
 export async function createGameAction(
@@ -130,12 +145,14 @@ export async function createGameAction(
   }
 
   const imageUrl = (await uploadImageIfPresent(formData)) ?? null;
+  const bannerImageUrl = (await uploadBannerImageIfPresent(formData)) ?? null;
 
   await createGame({
     name,
     price,
     original_price: originalPrice,
     image_url: imageUrl,
+    banner_image_url: bannerImageUrl,
     has_badge: hasBadge,
     badge_text: badgeText,
     badge_color: badgeColor,
@@ -171,6 +188,7 @@ export async function updateGameAction(
   const badgeText = String(formData.get('badgeText') || 'TOP').trim() || 'TOP';
   const badgeColor = String(formData.get('badgeColor') || '#4ef05f');
   const removeImage = formData.get('removeImage') === 'on';
+  const removeBannerImage = formData.get('removeBannerImage') === 'on';
   const franchise = String(formData.get('franchise') || '').trim() || null;
   const platform = parsePlatform(formData.get('platform'));
   const gameType = parseGameType(formData.get('gameType'));
@@ -205,6 +223,20 @@ export async function updateGameAction(
     imageUrl = null;
   }
 
+  let bannerImageUrl: string | null = existing.banner_image_url;
+  const newBannerImageUrl = await uploadBannerImageIfPresent(formData);
+  if (newBannerImageUrl !== undefined) {
+    if (existing.banner_image_url) {
+      await deleteImageByUrl(existing.banner_image_url).catch(() => {});
+    }
+    bannerImageUrl = newBannerImageUrl;
+  } else if (removeBannerImage) {
+    if (existing.banner_image_url) {
+      await deleteImageByUrl(existing.banner_image_url).catch(() => {});
+    }
+    bannerImageUrl = null;
+  }
+
   // Qualquer captura de tela que estava salva antes mas não veio na lista
   // nova foi removida pelo admin — apaga o arquivo do Vercel Blob também,
   // senão ele fica ocupando espaço pra sempre sem ninguém usar.
@@ -216,6 +248,7 @@ export async function updateGameAction(
     price,
     original_price: originalPrice,
     image_url: imageUrl,
+    banner_image_url: bannerImageUrl,
     has_badge: hasBadge,
     badge_text: badgeText,
     badge_color: badgeColor,
@@ -248,6 +281,9 @@ export async function deleteGameAction(id: number): Promise<void> {
   const existing = await getGameById(id);
   if (existing?.image_url) {
     await deleteImageByUrl(existing.image_url).catch(() => {});
+  }
+  if (existing?.banner_image_url) {
+    await deleteImageByUrl(existing.banner_image_url).catch(() => {});
   }
   if (existing?.screenshots.length) {
     await Promise.all(existing.screenshots.map((url) => deleteImageByUrl(url).catch(() => {})));
