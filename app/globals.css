@@ -718,38 +718,18 @@ textarea:focus {
   margin: 0 auto;
 }
 .page-content {
-  /* Espaço suficiente pra caber a barra fixa + a legenda pequena embaixo
-     dela (.site-header-tagline) — se a barra crescer, ajusta esse valor
-     junto, senão o topo da página fica escondido atrás dela. */
-  padding-top: 104px;
+  padding-top: 96px;
 }
 @media (max-width: 480px) {
   .site-header-bar {
     padding: 10px 16px;
   }
   .page-content {
-    padding-top: 90px;
+    padding-top: 76px;
   }
 }
 
-/* Site header — logo / social icons numa linha, legenda pequena embaixo. */
-.site-header-wrap {
-  display: flex;
-  flex-direction: column;
-}
-.site-header-tagline {
-  margin: 6px 0 0;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--ink-dim);
-  text-align: center;
-}
-@media (max-width: 480px) {
-  .site-header-tagline {
-    font-size: 10.5px;
-    margin-top: 5px;
-  }
-}
+/* Site header — logo / social icons, always one row. */
 .site-header {
   display: flex;
   align-items: center;
