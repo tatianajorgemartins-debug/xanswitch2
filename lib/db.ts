@@ -44,19 +44,19 @@ export type Game = {
 // Esta é a consulta que roda no catálogo PÚBLICO (a página que os clientes
 // veem) — por isso é cacheada. Antes, a página inteira era marcada como
 // "force-dynamic" (nunca cacheada, refazia tudo do zero a cada visita), o
-// que multiplicava o consumo de banda por cada visitante. Agora o resultado
-// fica em cache até 1 hora (o "revalidate" abaixo), MAS qualquer alteração
-// feita no admin (adicionar/editar/arquivar/excluir jogo) já invalida esse
-// cache na hora, via revalidateTag('games', { expire: 0 }) em
-// app/admin/actions.ts — ou seja, a lista continua atualizada
-// instantaneamente pra você, só deixa de reconsultar o banco a cada
-// visitante que não mudou nada.
+// que multiplicava o consumo de banda por cada visitante.
 //
-// IMPORTANTE: unstable_cache só reage a revalidateTag/revalidatePath, não
-// ao updateTag mais novo do Next.js (esse é feito pra funcionar com
-// 'use cache'/cacheTag, um jeito diferente de cachear que não usamos
-// aqui) — usar updateTag aqui parecia funcionar mas na prática nunca
-// invalidava nada, e a página só atualizava sozinha depois de até 1h.
+// O ideal era esse cache invalidar na hora a cada alteração no admin, via
+// revalidateTag('games', { expire: 0 }) em app/admin/actions.ts — o código
+// faz isso certinho (e substituiu um bug real: updateTag(), usado antes,
+// não tem efeito nenhum sobre um cache feito com unstable_cache, só
+// funciona com o jeito mais novo de cachear do Next, 'use cache'/
+// cacheTag, que este projeto não usa). Só que, na prática, mesmo depois
+// dessa correção, a Vercel às vezes não aplica essa invalidação — por
+// segurança, o "revalidate" abaixo ficou bem mais curto (5 minutos, não
+// mais 1 hora), pra garantir que uma alteração no admin nunca demore mais
+// que isso pra aparecer pro público, mesmo se a invalidação instantânea
+// falhar silenciosamente daquele jeito.
 export const getActiveGames = unstable_cache(
   async (): Promise<Game[]> => {
     const rows = await getSql()`
@@ -65,7 +65,7 @@ export const getActiveGames = unstable_cache(
     return rows as Game[];
   },
   ['active-games'],
-  { tags: ['games'], revalidate: 3600 }
+  { tags: ['games'], revalidate: 300 }
 );
 
 export async function getAllGames(): Promise<Game[]> {
@@ -186,9 +186,10 @@ export type Review = {
 };
 
 // Mesma lógica de cache de getActiveGames acima — esta é a consulta usada
-// no catálogo público. Invalidada na hora por
+// no catálogo público. O ideal era invalidar na hora via
 // revalidateTag('reviews', { expire: 0 }) sempre que você aprova/destaca/
-// exclui um comentário no admin.
+// exclui um comentário no admin, mas por segurança (ver comentário acima)
+// o revalidate por tempo também ficou mais curto.
 export const getApprovedReviews = unstable_cache(
   async (): Promise<Review[]> => {
     const rows = await getSql()`
@@ -197,7 +198,7 @@ export const getApprovedReviews = unstable_cache(
     return rows as Review[];
   },
   ['approved-reviews'],
-  { tags: ['reviews'], revalidate: 3600 }
+  { tags: ['reviews'], revalidate: 300 }
 );
 
 export async function getAllReviews(): Promise<Review[]> {

@@ -168,7 +168,7 @@ export async function createGameAction(
 
   revalidatePath('/admin');
   revalidatePath('/');
-  revalidateTag('games', 'max');
+  revalidateTag('games', { expire: 0 });
   return { error: null };
 }
 
@@ -264,7 +264,7 @@ export async function updateGameAction(
 
   revalidatePath('/admin');
   revalidatePath('/');
-  revalidateTag('games', 'max');
+  revalidateTag('games', { expire: 0 });
   return { error: null };
 }
 
@@ -273,7 +273,7 @@ export async function archiveGameAction(id: number, archived: boolean): Promise<
   await setArchived(id, archived);
   revalidatePath('/admin');
   revalidatePath('/');
-  revalidateTag('games', 'max');
+  revalidateTag('games', { expire: 0 });
 }
 
 export async function deleteGameAction(id: number): Promise<void> {
@@ -291,7 +291,7 @@ export async function deleteGameAction(id: number): Promise<void> {
   await deleteGame(id);
   revalidatePath('/admin');
   revalidatePath('/');
-  revalidateTag('games', 'max');
+  revalidateTag('games', { expire: 0 });
 }
 
 export async function approveReviewAction(id: number): Promise<void> {
@@ -299,7 +299,7 @@ export async function approveReviewAction(id: number): Promise<void> {
   await setReviewApproved(id, true);
   revalidatePath('/admin');
   revalidatePath('/');
-  revalidateTag('reviews', 'max');
+  revalidateTag('reviews', { expire: 0 });
 }
 
 export async function deleteReviewAction(id: number): Promise<void> {
@@ -307,7 +307,7 @@ export async function deleteReviewAction(id: number): Promise<void> {
   await deleteReview(id);
   revalidatePath('/admin');
   revalidatePath('/');
-  revalidateTag('reviews', 'max');
+  revalidateTag('reviews', { expire: 0 });
 }
 
 export async function setReviewFeaturedAction(id: number, featured: boolean): Promise<void> {
@@ -315,7 +315,7 @@ export async function setReviewFeaturedAction(id: number, featured: boolean): Pr
   await setReviewFeatured(id, featured);
   revalidatePath('/admin');
   revalidatePath('/');
-  revalidateTag('reviews', 'max');
+  revalidateTag('reviews', { expire: 0 });
 }
 
 // Apaga um registro do histórico de pedidos (ex: depois de já ter
