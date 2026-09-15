@@ -628,13 +628,6 @@ function StepPayment({
         </p>
       )}
 
-      <div className="purchase-warning-box">
-        <p>
-          A verificação da sua conta e o envio do código continuam sendo feitos manualmente por nós — mas
-          seu pedido já fica registrado assim que você confirmar o pagamento abaixo.
-        </p>
-      </div>
-
       <div className="purchase-urgency-box">
         <p>Após o pagamento, seu código chega por e-mail ainda hoje 🎮</p>
       </div>

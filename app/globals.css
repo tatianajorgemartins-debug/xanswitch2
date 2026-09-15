@@ -1563,23 +1563,6 @@ label {
   margin: -12px 0 18px;
 }
 
-/* Etapa 4 / aviso fixo — reforça o que NUNCA acontece automaticamente. Usa
-   um tom de aviso (não é erro, é só um lembrete importante). */
-.purchase-warning-box {
-  background: rgba(255, 210, 78, 0.08);
-  border: 1px solid rgba(255, 210, 78, 0.35);
-  border-radius: 10px;
-  padding: 12px 14px;
-  margin-bottom: 18px;
-}
-.purchase-warning-box p {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: #ffd24e;
-  line-height: 1.5;
-}
-
 .purchase-modal-actions {
   display: flex;
   flex-direction: column;
