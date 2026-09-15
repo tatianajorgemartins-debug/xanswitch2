@@ -8,7 +8,7 @@
 // e um pedido cobrindo o total, em vez de jogo por jogo.
 import { useEffect, useRef, useState } from 'react';
 import type { Item } from './CatalogClient';
-import { StepChecklistAndEmail, ReservationTimer } from './PurchaseModal';
+import { StepChecklistAndEmail, ReservationTimer, RegionTutorial } from './PurchaseModal';
 import { generatePixPayload, type PixPayload } from '@/lib/pix';
 import { confirmBulkOrderAction } from './orderActions';
 import { formatPriceBR } from '@/lib/whatsapp';
@@ -266,6 +266,9 @@ function BulkStepConfirm({ onClose }: { onClose: () => void }) {
       <p style={{ textAlign: 'center', fontSize: 13.5, color: 'var(--ink-dim)', marginBottom: 20 }}>
         Guarde esse e-mail à mão — é pra ele que os códigos vão.
       </p>
+
+      <RegionTutorial />
+
       <div className="purchase-modal-actions">
         <button type="button" className="btn ghost" onClick={onClose}>
           Fechar

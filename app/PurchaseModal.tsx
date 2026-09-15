@@ -645,11 +645,34 @@ function StepConfirm({ onClose }: { onClose: () => void }) {
       <p style={{ textAlign: 'center', fontSize: 13.5, color: 'var(--ink-dim)', marginBottom: 20 }}>
         Guarde esse e-mail à mão — é pra ele que o código vai.
       </p>
+
+      <RegionTutorial />
+
       <div className="purchase-modal-actions">
         <button type="button" className="btn ghost" onClick={onClose}>
           Fechar
         </button>
       </div>
     </>
+  );
+}
+
+// Tutorial de como trocar a região da conta Nintendo pra Japão — necessário
+// pra resgatar os códigos, que são da eShop japonesa. Mostrado só depois da
+// confirmação do pagamento (StepConfirm acima e BulkStepConfirm em
+// BulkPurchaseModal.tsx), já que é nesse momento que o cliente precisa
+// desse passo a passo. A imagem mora em public/, servida direto pelo Next
+// como um arquivo estático (não é conteúdo do catálogo, então não precisa
+// passar pelo Supabase).
+export function RegionTutorial() {
+  return (
+    <div className="purchase-region-tutorial">
+      <p className="purchase-region-tutorial-label">Como trocar a região da sua conta Nintendo pra Japão:</p>
+      <a href="/tutorial-troca-regiao.png" target="_blank" rel="noopener noreferrer">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/tutorial-troca-regiao.png" alt="Tutorial: como mudar a região da conta Nintendo de Brasil para Japão" />
+      </a>
+      <p className="purchase-region-tutorial-hint">Toque na imagem pra ver em tela cheia</p>
+    </div>
   );
 }

@@ -1588,6 +1588,30 @@ label {
   color: var(--ink);
 }
 
+/* Tutorial de troca de região (mostrado na tela de confirmação, depois do
+   pagamento) — ver RegionTutorial em PurchaseModal.tsx. */
+.purchase-region-tutorial {
+  margin-bottom: 18px;
+  text-align: center;
+}
+.purchase-region-tutorial-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 10px;
+}
+.purchase-region-tutorial img {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(164, 99, 255, 0.3);
+  display: block;
+}
+.purchase-region-tutorial-hint {
+  font-size: 12px;
+  color: var(--ink-dim);
+  margin: 8px 0 0;
+}
+
 @media (max-width: 480px) {
   .purchase-modal {
     max-width: 100%;
