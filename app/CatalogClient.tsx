@@ -41,10 +41,6 @@ export type Item = {
   isUpcoming: boolean;
   description: string | null;
   screenshots: string[];
-  // Link do WhatsApp usado no PASSO FINAL da compra (depois que o cliente já
-  // pagou o Pix) — não é mais usado como link direto do card, que agora abre
-  // o modal de compra em vez de navegar pra fora do site.
-  whatsappPaymentUrl: string;
 };
 
 export type ReviewItem = {

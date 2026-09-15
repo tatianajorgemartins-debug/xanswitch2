@@ -3,37 +3,27 @@
 // Modal de compra de VÁRIOS jogos de uma vez, disparado a partir da lista de
 // desejos (AccountModal.tsx) quando o cliente marca 2+ jogos e clica em
 // "Comprar selecionados". É a mesma ideia do PurchaseModal.tsx (Pix gerado
-// no navegador, sem gateway de pagamento, código enviado manualmente depois
-// da verificação no WhatsApp), só que com um Pix e uma mensagem cobrindo o
-// pedido inteiro, em vez de jogo por jogo.
-import { useEffect, useRef, useState, startTransition } from 'react';
+// no navegador, sem gateway de pagamento, pedido salvo + você avisado
+// automaticamente quando o cliente confirma o pagamento), só que com um Pix
+// e um pedido cobrindo o total, em vez de jogo por jogo.
+import { useEffect, useRef, useState } from 'react';
 import type { Item } from './CatalogClient';
-import { StepChecklist, type Checklist } from './PurchaseModal';
+import { StepChecklist, StepEmail, ReservationTimer } from './PurchaseModal';
 import { generatePixPayload, type PixPayload } from '@/lib/pix';
-import { logOrderAttempt, getBulkWhatsAppLink } from './orderActions';
+import { confirmBulkOrderAction } from './orderActions';
 import { formatPriceBR } from '@/lib/whatsapp';
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2 | 3 | 4;
 
 export default function BulkPurchaseModal({ items, onClose }: { items: Item[]; onClose: () => void }) {
   const [step, setStep] = useState<Step>(1);
-  const [checklist, setChecklist] = useState<Checklist>({
-    semSaldo: false,
-    podeTrocarRegiao: false,
-    entendeVerificacao: false
-  });
-  const allChecked = checklist.semSaldo && checklist.podeTrocarRegiao && checklist.entendeVerificacao;
+  const [checked, setChecked] = useState(false);
+  const [email, setEmail] = useState('');
 
   const [pix, setPix] = useState<PixPayload | null>(null);
   const [pixError, setPixError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
-  // O link do WhatsApp precisa vir do servidor (ver getBulkWhatsAppLink em
-  // orderActions.ts) — WHATSAPP_NUMBER é uma variável sem o prefixo
-  // NEXT_PUBLIC_, então só existe no servidor; gerar esse link direto aqui
-  // no componente (que roda no navegador) sempre dava erro.
-  const [whatsappUrl, setWhatsappUrl] = useState<string | null>(null);
-  const [whatsappError, setWhatsappError] = useState<string | null>(null);
   const startedRef = useRef(false);
 
   const total = items.reduce((sum, it) => sum + it.price, 0);
@@ -55,29 +45,14 @@ export default function BulkPurchaseModal({ items, onClose }: { items: Item[]; o
     };
   }, []);
 
-  // Ao entrar na etapa 2 (pagamento), gera um único Pix pro valor total e
-  // registra cada jogo separadamente no histórico de pedidos — assim o
-  // admin continua vendo cada jogo individualmente em "📋 Pedidos", só que
-  // todos criados no mesmo instante (o que já identifica que vieram do
-  // mesmo pedido em lote).
+  // Ao entrar na etapa 3 (pagamento), gera um único Pix pro valor total.
   useEffect(() => {
-    if (step !== 2 || startedRef.current) return;
+    if (step !== 3 || startedRef.current) return;
     startedRef.current = true;
 
     generatePixPayload(total, `${items.length} jogos`)
       .then(setPix)
       .catch((err: Error) => setPixError(err.message));
-
-    getBulkWhatsAppLink(
-      items.map((it) => ({ name: it.name, price: it.price })),
-      total
-    )
-      .then(setWhatsappUrl)
-      .catch((err: Error) => setWhatsappError(err.message));
-
-    startTransition(() => {
-      Promise.all(items.map((it) => logOrderAttempt(it.id, it.name, it.price))).catch(() => {});
-    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
@@ -137,32 +112,31 @@ export default function BulkPurchaseModal({ items, onClose }: { items: Item[]; o
                 <span>R$ {totalLabel}</span>
               </div>
 
-              <StepChecklist
-                checklist={checklist}
-                setChecklist={setChecklist}
-                allChecked={allChecked}
-                onBack={onClose}
-                onNext={() => setStep(2)}
-              />
+              <StepChecklist checked={checked} onChange={setChecked} onBack={onClose} onNext={() => setStep(2)} />
             </>
           )}
 
           {step === 2 && (
+            <StepEmail email={email} setEmail={setEmail} onBack={() => setStep(1)} onNext={() => setStep(3)} />
+          )}
+
+          {step === 3 && (
             <BulkStepPayment
+              items={items}
+              total={total}
               totalLabel={totalLabel}
+              email={email}
               pix={pix}
               pixError={pixError}
               copied={copied}
               copyFailed={copyFailed}
               onCopy={handleCopy}
-              onBack={() => setStep(1)}
-              onPaid={() => setStep(3)}
+              onBack={() => setStep(2)}
+              onConfirmed={() => setStep(4)}
             />
           )}
 
-          {step === 3 && (
-            <BulkStepConfirm whatsappUrl={whatsappUrl} whatsappError={whatsappError} onClose={onClose} />
-          )}
+          {step === 4 && <BulkStepConfirm onClose={onClose} />}
         </div>
       </div>
     </div>
@@ -170,24 +144,49 @@ export default function BulkPurchaseModal({ items, onClose }: { items: Item[]; o
 }
 
 function BulkStepPayment({
+  items,
+  total,
   totalLabel,
+  email,
   pix,
   pixError,
   copied,
   copyFailed,
   onCopy,
   onBack,
-  onPaid
+  onConfirmed
 }: {
+  items: Item[];
+  total: number;
   totalLabel: string;
+  email: string;
   pix: PixPayload | null;
   pixError: string | null;
   copied: boolean;
   copyFailed: boolean;
   onCopy: () => void;
   onBack: () => void;
-  onPaid: () => void;
+  onConfirmed: () => void;
 }) {
+  const [confirming, setConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+
+  async function handleConfirm() {
+    setConfirming(true);
+    setConfirmError(null);
+    const result = await confirmBulkOrderAction(
+      items.map((it) => ({ id: it.id, name: it.name, price: it.price })),
+      total,
+      email
+    );
+    if (result.ok) {
+      onConfirmed();
+    } else {
+      setConfirmError(result.error);
+      setConfirming(false);
+    }
+  }
+
   if (pixError) {
     return (
       <>
@@ -208,6 +207,8 @@ function BulkStepPayment({
   return (
     <>
       <p className="purchase-pix-amount">R$ {totalLabel}</p>
+
+      <ReservationTimer />
 
       <div className="purchase-pix-qr-wrap">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -232,17 +233,26 @@ function BulkStepPayment({
 
       <div className="purchase-warning-box">
         <p>
-          Depois de pagar, clique no botão abaixo pra confirmar comigo no WhatsApp. Os códigos dos jogos
-          são enviados manualmente, só depois de eu conferir os requisitos com você — isso não é
-          automático.
+          A verificação da sua conta e o envio dos códigos continuam sendo feitos manualmente por nós — mas
+          seu pedido já fica registrado assim que você confirmar o pagamento abaixo.
         </p>
       </div>
 
+      <div className="purchase-urgency-box">
+        <p>Após o pagamento, seus códigos chegam por e-mail ainda hoje 🎮</p>
+      </div>
+
+      {confirmError && (
+        <p style={{ color: '#ff8a8a', fontSize: 13, fontWeight: 600, textAlign: 'center', marginBottom: 12 }}>
+          {confirmError}
+        </p>
+      )}
+
       <div className="purchase-modal-actions">
-        <button type="button" className="btn green" onClick={onPaid}>
-          Já paguei — confirmar no WhatsApp
+        <button type="button" className="btn green" onClick={handleConfirm} disabled={confirming}>
+          {confirming ? 'Confirmando...' : 'Já paguei — confirmar pedido'}
         </button>
-        <button type="button" className="purchase-step-back" onClick={onBack}>
+        <button type="button" className="purchase-step-back" onClick={onBack} disabled={confirming}>
           ← Voltar
         </button>
       </div>
@@ -250,47 +260,15 @@ function BulkStepPayment({
   );
 }
 
-function BulkStepConfirm({
-  whatsappUrl,
-  whatsappError,
-  onClose
-}: {
-  whatsappUrl: string | null;
-  whatsappError: string | null;
-  onClose: () => void;
-}) {
-  const openedRef = useRef(false);
-
-  useEffect(() => {
-    if (!whatsappUrl || openedRef.current) return;
-    openedRef.current = true;
-    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-  }, [whatsappUrl]);
-
-  if (whatsappError) {
-    return (
-      <p style={{ color: '#ff8a8a', fontSize: 14, fontWeight: 600, textAlign: 'center' }}>
-        Não foi possível abrir o WhatsApp: {whatsappError}
-      </p>
-    );
-  }
-
-  if (!whatsappUrl) {
-    return <p style={{ textAlign: 'center', color: 'var(--ink-dim)', fontWeight: 600 }}>Só um instante...</p>;
-  }
-
+function BulkStepConfirm({ onClose }: { onClose: () => void }) {
   return (
     <>
       <p style={{ textAlign: 'center', fontSize: 40, marginBottom: 10 }}>✓</p>
       <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 15, color: 'var(--ink)', marginBottom: 6 }}>
-        Perfeito! Abrimos o WhatsApp pra você confirmar o pagamento.
+        Pagamento confirmado! Seus códigos chegam no seu e-mail ainda hoje 🎮
       </p>
       <p style={{ textAlign: 'center', fontSize: 13.5, color: 'var(--ink-dim)', marginBottom: 20 }}>
-        Se a conversa não abriu automaticamente,{' '}
-        <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--green)', fontWeight: 700 }}>
-          clique aqui
-        </a>
-        .
+        Guarde esse e-mail à mão — é pra ele que os códigos vão.
       </p>
       <div className="purchase-modal-actions">
         <button type="button" className="btn ghost" onClick={onClose}>

@@ -1,34 +1,39 @@
 'use client';
 
 // Modal de compra: abre por cima da página quando um jogo é clicado no
-// catálogo (veja CatalogClient.tsx, estado `selectedItem`). Tem 4 telas
+// catálogo (veja CatalogClient.tsx, estado `selectedItem`). Tem 5 telas
 // internas ("etapas"), controladas pelo estado `step` abaixo — nenhuma delas
 // muda a URL ou recarrega a página, é tudo trocar o que aparece dentro
 // deste mesmo componente.
 //
 // IMPORTANTE (segurança contra fraude): este modal NUNCA mostra nem envia o
 // código do jogo. Ele só gera o Pix e, depois que o cliente diz que pagou,
-// abre uma conversa no WhatsApp com os dados do pedido. A conferência de que
-// a conta do cliente está pronta pra resgatar o código — e o envio do
-// código em si — continua 100% manual, feita por você no WhatsApp.
+// salva o pedido e te avisa automaticamente (e-mail + WhatsApp — veja
+// lib/notifications.ts). A conferência de que a conta do cliente está
+// pronta pra resgatar o código — e o envio do código em si — continua 100%
+// manual, feita por você.
 
-import { useEffect, useRef, useState, startTransition } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Item } from './CatalogClient';
 import type { Platform, GameType } from '@/lib/db';
 import { getContrastColor } from '@/lib/color';
 import { generatePixPayload, type PixPayload } from '@/lib/pix';
-import { logOrderAttempt } from './orderActions';
+import { isValidEmail } from '@/lib/validation';
+import { confirmOrderAction } from './orderActions';
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3 | 4 | 5;
 
 export default function PurchaseModal({ item, onClose }: { item: Item; onClose: () => void }) {
   const [step, setStep] = useState<Step>(1);
 
-  // As 3 caixinhas da etapa 2. Só avança pro pagamento quando as três forem
-  // `true` — é a regra de negócio pedida (conta sem saldo, pode trocar
-  // região, entende que o código só sai depois da verificação manual).
-  const [checklist, setChecklist] = useState({ semSaldo: false, podeTrocarRegiao: false, entendeVerificacao: false });
-  const allChecked = checklist.semSaldo && checklist.podeTrocarRegiao && checklist.entendeVerificacao;
+  // A única confirmação exigida antes do pagamento: a conta precisa estar
+  // com saldo zerado (Brasil e Japão), senão o resgate do código não
+  // funciona do lado do cliente.
+  const [checked, setChecked] = useState(false);
+
+  // E-mail pra onde o código vai depois da confirmação — coletado ANTES do
+  // Pix aparecer, pra já ir junto no pedido salvo no banco.
+  const [email, setEmail] = useState('');
 
   const [pix, setPix] = useState<PixPayload | null>(null);
   const [pixError, setPixError] = useState<string | null>(null);
@@ -41,10 +46,10 @@ export default function PurchaseModal({ item, onClose }: { item: Item; onClose: 
   // inteiro — ver o useEffect logo abaixo.
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
-  // Evita gerar o Pix (e registrar o pedido) mais de uma vez para o mesmo
-  // modal, mesmo que o efeito abaixo rode duas vezes em desenvolvimento
-  // (o React faz isso de propósito em StrictMode, só pra achar bugs — refs
-  // não são resetadas nesse processo, então essa trava funciona certinho).
+  // Evita gerar o Pix mais de uma vez para o mesmo modal, mesmo que o efeito
+  // abaixo rode duas vezes em desenvolvimento (o React faz isso de
+  // propósito em StrictMode, só pra achar bugs — refs não são resetadas
+  // nesse processo, então essa trava funciona certinho).
   const startedRef = useRef(false);
 
   // Fecha o modal com a tecla Esc, como qualquer modal "de verdade" do
@@ -73,27 +78,16 @@ export default function PurchaseModal({ item, onClose }: { item: Item; onClose: 
     };
   }, []);
 
-  // Ao entrar na etapa 3 (pagamento), gera o Pix e registra a tentativa de
-  // pedido. Tudo roda no navegador — não existe gateway de pagamento nem
-  // chamada de API paga envolvida em gerar o QR Code.
+  // Ao entrar na etapa 4 (pagamento), gera o Pix. Tudo roda no navegador —
+  // não existe gateway de pagamento nem chamada de API paga envolvida em
+  // gerar o QR Code.
   useEffect(() => {
-    if (step !== 3 || startedRef.current) return;
+    if (step !== 4 || startedRef.current) return;
     startedRef.current = true;
 
     generatePixPayload(item.price, item.name)
       .then(setPix)
       .catch((err: Error) => setPixError(err.message));
-
-    // O registro do pedido é só um histórico pra você (admin > Pedidos),
-    // não precisa bloquear a tela de pagamento esperando ele terminar —
-    // por isso startTransition, que deixa essa chamada rodar "em segundo
-    // plano" sem travar a troca de tela.
-    startTransition(() => {
-      logOrderAttempt(item.id, item.name, item.price).catch(() => {
-        // Se o registro falhar (ex: banco fora do ar), a compra em si não
-        // deve travar por causa disso — é só um histórico de apoio.
-      });
-    });
   }, [step, item]);
 
   function handleCopy() {
@@ -148,29 +142,31 @@ export default function PurchaseModal({ item, onClose }: { item: Item; onClose: 
           )}
 
           {step === 2 && (
-            <StepChecklist
-              checklist={checklist}
-              setChecklist={setChecklist}
-              allChecked={allChecked}
-              onBack={() => setStep(1)}
-              onNext={() => setStep(3)}
-            />
+            <StepChecklist checked={checked} onChange={setChecked} onBack={() => setStep(1)} onNext={() => setStep(3)} />
           )}
 
           {step === 3 && (
+            <StepEmail email={email} setEmail={setEmail} onBack={() => setStep(2)} onNext={() => setStep(4)} />
+          )}
+
+          {step === 4 && (
             <StepPayment
+              gameId={item.id}
+              gameName={item.name}
+              price={item.price}
               priceLabel={priceLabel}
+              email={email}
               pix={pix}
               pixError={pixError}
               copied={copied}
               copyFailed={copyFailed}
               onCopy={handleCopy}
-              onBack={() => setStep(2)}
-              onPaid={() => setStep(4)}
+              onBack={() => setStep(3)}
+              onConfirmed={() => setStep(5)}
             />
           )}
 
-          {step === 4 && <StepConfirm item={item} onClose={onClose} />}
+          {step === 5 && <StepConfirm onClose={onClose} />}
         </div>
       </div>
 
@@ -431,24 +427,18 @@ function Lightbox({
   );
 }
 
-export type Checklist = { semSaldo: boolean; podeTrocarRegiao: boolean; entendeVerificacao: boolean };
-
-// Etapa 2 — checklist obrigatório antes de mostrar qualquer forma de
-// pagamento. Reaproveita as mesmas 3 regras que já eram combinadas com os
-// clientes por WhatsApp, só que agora confirmadas aqui antes de seguir.
-// Exportado porque a compra em lote da lista de desejos (BulkPurchaseModal)
-// usa exatamente o mesmo checklist, uma única vez pra todos os jogos
-// selecionados, em vez de repetir por jogo.
+// Etapa 2 — única confirmação exigida antes do pagamento. Exportado porque
+// a compra em lote da lista de desejos (BulkPurchaseModal) usa exatamente
+// a mesma etapa, uma única vez pra todos os jogos selecionados, em vez de
+// repetir por jogo.
 export function StepChecklist({
-  checklist,
-  setChecklist,
-  allChecked,
+  checked,
+  onChange,
   onBack,
   onNext
 }: {
-  checklist: Checklist;
-  setChecklist: (c: Checklist) => void;
-  allChecked: boolean;
+  checked: boolean;
+  onChange: (v: boolean) => void;
   onBack: () => void;
   onNext: () => void;
 }) {
@@ -456,32 +446,55 @@ export function StepChecklist({
     <>
       <div className="purchase-checklist">
         <label className="purchase-checklist-item">
-          <input
-            type="checkbox"
-            checked={checklist.semSaldo}
-            onChange={(e) => setChecklist({ ...checklist, semSaldo: e.target.checked })}
-          />
-          <span>Minha conta Nintendo está sem saldo (Brasil e Japão)</span>
-        </label>
-        <label className="purchase-checklist-item">
-          <input
-            type="checkbox"
-            checked={checklist.podeTrocarRegiao}
-            onChange={(e) => setChecklist({ ...checklist, podeTrocarRegiao: e.target.checked })}
-          />
-          <span>Posso trocar a região da minha conta para o Japão</span>
-        </label>
-        <label className="purchase-checklist-item">
-          <input
-            type="checkbox"
-            checked={checklist.entendeVerificacao}
-            onChange={(e) => setChecklist({ ...checklist, entendeVerificacao: e.target.checked })}
-          />
-          <span>Entendo que após o pagamento, o código só é enviado depois da verificação desses itens pelo WhatsApp</span>
+          <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+          <span>Minha conta Nintendo está com saldo zerado (Brasil e Japão)</span>
         </label>
       </div>
       <div className="purchase-modal-actions">
-        <button type="button" className="btn primary" disabled={!allChecked} onClick={onNext}>
+        <button type="button" className="btn primary" disabled={!checked} onClick={onNext}>
+          Continuar
+        </button>
+        <button type="button" className="purchase-step-back" onClick={onBack}>
+          ← Voltar
+        </button>
+      </div>
+    </>
+  );
+}
+
+// Etapa 3 — coleta o e-mail pra onde o código vai depois da confirmação.
+// Também exportado e reaproveitado pelo BulkPurchaseModal.
+export function StepEmail({
+  email,
+  setEmail,
+  onBack,
+  onNext
+}: {
+  email: string;
+  setEmail: (v: string) => void;
+  onBack: () => void;
+  onNext: () => void;
+}) {
+  const valid = isValidEmail(email);
+  return (
+    <>
+      <p className="purchase-email-intro">
+        É pra esse e-mail que enviaremos o código do jogo depois da confirmação do pagamento.
+      </p>
+      <label className="purchase-email-label" htmlFor="purchase-email-input">
+        Seu e-mail
+      </label>
+      <input
+        id="purchase-email-input"
+        type="email"
+        inputMode="email"
+        autoComplete="email"
+        placeholder="seuemail@exemplo.com"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <div className="purchase-modal-actions" style={{ marginTop: 20 }}>
+        <button type="button" className="btn primary" disabled={!valid} onClick={onNext}>
           Continuar para o pagamento
         </button>
         <button type="button" className="purchase-step-back" onClick={onBack}>
@@ -492,27 +505,85 @@ export function StepChecklist({
   );
 }
 
-// Etapa 3 — pagamento via Pix: QR Code de verdade (gerado no navegador, sem
-// gateway de pagamento) + o texto "Pix Copia e Cola" com botão de copiar.
+const RESERVATION_SECONDS = 15 * 60; // 15 minutos — reforço psicológico, não trava nada de verdade (código digital não tem estoque físico limitado).
+
+function formatCountdown(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+// Timer visual de "pedido reservado" — puramente psicológico, pra estimular
+// o pagamento rápido. Não bloqueia nada quando chega a zero (fica parado em
+// 00:00): um código digital não tem estoque físico, então não existe
+// "perder a reserva" de verdade. Reinicia sozinho se a pessoa recarregar a
+// tela, porque o tempo vive só aqui, em memória do componente.
+export function ReservationTimer() {
+  const [secondsLeft, setSecondsLeft] = useState(RESERVATION_SECONDS);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setSecondsLeft((s) => Math.max(0, s - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div className="purchase-timer-box">
+      <span aria-hidden="true">⏳</span>
+      <span>
+        Esse pedido fica reservado por <strong>{formatCountdown(secondsLeft)}</strong>
+      </span>
+    </div>
+  );
+}
+
+// Etapa 4 — pagamento via Pix: QR Code de verdade (gerado no navegador, sem
+// gateway de pagamento) + o texto "Pix Copia e Cola" com botão de copiar,
+// timer de reserva e o botão que salva o pedido e dispara os avisos
+// automáticos (ver confirmOrderAction em orderActions.ts).
 function StepPayment({
+  gameId,
+  gameName,
+  price,
   priceLabel,
+  email,
   pix,
   pixError,
   copied,
   copyFailed,
   onCopy,
   onBack,
-  onPaid
+  onConfirmed
 }: {
+  gameId: number;
+  gameName: string;
+  price: number;
   priceLabel: string;
+  email: string;
   pix: PixPayload | null;
   pixError: string | null;
   copied: boolean;
   copyFailed: boolean;
   onCopy: () => void;
   onBack: () => void;
-  onPaid: () => void;
+  onConfirmed: () => void;
 }) {
+  const [confirming, setConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+
+  async function handleConfirm() {
+    setConfirming(true);
+    setConfirmError(null);
+    const result = await confirmOrderAction(gameId, gameName, price, email);
+    if (result.ok) {
+      onConfirmed();
+    } else {
+      setConfirmError(result.error);
+      setConfirming(false);
+    }
+  }
+
   if (pixError) {
     return (
       <>
@@ -533,6 +604,8 @@ function StepPayment({
   return (
     <>
       <p className="purchase-pix-amount">R$ {priceLabel}</p>
+
+      <ReservationTimer />
 
       <div className="purchase-pix-qr-wrap">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -557,17 +630,26 @@ function StepPayment({
 
       <div className="purchase-warning-box">
         <p>
-          Depois de pagar, clique no botão abaixo pra confirmar comigo no WhatsApp. O código do
-          jogo é enviado manualmente, só depois de eu conferir os requisitos com você — isso não
-          é automático.
+          A verificação da sua conta e o envio do código continuam sendo feitos manualmente por nós — mas
+          seu pedido já fica registrado assim que você confirmar o pagamento abaixo.
         </p>
       </div>
 
+      <div className="purchase-urgency-box">
+        <p>Após o pagamento, seu código chega por e-mail ainda hoje 🎮</p>
+      </div>
+
+      {confirmError && (
+        <p style={{ color: '#ff8a8a', fontSize: 13, fontWeight: 600, textAlign: 'center', marginBottom: 12 }}>
+          {confirmError}
+        </p>
+      )}
+
       <div className="purchase-modal-actions">
-        <button type="button" className="btn green" onClick={onPaid}>
-          Já paguei — confirmar no WhatsApp
+        <button type="button" className="btn green" onClick={handleConfirm} disabled={confirming}>
+          {confirming ? 'Confirmando...' : 'Já paguei — confirmar pedido'}
         </button>
-        <button type="button" className="purchase-step-back" onClick={onBack}>
+        <button type="button" className="purchase-step-back" onClick={onBack} disabled={confirming}>
           ← Voltar
         </button>
       </div>
@@ -575,30 +657,17 @@ function StepPayment({
   );
 }
 
-// Etapa 4 — dispara o WhatsApp com os dados do pedido já preenchidos, e
-// mostra uma tela de confirmação (caso o navegador bloqueie a aba nova, tem
-// um link de apoio pra abrir manualmente).
-function StepConfirm({ item, onClose }: { item: Item; onClose: () => void }) {
-  const openedRef = useRef(false);
-
-  useEffect(() => {
-    if (openedRef.current) return;
-    openedRef.current = true;
-    window.open(item.whatsappPaymentUrl, '_blank', 'noopener,noreferrer');
-  }, [item]);
-
+// Etapa 5 — tela final, depois que o pedido já foi salvo e as notificações
+// automáticas já foram disparadas (ver StepPayment acima).
+function StepConfirm({ onClose }: { onClose: () => void }) {
   return (
     <>
       <p style={{ textAlign: 'center', fontSize: 40, marginBottom: 10 }}>✓</p>
       <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 15, color: 'var(--ink)', marginBottom: 6 }}>
-        Perfeito! Abrimos o WhatsApp pra você confirmar o pagamento.
+        Pagamento confirmado! Seu código chega no seu e-mail ainda hoje 🎮
       </p>
       <p style={{ textAlign: 'center', fontSize: 13.5, color: 'var(--ink-dim)', marginBottom: 20 }}>
-        Se a conversa não abriu automaticamente,{' '}
-        <a href={item.whatsappPaymentUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--green)', fontWeight: 700 }}>
-          clique aqui
-        </a>
-        .
+        Guarde esse e-mail à mão — é pra ele que o código vai.
       </p>
       <div className="purchase-modal-actions">
         <button type="button" className="btn ghost" onClick={onClose}>

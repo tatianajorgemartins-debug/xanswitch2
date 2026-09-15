@@ -3,12 +3,13 @@
 Site com duas partes:
 
 - **`/` — Catálogo público**: seus clientes acessam, veem os jogos e, ao clicar em
-  qualquer um, abre uma janela de compra na própria página com um checklist
-  rápido, pagamento via Pix (QR Code de verdade, gerado na hora) e, depois
-  que o cliente confirma que pagou, a conversa segue no WhatsApp pra você
-  fazer a verificação manual antes de enviar o código. Veja a seção
-  "Como funciona a compra pelo site (Pix + WhatsApp)" mais abaixo pro passo
-  a passo completo.
+  qualquer um, abre uma janela de compra na própria página: uma confirmação
+  rápida, o e-mail do cliente, pagamento via Pix (QR Code de verdade, gerado
+  na hora) e, quando o cliente confirma que pagou, você é avisada na hora
+  por e-mail (e, se configurar, WhatsApp também) pra fazer a verificação
+  manual antes de enviar o código. Veja a seção "Como funciona a compra
+  pelo site (Pix + aviso automático)" mais abaixo pro passo a passo
+  completo.
 - **`/admin` — Painel de administração**: protegido por senha. É onde você
   adiciona, edita, arquiva e exclui jogos do catálogo, além de acompanhar
   comentários e o histórico de pedidos.
@@ -168,6 +169,12 @@ com plano gratuito próprio.
 
    Marque **Production**, **Preview** e **Development** em todas.
 
+   > As variáveis `RESEND_API_KEY`, `ORDER_NOTIFICATION_EMAIL` e
+   > `CALLMEBOT_API_KEY` (pra receber um aviso automático a cada pedido
+   > novo) têm um passo a passo próprio, mais abaixo, na seção
+   > "Notificação automática de novo pedido" — pode configurar essas depois,
+   > o site funciona sem elas (só não te avisa sozinho).
+
 3. Clique em **Save**.
 
 > **Dica:** escolha uma senha só sua pro `ADMIN_PASSWORD`, de preferência
@@ -223,33 +230,43 @@ com plano gratuito próprio.
 
 ---
 
-## Como funciona a compra pelo site (Pix + WhatsApp)
+## Como funciona a compra pelo site (Pix + aviso automático)
 
 Quando um cliente clica em qualquer jogo do catálogo, abre uma janela
 flutuante (modal) na própria página — sem sair do site nem trocar de link —
-com 4 telas em sequência:
+com 5 telas em sequência:
 
 1. **Resumo do jogo** — capa, nome, preço, a descrição (se você cadastrou
    uma) e uma galeria de capturas de tela clicáveis (se você subiu alguma),
    tudo já cadastrado no admin. Botão **"Comprar agora"**.
-2. **Checklist rápido** — as 3 confirmações que vocês já combinavam por
-   WhatsApp (conta sem saldo, pode trocar região, entende que a verificação
-   é manual). O botão de continuar só libera com as 3 marcadas.
-3. **Pagamento via Pix** — o site gera, na hora e no próprio navegador do
+2. **Checklist** — uma única confirmação: "Minha conta Nintendo está com
+   saldo zerado (Brasil e Japão)". O botão de continuar só libera com essa
+   caixa marcada.
+3. **E-mail** — o cliente informa o e-mail pra onde o código vai depois da
+   confirmação do pagamento. O botão só libera com um e-mail em formato
+   válido.
+4. **Pagamento via Pix** — o site gera, na hora e no próprio navegador do
    cliente, um QR Code Pix de verdade (padrão do Banco Central, o mesmo tipo
    que você geraria no app do seu banco) já com o valor exato do jogo. Junto
-   aparece o texto "Pix Copia e Cola" com um botão de copiar, pra quem não
-   consegue escanear QR Code pela tela do computador.
-4. **Confirmação** — o botão **"Já paguei — confirmar no WhatsApp"** abre
-   uma conversa no WhatsApp com o nome do jogo, o preço e um aviso de que o
-   cliente acabou de pagar, pra vocês seguirem a conversa organizados.
+   aparece o texto "Pix Copia e Cola" com um botão de copiar, um timer visual
+   ("Esse pedido fica reservado por 15:00") e o aviso "Após o pagamento, seu
+   código chega por e-mail ainda hoje 🎮". O botão **"Já paguei — confirmar
+   pedido"** salva o pedido e te avisa automaticamente (ver seção abaixo).
+5. **Confirmação** — tela final avisando que o pedido foi registrado e que
+   o código chega por e-mail ainda hoje.
+
+> **Sobre o timer da etapa 4:** é só um reforço visual pra estimular o
+> cliente a pagar logo — não existe "estoque" de verdade num código digital,
+> então ele nunca trava ninguém de fato. Se a pessoa recarregar a página, o
+> timer simplesmente recomeça de 15 minutos.
 
 **O ponto mais importante:** o site **nunca** envia nem mostra o código do
-jogo automaticamente, em etapa nenhuma. Ele só gera o Pix e te avisa que
-alguém disse que pagou — a conferência de que a conta do cliente está
-pronta pra resgatar (região, saldo etc.) e o envio do código em si continuam
-100% manuais, feitos por você no WhatsApp, exatamente como já era antes.
-Isso existe de propósito: é o que te protege de um cliente resgatar o
+jogo automaticamente, em etapa nenhuma. Como não existe integração com
+gateway de pagamento, o "Já paguei" é uma declaração do próprio cliente, não
+uma confirmação automática de que o Pix realmente caiu na sua conta — a
+conferência de que a conta do cliente está pronta pra resgatar (região,
+saldo etc.) e o envio do código em si continuam 100% manuais, feitos por
+você. Isso existe de propósito: é o que te protege de um cliente resgatar o
 código e depois pedir estorno alegando que "não recebeu nada".
 
 **Onde configurar sua chave Pix e seus dados de recebedor:** nas variáveis
@@ -258,16 +275,82 @@ código e depois pedir estorno alegando que "não recebeu nada".
 no arquivo `.env.example` (se for rodar na sua máquina). É só ali — não tem
 nenhum outro lugar no código pra mexer nesses dados.
 
-**Onde fica o histórico de pedidos:** toda vez que um cliente chega na tela
-de pagamento (ou seja, o QR Code foi gerado), o site salva uma linha numa
-tabela chamada `orders` no mesmo banco Postgres (Neon) que já guarda os
-jogos e os comentários — não é um arquivo separado nem outro banco. Você
-acompanha esse histórico direto no admin, no botão **"📋 Pedidos"**: aparece
-o jogo, o valor e a data/hora de cada tentativa de compra. Isso **não é uma
-confirmação de pagamento** — é só um registro de "alguém gerou um Pix pra
-este jogo", útil caso alguém pague e esqueça de te chamar no WhatsApp depois
-(você vê o pedido na lista e pode entrar em contato). A confirmação real
-continua sendo você ver o Pix cair na sua conta.
+**Onde fica o histórico de pedidos:** quando o cliente clica em "Já paguei
+— confirmar pedido", o site salva uma linha numa tabela chamada `orders` no
+mesmo banco Postgres (Neon) que já guarda os jogos e os comentários — não é
+um arquivo separado nem outro banco. Você acompanha esse histórico direto
+no admin, no botão **"📋 Pedidos"**: aparece o jogo, o valor, o e-mail do
+cliente, a data/hora e um status (por padrão `aguardando_codigo`, ou seja:
+pagamento declarado, código ainda não enviado). Isso **não é uma
+confirmação automática de pagamento** — é o mesmo tipo de registro manual
+que já existia, só que agora com o e-mail do cliente junto e um aviso que
+chega até você sozinho (próxima seção).
+
+> Se o seu banco já tinha pedidos salvos de antes dessa mudança, rode a
+> migração `db/migration-orders-checkout-v2.sql` uma vez no editor SQL do
+> Neon — ela adiciona as colunas `customer_email` e `status` sem apagar
+> nada que já existia. (Se você está criando o banco do zero agora, ignore
+> isso: o `db/schema.sql` já vem com essas colunas.)
+
+---
+
+## Notificação automática de novo pedido
+
+Toda vez que um cliente confirma "Já paguei — confirmar pedido", além de
+salvar o pedido no banco (seção acima), o site tenta te avisar por dois
+canais ao mesmo tempo:
+
+### Canal A — E-mail (Resend), o principal
+
+1. Crie uma conta grátis em [resend.com](https://resend.com) — **use o
+   mesmo e-mail que você quer receber os avisos** (ex: `xandxnintendo@gmail.com`).
+   Isso importa: no plano grátis, sem verificar um domínio próprio, o Resend
+   só deixa mandar e-mail de teste pro endereço usado pra criar a conta —
+   como o objetivo aqui é só você mesma receber o aviso, isso já resolve.
+2. No painel do Resend, vá em **API Keys** → **Create API Key**, dê um nome
+   qualquer (ex: `xan-switch`) e copie a chave gerada (começa com `re_`).
+3. Na Vercel, vá em **Settings → Environment Variables** do seu projeto e
+   adicione:
+   - `RESEND_API_KEY` → a chave que você acabou de copiar
+   - `ORDER_NOTIFICATION_EMAIL` → o e-mail que deve receber o aviso (o
+     mesmo da conta do Resend)
+4. Marque **Production**, **Preview** e **Development**, salve, e faça um
+   novo deploy (Passo 6 acima) pra essas variáveis passarem a valer.
+
+Assunto do e-mail: `Novo pedido — [nome do jogo]`. O corpo traz o(s)
+jogo(s), o preço, o e-mail do cliente e o horário.
+
+### Canal B — WhatsApp (CallMeBot), um bônus opcional
+
+O [CallMeBot](https://www.callmebot.com/) é um serviço gratuito e simples
+pra mandar mensagem de WhatsApp por uma chamada de internet comum — não é a
+API oficial da Meta, mas funciona bem pra avisos pessoais de baixo volume
+como esse.
+
+1. Acesse [callmebot.com/blog/free-api-whatsapp-messages](https://www.callmebot.com/blog/free-api-whatsapp-messages/)
+   e veja lá o número de telefone atual do bot (esse número muda de vez em
+   quando, por isso não colocamos ele fixo aqui). Adicione esse número aos
+   contatos do WhatsApp do celular que você quer que receba o aviso.
+2. Mande, pelo WhatsApp, exatamente esta mensagem pra esse número:
+   `I allow callmebot to send me messages`
+3. Espere a resposta automática do bot — ela vem com a sua **API key**
+   (um número). Copie esse número.
+4. Na Vercel, vá em **Settings → Environment Variables** e adicione
+   `CALLMEBOT_API_KEY` com esse número. Marque **Production**, **Preview**
+   e **Development**, salve, e faça um novo deploy.
+
+> Esse serviço às vezes fica com as vagas cheias ("bot is currently full")
+> e pede pra tentar de novo em alguns dias — se isso acontecer, não tem
+> problema: é só o Canal B (bônus). O e-mail (Canal A) continua funcionando
+> normalmente enquanto isso.
+
+O número de WhatsApp que recebe o aviso é o mesmo já configurado em
+`WHATSAPP_NUMBER` (Passo 5) — não precisa configurar outro.
+
+> **Se o CallMeBot não estiver configurado (ou falhar por qualquer
+> motivo)**, isso não trava nada: o pedido do cliente é confirmado
+> normalmente, e o e-mail (Canal A) continua sendo a garantia principal de
+> você ficar sabendo. O WhatsApp é só um bônus a mais.
 
 ---
 
@@ -340,11 +423,12 @@ por enquanto.
 **Comprar vários jogos de uma vez:** dentro do popup de conta, cada jogo da
 lista de desejos tem uma caixinha de marcar (vem tudo marcado por padrão) —
 a pessoa desmarca o que não quiser levar agora e clica em **"Comprar
-selecionados"**. Isso abre um Pix único com o valor total, e depois de
-pagar a mensagem do WhatsApp já vem com a lista de todos os jogos e o total,
-igual já acontecia com um jogo só. No histórico do admin (📋 Pedidos), cada
-jogo desse pedido continua aparecendo como uma linha separada — só que
-todas criadas no mesmo instante.
+selecionados"**. Isso abre um Pix único com o valor total, e ao confirmar o
+pagamento você recebe um único aviso automático (e-mail/WhatsApp) já com a
+lista de todos os jogos e o total, igual já acontecia com um jogo só. No
+histórico do admin (📋 Pedidos), cada jogo desse pedido continua aparecendo
+como uma linha separada — só que todas criadas no mesmo instante, com o
+mesmo e-mail de cliente.
 
 **Onde ficam guardados esses dados:** diferente dos jogos e comentários
 (que ficam no banco Neon), a conta do cliente e a lista de desejos ficam
@@ -476,11 +560,11 @@ app/
   page.tsx              → catálogo público (busca + cards + dados de cada jogo)
   jogo/[id]/page.tsx      → link direto de um jogo específico (abre o catálogo já com o modal dele aberto, com prévia pra redes sociais)
   CatalogClient.tsx      → a parte interativa do catálogo público (abre o modal de compra, login, lista de desejos)
-  PurchaseModal.tsx       → o modal de compra de UM jogo (resumo → checklist → Pix → WhatsApp → compartilhar)
-  BulkPurchaseModal.tsx    → o modal de compra de VÁRIOS jogos da lista de desejos de uma vez
+  PurchaseModal.tsx       → o modal de compra de UM jogo (resumo → checklist → e-mail → Pix → confirmação)
+  BulkPurchaseModal.tsx    → o modal de compra de VÁRIOS jogos da lista de desejos de uma vez (mesmas etapas, um Pix só)
   AccountModal.tsx         → o popup de login (e-mail e senha) e da lista de desejos do cliente
   SiteHeader.tsx           → logo + ícone de conta (com o número da lista de desejos) + redes sociais
-  orderActions.ts          → Server Action que registra cada tentativa de compra e monta o link de compartilhar da compra em lote
+  orderActions.ts          → Server Actions que salvam o pedido (com e-mail do cliente) e disparam o aviso automático quando o cliente confirma "Já paguei"
   layout.tsx, globals.css → visual (cores, fontes, estilo geral, CSS do modal de compra e do popup de conta)
   admin/
     page.tsx             → painel admin (protegido)
@@ -496,8 +580,10 @@ lib/
   db.ts               → funções que conversam com o banco de dados (catálogo, Postgres/Neon)
   auth.ts             → login/sessão (senha + cookie assinado) — usado por /admin
   wishlist.ts          → login do cliente (e-mail e senha) e lista de desejos — roda no navegador, fala direto com o Supabase
-  whatsapp.ts         → monta os links do WhatsApp (contato do cabeçalho e confirmação de pagamento)
+  whatsapp.ts         → monta o link de contato do WhatsApp do cabeçalho, e formata preço em R$
   pix.ts              → monta o Pix (BR Code + QR Code) usando seus dados de recebedor
+  validation.ts        → validação de formato de e-mail (navegador e servidor)
+  notifications.ts     → avisa você por e-mail (Resend) e WhatsApp (CallMeBot) a cada novo pedido confirmado
   color.ts            → escolhe texto claro/escuro pra contrastar com a cor da etiqueta
   imageResize.ts       → comprime a capa do jogo no servidor antes de salvar (usa a lib "sharp")
   imageCompression.ts  → comprime as capturas de tela no navegador antes de enviar (usa <canvas>)
@@ -511,6 +597,7 @@ db/migration-game-details.sql → só a descrição/capturas de tela, mesmo caso
 db/migration-supabase-keepalive.sql → cria a tabela usada pela rotina diária (roda no Supabase, não no Neon)
 db/migration-wishlist.sql     → cria as tabelas de conta do cliente e lista de desejos (roda no Supabase, não no Neon)
 db/migration-banner-image.sql → adiciona a imagem separada pros banners (Destaque da semana / Mais aguardados), no Neon
+db/migration-orders-checkout-v2.sql → adiciona e-mail do cliente e status ao pedido, no Neon
 proxy.ts       → protege a página /admin (redireciona pro login se não tiver sessão)
 vercel.json    → agenda a rotina diária de manutenção (cron job)
 ```

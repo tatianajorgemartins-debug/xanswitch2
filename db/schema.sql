@@ -47,14 +47,19 @@ CREATE TABLE IF NOT EXISTS reviews (
 );
 CREATE INDEX IF NOT EXISTS reviews_approved_idx ON reviews (approved);
 
--- Registro de pedidos: cada vez que um cliente gera um QR Code Pix, uma linha
--- é salva aqui. Não confirma pagamento — é só um histórico de "intenção de
--- compra", útil se alguém pagar e esquecer de chamar no WhatsApp depois.
+-- Registro de pedidos: uma linha é salva aqui quando o cliente confirma
+-- "Já paguei — confirmar pedido" no modal de compra. Como não existe
+-- gateway de pagamento, isso é uma declaração do próprio cliente, não uma
+-- confirmação automática de que o Pix caiu na conta. customer_email é pra
+-- onde o código será enviado depois; status guarda em que pé está o
+-- atendimento (padrão: 'aguardando_codigo').
 CREATE TABLE IF NOT EXISTS orders (
   id SERIAL PRIMARY KEY,
   game_id INTEGER,
   game_name TEXT NOT NULL,
   price NUMERIC(10, 2) NOT NULL,
+  customer_email TEXT,
+  status TEXT NOT NULL DEFAULT 'aguardando_codigo',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS orders_created_at_idx ON orders (created_at DESC);
@@ -66,3 +71,8 @@ ALTER TABLE games ADD COLUMN IF NOT EXISTS original_price NUMERIC(10, 2);
 -- Idem para descrição e capturas de tela (ver db/migration-game-details.sql).
 ALTER TABLE games ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE games ADD COLUMN IF NOT EXISTS screenshots JSONB NOT NULL DEFAULT '[]';
+
+-- Idem para e-mail do cliente e status do pedido (ver
+-- db/migration-orders-checkout-v2.sql).
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_email TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'aguardando_codigo';

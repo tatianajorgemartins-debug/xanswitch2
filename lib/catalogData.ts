@@ -10,7 +10,7 @@
 // página em si), o banco só é consultado uma vez.
 import { cache } from 'react';
 import { getActiveGames, getApprovedReviews, type Game } from './db';
-import { buildWhatsAppPaymentLink, buildWhatsAppContactLink, formatPriceBR } from './whatsapp';
+import { buildWhatsAppContactLink, formatPriceBR } from './whatsapp';
 import { getWishlistCounts } from './supabaseAdmin';
 import type { Item, ReviewItem } from '@/app/CatalogClient';
 
@@ -35,8 +35,7 @@ function toItem(g: Game): Item {
     isBestseller: g.is_bestseller,
     isUpcoming: g.is_upcoming,
     description: g.description,
-    screenshots: g.screenshots,
-    whatsappPaymentUrl: buildWhatsAppPaymentLink(g.name, g.price)
+    screenshots: g.screenshots
   };
 }
 

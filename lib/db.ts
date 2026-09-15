@@ -215,15 +215,20 @@ export async function deleteReview(id: number): Promise<void> {
   await getSql()`DELETE FROM reviews WHERE id = ${id}`;
 }
 
-// Pedidos: um registro é criado cada vez que alguém gera um QR Code Pix no
-// modal de compra. Não é uma confirmação de pagamento — é só um histórico
-// de "intenção de compra" pra você não perder o rastro se alguém pagar e
-// esquecer de chamar no WhatsApp.
+// Pedidos: um registro é criado quando o cliente clica em "Já paguei —
+// confirmar pedido" no modal de compra (ver confirmOrderAction em
+// app/orderActions.ts). Como não existe gateway de pagamento, isso é uma
+// declaração do próprio cliente — não uma confirmação automática de que o
+// Pix realmente caiu na conta. status guarda em que pé está o atendimento
+// (por padrão 'aguardando_codigo': pagamento declarado, código ainda não
+// enviado).
 export type Order = {
   id: number;
   game_id: number | null;
   game_name: string;
   price: string; // numeric comes back as string from postgres
+  customer_email: string | null;
+  status: string;
   created_at: Date;
 };
 
@@ -231,10 +236,11 @@ export async function createOrder(data: {
   game_id: number | null;
   game_name: string;
   price: number;
+  customer_email: string;
 }): Promise<Order> {
   const rows = await getSql()`
-    INSERT INTO orders (game_id, game_name, price)
-    VALUES (${data.game_id}, ${data.game_name}, ${data.price})
+    INSERT INTO orders (game_id, game_name, price, customer_email)
+    VALUES (${data.game_id}, ${data.game_name}, ${data.price}, ${data.customer_email})
     RETURNING *
   `;
   return rows[0] as Order;

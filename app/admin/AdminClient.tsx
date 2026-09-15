@@ -570,19 +570,40 @@ function OrdersPanel({ orders, onDelete }: { orders: Order[]; onDelete: (id: num
                 alignItems: 'center',
                 gap: 10,
                 padding: '8px 4px',
-                borderBottom: '1px solid rgba(255,255,255,.06)'
+                borderBottom: '1px solid rgba(255,255,255,.06)',
+                flexWrap: 'wrap'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                <strong style={{ fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {o.game_name}
-                </strong>
-                <span style={{ color: 'var(--green)', fontWeight: 700, fontSize: 13.5, flex: 'none' }}>
-                  R$ {formatPriceBR(o.price)}
-                </span>
-                <span style={{ color: 'var(--ink-dim)', fontSize: 12.5, flex: 'none' }}>
-                  {new Date(o.created_at).toLocaleString('pt-BR')}
-                </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <strong style={{ fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {o.game_name}
+                  </strong>
+                  <span style={{ color: 'var(--green)', fontWeight: 700, fontSize: 13.5, flex: 'none' }}>
+                    R$ {formatPriceBR(o.price)}
+                  </span>
+                  <span style={{ color: 'var(--ink-dim)', fontSize: 12.5, flex: 'none' }}>
+                    {new Date(o.created_at).toLocaleString('pt-BR')}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  {o.customer_email && (
+                    <span style={{ color: 'var(--ink-dim)', fontSize: 12.5 }}>✉ {o.customer_email}</span>
+                  )}
+                  <span
+                    style={{
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      color: 'var(--purple-2)',
+                      background: 'rgba(164,99,255,.12)',
+                      border: '1px solid rgba(164,99,255,.3)',
+                      borderRadius: 6,
+                      padding: '2px 8px'
+                    }}
+                  >
+                    {o.status}
+                  </span>
+                </div>
               </div>
               <button className="btn ghost" onClick={() => onDelete(o.id)} style={{ flex: 'none' }}>
                 🗑
