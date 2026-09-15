@@ -1,5 +1,4 @@
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
-import { unstable_cache } from 'next/cache';
 
 // Criado só na primeira consulta, não quando este arquivo é importado — assim,
 // nada quebra em ambientes que importam este módulo sem nunca chamar
@@ -42,31 +41,22 @@ export type Game = {
 };
 
 // Esta é a consulta que roda no catálogo PÚBLICO (a página que os clientes
-// veem) — por isso é cacheada. Antes, a página inteira era marcada como
-// "force-dynamic" (nunca cacheada, refazia tudo do zero a cada visita), o
-// que multiplicava o consumo de banda por cada visitante.
-//
-// O ideal era esse cache invalidar na hora a cada alteração no admin, via
-// revalidateTag('games', { expire: 0 }) em app/admin/actions.ts — o código
-// faz isso certinho (e substituiu um bug real: updateTag(), usado antes,
-// não tem efeito nenhum sobre um cache feito com unstable_cache, só
-// funciona com o jeito mais novo de cachear do Next, 'use cache'/
-// cacheTag, que este projeto não usa). Só que, na prática, mesmo depois
-// dessa correção, a Vercel às vezes não aplica essa invalidação — por
-// segurança, o "revalidate" abaixo ficou bem mais curto (5 minutos, não
-// mais 1 hora), pra garantir que uma alteração no admin nunca demore mais
-// que isso pra aparecer pro público, mesmo se a invalidação instantânea
-// falhar silenciosamente daquele jeito.
-export const getActiveGames = unstable_cache(
-  async (): Promise<Game[]> => {
-    const rows = await getSql()`
-      SELECT * FROM games WHERE archived = FALSE ORDER BY sort_name ASC
-    `;
-    return rows as Game[];
-  },
-  ['active-games'],
-  { tags: ['games'], revalidate: 300 }
-);
+// veem). Antigamente ela era embrulhada com unstable_cache (o cache "por
+// dentro" da função) — mas na prática, nesta versão do Next.js rodando na
+// Vercel, a invalidação desse cache (via revalidateTag) não estava
+// respondendo de forma confiável: uma alteração no admin podia não
+// aparecer pro público nem depois de vários minutos, mesmo chamando
+// revalidateTag corretamente. Então essa função voltou a ser simples (sem
+// cache próprio) — quem cuida de não bater no banco a cada visita agora é
+// só o cache da PÁGINA em si (o "export const revalidate" em
+// app/page.tsx), que testamos e confirmamos que responde direito a
+// revalidatePath('/') nas ações do admin.
+export async function getActiveGames(): Promise<Game[]> {
+  const rows = await getSql()`
+    SELECT * FROM games WHERE archived = FALSE ORDER BY sort_name ASC
+  `;
+  return rows as Game[];
+}
 
 export async function getAllGames(): Promise<Game[]> {
   const rows = await getSql()`
@@ -185,21 +175,14 @@ export type Review = {
   created_at: Date;
 };
 
-// Mesma lógica de cache de getActiveGames acima — esta é a consulta usada
-// no catálogo público. O ideal era invalidar na hora via
-// revalidateTag('reviews', { expire: 0 }) sempre que você aprova/destaca/
-// exclui um comentário no admin, mas por segurança (ver comentário acima)
-// o revalidate por tempo também ficou mais curto.
-export const getApprovedReviews = unstable_cache(
-  async (): Promise<Review[]> => {
-    const rows = await getSql()`
-      SELECT * FROM reviews WHERE approved = TRUE ORDER BY is_featured DESC, created_at DESC
-    `;
-    return rows as Review[];
-  },
-  ['approved-reviews'],
-  { tags: ['reviews'], revalidate: 300 }
-);
+// Mesma lógica de getActiveGames acima — esta é a consulta usada no
+// catálogo público, sem cache próprio (só o cache da página cuida disso).
+export async function getApprovedReviews(): Promise<Review[]> {
+  const rows = await getSql()`
+    SELECT * FROM reviews WHERE approved = TRUE ORDER BY is_featured DESC, created_at DESC
+  `;
+  return rows as Review[];
+}
 
 export async function getAllReviews(): Promise<Review[]> {
   const rows = await getSql()`SELECT * FROM reviews ORDER BY approved ASC, created_at DESC`;
