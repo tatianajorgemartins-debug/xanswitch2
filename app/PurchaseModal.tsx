@@ -1,7 +1,7 @@
 'use client';
 
 // Modal de compra: abre por cima da página quando um jogo é clicado no
-// catálogo (veja CatalogClient.tsx, estado `selectedItem`). Tem 5 telas
+// catálogo (veja CatalogClient.tsx, estado `selectedItem`). Tem 4 telas
 // internas ("etapas"), controladas pelo estado `step` abaixo — nenhuma delas
 // muda a URL ou recarrega a página, é tudo trocar o que aparece dentro
 // deste mesmo componente.
@@ -21,7 +21,7 @@ import { generatePixPayload, type PixPayload } from '@/lib/pix';
 import { isValidEmail } from '@/lib/validation';
 import { confirmOrderAction } from './orderActions';
 
-type Step = 1 | 2 | 3 | 4 | 5;
+type Step = 1 | 2 | 3 | 4;
 
 export default function PurchaseModal({ item, onClose }: { item: Item; onClose: () => void }) {
   const [step, setStep] = useState<Step>(1);
@@ -78,11 +78,11 @@ export default function PurchaseModal({ item, onClose }: { item: Item; onClose: 
     };
   }, []);
 
-  // Ao entrar na etapa 4 (pagamento), gera o Pix. Tudo roda no navegador —
+  // Ao entrar na etapa 3 (pagamento), gera o Pix. Tudo roda no navegador —
   // não existe gateway de pagamento nem chamada de API paga envolvida em
   // gerar o QR Code.
   useEffect(() => {
-    if (step !== 4 || startedRef.current) return;
+    if (step !== 3 || startedRef.current) return;
     startedRef.current = true;
 
     generatePixPayload(item.price, item.name)
@@ -142,14 +142,17 @@ export default function PurchaseModal({ item, onClose }: { item: Item; onClose: 
           )}
 
           {step === 2 && (
-            <StepChecklist checked={checked} onChange={setChecked} onBack={() => setStep(1)} onNext={() => setStep(3)} />
+            <StepChecklistAndEmail
+              checked={checked}
+              onChangeChecked={setChecked}
+              email={email}
+              setEmail={setEmail}
+              onBack={() => setStep(1)}
+              onNext={() => setStep(3)}
+            />
           )}
 
           {step === 3 && (
-            <StepEmail email={email} setEmail={setEmail} onBack={() => setStep(2)} onNext={() => setStep(4)} />
-          )}
-
-          {step === 4 && (
             <StepPayment
               gameId={item.id}
               gameName={item.name}
@@ -161,12 +164,12 @@ export default function PurchaseModal({ item, onClose }: { item: Item; onClose: 
               copied={copied}
               copyFailed={copyFailed}
               onCopy={handleCopy}
-              onBack={() => setStep(3)}
-              onConfirmed={() => setStep(5)}
+              onBack={() => setStep(2)}
+              onConfirmed={() => setStep(4)}
             />
           )}
 
-          {step === 5 && <StepConfirm onClose={onClose} />}
+          {step === 4 && <StepConfirm onClose={onClose} />}
         </div>
       </div>
 
@@ -427,57 +430,36 @@ function Lightbox({
   );
 }
 
-// Etapa 2 — única confirmação exigida antes do pagamento. Exportado porque
-// a compra em lote da lista de desejos (BulkPurchaseModal) usa exatamente
-// a mesma etapa, uma única vez pra todos os jogos selecionados, em vez de
-// repetir por jogo.
-export function StepChecklist({
+// Etapa 2 — a única confirmação exigida antes do pagamento (saldo zerado) e
+// o e-mail pra onde o código vai depois, juntos na mesma tela. Exportado
+// porque a compra em lote da lista de desejos (BulkPurchaseModal) usa
+// exatamente a mesma etapa, uma única vez pra todos os jogos selecionados,
+// em vez de repetir por jogo.
+export function StepChecklistAndEmail({
   checked,
-  onChange,
-  onBack,
-  onNext
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  onBack: () => void;
-  onNext: () => void;
-}) {
-  return (
-    <>
-      <div className="purchase-checklist">
-        <label className="purchase-checklist-item">
-          <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-          <span>Minha conta Nintendo está com saldo zerado (Brasil e Japão)</span>
-        </label>
-      </div>
-      <div className="purchase-modal-actions">
-        <button type="button" className="btn primary" disabled={!checked} onClick={onNext}>
-          Continuar
-        </button>
-        <button type="button" className="purchase-step-back" onClick={onBack}>
-          ← Voltar
-        </button>
-      </div>
-    </>
-  );
-}
-
-// Etapa 3 — coleta o e-mail pra onde o código vai depois da confirmação.
-// Também exportado e reaproveitado pelo BulkPurchaseModal.
-export function StepEmail({
+  onChangeChecked,
   email,
   setEmail,
   onBack,
   onNext
 }: {
+  checked: boolean;
+  onChangeChecked: (v: boolean) => void;
   email: string;
   setEmail: (v: string) => void;
   onBack: () => void;
   onNext: () => void;
 }) {
-  const valid = isValidEmail(email);
+  const canContinue = checked && isValidEmail(email);
   return (
     <>
+      <div className="purchase-checklist">
+        <label className="purchase-checklist-item">
+          <input type="checkbox" checked={checked} onChange={(e) => onChangeChecked(e.target.checked)} />
+          <span>Minha conta Nintendo está com saldo zerado (Brasil e Japão)</span>
+        </label>
+      </div>
+
       <p className="purchase-email-intro">
         É pra esse e-mail que enviaremos o código do jogo depois da confirmação do pagamento.
       </p>
@@ -493,8 +475,9 @@ export function StepEmail({
         value={email}
         onChange={(e) => setEmail(e.target.value)}
       />
+
       <div className="purchase-modal-actions" style={{ marginTop: 20 }}>
-        <button type="button" className="btn primary" disabled={!valid} onClick={onNext}>
+        <button type="button" className="btn primary" disabled={!canContinue} onClick={onNext}>
           Continuar para o pagamento
         </button>
         <button type="button" className="purchase-step-back" onClick={onBack}>

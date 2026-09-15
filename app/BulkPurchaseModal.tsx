@@ -8,12 +8,12 @@
 // e um pedido cobrindo o total, em vez de jogo por jogo.
 import { useEffect, useRef, useState } from 'react';
 import type { Item } from './CatalogClient';
-import { StepChecklist, StepEmail, ReservationTimer } from './PurchaseModal';
+import { StepChecklistAndEmail, ReservationTimer } from './PurchaseModal';
 import { generatePixPayload, type PixPayload } from '@/lib/pix';
 import { confirmBulkOrderAction } from './orderActions';
 import { formatPriceBR } from '@/lib/whatsapp';
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3;
 
 export default function BulkPurchaseModal({ items, onClose }: { items: Item[]; onClose: () => void }) {
   const [step, setStep] = useState<Step>(1);
@@ -45,9 +45,9 @@ export default function BulkPurchaseModal({ items, onClose }: { items: Item[]; o
     };
   }, []);
 
-  // Ao entrar na etapa 3 (pagamento), gera um único Pix pro valor total.
+  // Ao entrar na etapa 2 (pagamento), gera um único Pix pro valor total.
   useEffect(() => {
-    if (step !== 3 || startedRef.current) return;
+    if (step !== 2 || startedRef.current) return;
     startedRef.current = true;
 
     generatePixPayload(total, `${items.length} jogos`)
@@ -112,15 +112,18 @@ export default function BulkPurchaseModal({ items, onClose }: { items: Item[]; o
                 <span>R$ {totalLabel}</span>
               </div>
 
-              <StepChecklist checked={checked} onChange={setChecked} onBack={onClose} onNext={() => setStep(2)} />
+              <StepChecklistAndEmail
+                checked={checked}
+                onChangeChecked={setChecked}
+                email={email}
+                setEmail={setEmail}
+                onBack={onClose}
+                onNext={() => setStep(2)}
+              />
             </>
           )}
 
           {step === 2 && (
-            <StepEmail email={email} setEmail={setEmail} onBack={() => setStep(1)} onNext={() => setStep(3)} />
-          )}
-
-          {step === 3 && (
             <BulkStepPayment
               items={items}
               total={total}
@@ -131,12 +134,12 @@ export default function BulkPurchaseModal({ items, onClose }: { items: Item[]; o
               copied={copied}
               copyFailed={copyFailed}
               onCopy={handleCopy}
-              onBack={() => setStep(2)}
-              onConfirmed={() => setStep(4)}
+              onBack={() => setStep(1)}
+              onConfirmed={() => setStep(3)}
             />
           )}
 
-          {step === 4 && <BulkStepConfirm onClose={onClose} />}
+          {step === 3 && <BulkStepConfirm onClose={onClose} />}
         </div>
       </div>
     </div>

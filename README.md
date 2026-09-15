@@ -234,28 +234,27 @@ com plano gratuito próprio.
 
 Quando um cliente clica em qualquer jogo do catálogo, abre uma janela
 flutuante (modal) na própria página — sem sair do site nem trocar de link —
-com 5 telas em sequência:
+com 4 telas em sequência:
 
 1. **Resumo do jogo** — capa, nome, preço, a descrição (se você cadastrou
    uma) e uma galeria de capturas de tela clicáveis (se você subiu alguma),
    tudo já cadastrado no admin. Botão **"Comprar agora"**.
-2. **Checklist** — uma única confirmação: "Minha conta Nintendo está com
-   saldo zerado (Brasil e Japão)". O botão de continuar só libera com essa
-   caixa marcada.
-3. **E-mail** — o cliente informa o e-mail pra onde o código vai depois da
-   confirmação do pagamento. O botão só libera com um e-mail em formato
+2. **Confirmação + e-mail** — uma única caixa de confirmação ("Minha conta
+   Nintendo está com saldo zerado (Brasil e Japão)") junto com o campo de
+   e-mail pra onde o código vai depois da confirmação do pagamento. O botão
+   de continuar só libera com a caixa marcada **e** um e-mail em formato
    válido.
-4. **Pagamento via Pix** — o site gera, na hora e no próprio navegador do
+3. **Pagamento via Pix** — o site gera, na hora e no próprio navegador do
    cliente, um QR Code Pix de verdade (padrão do Banco Central, o mesmo tipo
    que você geraria no app do seu banco) já com o valor exato do jogo. Junto
    aparece o texto "Pix Copia e Cola" com um botão de copiar, um timer visual
    ("Esse pedido fica reservado por 15:00") e o aviso "Após o pagamento, seu
    código chega por e-mail ainda hoje 🎮". O botão **"Já paguei — confirmar
    pedido"** salva o pedido e te avisa automaticamente (ver seção abaixo).
-5. **Confirmação** — tela final avisando que o pedido foi registrado e que
+4. **Confirmação** — tela final avisando que o pedido foi registrado e que
    o código chega por e-mail ainda hoje.
 
-> **Sobre o timer da etapa 4:** é só um reforço visual pra estimular o
+> **Sobre o timer da etapa 3:** é só um reforço visual pra estimular o
 > cliente a pagar logo — não existe "estoque" de verdade num código digital,
 > então ele nunca trava ninguém de fato. Se a pessoa recarregar a página, o
 > timer simplesmente recomeça de 15 minutos.
