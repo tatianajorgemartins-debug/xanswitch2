@@ -351,6 +351,35 @@ O número de WhatsApp que recebe o aviso é o mesmo já configurado em
 > normalmente, e o e-mail (Canal A) continua sendo a garantia principal de
 > você ficar sabendo. O WhatsApp é só um bônus a mais.
 
+### Canal C — Telegram, outro bônus opcional (grátis, sem fila de espera)
+
+Se o CallMeBot estiver lotado (acontece de vez em quando) ou você preferir
+não depender dele, dá pra receber o aviso no Telegram em vez de WhatsApp —
+é gratuito, instantâneo, e não tem limite de vagas.
+
+1. No Telegram, busque por **BotFather** (tem um selo azul de verificado) e
+   inicie uma conversa com ele. Mande o comando `/newbot`.
+2. Siga as instruções: escolha um nome pro seu bot (ex: `XAN Switch Avisos`)
+   e depois um "username" que termine em `bot` (ex: `xanswitch_avisos_bot`).
+3. O BotFather te devolve um **token** (algo como
+   `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`). Copie esse token — é o
+   `TELEGRAM_BOT_TOKEN`.
+4. Abra a conversa com o bot que você acabou de criar (o BotFather manda um
+   link direto) e mande qualquer mensagem pra ele, tipo "oi". Esse passo é
+   obrigatório: sem isso, o bot não tem permissão de te mandar mensagem
+   depois.
+5. Agora busque por **@userinfobot** no Telegram e inicie uma conversa com
+   ele — ele responde na hora com o seu **ID** numérico (ex: `123456789`).
+   Copie esse número — é o `TELEGRAM_CHAT_ID`.
+6. Na Vercel, vá em **Settings → Environment Variables** e adicione
+   `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` com os valores dos passos 3 e
+   5. Marque **Production**, **Preview** e **Development**, salve, e faça
+   um novo deploy.
+
+Você pode ativar o CallMeBot, o Telegram, os dois, ou nenhum — são
+independentes, e nenhum deles afeta o e-mail (Canal A), que continua sendo
+a garantia principal.
+
 ---
 
 ## Link direto de cada jogo (pra compartilhar nas redes sociais)
@@ -582,7 +611,7 @@ lib/
   whatsapp.ts         → monta o link de contato do WhatsApp do cabeçalho, e formata preço em R$
   pix.ts              → monta o Pix (BR Code + QR Code) usando seus dados de recebedor
   validation.ts        → validação de formato de e-mail (navegador e servidor)
-  notifications.ts     → avisa você por e-mail (Resend) e WhatsApp (CallMeBot) a cada novo pedido confirmado
+  notifications.ts     → avisa você por e-mail (Resend), WhatsApp (CallMeBot) e/ou Telegram a cada novo pedido confirmado
   color.ts            → escolhe texto claro/escuro pra contrastar com a cor da etiqueta
   imageResize.ts       → comprime a capa do jogo no servidor antes de salvar (usa a lib "sharp")
   imageCompression.ts  → comprime as capturas de tela no navegador antes de enviar (usa <canvas>)

@@ -1,16 +1,17 @@
 // Avisa você (a dona da loja) sempre que um pedido é confirmado pelo cliente
-// ("Já paguei — confirmar pedido"). Dois canais, sempre tentados os dois:
+// ("Já paguei — confirmar pedido"). Três canais, todos tentados:
 //
 //   Canal A — E-mail (Resend): o principal, sempre ativo. Veja no README a
 //   seção "Notificação automática de novo pedido" pra saber onde configurar
 //   a chave.
 //
-//   Canal B — WhatsApp (CallMeBot): um bônus opcional. Se a chave não
-//   estiver configurada, ou se o envio falhar por qualquer motivo, isso
-//   NUNCA deve travar o pedido do cliente — o e-mail já é a garantia
-//   principal, e o pedido em si já foi salvo no banco antes desta função
-//   ser chamada (ver app/orderActions.ts). Por isso os dois envios abaixo
-//   engolem os próprios erros e só registram um log no servidor.
+//   Canal B — WhatsApp (CallMeBot) e Canal C — Telegram: bônus opcionais.
+//   Se as chaves não estiverem configuradas, ou se o envio falhar por
+//   qualquer motivo, isso NUNCA deve travar o pedido do cliente — o e-mail
+//   já é a garantia principal, e o pedido em si já foi salvo no banco antes
+//   desta função ser chamada (ver app/orderActions.ts). Por isso os três
+//   envios abaixo engolem os próprios erros e só registram um log no
+//   servidor.
 
 type OrderNotification = {
   items: { gameName: string; price: number }[];
@@ -89,6 +90,27 @@ async function sendOrderWhatsApp(order: OrderNotification): Promise<void> {
   }
 }
 
+async function sendOrderTelegram(order: OrderNotification): Promise<void> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  // Bônus opcional — sem token/chat id configurados, simplesmente não envia.
+  if (!token || !chatId) return;
+
+  const text = `🎮 Novo pedido!\nJogo(s): ${buildGamesList(order.items)}\nTotal: R$ ${formatPriceBR(
+    order.total
+  )}\nE-mail: ${order.customerEmail}`;
+
+  const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text })
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Telegram respondeu ${res.status}: ${body}`);
+  }
+}
+
 // Chamada depois que o pedido já foi salvo no banco (ver
 // confirmOrderAction / confirmBulkOrderAction em app/orderActions.ts).
 // Nunca lança erro pra quem chamou — o pior cenário aceitável aqui é você
@@ -101,5 +123,9 @@ export async function notifyNewOrder(order: OrderNotification): Promise<void> {
 
   await sendOrderWhatsApp(order).catch((err) => {
     console.error('[notifications] Falha ao enviar WhatsApp (CallMeBot) de novo pedido:', err);
+  });
+
+  await sendOrderTelegram(order).catch((err) => {
+    console.error('[notifications] Falha ao enviar Telegram de novo pedido:', err);
   });
 }
