@@ -365,9 +365,6 @@ function StepSummary({
                   Crédito parcelado
                 </a>
               </div>
-              <p className="purchase-payment-choice-hint">
-                O crédito parcelado abre um link de pagamento à parte, fora do site.
-              </p>
             </>
           ) : (
             <button type="button" className="btn primary product-cta" onClick={onNext}>

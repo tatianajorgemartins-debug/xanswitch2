@@ -1601,12 +1601,6 @@ label {
   flex-direction: column;
   gap: 8px;
 }
-.purchase-payment-choice-hint {
-  font-size: 11.5px;
-  color: var(--ink-dim);
-  text-align: center;
-  margin: -2px 0 4px;
-}
 
 .purchase-step-back {
   background: none;
