@@ -8,7 +8,7 @@
 // e um pedido cobrindo o total, em vez de jogo por jogo.
 import { useEffect, useRef, useState } from 'react';
 import type { Item } from './CatalogClient';
-import { StepChecklistAndEmail, ReservationTimer, RegionTutorial } from './PurchaseModal';
+import { StepChecklistAndEmail, ReservationTimer, RegionTutorial, ReferralSourcePicker } from './PurchaseModal';
 import { generatePixPayload, type PixPayload } from '@/lib/pix';
 import { confirmBulkOrderAction } from './orderActions';
 import { formatPriceBR } from '@/lib/whatsapp';
@@ -19,6 +19,7 @@ export default function BulkPurchaseModal({ items, onClose }: { items: Item[]; o
   const [step, setStep] = useState<Step>(1);
   const [checked, setChecked] = useState(false);
   const [email, setEmail] = useState('');
+  const [referralSource, setReferralSource] = useState<string | null>(null);
 
   const [pix, setPix] = useState<PixPayload | null>(null);
   const [pixError, setPixError] = useState<string | null>(null);
@@ -129,6 +130,8 @@ export default function BulkPurchaseModal({ items, onClose }: { items: Item[]; o
               total={total}
               totalLabel={totalLabel}
               email={email}
+              referralSource={referralSource}
+              setReferralSource={setReferralSource}
               pix={pix}
               pixError={pixError}
               copied={copied}
@@ -151,6 +154,8 @@ function BulkStepPayment({
   total,
   totalLabel,
   email,
+  referralSource,
+  setReferralSource,
   pix,
   pixError,
   copied,
@@ -163,6 +168,8 @@ function BulkStepPayment({
   total: number;
   totalLabel: string;
   email: string;
+  referralSource: string | null;
+  setReferralSource: (v: string | null) => void;
   pix: PixPayload | null;
   pixError: string | null;
   copied: boolean;
@@ -180,7 +187,8 @@ function BulkStepPayment({
     const result = await confirmBulkOrderAction(
       items.map((it) => ({ id: it.id, name: it.name, price: it.price })),
       total,
-      email
+      email,
+      referralSource
     );
     if (result.ok) {
       onConfirmed();
@@ -233,6 +241,8 @@ function BulkStepPayment({
           Não consegui copiar automaticamente — clique no campo acima e use Ctrl+C.
         </p>
       )}
+
+      <ReferralSourcePicker value={referralSource} onChange={setReferralSource} />
 
       <div className="purchase-urgency-box">
         <p>Após o pagamento, seus códigos chegam por e-mail ainda hoje 🎮</p>

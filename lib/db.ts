@@ -236,6 +236,9 @@ export type Order = {
   price: string; // numeric comes back as string from postgres
   customer_email: string | null;
   status: string;
+  // Resposta opcional de "como você conheceu a loja?", marcada na tela de
+  // pagamento — null quando o cliente não respondeu.
+  referral_source: string | null;
   created_at: Date;
 };
 
@@ -244,10 +247,11 @@ export async function createOrder(data: {
   game_name: string;
   price: number;
   customer_email: string;
+  referral_source: string | null;
 }): Promise<Order> {
   const rows = await getSql()`
-    INSERT INTO orders (game_id, game_name, price, customer_email)
-    VALUES (${data.game_id}, ${data.game_name}, ${data.price}, ${data.customer_email})
+    INSERT INTO orders (game_id, game_name, price, customer_email, referral_source)
+    VALUES (${data.game_id}, ${data.game_name}, ${data.price}, ${data.customer_email}, ${data.referral_source})
     RETURNING *
   `;
   return rows[0] as Order;

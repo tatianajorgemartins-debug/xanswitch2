@@ -18,7 +18,7 @@ import type { Item } from './CatalogClient';
 import type { Platform, GameType } from '@/lib/db';
 import { getContrastColor } from '@/lib/color';
 import { generatePixPayload, type PixPayload } from '@/lib/pix';
-import { isValidEmail } from '@/lib/validation';
+import { isValidEmail, REFERRAL_SOURCES } from '@/lib/validation';
 import { confirmOrderAction } from './orderActions';
 
 type Step = 1 | 2 | 3 | 4;
@@ -34,6 +34,10 @@ export default function PurchaseModal({ item, onClose }: { item: Item; onClose: 
   // E-mail pra onde o código vai depois da confirmação — coletado ANTES do
   // Pix aparecer, pra já ir junto no pedido salvo no banco.
   const [email, setEmail] = useState('');
+
+  // "Como você conheceu a loja?" — opcional, marcado na tela de pagamento
+  // (ver ReferralSourcePicker mais abaixo). null se a pessoa não responder.
+  const [referralSource, setReferralSource] = useState<string | null>(null);
 
   const [pix, setPix] = useState<PixPayload | null>(null);
   const [pixError, setPixError] = useState<string | null>(null);
@@ -159,6 +163,8 @@ export default function PurchaseModal({ item, onClose }: { item: Item; onClose: 
               price={item.price}
               priceLabel={priceLabel}
               email={email}
+              referralSource={referralSource}
+              setReferralSource={setReferralSource}
               pix={pix}
               pixError={pixError}
               copied={copied}
@@ -547,6 +553,31 @@ export function ReservationTimer() {
   );
 }
 
+// "Como você conheceu a loja?" — opcional, aparece na tela de pagamento.
+// Exportado porque o BulkPurchaseModal usa o mesmo seletor. A resposta vai
+// junto do pedido salvo no banco e aparece pra você em /admin > Pedidos.
+export function ReferralSourcePicker({
+  value,
+  onChange
+}: {
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  return (
+    <div className="purchase-referral">
+      <p className="purchase-referral-label">Como você conheceu a XAN Switch? (opcional)</p>
+      <div className="purchase-referral-options">
+        {REFERRAL_SOURCES.map((option) => (
+          <label key={option} className="purchase-referral-item">
+            <input type="radio" name="referralSource" checked={value === option} onChange={() => onChange(option)} />
+            <span>{option}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Etapa 4 — pagamento via Pix: QR Code de verdade (gerado no navegador, sem
 // gateway de pagamento) + o texto "Pix Copia e Cola" com botão de copiar,
 // timer de reserva e o botão que salva o pedido e dispara os avisos
@@ -557,6 +588,8 @@ function StepPayment({
   price,
   priceLabel,
   email,
+  referralSource,
+  setReferralSource,
   pix,
   pixError,
   copied,
@@ -570,6 +603,8 @@ function StepPayment({
   price: number;
   priceLabel: string;
   email: string;
+  referralSource: string | null;
+  setReferralSource: (v: string | null) => void;
   pix: PixPayload | null;
   pixError: string | null;
   copied: boolean;
@@ -584,7 +619,7 @@ function StepPayment({
   async function handleConfirm() {
     setConfirming(true);
     setConfirmError(null);
-    const result = await confirmOrderAction(gameId, gameName, price, email);
+    const result = await confirmOrderAction(gameId, gameName, price, email, referralSource);
     if (result.ok) {
       onConfirmed();
     } else {
@@ -636,6 +671,8 @@ function StepPayment({
           Não consegui copiar automaticamente — clique no campo acima e use Ctrl+C.
         </p>
       )}
+
+      <ReferralSourcePicker value={referralSource} onChange={setReferralSource} />
 
       <div className="purchase-urgency-box">
         <p>Após o pagamento, seu código chega por e-mail ainda hoje 🎮</p>

@@ -590,6 +590,9 @@ function OrdersPanel({ orders, onDelete }: { orders: Order[]; onDelete: (id: num
                   {o.customer_email && (
                     <span style={{ color: 'var(--ink-dim)', fontSize: 12.5 }}>✉ {o.customer_email}</span>
                   )}
+                  {o.referral_source && (
+                    <span style={{ color: 'var(--ink-dim)', fontSize: 12.5 }}>📣 {o.referral_source}</span>
+                  )}
                   <span
                     style={{
                       fontSize: 11.5,

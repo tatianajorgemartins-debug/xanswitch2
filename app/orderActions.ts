@@ -2,9 +2,16 @@
 
 import { createOrder } from '@/lib/db';
 import { notifyNewOrder } from '@/lib/notifications';
-import { isValidEmail } from '@/lib/validation';
+import { isValidEmail, isValidReferralSource } from '@/lib/validation';
 
 export type ConfirmOrderResult = { ok: true } | { ok: false; error: string };
+
+// "Outro" (ou qualquer valor fora da lista) vira null — a resposta é
+// sempre opcional, então um valor inesperado (ex: alguém chamando a Server
+// Action diretamente) só é ignorado, nunca barra o pedido.
+function sanitizeReferralSource(value: string | null): string | null {
+  return value && isValidReferralSource(value) ? value : null;
+}
 
 // Chamada quando o cliente clica em "Já paguei — confirmar pedido" na tela
 // do Pix (um jogo por vez — ver PurchaseModal.tsx). Como não há gateway de
@@ -16,7 +23,8 @@ export async function confirmOrderAction(
   gameId: number | null,
   gameName: string,
   price: number,
-  email: string
+  email: string,
+  referralSource: string | null
 ): Promise<ConfirmOrderResult> {
   const trimmedEmail = email.trim();
   if (!isValidEmail(trimmedEmail)) {
@@ -24,7 +32,13 @@ export async function confirmOrderAction(
   }
 
   try {
-    await createOrder({ game_id: gameId, game_name: gameName, price, customer_email: trimmedEmail });
+    await createOrder({
+      game_id: gameId,
+      game_name: gameName,
+      price,
+      customer_email: trimmedEmail,
+      referral_source: sanitizeReferralSource(referralSource)
+    });
   } catch {
     return { ok: false, error: 'Não foi possível registrar seu pedido agora. Tente novamente em instantes.' };
   }
@@ -45,17 +59,25 @@ export async function confirmOrderAction(
 export async function confirmBulkOrderAction(
   items: { id: number | null; name: string; price: number }[],
   total: number,
-  email: string
+  email: string,
+  referralSource: string | null
 ): Promise<ConfirmOrderResult> {
   const trimmedEmail = email.trim();
   if (!isValidEmail(trimmedEmail)) {
     return { ok: false, error: 'Digite um e-mail válido.' };
   }
+  const sanitizedReferralSource = sanitizeReferralSource(referralSource);
 
   try {
     await Promise.all(
       items.map((it) =>
-        createOrder({ game_id: it.id, game_name: it.name, price: it.price, customer_email: trimmedEmail })
+        createOrder({
+          game_id: it.id,
+          game_name: it.name,
+          price: it.price,
+          customer_email: trimmedEmail,
+          referral_source: sanitizedReferralSource
+        })
       )
     );
   } catch {

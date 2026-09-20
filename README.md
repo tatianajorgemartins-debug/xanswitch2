@@ -250,9 +250,11 @@ com 4 telas em sequência:
    cliente, um QR Code Pix de verdade (padrão do Banco Central, o mesmo tipo
    que você geraria no app do seu banco) já com o valor exato do jogo. Junto
    aparece o texto "Pix Copia e Cola" com um botão de copiar, um timer visual
-   ("Esse pedido fica reservado por 15:00") e o aviso "Após o pagamento, seu
-   código chega por e-mail ainda hoje 🎮". O botão **"Já paguei — confirmar
-   pedido"** salva o pedido e te avisa automaticamente (ver seção abaixo).
+   ("Esse pedido fica reservado por 15:00"), a pergunta opcional "Como você
+   conheceu a XAN Switch?" (Zelda Brasil, Nintendólatras, Instagram da loja
+   ou Outro) e o aviso "Após o pagamento, seu código chega por e-mail ainda
+   hoje 🎮". O botão **"Já paguei — confirmar pedido"** salva o pedido e te
+   avisa automaticamente (ver seção abaixo).
 4. **Confirmação** — tela final avisando que o pedido foi registrado e que
    o código chega por e-mail ainda hoje.
 
@@ -281,16 +283,18 @@ nenhum outro lugar no código pra mexer nesses dados.
 mesmo banco Postgres (Neon) que já guarda os jogos e os comentários — não é
 um arquivo separado nem outro banco. Você acompanha esse histórico direto
 no admin, no botão **"📋 Pedidos"**: aparece o jogo, o valor, o e-mail do
-cliente, a data/hora e um status (por padrão `aguardando_codigo`, ou seja:
-pagamento declarado, código ainda não enviado). Isso **não é uma
-confirmação automática de pagamento** — é o mesmo tipo de registro manual
-que já existia, só que agora com o e-mail do cliente junto e um aviso que
-chega até você sozinho (próxima seção).
+cliente, "como conheceu a loja" (📣, quando a pessoa respondeu), a data/hora
+e um status (por padrão `aguardando_codigo`, ou seja: pagamento declarado,
+código ainda não enviado). Isso **não é uma confirmação automática de
+pagamento** — é o mesmo tipo de registro manual que já existia, só que
+agora com o e-mail do cliente junto e um aviso que chega até você sozinho
+(próxima seção).
 
-> Se o seu banco já tinha pedidos salvos de antes dessa mudança, rode a
-> migração `db/migration-orders-checkout-v2.sql` uma vez no editor SQL do
-> Neon — ela adiciona as colunas `customer_email` e `status` sem apagar
-> nada que já existia. (Se você está criando o banco do zero agora, ignore
+> Se o seu banco já tinha pedidos salvos de antes dessas mudanças, rode as
+> migrações `db/migration-orders-checkout-v2.sql` (colunas `customer_email`
+> e `status`) e `db/migration-order-referral-source.sql` (coluna
+> `referral_source`) uma vez cada no editor SQL do Neon — nenhuma apaga
+> dado que já existia. (Se você está criando o banco do zero agora, ignore
 > isso: o `db/schema.sql` já vem com essas colunas.)
 
 ---
@@ -664,6 +668,7 @@ db/migration-wishlist.sql     → cria as tabelas de conta do cliente e lista de
 db/migration-banner-image.sql → adiciona a imagem separada pros banners (Destaque da semana / Mais aguardados), no Neon
 db/migration-orders-checkout-v2.sql → adiciona e-mail do cliente e status ao pedido, no Neon
 db/migration-credit-payment-link.sql → adiciona o link de pagamento parcelado por jogo, no Neon
+db/migration-order-referral-source.sql → adiciona "como você conheceu a loja" ao pedido, no Neon
 proxy.ts       → protege a página /admin (redireciona pro login se não tiver sessão)
 vercel.json    → agenda a rotina diária de manutenção (cron job)
 ```

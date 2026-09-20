@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS orders (
   price NUMERIC(10, 2) NOT NULL,
   customer_email TEXT,
   status TEXT NOT NULL DEFAULT 'aguardando_codigo',
+  referral_source TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS orders_created_at_idx ON orders (created_at DESC);
@@ -81,3 +82,7 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'aguard
 -- Idem para o link de pagamento parcelado (ver
 -- db/migration-credit-payment-link.sql).
 ALTER TABLE games ADD COLUMN IF NOT EXISTS credit_payment_url TEXT;
+
+-- Idem para "como você conheceu a loja" (ver
+-- db/migration-order-referral-source.sql).
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS referral_source TEXT;
