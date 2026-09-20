@@ -223,6 +223,17 @@ function StepSummary({
   const galleryRef = useRef<HTMLDivElement>(null);
   const [shareCopied, setShareCopied] = useState(false);
 
+  // Antes de abrir o link de pagamento parcelado (que sai do site), mostra
+  // a mesma pergunta opcional "como você conheceu a loja?" usada na tela do
+  // Pix — só então abre o link, numa aba nova.
+  const [showCreditReferral, setShowCreditReferral] = useState(false);
+  const [creditReferralSource, setCreditReferralSource] = useState<string | null>(null);
+
+  function handleOpenCreditLink() {
+    if (!item.creditPaymentUrl) return;
+    window.open(item.creditPaymentUrl, '_blank', 'noopener,noreferrer');
+  }
+
   // As setinhas da galeria só rolam a tira de miniaturas — a largura de uma
   // miniatura + o espaçamento entre elas, então cada clique anda "uma foto"
   // por vez, tanto faz o tamanho da tela.
@@ -348,7 +359,21 @@ function StepSummary({
         )}
 
         <div className="purchase-modal-actions">
-          {item.creditPaymentUrl ? (
+          {item.creditPaymentUrl && showCreditReferral ? (
+            <>
+              <ReferralSourcePicker value={creditReferralSource} onChange={setCreditReferralSource} />
+              <button type="button" className="btn credit product-cta" onClick={handleOpenCreditLink}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={17} height={17}>
+                  <rect x="1.5" y="5" width="21" height="14" rx="2.2" />
+                  <path d="M1.5 10h21" strokeLinecap="round" />
+                </svg>
+                Continuar pro pagamento
+              </button>
+              <button type="button" className="purchase-step-back" onClick={() => setShowCreditReferral(false)}>
+                ← Voltar
+              </button>
+            </>
+          ) : item.creditPaymentUrl ? (
             <>
               <p className="purchase-payment-choice-label">Como você quer pagar?</p>
               <div className="purchase-payment-choice">
@@ -358,18 +383,13 @@ function StepSummary({
                   </svg>
                   Pix à vista
                 </button>
-                <a
-                  href={item.creditPaymentUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn credit product-cta"
-                >
+                <button type="button" className="btn credit product-cta" onClick={() => setShowCreditReferral(true)}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={17} height={17}>
                     <rect x="1.5" y="5" width="21" height="14" rx="2.2" />
                     <path d="M1.5 10h21" strokeLinecap="round" />
                   </svg>
                   Crédito parcelado
-                </a>
+                </button>
               </div>
             </>
           ) : (

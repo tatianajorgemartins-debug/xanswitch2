@@ -319,12 +319,18 @@ pagamento dele.
 
 **O que o cliente vê:** em vez de um botão só, aparecem dois — **"⚡ Pix à
 vista"** (continua exatamente o fluxo de sempre: checklist, e-mail, QR
-Code, confirmação) e **"💳 Crédito parcelado"** (abre o seu link de
-pagamento numa aba nova, fora do site). Jogos sem esse link configurado
-continuam mostrando só o botão único de sempre — nada muda pra eles.
+Code, confirmação) e **"💳 Crédito parcelado"**. Ao clicar em "Crédito
+parcelado", antes de sair do site aparece a mesma pergunta opcional "Como
+você conheceu a XAN Switch?" da tela do Pix — só depois de marcar (ou não)
+e clicar em "Continuar pro pagamento" é que o seu link de pagamento abre
+numa aba nova. Jogos sem esse link configurado continuam mostrando só o
+botão único de sempre — nada muda pra eles.
 
 **Importante:** o site **não sabe nada** sobre o que acontece depois que o
-cliente clica em "Crédito parcelado" — ele só abre o seu link. Qualquer
+cliente clica em "Continuar pro pagamento" — ele só abre o seu link (a
+resposta de "como conheceu a loja" nesse caminho não é salva em nenhum
+pedido, já que não existe e-mail nem confirmação de pagamento nesse fluxo
+— é só a pergunta aparecendo antes de sair do site). Qualquer
 confirmação de pagamento parcelado, envio de comprovante etc. acontece
 inteiramente do lado do serviço de pagamento que você escolheu (e das
 notificações que ele te manda), fora do controle deste site. Isso é
