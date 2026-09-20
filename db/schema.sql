@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS games (
   archived BOOLEAN NOT NULL DEFAULT FALSE,
   description TEXT,
   screenshots JSONB NOT NULL DEFAULT '[]',
+  credit_payment_url TEXT,
   sort_name TEXT GENERATED ALWAYS AS (lower(name)) STORED,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -76,3 +77,7 @@ ALTER TABLE games ADD COLUMN IF NOT EXISTS screenshots JSONB NOT NULL DEFAULT '[
 -- db/migration-orders-checkout-v2.sql).
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_email TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'aguardando_codigo';
+
+-- Idem para o link de pagamento parcelado (ver
+-- db/migration-credit-payment-link.sql).
+ALTER TABLE games ADD COLUMN IF NOT EXISTS credit_payment_url TEXT;

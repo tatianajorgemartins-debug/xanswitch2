@@ -35,7 +35,8 @@ function toItem(g: Game): Item {
     isBestseller: g.is_bestseller,
     isUpcoming: g.is_upcoming,
     description: g.description,
-    screenshots: g.screenshots
+    screenshots: g.screenshots,
+    creditPaymentUrl: g.credit_payment_url
   };
 }
 

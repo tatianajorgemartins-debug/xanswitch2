@@ -342,14 +342,43 @@ function StepSummary({
         )}
 
         <div className="purchase-modal-actions">
-          <button type="button" className="btn primary product-cta" onClick={onNext}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={17} height={17}>
-              <circle cx="9" cy="21" r="1.4" fill="currentColor" stroke="none" />
-              <circle cx="18" cy="21" r="1.4" fill="currentColor" stroke="none" />
-              <path d="M2.5 3h2.4l2.4 12.4a2 2 0 002 1.6h8.8a2 2 0 002-1.6L21.5 7H6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Comprar agora
-          </button>
+          {item.creditPaymentUrl ? (
+            <>
+              <p className="purchase-payment-choice-label">Como você quer pagar?</p>
+              <div className="purchase-payment-choice">
+                <button type="button" className="btn primary product-cta" onClick={onNext}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={17} height={17}>
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Pix à vista
+                </button>
+                <a
+                  href={item.creditPaymentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn credit product-cta"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={17} height={17}>
+                    <rect x="1.5" y="5" width="21" height="14" rx="2.2" />
+                    <path d="M1.5 10h21" strokeLinecap="round" />
+                  </svg>
+                  Crédito parcelado
+                </a>
+              </div>
+              <p className="purchase-payment-choice-hint">
+                O crédito parcelado abre um link de pagamento à parte, fora do site.
+              </p>
+            </>
+          ) : (
+            <button type="button" className="btn primary product-cta" onClick={onNext}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={17} height={17}>
+                <circle cx="9" cy="21" r="1.4" fill="currentColor" stroke="none" />
+                <circle cx="18" cy="21" r="1.4" fill="currentColor" stroke="none" />
+                <path d="M2.5 3h2.4l2.4 12.4a2 2 0 002 1.6h8.8a2 2 0 002-1.6L21.5 7H6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Comprar agora
+            </button>
+          )}
           <button type="button" className="btn ghost" onClick={handleShare}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={15} height={15}>
               <path d="M4 12v6a2 2 0 002 2h12a2 2 0 002-2v-6M16 6l-4-4-4 4M12 2v14" strokeLinecap="round" strokeLinejoin="round" />

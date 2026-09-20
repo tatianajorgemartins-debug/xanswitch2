@@ -41,6 +41,10 @@ export type Item = {
   isUpcoming: boolean;
   description: string | null;
   screenshots: string[];
+  // Link de pagamento parcelado (crédito), configurado manualmente no admin
+  // pra esse jogo — quando presente, a tela de compra mostra dois botões em
+  // vez de um só (ver StepSummary em PurchaseModal.tsx).
+  creditPaymentUrl: string | null;
 };
 
 export type ReviewItem = {

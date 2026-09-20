@@ -220,6 +220,8 @@ com plano gratuito próprio.
      que aparecem numa galeria clicável na tela de compra. Cada imagem é
      enviada assim que você escolhe o arquivo, então quando salvar o
      formulário elas já estão prontas.
+   - **Link de pagamento parcelado** (opcional): veja a seção "Oferecer
+     pagamento parcelado (crédito) em um jogo" mais abaixo.
 3. Pra tirar um jogo do catálogo sem apagar de vez, use **"📦 Arquivar"** —
    ele some do catálogo público mas fica guardado, e dá pra restaurar depois.
 4. Pra editar ou excluir de vez, clique nos **⋮** (três pontinhos) no canto
@@ -290,6 +292,41 @@ chega até você sozinho (próxima seção).
 > Neon — ela adiciona as colunas `customer_email` e `status` sem apagar
 > nada que já existia. (Se você está criando o banco do zero agora, ignore
 > isso: o `db/schema.sql` já vem com essas colunas.)
+
+---
+
+## Oferecer pagamento parcelado (crédito) em um jogo
+
+Por padrão, todo jogo mostra um único botão, **"Comprar agora"**, que leva
+direto pro fluxo de Pix descrito acima. Se você quiser oferecer também a
+opção de pagamento parcelado (cartão de crédito) num jogo específico, o
+site faz isso automaticamente assim que você configurar o link de
+pagamento dele.
+
+**Como configurar:**
+
+1. Gere o link de pagamento em algum serviço à sua escolha (ex: um link de
+   pagamento do Mercado Pago, PagSeguro, InfinitePay etc.) — normalmente
+   com a opção de parcelamento já habilitada nesse link. Isso é feito
+   totalmente fora do site, direto no painel desse serviço.
+2. No admin do XAN Switch, edite o jogo e cole esse link no campo **"Link
+   de pagamento parcelado (opcional)"**.
+3. Salve. Pronto — o botão do jogo já muda sozinho no catálogo público.
+
+**O que o cliente vê:** em vez de um botão só, aparecem dois — **"⚡ Pix à
+vista"** (continua exatamente o fluxo de sempre: checklist, e-mail, QR
+Code, confirmação) e **"💳 Crédito parcelado"** (abre o seu link de
+pagamento numa aba nova, fora do site). Jogos sem esse link configurado
+continuam mostrando só o botão único de sempre — nada muda pra eles.
+
+**Importante:** o site **não sabe nada** sobre o que acontece depois que o
+cliente clica em "Crédito parcelado" — ele só abre o seu link. Qualquer
+confirmação de pagamento parcelado, envio de comprovante etc. acontece
+inteiramente do lado do serviço de pagamento que você escolheu (e das
+notificações que ele te manda), fora do controle deste site. Isso é
+intencional: o site não tenta se conectar com nenhum gateway de cartão,
+só te dá um jeito fácil de direcionar o cliente pra um link que você já
+gerencia por conta própria.
 
 ---
 
@@ -626,6 +663,7 @@ db/migration-supabase-keepalive.sql → cria a tabela usada pela rotina diária 
 db/migration-wishlist.sql     → cria as tabelas de conta do cliente e lista de desejos (roda no Supabase, não no Neon)
 db/migration-banner-image.sql → adiciona a imagem separada pros banners (Destaque da semana / Mais aguardados), no Neon
 db/migration-orders-checkout-v2.sql → adiciona e-mail do cliente e status ao pedido, no Neon
+db/migration-credit-payment-link.sql → adiciona o link de pagamento parcelado por jogo, no Neon
 proxy.ts       → protege a página /admin (redireciona pro login se não tiver sessão)
 vercel.json    → agenda a rotina diária de manutenção (cron job)
 ```

@@ -971,6 +971,22 @@ function GameFormPanel({
         </div>
 
         <div style={{ marginBottom: 14 }}>
+          <label htmlFor="creditPaymentUrl">Link de pagamento parcelado (opcional)</label>
+          <input
+            id="creditPaymentUrl"
+            name="creditPaymentUrl"
+            type="url"
+            defaultValue={game?.credit_payment_url || ''}
+            placeholder="Ex: https://mpago.la/xxxxxxx"
+          />
+          <p style={{ margin: '6px 2px 0', fontSize: 12.5, color: 'var(--ink-dim)' }}>
+            Cole aqui o link de pagamento (Mercado Pago, PagSeguro etc.) que você gera fora do site. Quando
+            preenchido, o cliente vê dois botões na tela de compra: "Pix à vista" (continua como já era) e
+            "Crédito parcelado" (abre esse link). Deixe em branco pra manter só o botão único de sempre.
+          </p>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
           <label>Capa do jogo</label>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             {preview && !removeImage && (

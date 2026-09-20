@@ -7,6 +7,9 @@
   --green: #4ef05f;
   --green-2: #2ecb3f;
   --green-glow: rgba(78, 240, 95, 0.5);
+  --gold: #ffd24e;
+  --gold-2: #f0a93f;
+  --gold-glow: rgba(255, 210, 78, 0.5);
   --bg-dark: #0a0716;
   --panel: #170f2e;
   --panel-2: #1c1338;
@@ -934,6 +937,14 @@ textarea:focus {
   border-color: transparent;
   color: #07230c;
 }
+.btn.credit {
+  background: linear-gradient(135deg, var(--gold), var(--gold-2));
+  border-color: transparent;
+  color: #2b1a00;
+}
+.btn.credit:hover {
+  filter: brightness(1.08);
+}
 .btn.ghost {
   background: none;
 }
@@ -1571,6 +1582,30 @@ label {
 .purchase-modal-actions .btn {
   width: 100%;
   justify-content: center;
+}
+
+/* Escolha entre Pix à vista e crédito parcelado (só aparece quando o jogo
+   tem um link de pagamento parcelado configurado no admin) — ver
+   StepSummary em PurchaseModal.tsx. */
+.purchase-payment-choice-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin: 0 0 2px;
+  text-align: center;
+}
+.purchase-payment-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.purchase-payment-choice-hint {
+  font-size: 11.5px;
+  color: var(--ink-dim);
+  text-align: center;
+  margin: -2px 0 4px;
 }
 
 .purchase-step-back {

@@ -50,6 +50,18 @@ function parseGameType(value: FormDataEntryValue | null): GameType {
   return (GAME_TYPES as string[]).includes(v) ? (v as GameType) : 'base';
 }
 
+// O link de pagamento parcelado é opcional e, quando preenchido, precisa
+// ser um link de verdade (http/https) — senão o botão "Crédito parcelado"
+// no catálogo abriria algo quebrado.
+function parseCreditPaymentUrl(formData: FormData): { value: string | null; error: string | null } {
+  const raw = String(formData.get('creditPaymentUrl') || '').trim();
+  if (!raw) return { value: null, error: null };
+  if (!/^https?:\/\//i.test(raw)) {
+    return { value: null, error: 'O link de pagamento parcelado precisa começar com http:// ou https://.' };
+  }
+  return { value: raw, error: null };
+}
+
 // Server Actions can be invoked directly (e.g. a crafted request to the
 // action's endpoint), bypassing whatever check ran on the page that
 // rendered the button — so every mutating action re-checks auth itself
@@ -137,12 +149,14 @@ export async function createGameAction(
   const isUpcoming = formData.get('isUpcoming') === 'on';
   const description = String(formData.get('description') || '').trim() || null;
   const screenshots = parseScreenshots(formData);
+  const { value: creditPaymentUrl, error: creditPaymentUrlError } = parseCreditPaymentUrl(formData);
 
   if (!name) return { error: 'Digite o nome do jogo.' };
   if (Number.isNaN(price) || price < 0) return { error: 'Preço inválido.' };
   if (originalPrice !== null && (Number.isNaN(originalPrice) || originalPrice < 0)) {
     return { error: 'Preço original inválido.' };
   }
+  if (creditPaymentUrlError) return { error: creditPaymentUrlError };
 
   const imageUrl = (await uploadImageIfPresent(formData)) ?? null;
   const bannerImageUrl = (await uploadBannerImageIfPresent(formData)) ?? null;
@@ -163,7 +177,8 @@ export async function createGameAction(
     is_bestseller: isBestseller,
     is_upcoming: isUpcoming,
     description,
-    screenshots
+    screenshots,
+    credit_payment_url: creditPaymentUrl
   });
 
   revalidatePath('/admin');
@@ -197,6 +212,7 @@ export async function updateGameAction(
   const isUpcoming = formData.get('isUpcoming') === 'on';
   const description = String(formData.get('description') || '').trim() || null;
   const screenshots = parseScreenshots(formData);
+  const { value: creditPaymentUrl, error: creditPaymentUrlError } = parseCreditPaymentUrl(formData);
 
   if (!id) return { error: 'Jogo inválido.' };
   if (!name) return { error: 'Digite o nome do jogo.' };
@@ -204,6 +220,7 @@ export async function updateGameAction(
   if (originalPrice !== null && (Number.isNaN(originalPrice) || originalPrice < 0)) {
     return { error: 'Preço original inválido.' };
   }
+  if (creditPaymentUrlError) return { error: creditPaymentUrlError };
 
   const existing = await getGameById(id);
   if (!existing) return { error: 'Jogo não encontrado.' };
@@ -259,7 +276,8 @@ export async function updateGameAction(
     is_bestseller: isBestseller,
     is_upcoming: isUpcoming,
     description,
-    screenshots
+    screenshots,
+    credit_payment_url: creditPaymentUrl
   });
 
   revalidatePath('/admin');
