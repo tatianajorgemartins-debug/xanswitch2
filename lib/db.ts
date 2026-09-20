@@ -223,12 +223,15 @@ export async function deleteReview(id: number): Promise<void> {
 }
 
 // Pedidos: um registro é criado quando o cliente clica em "Já paguei —
-// confirmar pedido" no modal de compra (ver confirmOrderAction em
-// app/orderActions.ts). Como não existe gateway de pagamento, isso é uma
-// declaração do próprio cliente — não uma confirmação automática de que o
-// Pix realmente caiu na conta. status guarda em que pé está o atendimento
-// (por padrão 'aguardando_codigo': pagamento declarado, código ainda não
-// enviado).
+// confirmar pedido" no fluxo Pix, ou em "Continuar pro pagamento" no fluxo
+// de crédito parcelado (ver confirmOrderAction e logCreditLinkClickAction
+// em app/orderActions.ts). Como não existe gateway de pagamento, isso é
+// uma declaração/intenção do próprio cliente — não uma confirmação
+// automática de que o dinheiro realmente caiu na conta. status guarda em
+// que pé está o atendimento (por padrão 'aguardando_codigo': pagamento
+// declarado, código ainda não enviado). payment_method diferencia os dois
+// caminhos — o de crédito não tem e-mail, já que essa etapa não existe
+// nesse fluxo (o pagamento em si acontece num link externo).
 export type Order = {
   id: number;
   game_id: number | null;
@@ -239,6 +242,7 @@ export type Order = {
   // Resposta opcional de "como você conheceu a loja?", marcada na tela de
   // pagamento — null quando o cliente não respondeu.
   referral_source: string | null;
+  payment_method: string;
   created_at: Date;
 };
 
@@ -246,12 +250,13 @@ export async function createOrder(data: {
   game_id: number | null;
   game_name: string;
   price: number;
-  customer_email: string;
+  customer_email: string | null;
   referral_source: string | null;
+  payment_method: string;
 }): Promise<Order> {
   const rows = await getSql()`
-    INSERT INTO orders (game_id, game_name, price, customer_email, referral_source)
-    VALUES (${data.game_id}, ${data.game_name}, ${data.price}, ${data.customer_email}, ${data.referral_source})
+    INSERT INTO orders (game_id, game_name, price, customer_email, referral_source, payment_method)
+    VALUES (${data.game_id}, ${data.game_name}, ${data.price}, ${data.customer_email}, ${data.referral_source}, ${data.payment_method})
     RETURNING *
   `;
   return rows[0] as Order;

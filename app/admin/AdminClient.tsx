@@ -587,6 +587,20 @@ function OrdersPanel({ orders, onDelete }: { orders: Order[]; onDelete: (id: num
                   </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  {o.payment_method === 'credito' && (
+                    <span
+                      style={{
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        color: '#2b1a00',
+                        background: 'linear-gradient(135deg, var(--gold), var(--gold-2))',
+                        borderRadius: 6,
+                        padding: '2px 8px'
+                      }}
+                    >
+                      💳 Crédito parcelado
+                    </span>
+                  )}
                   {o.customer_email && (
                     <span style={{ color: 'var(--ink-dim)', fontSize: 12.5 }}>✉ {o.customer_email}</span>
                   )}

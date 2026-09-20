@@ -292,8 +292,9 @@ agora com o e-mail do cliente junto e um aviso que chega até você sozinho
 
 > Se o seu banco já tinha pedidos salvos de antes dessas mudanças, rode as
 > migrações `db/migration-orders-checkout-v2.sql` (colunas `customer_email`
-> e `status`) e `db/migration-order-referral-source.sql` (coluna
-> `referral_source`) uma vez cada no editor SQL do Neon — nenhuma apaga
+> e `status`), `db/migration-order-referral-source.sql` (coluna
+> `referral_source`) e `db/migration-order-payment-method.sql` (coluna
+> `payment_method`) uma vez cada no editor SQL do Neon — nenhuma apaga
 > dado que já existia. (Se você está criando o banco do zero agora, ignore
 > isso: o `db/schema.sql` já vem com essas colunas.)
 
@@ -326,14 +327,18 @@ e clicar em "Continuar pro pagamento" é que o seu link de pagamento abre
 numa aba nova. Jogos sem esse link configurado continuam mostrando só o
 botão único de sempre — nada muda pra eles.
 
+Assim que o cliente clica em "Continuar pro pagamento", o clique também
+fica registrado em **"📋 Pedidos"** (jogo, preço, "como conheceu a loja"
+se respondido, e uma etiqueta dourada **"💳 Crédito parcelado"** pra
+diferenciar de pedidos por Pix) — sem e-mail, já que essa etapa não existe
+nesse caminho.
+
 **Importante:** o site **não sabe nada** sobre o que acontece depois que o
-cliente clica em "Continuar pro pagamento" — ele só abre o seu link (a
-resposta de "como conheceu a loja" nesse caminho não é salva em nenhum
-pedido, já que não existe e-mail nem confirmação de pagamento nesse fluxo
-— é só a pergunta aparecendo antes de sair do site). Qualquer
-confirmação de pagamento parcelado, envio de comprovante etc. acontece
-inteiramente do lado do serviço de pagamento que você escolheu (e das
-notificações que ele te manda), fora do controle deste site. Isso é
+cliente clica em "Continuar pro pagamento" — ele só registra o clique
+(pra você ter noção de quantas pessoas foram pro link) e abre o seu link.
+Qualquer confirmação de pagamento parcelado, envio de comprovante etc.
+acontece inteiramente do lado do serviço de pagamento que você escolheu (e
+das notificações que ele te manda), fora do controle deste site. Isso é
 intencional: o site não tenta se conectar com nenhum gateway de cartão,
 só te dá um jeito fácil de direcionar o cliente pra um link que você já
 gerencia por conta própria.
@@ -675,6 +680,7 @@ db/migration-banner-image.sql → adiciona a imagem separada pros banners (Desta
 db/migration-orders-checkout-v2.sql → adiciona e-mail do cliente e status ao pedido, no Neon
 db/migration-credit-payment-link.sql → adiciona o link de pagamento parcelado por jogo, no Neon
 db/migration-order-referral-source.sql → adiciona "como você conheceu a loja" ao pedido, no Neon
+db/migration-order-payment-method.sql → adiciona a forma de pagamento (Pix/crédito) ao pedido, no Neon
 proxy.ts       → protege a página /admin (redireciona pro login se não tiver sessão)
 vercel.json    → agenda a rotina diária de manutenção (cron job)
 ```

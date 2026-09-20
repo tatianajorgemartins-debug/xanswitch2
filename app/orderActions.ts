@@ -37,7 +37,8 @@ export async function confirmOrderAction(
       game_name: gameName,
       price,
       customer_email: trimmedEmail,
-      referral_source: sanitizeReferralSource(referralSource)
+      referral_source: sanitizeReferralSource(referralSource),
+      payment_method: 'pix'
     });
   } catch {
     return { ok: false, error: 'Não foi possível registrar seu pedido agora. Tente novamente em instantes.' };
@@ -76,7 +77,8 @@ export async function confirmBulkOrderAction(
           game_name: it.name,
           price: it.price,
           customer_email: trimmedEmail,
-          referral_source: sanitizedReferralSource
+          referral_source: sanitizedReferralSource,
+          payment_method: 'pix'
         })
       )
     );
@@ -91,4 +93,28 @@ export async function confirmBulkOrderAction(
   });
 
   return { ok: true };
+}
+
+// Chamada quando o cliente clica em "Continuar pro pagamento" no caminho de
+// crédito parcelado, um instante antes do link externo abrir (ver
+// StepSummary em PurchaseModal.tsx). Esse caminho não pede e-mail — o
+// pagamento em si acontece inteiramente fora do site, no link que você
+// configurou — então aqui só registra a intenção (jogo, preço e "como
+// conheceu a loja", se respondido) pra aparecer em /admin > Pedidos.
+// Silenciosa de propósito: se o registro falhar, não faz sentido travar
+// nem avisar o cliente, que já está de saída pra pagar em outro site.
+export async function logCreditLinkClickAction(
+  gameId: number | null,
+  gameName: string,
+  price: number,
+  referralSource: string | null
+): Promise<void> {
+  await createOrder({
+    game_id: gameId,
+    game_name: gameName,
+    price,
+    customer_email: null,
+    referral_source: sanitizeReferralSource(referralSource),
+    payment_method: 'credito'
+  }).catch(() => {});
 }

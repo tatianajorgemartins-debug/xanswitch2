@@ -19,7 +19,7 @@ import type { Platform, GameType } from '@/lib/db';
 import { getContrastColor } from '@/lib/color';
 import { generatePixPayload, type PixPayload } from '@/lib/pix';
 import { isValidEmail, REFERRAL_SOURCES } from '@/lib/validation';
-import { confirmOrderAction } from './orderActions';
+import { confirmOrderAction, logCreditLinkClickAction } from './orderActions';
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -231,7 +231,13 @@ function StepSummary({
 
   function handleOpenCreditLink() {
     if (!item.creditPaymentUrl) return;
+    // window.open primeiro, de forma síncrona — se ficasse esperando a
+    // Server Action abaixo terminar, alguns navegadores tratariam a aba
+    // nova como um popup não solicitado pelo clique e bloqueariam.
     window.open(item.creditPaymentUrl, '_blank', 'noopener,noreferrer');
+    // Só um registro em segundo plano pra aparecer em /admin > Pedidos —
+    // não tem nada pra esperar aqui, o cliente já está de saída.
+    logCreditLinkClickAction(item.id, item.name, item.price, creditReferralSource).catch(() => {});
   }
 
   // As setinhas da galeria só rolam a tira de miniaturas — a largura de uma
