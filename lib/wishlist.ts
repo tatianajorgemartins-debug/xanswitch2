@@ -40,6 +40,32 @@ export async function signOut(): Promise<void> {
   await getSupabaseBrowser().auth.signOut();
 }
 
+// Traduz as mensagens de erro do Supabase (vêm em inglês) pras mais comuns
+// que um cliente pode ver — usado tanto no popup de conta (AccountModal)
+// quanto na criação de conta embutida no checkout (PurchaseModal, pra
+// guardar os cards colecionáveis).
+export function translateAuthError(message: string): string {
+  const known: Record<string, string> = {
+    'Invalid login credentials': 'E-mail ou senha incorretos.',
+    'User already registered': 'Esse e-mail já tem uma conta — tenta entrar em vez de criar uma nova.',
+    'Password should be at least 6 characters': 'A senha precisa ter pelo menos 6 caracteres.',
+    'Email not confirmed': 'Esse e-mail ainda não foi confirmado — verifica sua caixa de entrada.'
+  };
+  return known[message] ?? message;
+}
+
+// O "token de acesso" da sessão atual — precisa ser enviado pra Server
+// Actions que leem dados do cliente logado (ver getMyCardsAction em
+// app/cardActions.ts), porque uma Server Action roda no servidor e não tem
+// acesso direto à sessão do Supabase que vive só no navegador. O servidor
+// então usa esse token pra confirmar, com o próprio Supabase, quem é a
+// pessoa de verdade por trás do pedido — sem isso, qualquer um poderia
+// chamar a Server Action fingindo ser outro cliente.
+export async function getAccessToken(): Promise<string | null> {
+  const { data } = await getSupabaseBrowser().auth.getSession();
+  return data.session?.access_token ?? null;
+}
+
 // Devolve quem está logado agora (ou null, se ninguém). Útil pra checar o
 // estado uma vez, por exemplo quando o site carrega.
 export async function getCurrentUser(): Promise<User | null> {

@@ -40,6 +40,9 @@ export type Game = {
   // pra jogos onde você quer oferecer essa opção além do Pix à vista —
   // ver StepSummary em app/PurchaseModal.tsx.
   credit_payment_url: string | null;
+  // Quantos pontos o card colecionável desse jogo vale (1 a 5) — ver
+  // CollectibleCard.tsx e a seção de gamificação do README.
+  card_points: number;
   created_at: Date; // timestamptz comes back as a real Date, not a string
   updated_at: Date;
 };
@@ -92,10 +95,11 @@ export async function createGame(data: {
   description: string | null;
   screenshots: string[];
   credit_payment_url: string | null;
+  card_points: number;
 }): Promise<Game> {
   const rows = await getSql()`
-    INSERT INTO games (name, price, original_price, image_url, banner_image_url, has_badge, badge_text, badge_color, franchise, platform, game_type, is_featured, is_bestseller, is_upcoming, description, screenshots, credit_payment_url)
-    VALUES (${data.name}, ${data.price}, ${data.original_price}, ${data.image_url}, ${data.banner_image_url}, ${data.has_badge}, ${data.badge_text}, ${data.badge_color}, ${data.franchise}, ${data.platform}, ${data.game_type}, ${data.is_featured}, ${data.is_bestseller}, ${data.is_upcoming}, ${data.description}, ${JSON.stringify(data.screenshots)}::jsonb, ${data.credit_payment_url})
+    INSERT INTO games (name, price, original_price, image_url, banner_image_url, has_badge, badge_text, badge_color, franchise, platform, game_type, is_featured, is_bestseller, is_upcoming, description, screenshots, credit_payment_url, card_points)
+    VALUES (${data.name}, ${data.price}, ${data.original_price}, ${data.image_url}, ${data.banner_image_url}, ${data.has_badge}, ${data.badge_text}, ${data.badge_color}, ${data.franchise}, ${data.platform}, ${data.game_type}, ${data.is_featured}, ${data.is_bestseller}, ${data.is_upcoming}, ${data.description}, ${JSON.stringify(data.screenshots)}::jsonb, ${data.credit_payment_url}, ${data.card_points})
     RETURNING *
   `;
   return rows[0] as Game;
@@ -121,6 +125,7 @@ export async function updateGame(
     description: string | null;
     screenshots: string[];
     credit_payment_url: string | null;
+    card_points: number;
   }
 ): Promise<Game> {
   const rows = await getSql()`
@@ -142,6 +147,7 @@ export async function updateGame(
       description = ${data.description},
       screenshots = ${JSON.stringify(data.screenshots)}::jsonb,
       credit_payment_url = ${data.credit_payment_url},
+      card_points = ${data.card_points},
       updated_at = now()
     WHERE id = ${id}
     RETURNING *
@@ -243,6 +249,16 @@ export type Order = {
   // pagamento — null quando o cliente não respondeu.
   referral_source: string | null;
   payment_method: string;
+  // Card colecionável ganho nesse pedido (só em compras por Pix — ver
+  // confirmOrderAction). card_points_earned e card_image_url são uma
+  // "foto" dos dados do jogo no momento da compra, pra o card não mudar se
+  // você editar o jogo depois. card_points_confirmed começa falso e só
+  // vira true quando você confirma manualmente em /admin > Pedidos —
+  // porque não existe gateway de pagamento pra confirmar sozinho que o Pix
+  // realmente caiu na conta.
+  card_points_earned: number;
+  card_image_url: string | null;
+  card_points_confirmed: boolean;
   created_at: Date;
 };
 
@@ -253,10 +269,12 @@ export async function createOrder(data: {
   customer_email: string | null;
   referral_source: string | null;
   payment_method: string;
+  card_points_earned: number;
+  card_image_url: string | null;
 }): Promise<Order> {
   const rows = await getSql()`
-    INSERT INTO orders (game_id, game_name, price, customer_email, referral_source, payment_method)
-    VALUES (${data.game_id}, ${data.game_name}, ${data.price}, ${data.customer_email}, ${data.referral_source}, ${data.payment_method})
+    INSERT INTO orders (game_id, game_name, price, customer_email, referral_source, payment_method, card_points_earned, card_image_url)
+    VALUES (${data.game_id}, ${data.game_name}, ${data.price}, ${data.customer_email}, ${data.referral_source}, ${data.payment_method}, ${data.card_points_earned}, ${data.card_image_url})
     RETURNING *
   `;
   return rows[0] as Order;
@@ -269,6 +287,28 @@ export async function getRecentOrders(limit = 100): Promise<Order[]> {
   return rows as Order[];
 }
 
+// Todos os pedidos por Pix de um e-mail específico, usados pra montar "Minha
+// coleção" (ver app/cardActions.ts). Comparação sem diferenciar
+// maiúsculas/minúsculas, porque e-mail não é case-sensitive na prática — e
+// só pedidos por Pix têm e-mail e ganham card (crédito parcelado não gera
+// card, ver logCreditLinkClickAction em app/orderActions.ts).
+export async function getOrdersByEmail(email: string): Promise<Order[]> {
+  const rows = await getSql()`
+    SELECT * FROM orders
+    WHERE payment_method = 'pix' AND lower(customer_email) = lower(${email})
+    ORDER BY created_at DESC
+  `;
+  return rows as Order[];
+}
+
 export async function deleteOrder(id: number): Promise<void> {
   await getSql()`DELETE FROM orders WHERE id = ${id}`;
+}
+
+// Confirma (ou desfaz a confirmação, se precisar corrigir um engano) os
+// pontos de um pedido — chamada só pelo admin (ver confirmOrderPointsAction
+// em app/admin/actions.ts), já que não existe outra forma de saber se o Pix
+// realmente caiu na conta.
+export async function setOrderCardPointsConfirmed(id: number, confirmed: boolean): Promise<void> {
+  await getSql()`UPDATE orders SET card_points_confirmed = ${confirmed} WHERE id = ${id}`;
 }

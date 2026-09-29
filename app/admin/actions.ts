@@ -20,6 +20,7 @@ import {
   setReviewFeatured,
   deleteReview,
   deleteOrder,
+  setOrderCardPointsConfirmed,
   type Platform,
   type GameType
 } from '@/lib/db';
@@ -60,6 +61,16 @@ function parseCreditPaymentUrl(formData: FormData): { value: string | null; erro
     return { value: null, error: 'O link de pagamento parcelado precisa começar com http:// ou https://.' };
   }
   return { value: raw, error: null };
+}
+
+// Pontos do card colecionável desse jogo — um número inteiro de 1 a 5 (o
+// máximo de "gemas" que o card mostra, ver CollectibleCard.tsx). Qualquer
+// valor fora da faixa é limitado (clamp) pros extremos, em vez de dar erro
+// — é só um detalhe de exibição, não vale travar o formulário por isso.
+function parseCardPoints(formData: FormData): number {
+  const raw = parseInt(String(formData.get('cardPoints') || '1'), 10);
+  if (Number.isNaN(raw)) return 1;
+  return Math.min(5, Math.max(1, raw));
 }
 
 // Server Actions can be invoked directly (e.g. a crafted request to the
@@ -150,6 +161,7 @@ export async function createGameAction(
   const description = String(formData.get('description') || '').trim() || null;
   const screenshots = parseScreenshots(formData);
   const { value: creditPaymentUrl, error: creditPaymentUrlError } = parseCreditPaymentUrl(formData);
+  const cardPoints = parseCardPoints(formData);
 
   if (!name) return { error: 'Digite o nome do jogo.' };
   if (Number.isNaN(price) || price < 0) return { error: 'Preço inválido.' };
@@ -178,7 +190,8 @@ export async function createGameAction(
     is_upcoming: isUpcoming,
     description,
     screenshots,
-    credit_payment_url: creditPaymentUrl
+    credit_payment_url: creditPaymentUrl,
+    card_points: cardPoints
   });
 
   revalidatePath('/admin');
@@ -213,6 +226,7 @@ export async function updateGameAction(
   const description = String(formData.get('description') || '').trim() || null;
   const screenshots = parseScreenshots(formData);
   const { value: creditPaymentUrl, error: creditPaymentUrlError } = parseCreditPaymentUrl(formData);
+  const cardPoints = parseCardPoints(formData);
 
   if (!id) return { error: 'Jogo inválido.' };
   if (!name) return { error: 'Digite o nome do jogo.' };
@@ -277,7 +291,8 @@ export async function updateGameAction(
     is_upcoming: isUpcoming,
     description,
     screenshots,
-    credit_payment_url: creditPaymentUrl
+    credit_payment_url: creditPaymentUrl,
+    card_points: cardPoints
   });
 
   revalidatePath('/admin');
@@ -343,5 +358,16 @@ export async function setReviewFeaturedAction(id: number, featured: boolean): Pr
 export async function deleteOrderAction(id: number): Promise<void> {
   await requireAuth();
   await deleteOrder(id);
+  revalidatePath('/admin');
+}
+
+// Confirma (ou desmarca, caso você clique por engano) os pontos do card
+// colecionável de um pedido. Existe porque não há gateway de pagamento —
+// o "Já paguei" do cliente é uma declaração, não uma confirmação de
+// verdade — então os pontos só contam pro total do cliente depois que você
+// mesma confirmar aqui que o Pix realmente caiu na conta.
+export async function confirmOrderPointsAction(id: number, confirmed: boolean): Promise<void> {
+  await requireAuth();
+  await setOrderCardPointsConfirmed(id, confirmed);
   revalidatePath('/admin');
 }

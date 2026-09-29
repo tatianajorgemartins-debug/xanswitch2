@@ -18,6 +18,7 @@ import {
   deleteReviewAction,
   setReviewFeaturedAction,
   deleteOrderAction,
+  confirmOrderPointsAction,
   type GameFormState
 } from './actions';
 
@@ -42,6 +43,7 @@ export default function AdminClient({
   const [showReviewsPanel, setShowReviewsPanel] = useState(false);
   const [showOrdersPanel, setShowOrdersPanel] = useState(false);
   const [showWishlistPanel, setShowWishlistPanel] = useState(false);
+  const [showClientsPanel, setShowClientsPanel] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingGame, setEditingGame] = useState<Game | null>(null);
 
@@ -113,6 +115,10 @@ export default function AdminClient({
     await deleteOrderAction(id);
     router.refresh();
   }
+  async function handleConfirmOrderPoints(id: number, confirmed: boolean) {
+    await confirmOrderPointsAction(id, confirmed);
+    router.refresh();
+  }
 
   const pendingReviewCount = useMemo(() => reviews.filter((r) => !r.approved).length, [reviews]);
 
@@ -126,6 +132,31 @@ export default function AdminClient({
       .filter((entry) => entry.count > 0)
       .sort((a, b) => b.count - a.count);
   }, [games, wishlistCounts]);
+
+  // Um resumo por cliente (e-mail), pra tela "🎖️ Clientes" — soma os pontos
+  // confirmados e pendentes de cada um e lista os jogos que já levou.
+  // Calculado direto da lista de pedidos que já veio pronta do servidor —
+  // não precisa de outra consulta ao banco só pra isso.
+  const clientSummaries = useMemo(() => {
+    const byEmail = new Map<
+      string,
+      { email: string; confirmedPoints: number; pendingPoints: number; games: string[] }
+    >();
+    for (const o of orders) {
+      if (!o.customer_email || o.payment_method !== 'pix') continue;
+      const key = o.customer_email.toLowerCase();
+      const entry = byEmail.get(key) ?? { email: o.customer_email, confirmedPoints: 0, pendingPoints: 0, games: [] };
+      if (o.card_points_earned > 0) {
+        if (o.card_points_confirmed) entry.confirmedPoints += o.card_points_earned;
+        else entry.pendingPoints += o.card_points_earned;
+        entry.games.push(o.game_name);
+      }
+      byEmail.set(key, entry);
+    }
+    return Array.from(byEmail.values())
+      .filter((c) => c.games.length > 0)
+      .sort((a, b) => b.confirmedPoints - a.confirmedPoints);
+  }, [orders]);
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 20px 80px' }}>
@@ -204,6 +235,9 @@ export default function AdminClient({
         <button className="btn ghost" onClick={() => setShowWishlistPanel((s) => !s)}>
           ❤️ Mais desejados ({mostWantedGames.length})
         </button>
+        <button className="btn ghost" onClick={() => setShowClientsPanel((s) => !s)}>
+          🎖️ Clientes ({clientSummaries.length})
+        </button>
       </div>
 
       {showReviewsPanel && (
@@ -215,9 +249,13 @@ export default function AdminClient({
         />
       )}
 
-      {showOrdersPanel && <OrdersPanel orders={orders} onDelete={handleDeleteOrder} />}
+      {showOrdersPanel && (
+        <OrdersPanel orders={orders} onDelete={handleDeleteOrder} onConfirmPoints={handleConfirmOrderPoints} />
+      )}
 
       {showWishlistPanel && <WishlistPanel entries={mostWantedGames} />}
+
+      {showClientsPanel && <ClientsPanel clients={clientSummaries} />}
 
       {panelOpen && (
         <GameFormPanel
@@ -541,7 +579,15 @@ function FeaturedToggleButton({
 // confirmação de pagamento — serve pra você não perder o rastro se alguém
 // pagar e esquecer de chamar no WhatsApp depois. A confirmação de verdade
 // continua sendo feita manualmente, vendo o Pix cair na sua conta.
-function OrdersPanel({ orders, onDelete }: { orders: Order[]; onDelete: (id: number) => void }) {
+function OrdersPanel({
+  orders,
+  onDelete,
+  onConfirmPoints
+}: {
+  orders: Order[];
+  onDelete: (id: number) => void;
+  onConfirmPoints: (id: number, confirmed: boolean) => void;
+}) {
   return (
     <div
       style={{
@@ -621,10 +667,113 @@ function OrdersPanel({ orders, onDelete }: { orders: Order[]; onDelete: (id: num
                     {o.status}
                   </span>
                 </div>
+                {o.card_points_earned > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{ color: 'var(--gold)', fontWeight: 700, fontSize: 12.5 }}>
+                      🎴 {o.card_points_earned} {o.card_points_earned === 1 ? 'ponto' : 'pontos'}
+                    </span>
+                    <label
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        color: o.card_points_confirmed ? 'var(--green)' : 'var(--ink-dim)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={o.card_points_confirmed}
+                        onChange={(e) => onConfirmPoints(o.id, e.target.checked)}
+                        style={{ width: 15, height: 15, accentColor: 'var(--green)' }}
+                      />
+                      {o.card_points_confirmed ? '✓ Pontos confirmados' : 'Confirmar pontos'}
+                    </label>
+                  </div>
+                )}
               </div>
               <button className="btn ghost" onClick={() => onDelete(o.id)} style={{ flex: 'none' }}>
                 🗑
               </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ClientsPanel({
+  clients
+}: {
+  clients: { email: string; confirmedPoints: number; pendingPoints: number; games: string[] }[];
+}) {
+  return (
+    <div
+      style={{
+        background: 'var(--panel)',
+        border: '1px solid rgba(164,99,255,.25)',
+        borderRadius: 14,
+        padding: 16,
+        marginBottom: 20
+      }}
+    >
+      <h4 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--ink-dim)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+        Clientes com cards (mais pontos primeiro)
+      </h4>
+      {clients.length === 0 ? (
+        <p style={{ color: 'var(--ink-dim)', fontSize: 14, padding: '6px 2px', margin: 0 }}>
+          Ninguém ganhou um card ainda.
+        </p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {clients.map((c) => (
+            <div
+              key={c.email}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: 10,
+                padding: '10px 4px',
+                borderBottom: '1px solid rgba(255,255,255,.06)',
+                flexWrap: 'wrap'
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <strong style={{ fontSize: 14, display: 'block' }}>{c.email}</strong>
+                <span style={{ fontSize: 12.5, color: 'var(--ink-dim)' }}>{c.games.join(', ')}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flex: 'none' }}>
+                <span
+                  style={{
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    color: '#2b1a00',
+                    background: 'linear-gradient(135deg, var(--gold), var(--gold-2))',
+                    borderRadius: 6,
+                    padding: '3px 10px'
+                  }}
+                >
+                  {c.confirmedPoints} pts
+                </span>
+                {c.pendingPoints > 0 && (
+                  <span
+                    style={{
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      color: 'var(--ink-dim)',
+                      border: '1px solid rgba(255,255,255,.2)',
+                      borderRadius: 6,
+                      padding: '3px 10px'
+                    }}
+                  >
+                    +{c.pendingPoints} pendente{c.pendingPoints > 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -1000,6 +1149,24 @@ function GameFormPanel({
             Cole aqui o link de pagamento (Mercado Pago, PagSeguro etc.) que você gera fora do site. Quando
             preenchido, o cliente vê dois botões na tela de compra: "Pix à vista" (continua como já era) e
             "Crédito parcelado" (abre esse link). Deixe em branco pra manter só o botão único de sempre.
+          </p>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label htmlFor="cardPoints">Pontos do card colecionável (1 a 5)</label>
+          <input
+            id="cardPoints"
+            name="cardPoints"
+            type="number"
+            min={1}
+            max={5}
+            step={1}
+            defaultValue={game?.card_points ?? 1}
+            style={{ maxWidth: 120 }}
+          />
+          <p style={{ margin: '6px 2px 0', fontSize: 12.5, color: 'var(--ink-dim)' }}>
+            Quanto vale o card desse jogo pro cliente que comprar — aparece como "gemas" preenchidas no card
+            (ex: 3 pontos = 3 de 5 gemas) e soma pro total de pontos da conta dele.
           </p>
         </div>
 

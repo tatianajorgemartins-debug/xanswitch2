@@ -14,16 +14,29 @@
 // manual, feita por você.
 
 import { useEffect, useRef, useState } from 'react';
+import type { User } from '@supabase/supabase-js';
 import type { Item } from './CatalogClient';
 import type { Platform, GameType } from '@/lib/db';
 import { getContrastColor } from '@/lib/color';
 import { generatePixPayload, type PixPayload } from '@/lib/pix';
 import { isValidEmail, REFERRAL_SOURCES } from '@/lib/validation';
+import { signUp, signIn, translateAuthError } from '@/lib/wishlist';
+import { CollectibleCard, DownloadCardButton } from './CollectibleCard';
 import { confirmOrderAction, logCreditLinkClickAction } from './orderActions';
 
 type Step = 1 | 2 | 3 | 4;
 
-export default function PurchaseModal({ item, onClose }: { item: Item; onClose: () => void }) {
+export default function PurchaseModal({
+  item,
+  user,
+  onClose,
+  onViewCollection
+}: {
+  item: Item;
+  user: User | null;
+  onClose: () => void;
+  onViewCollection: () => void;
+}) {
   const [step, setStep] = useState<Step>(1);
 
   // A única confirmação exigida antes do pagamento: a conta precisa estar
@@ -151,6 +164,7 @@ export default function PurchaseModal({ item, onClose }: { item: Item; onClose: 
               onChangeChecked={setChecked}
               email={email}
               setEmail={setEmail}
+              user={user}
               onBack={() => setStep(1)}
               onNext={() => setStep(3)}
             />
@@ -162,7 +176,7 @@ export default function PurchaseModal({ item, onClose }: { item: Item; onClose: 
               gameName={item.name}
               price={item.price}
               priceLabel={priceLabel}
-              email={email}
+              email={user?.email ?? email}
               referralSource={referralSource}
               setReferralSource={setReferralSource}
               pix={pix}
@@ -175,7 +189,15 @@ export default function PurchaseModal({ item, onClose }: { item: Item; onClose: 
             />
           )}
 
-          {step === 4 && <StepConfirm onClose={onClose} />}
+          {step === 4 && (
+            <StepCardReveal
+              gameName={item.name}
+              imageUrl={item.imageUrl}
+              points={item.cardPoints}
+              onViewCollection={onViewCollection}
+              onClose={onClose}
+            />
+          )}
         </div>
       </div>
 
@@ -364,6 +386,16 @@ function StepSummary({
           </div>
         )}
 
+        <div className="purchase-card-teaser">
+          <span className="purchase-card-teaser-icon" aria-hidden="true">
+            🎴
+          </span>
+          <p>
+            Ao comprar, você ganha o <strong>card colecionável</strong> de {item.name} + <strong>{item.cardPoints}
+            {item.cardPoints === 1 ? ' ponto' : ' pontos'}</strong> pra trocar por desconto
+          </p>
+        </div>
+
         <div className="purchase-modal-actions">
           {item.creditPaymentUrl && showCreditReferral ? (
             <>
@@ -488,16 +520,20 @@ function Lightbox({
   );
 }
 
-// Etapa 2 — a única confirmação exigida antes do pagamento (saldo zerado) e
-// o e-mail pra onde o código vai depois, juntos na mesma tela. Exportado
-// porque a compra em lote da lista de desejos (BulkPurchaseModal) usa
-// exatamente a mesma etapa, uma única vez pra todos os jogos selecionados,
-// em vez de repetir por jogo.
+// Etapa 2 — a única confirmação exigida antes do pagamento (saldo zerado),
+// o e-mail pra onde o código vai depois, e — se ainda não estiver logado —
+// uma senha pra criar a conta na hora, onde os cards colecionáveis ficam
+// guardados (ver seção "Gamificação" do README). Exportado porque a compra
+// em lote da lista de desejos (BulkPurchaseModal) usa exatamente a mesma
+// etapa, uma única vez pra todos os jogos selecionados, em vez de repetir
+// por jogo — nesse caso `user` nunca vem nulo, porque só dá pra chegar
+// nessa tela já logado (a lista de desejos exige login antes).
 export function StepChecklistAndEmail({
   checked,
   onChangeChecked,
   email,
   setEmail,
+  user,
   onBack,
   onNext
 }: {
@@ -505,10 +541,60 @@ export function StepChecklistAndEmail({
   onChangeChecked: (v: boolean) => void;
   email: string;
   setEmail: (v: string) => void;
+  user: User | null;
   onBack: () => void;
   onNext: () => void;
 }) {
-  const canContinue = checked && isValidEmail(email);
+  const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  const emailValid = user ? true : isValidEmail(email);
+  const passwordValid = user ? true : password.length >= 6;
+  const canContinue = checked && emailValid && passwordValid && !submitting;
+
+  // Se já está logado, não precisa criar conta nenhuma — só segue. Se não,
+  // tenta criar a conta com o e-mail e senha que acabou de digitar; se esse
+  // e-mail já tiver conta (erro "User already registered"), tenta entrar
+  // com a mesma senha em vez de criar de novo — assim a pessoa não precisa
+  // saber de antemão se já tem conta ou não, só usa sempre o mesmo campo.
+  async function handleContinue() {
+    if (user) {
+      onNext();
+      return;
+    }
+    setSubmitting(true);
+    setAuthError(null);
+    const trimmedEmail = email.trim();
+    try {
+      const { confirmedImmediately } = await signUp(trimmedEmail, password);
+      if (!confirmedImmediately) {
+        // Só acontece se "Confirm email" ainda estiver ligado no Supabase
+        // (veja o README) — deixa a compra seguir mesmo assim; o card só
+        // não aparece em "Minha coleção" até a pessoa confirmar o e-mail e
+        // entrar por conta própria depois.
+        onNext();
+        return;
+      }
+      onNext();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '';
+      if (message === 'User already registered') {
+        try {
+          await signIn(trimmedEmail, password);
+          onNext();
+          return;
+        } catch {
+          setAuthError('Esse e-mail já tem conta — digite a senha certa dela pra continuar.');
+          setSubmitting(false);
+          return;
+        }
+      }
+      setAuthError(translateAuthError(message || 'Não foi possível continuar.'));
+      setSubmitting(false);
+    }
+  }
+
   return (
     <>
       <div className="purchase-checklist">
@@ -521,24 +607,56 @@ export function StepChecklistAndEmail({
       <p className="purchase-email-intro">
         É pra esse e-mail que enviaremos o código do jogo depois da confirmação do pagamento.
       </p>
-      <label className="purchase-email-label" htmlFor="purchase-email-input">
-        Seu e-mail
-      </label>
-      <input
-        id="purchase-email-input"
-        type="email"
-        inputMode="email"
-        autoComplete="email"
-        placeholder="seuemail@exemplo.com"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
+
+      {user ? (
+        <p className="purchase-account-status">
+          Logado como <strong>{user.email}</strong> — seu card colecionável vai direto pra sua conta.
+        </p>
+      ) : (
+        <>
+          <label className="purchase-email-label" htmlFor="purchase-email-input">
+            Seu e-mail
+          </label>
+          <input
+            id="purchase-email-input"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            placeholder="seuemail@exemplo.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={submitting}
+            style={{ marginBottom: 14 }}
+          />
+
+          <p className="purchase-email-intro">
+            Crie uma senha pra guardar seu card colecionável e seus pontos numa conta XAN Switch.
+          </p>
+          <label className="purchase-email-label" htmlFor="purchase-password-input">
+            Senha (pelo menos 6 caracteres)
+          </label>
+          <input
+            id="purchase-password-input"
+            type="password"
+            autoComplete="new-password"
+            minLength={6}
+            placeholder="Pelo menos 6 caracteres"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={submitting}
+          />
+        </>
+      )}
+
+      {authError && (
+        <p style={{ color: '#ff8a8a', fontSize: 13, fontWeight: 600, margin: '10px 0 0' }}>{authError}</p>
+      )}
 
       <div className="purchase-modal-actions" style={{ marginTop: 20 }}>
-        <button type="button" className="btn primary" disabled={!canContinue} onClick={onNext}>
-          Continuar para o pagamento
+        <button type="button" className="btn primary" disabled={!canContinue} onClick={handleContinue}>
+          {submitting ? 'Só um instante...' : 'Continuar para o pagamento'}
         </button>
-        <button type="button" className="purchase-step-back" onClick={onBack}>
+        <button type="button" className="purchase-step-back" onClick={onBack} disabled={submitting}>
           ← Voltar
         </button>
       </div>
@@ -722,18 +840,49 @@ function StepPayment({
   );
 }
 
-// Etapa 5 — tela final, depois que o pedido já foi salvo e as notificações
-// automáticas já foram disparadas (ver StepPayment acima).
-function StepConfirm({ onClose }: { onClose: () => void }) {
+// Etapa 4 — tela final, depois que o pedido já foi salvo e as notificações
+// automáticas já foram disparadas (ver StepPayment acima). Mostra o card
+// colecionável ganho nessa compra, com a animação de revelação (ver
+// CollectibleCard.tsx), o botão de baixar o card como PNG e o botão pra ver
+// a coleção completa (abre "Minha conta" — ver AccountModal.tsx).
+function StepCardReveal({
+  gameName,
+  imageUrl,
+  points,
+  onViewCollection,
+  onClose
+}: {
+  gameName: string;
+  imageUrl: string | null;
+  points: number;
+  onViewCollection: () => void;
+  onClose: () => void;
+}) {
   return (
     <>
-      <p style={{ textAlign: 'center', fontSize: 40, marginBottom: 10 }}>✓</p>
-      <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 15, color: 'var(--ink)', marginBottom: 6 }}>
+      <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 15, color: 'var(--ink)', marginBottom: 4 }}>
         Pagamento confirmado! Seu código chega no seu e-mail ainda hoje 🎮
       </p>
-      <p style={{ textAlign: 'center', fontSize: 13.5, color: 'var(--ink-dim)', marginBottom: 20 }}>
-        Guarde esse e-mail à mão — é pra ele que o código vai.
+      <p style={{ textAlign: 'center', fontSize: 13.5, color: 'var(--ink-dim)', marginBottom: 18 }}>
+        E olha só o que você ganhou:
       </p>
+
+      <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 14, color: 'var(--gold)', marginBottom: 16 }}>
+        🎉 Você ganhou o card de {gameName}! +{points} {points === 1 ? 'ponto' : 'pontos'}
+      </p>
+
+      <CollectibleCard gameName={gameName} imageUrl={imageUrl} points={points} />
+
+      <p className="purchase-card-pending-note">
+        Seus pontos entram pra valer na sua conta depois que a gente confirmar seu pagamento.
+      </p>
+
+      <div className="purchase-modal-actions" style={{ marginTop: 18 }}>
+        <DownloadCardButton gameName={gameName} imageUrl={imageUrl} points={points} />
+        <button type="button" className="btn primary" onClick={onViewCollection}>
+          Ver minha coleção
+        </button>
+      </div>
 
       <RegionTutorial />
 

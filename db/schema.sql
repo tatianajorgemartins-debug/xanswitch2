@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS games (
   description TEXT,
   screenshots JSONB NOT NULL DEFAULT '[]',
   credit_payment_url TEXT,
+  card_points INTEGER NOT NULL DEFAULT 1,
   sort_name TEXT GENERATED ALWAYS AS (lower(name)) STORED,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -63,6 +64,9 @@ CREATE TABLE IF NOT EXISTS orders (
   status TEXT NOT NULL DEFAULT 'aguardando_codigo',
   referral_source TEXT,
   payment_method TEXT NOT NULL DEFAULT 'pix',
+  card_points_earned INTEGER NOT NULL DEFAULT 0,
+  card_image_url TEXT,
+  card_points_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS orders_created_at_idx ON orders (created_at DESC);
@@ -91,3 +95,10 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS referral_source TEXT;
 -- Idem para a forma de pagamento do pedido (ver
 -- db/migration-order-payment-method.sql).
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method TEXT NOT NULL DEFAULT 'pix';
+
+-- Idem para os cards colecionáveis e pontos (ver
+-- db/migration-collectible-cards.sql).
+ALTER TABLE games ADD COLUMN IF NOT EXISTS card_points INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS card_points_earned INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS card_image_url TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS card_points_confirmed BOOLEAN NOT NULL DEFAULT FALSE;

@@ -222,6 +222,8 @@ com plano gratuito próprio.
      formulário elas já estão prontas.
    - **Link de pagamento parcelado** (opcional): veja a seção "Oferecer
      pagamento parcelado (crédito) em um jogo" mais abaixo.
+   - **Pontos do card colecionável** (1 a 5): veja a seção "Cards
+     colecionáveis e pontos (gamificação)" mais abaixo.
 3. Pra tirar um jogo do catálogo sem apagar de vez, use **"📦 Arquivar"** —
    ele some do catálogo público mas fica guardado, e dá pra restaurar depois.
 4. Pra editar ou excluir de vez, clique nos **⋮** (três pontinhos) no canto
@@ -521,6 +523,74 @@ navegador, não conseguiria ler a lista de outro cliente.
 
 ---
 
+## Cards colecionáveis e pontos (gamificação)
+
+Toda compra confirmada por Pix dá ao cliente um "card colecionável" do
+jogo comprado — uma imagem no estilo card de jogo, com a capa do jogo, uma
+moldura dourada/roxa e um número de pontos. Os pontos se acumulam na conta
+do cliente pra, no futuro, serem trocados por desconto (a troca em si
+ainda não existe nessa primeira versão — por enquanto o site só gera os
+cards e soma os pontos, guardando tudo de um jeito que dá pra construir a
+troca em cima depois).
+
+**Como configurar quantos pontos um jogo vale:** no admin, ao adicionar ou
+editar um jogo, tem o campo **"Pontos do card colecionável (1 a 5)"**. Esse
+número decide quantas das 5 "gemas" do card aparecem preenchidas (ex: um
+jogo de 3 pontos mostra 3 gemas preenchidas e 2 apagadas).
+
+**O que o cliente vê:**
+
+1. Na tela de cada jogo, um aviso destacado: "🎴 Ao comprar, você ganha o
+   card colecionável de [jogo] + [X] pontos pra trocar por desconto".
+2. Na etapa de checklist + e-mail do checkout, se o cliente ainda não tiver
+   conta, aparece também um campo de **senha** — isso cria a conta dele na
+   hora (reaproveitando o mesmo sistema de login da lista de desejos, e-mail
+   + senha, explicado na seção acima), sem pedir o e-mail de novo. Se ele já
+   estiver logado, esse campo nem aparece — só confirma "Logado como
+   fulano@email.com".
+3. Depois de clicar em "Já paguei — confirmar pedido", uma tela de
+   revelação mostra o card animado (com um efeito de brilho, como abrir um
+   pacote de cartas), o botão **"Salvar card (PNG)"** (baixa a imagem do
+   card, desenhada na hora pelo navegador com Canvas — sem depender de
+   nenhum serviço externo) e o botão **"Ver minha coleção"**, que abre o
+   popup de conta na seção **"🎴 Minha coleção"**: todos os cards do
+   cliente e o total de pontos.
+
+**Sobre a confirmação manual dos pontos:** assim como o resto do checkout,
+não existe gateway de pagamento — então o clique em "Já paguei" é uma
+declaração do cliente, não uma prova de que o Pix caiu na sua conta. Por
+isso, os pontos de cada pedido só contam pra valer depois que **você**
+confirmar manualmente, no admin, em **"📋 Pedidos"**: cada pedido que gerou
+um card mostra quantos pontos ele vale e uma caixinha **"Confirmar
+pontos"**. Enquanto não confirmar, o card já aparece na coleção do cliente
+(com uma fitinha "⏳ Pendente"), mas esses pontos entram como "pendentes",
+separados do total oficial — só somam ao total de verdade depois que você
+marcar a caixinha. Isso é intencional: o card em si é uma recompensa
+imediata e divertida, mas o total de pontos (que futuramente vai poder
+virar desconto de verdade) só conta o que você já confirmou que foi pago.
+
+**Onde ver quanto cada cliente já acumulou:** no admin, o botão **"🎖️
+Clientes"** lista cada cliente com pedido confirmado por Pix, o total de
+pontos (confirmados e pendentes) e os jogos que ele já levou.
+
+**Onde ficam guardados esses dados:** tudo fica no banco Neon, dentro da
+própria tabela `orders` que já guarda o histórico de pedidos — cada pedido
+por Pix ganha três colunas novas: `card_points_earned` (quantos pontos
+esse pedido vale — uma "foto" dos pontos do jogo no momento da compra, pra
+não mudar retroativamente se você alterar os pontos do jogo depois),
+`card_image_url` (idem, mas a capa do jogo) e `card_points_confirmed`
+(true/false, controlado por você no admin). A tabela `games` ganha a
+coluna `card_points` (o valor configurável no admin). Nada disso mexe no
+Supabase — só a conta do cliente em si (e-mail/senha) continua lá, como já
+era.
+
+> Se o seu banco já existia antes dessa mudança, rode a migração
+> `db/migration-collectible-cards.sql` uma vez no editor SQL do Neon —
+> ela adiciona essas colunas sem apagar nada. (Criando o banco do zero
+> agora? Ignore isso, o `db/schema.sql` já vem com elas.)
+
+---
+
 ## Por que as imagens são comprimidas automaticamente
 
 O que "pesa" no armazenamento de imagens não é o espaço ocupado pelos
@@ -640,11 +710,13 @@ app/
   page.tsx              → catálogo público (busca + cards + dados de cada jogo)
   jogo/[id]/page.tsx      → link direto de um jogo específico (abre o catálogo já com o modal dele aberto, com prévia pra redes sociais)
   CatalogClient.tsx      → a parte interativa do catálogo público (abre o modal de compra, login, lista de desejos)
-  PurchaseModal.tsx       → o modal de compra de UM jogo (resumo → checklist → e-mail → Pix → confirmação)
+  PurchaseModal.tsx       → o modal de compra de UM jogo (resumo → checklist/e-mail/senha → Pix → revelação do card)
   BulkPurchaseModal.tsx    → o modal de compra de VÁRIOS jogos da lista de desejos de uma vez (mesmas etapas, um Pix só)
-  AccountModal.tsx         → o popup de login (e-mail e senha) e da lista de desejos do cliente
+  CollectibleCard.tsx      → o card colecionável na tela (com a animação) e o botão de baixar em PNG
+  AccountModal.tsx         → o popup de login (e-mail e senha), lista de desejos e "🎴 Minha coleção" (cards + pontos)
   SiteHeader.tsx           → logo + ícone de conta (com o número da lista de desejos) + redes sociais
-  orderActions.ts          → Server Actions que salvam o pedido (com e-mail do cliente) e disparam o aviso automático quando o cliente confirma "Já paguei"
+  orderActions.ts          → Server Actions que salvam o pedido (com e-mail, card e pontos) e disparam o aviso automático quando o cliente confirma "Já paguei"
+  cardActions.ts           → Server Action que busca os cards e pontos de quem está logado, pra "Minha coleção"
   layout.tsx, globals.css → visual (cores, fontes, estilo geral, CSS do modal de compra e do popup de conta)
   admin/
     page.tsx             → painel admin (protegido)
@@ -662,8 +734,9 @@ lib/
   wishlist.ts          → login do cliente (e-mail e senha) e lista de desejos — roda no navegador, fala direto com o Supabase
   whatsapp.ts         → monta o link de contato do WhatsApp do cabeçalho, e formata preço em R$
   pix.ts              → monta o Pix (BR Code + QR Code) usando seus dados de recebedor
-  validation.ts        → validação de formato de e-mail (navegador e servidor)
+  validation.ts        → validação de formato de e-mail e das opções de "como conheceu a loja" (navegador e servidor)
   notifications.ts     → avisa você por e-mail (Resend), WhatsApp (CallMeBot) e/ou Telegram a cada novo pedido confirmado
+  cardCanvas.ts        → desenha o card colecionável num <canvas> e gera o PNG pra download (Canvas API, sem serviço externo)
   color.ts            → escolhe texto claro/escuro pra contrastar com a cor da etiqueta
   imageResize.ts       → comprime a capa do jogo no servidor antes de salvar (usa a lib "sharp")
   imageCompression.ts  → comprime as capturas de tela no navegador antes de enviar (usa <canvas>)
@@ -681,6 +754,7 @@ db/migration-orders-checkout-v2.sql → adiciona e-mail do cliente e status ao p
 db/migration-credit-payment-link.sql → adiciona o link de pagamento parcelado por jogo, no Neon
 db/migration-order-referral-source.sql → adiciona "como você conheceu a loja" ao pedido, no Neon
 db/migration-order-payment-method.sql → adiciona a forma de pagamento (Pix/crédito) ao pedido, no Neon
+db/migration-collectible-cards.sql → adiciona os cards colecionáveis e pontos (jogos e pedidos), no Neon
 proxy.ts       → protege a página /admin (redireciona pro login se não tiver sessão)
 vercel.json    → agenda a rotina diária de manutenção (cron job)
 ```

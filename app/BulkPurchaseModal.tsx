@@ -7,15 +7,27 @@
 // automaticamente quando o cliente confirma o pagamento), só que com um Pix
 // e um pedido cobrindo o total, em vez de jogo por jogo.
 import { useEffect, useRef, useState } from 'react';
+import type { User } from '@supabase/supabase-js';
 import type { Item } from './CatalogClient';
 import { StepChecklistAndEmail, ReservationTimer, RegionTutorial, ReferralSourcePicker } from './PurchaseModal';
+import { CollectibleCard, DownloadCardButton } from './CollectibleCard';
 import { generatePixPayload, type PixPayload } from '@/lib/pix';
 import { confirmBulkOrderAction } from './orderActions';
 import { formatPriceBR } from '@/lib/whatsapp';
 
 type Step = 1 | 2 | 3;
 
-export default function BulkPurchaseModal({ items, onClose }: { items: Item[]; onClose: () => void }) {
+export default function BulkPurchaseModal({
+  items,
+  user,
+  onClose,
+  onViewCollection
+}: {
+  items: Item[];
+  user: User | null;
+  onClose: () => void;
+  onViewCollection: () => void;
+}) {
   const [step, setStep] = useState<Step>(1);
   const [checked, setChecked] = useState(false);
   const [email, setEmail] = useState('');
@@ -118,6 +130,7 @@ export default function BulkPurchaseModal({ items, onClose }: { items: Item[]; o
                 onChangeChecked={setChecked}
                 email={email}
                 setEmail={setEmail}
+                user={user}
                 onBack={onClose}
                 onNext={() => setStep(2)}
               />
@@ -129,7 +142,7 @@ export default function BulkPurchaseModal({ items, onClose }: { items: Item[]; o
               items={items}
               total={total}
               totalLabel={totalLabel}
-              email={email}
+              email={user?.email ?? email}
               referralSource={referralSource}
               setReferralSource={setReferralSource}
               pix={pix}
@@ -142,7 +155,9 @@ export default function BulkPurchaseModal({ items, onClose }: { items: Item[]; o
             />
           )}
 
-          {step === 3 && <BulkStepConfirm onClose={onClose} />}
+          {step === 3 && (
+            <BulkStepConfirm items={items} onViewCollection={onViewCollection} onClose={onClose} />
+          )}
         </div>
       </div>
     </div>
@@ -266,16 +281,52 @@ function BulkStepPayment({
   );
 }
 
-function BulkStepConfirm({ onClose }: { onClose: () => void }) {
+// Um card por jogo comprado, cada um com seu próprio botão de baixar —
+// mesma ideia da revelação de um jogo só (ver StepCardReveal em
+// PurchaseModal.tsx), só que em lista, já que uma compra em lote gera vários
+// cards de uma vez.
+function BulkStepConfirm({
+  items,
+  onViewCollection,
+  onClose
+}: {
+  items: Item[];
+  onViewCollection: () => void;
+  onClose: () => void;
+}) {
+  const totalPoints = items.reduce((sum, it) => sum + it.cardPoints, 0);
   return (
     <>
-      <p style={{ textAlign: 'center', fontSize: 40, marginBottom: 10 }}>✓</p>
-      <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 15, color: 'var(--ink)', marginBottom: 6 }}>
+      <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 15, color: 'var(--ink)', marginBottom: 4 }}>
         Pagamento confirmado! Seus códigos chegam no seu e-mail ainda hoje 🎮
       </p>
-      <p style={{ textAlign: 'center', fontSize: 13.5, color: 'var(--ink-dim)', marginBottom: 20 }}>
-        Guarde esse e-mail à mão — é pra ele que os códigos vão.
+      <p style={{ textAlign: 'center', fontSize: 13.5, color: 'var(--ink-dim)', marginBottom: 18 }}>
+        E olha só os cards que você ganhou:
       </p>
+
+      <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 14, color: 'var(--gold)', marginBottom: 16 }}>
+        🎉 {items.length} {items.length === 1 ? 'card novo' : 'cards novos'}! +{totalPoints}{' '}
+        {totalPoints === 1 ? 'ponto' : 'pontos'}
+      </p>
+
+      <div className="bulk-card-reveal-list">
+        {items.map((item) => (
+          <div key={item.id} className="bulk-card-reveal-item">
+            <CollectibleCard gameName={item.name} imageUrl={item.imageUrl} points={item.cardPoints} />
+            <DownloadCardButton gameName={item.name} imageUrl={item.imageUrl} points={item.cardPoints} />
+          </div>
+        ))}
+      </div>
+
+      <p className="purchase-card-pending-note">
+        Seus pontos entram pra valer na sua conta depois que a gente confirmar seu pagamento.
+      </p>
+
+      <div className="purchase-modal-actions" style={{ marginTop: 18 }}>
+        <button type="button" className="btn primary" onClick={onViewCollection}>
+          Ver minha coleção
+        </button>
+      </div>
 
       <RegionTutorial />
 

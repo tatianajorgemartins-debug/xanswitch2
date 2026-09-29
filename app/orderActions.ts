@@ -1,6 +1,6 @@
 'use server';
 
-import { createOrder } from '@/lib/db';
+import { createOrder, getGameById } from '@/lib/db';
 import { notifyNewOrder } from '@/lib/notifications';
 import { isValidEmail, isValidReferralSource } from '@/lib/validation';
 
@@ -11,6 +11,21 @@ export type ConfirmOrderResult = { ok: true } | { ok: false; error: string };
 // Action diretamente) só é ignorado, nunca barra o pedido.
 function sanitizeReferralSource(value: string | null): string | null {
   return value && isValidReferralSource(value) ? value : null;
+}
+
+// Busca, direto no banco (não confia no que o navegador mandou), quantos
+// pontos o card desse jogo vale agora e qual é a capa atual — assim o
+// "card colecionável" salvo no pedido sempre reflete o jogo de verdade no
+// momento da compra, mesmo que o cliente tenha ficado com a tela aberta
+// por um tempo antes de confirmar. Se o jogo não existir mais (raro — foi
+// excluído do catálogo entre o cliente abrir a tela e confirmar o
+// pagamento), o pedido é salvo sem card (0 pontos, sem imagem) em vez de
+// falhar o pedido inteiro por causa disso.
+async function snapshotCardFromGame(gameId: number | null): Promise<{ points: number; imageUrl: string | null }> {
+  if (!gameId) return { points: 0, imageUrl: null };
+  const game = await getGameById(gameId);
+  if (!game) return { points: 0, imageUrl: null };
+  return { points: game.card_points, imageUrl: game.image_url };
 }
 
 // Chamada quando o cliente clica em "Já paguei — confirmar pedido" na tela
@@ -31,6 +46,8 @@ export async function confirmOrderAction(
     return { ok: false, error: 'Digite um e-mail válido.' };
   }
 
+  const card = await snapshotCardFromGame(gameId);
+
   try {
     await createOrder({
       game_id: gameId,
@@ -38,7 +55,9 @@ export async function confirmOrderAction(
       price,
       customer_email: trimmedEmail,
       referral_source: sanitizeReferralSource(referralSource),
-      payment_method: 'pix'
+      payment_method: 'pix',
+      card_points_earned: card.points,
+      card_image_url: card.imageUrl
     });
   } catch {
     return { ok: false, error: 'Não foi possível registrar seu pedido agora. Tente novamente em instantes.' };
@@ -71,16 +90,19 @@ export async function confirmBulkOrderAction(
 
   try {
     await Promise.all(
-      items.map((it) =>
-        createOrder({
+      items.map(async (it) => {
+        const card = await snapshotCardFromGame(it.id);
+        return createOrder({
           game_id: it.id,
           game_name: it.name,
           price: it.price,
           customer_email: trimmedEmail,
           referral_source: sanitizedReferralSource,
-          payment_method: 'pix'
-        })
-      )
+          payment_method: 'pix',
+          card_points_earned: card.points,
+          card_image_url: card.imageUrl
+        });
+      })
     );
   } catch {
     return { ok: false, error: 'Não foi possível registrar seu pedido agora. Tente novamente em instantes.' };
@@ -115,6 +137,10 @@ export async function logCreditLinkClickAction(
     price,
     customer_email: null,
     referral_source: sanitizeReferralSource(referralSource),
-    payment_method: 'credito'
+    payment_method: 'credito',
+    // Sem card nesse caminho: esse pedido não tem e-mail, então não tem
+    // como saber a qual conta de cliente o card pertenceria.
+    card_points_earned: 0,
+    card_image_url: null
   }).catch(() => {});
 }

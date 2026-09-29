@@ -45,6 +45,9 @@ export type Item = {
   // pra esse jogo — quando presente, a tela de compra mostra dois botões em
   // vez de um só (ver StepSummary em PurchaseModal.tsx).
   creditPaymentUrl: string | null;
+  // Quantos pontos o card colecionável desse jogo vale (1 a 5), configurado
+  // no admin — ver CollectibleCard.tsx.
+  cardPoints: number;
 };
 
 export type ReviewItem = {
@@ -641,7 +644,17 @@ export default function CatalogClient({
       {/* O modal de compra só existe na tela quando um jogo foi clicado.
           Ele fica fora do fluxo normal da página (position: fixed no CSS),
           então não bagunça o layout do catálogo por trás dele. */}
-      {selectedItem && <PurchaseModal item={selectedItem} onClose={closeGame} />}
+      {selectedItem && (
+        <PurchaseModal
+          item={selectedItem}
+          user={user}
+          onClose={closeGame}
+          onViewCollection={() => {
+            closeGame();
+            setAccountModalOpen(true);
+          }}
+        />
+      )}
 
       {/* Popup de login/conta — mesma lógica: só existe na tela quando
           aberto, fica por cima de tudo via position: fixed. */}
@@ -659,7 +672,15 @@ export default function CatalogClient({
       {/* Compra em lote de vários jogos da lista de desejos de uma vez —
           disparada de dentro do popup de conta (ver onBulkPurchase acima). */}
       {bulkPurchaseItems && (
-        <BulkPurchaseModal items={bulkPurchaseItems} onClose={() => setBulkPurchaseItems(null)} />
+        <BulkPurchaseModal
+          items={bulkPurchaseItems}
+          user={user}
+          onClose={() => setBulkPurchaseItems(null)}
+          onViewCollection={() => {
+            setBulkPurchaseItems(null);
+            setAccountModalOpen(true);
+          }}
+        />
       )}
 
       {wishlistError && (

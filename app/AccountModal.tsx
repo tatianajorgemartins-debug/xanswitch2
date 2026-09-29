@@ -7,7 +7,17 @@
 import { useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import type { Item } from './CatalogClient';
-import { signUp, signIn, signOut, getInstagramHandle, saveInstagramHandle } from '@/lib/wishlist';
+import {
+  signUp,
+  signIn,
+  signOut,
+  getInstagramHandle,
+  saveInstagramHandle,
+  translateAuthError,
+  getAccessToken
+} from '@/lib/wishlist';
+import { getMyCardsAction, type CardSummary } from './cardActions';
+import { CollectibleCard } from './CollectibleCard';
 
 const WISHLIST_PREVIEW_LIMIT = 5;
 
@@ -92,18 +102,6 @@ export default function AccountModal({
       </div>
     </div>
   );
-}
-
-// Traduz as mensagens de erro do Supabase (vêm em inglês) pras mais comuns
-// que um cliente pode ver aqui, sem gerar um texto técnico na tela dele.
-function translateAuthError(message: string): string {
-  const known: Record<string, string> = {
-    'Invalid login credentials': 'E-mail ou senha incorretos.',
-    'User already registered': 'Esse e-mail já tem uma conta — tenta entrar em vez de criar uma nova.',
-    'Password should be at least 6 characters': 'A senha precisa ter pelo menos 6 caracteres.',
-    'Email not confirmed': 'Esse e-mail ainda não foi confirmado — verifica sua caixa de entrada.'
-  };
-  return known[message] ?? message;
 }
 
 // Tela de entrar/criar conta: só e-mail e senha, sem link nenhum pra
@@ -257,6 +255,13 @@ function LoggedInView({
   // continua valendo pra lista inteira, mesmo com o resto escondido.
   const [showAllWishlist, setShowAllWishlist] = useState(false);
 
+  // Cards colecionáveis + pontos (ver "🎴 Minha coleção" mais abaixo).
+  const [cards, setCards] = useState<CardSummary[]>([]);
+  const [totalPoints, setTotalPoints] = useState(0);
+  const [pendingPoints, setPendingPoints] = useState(0);
+  const [loadingCards, setLoadingCards] = useState(true);
+  const [cardsError, setCardsError] = useState('');
+
   useEffect(() => {
     let cancelled = false;
     getInstagramHandle()
@@ -266,6 +271,38 @@ function LoggedInView({
       .catch(() => {})
       .finally(() => {
         if (!cancelled) setLoadingInstagram(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    // A Server Action getMyCardsAction roda no servidor e precisa de um
+    // jeito de confirmar quem está pedindo — por isso manda o token da
+    // sessão atual em vez de só o e-mail (ver o comentário em
+    // app/cardActions.ts pra entender por quê).
+    getAccessToken()
+      .then((token) => {
+        if (!token) throw new Error('Sessão inválida — entre de novo na sua conta.');
+        return getMyCardsAction(token);
+      })
+      .then((result) => {
+        if (cancelled) return;
+        if (result.ok) {
+          setCards(result.cards);
+          setTotalPoints(result.totalPoints);
+          setPendingPoints(result.pendingPoints);
+        } else {
+          setCardsError(result.error);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setCardsError(err instanceof Error ? err.message : 'Não foi possível carregar seus cards.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCards(false);
       });
     return () => {
       cancelled = true;
@@ -323,6 +360,50 @@ function LoggedInView({
           <p className="account-profile-sub">Cliente XAN Switch</p>
         </div>
       </div>
+
+      <div className="account-section-header">
+        <p className="purchase-description-label" style={{ margin: 0 }}>
+          🎴 Minha coleção {cards.length > 0 ? `(${cards.length})` : ''}
+        </p>
+      </div>
+
+      {loadingCards ? (
+        <p style={{ fontSize: 13, color: 'var(--ink-dim)', padding: '4px 2px' }}>Carregando seus cards...</p>
+      ) : cardsError ? (
+        <p style={{ color: '#ff8a8a', fontSize: 12.5, fontWeight: 600, padding: '4px 2px' }}>{cardsError}</p>
+      ) : cards.length === 0 ? (
+        <div className="account-wishlist-empty">
+          <p style={{ fontSize: 30, margin: '0 0 6px' }}>🎴</p>
+          <p style={{ margin: 0 }}>Sua primeira compra confirmada já vem com um card de presente.</p>
+        </div>
+      ) : (
+        <>
+          <div className="account-points-summary">
+            <div>
+              <p className="account-points-value">{totalPoints}</p>
+              <p className="account-points-label">pontos confirmados</p>
+            </div>
+            {pendingPoints > 0 && (
+              <div>
+                <p className="account-points-value is-pending">{pendingPoints}</p>
+                <p className="account-points-label">pendente{pendingPoints > 1 ? 's' : ''}</p>
+              </div>
+            )}
+          </div>
+          <div className="account-cards-row">
+            {cards.map((card) => (
+              <CollectibleCard
+                key={card.orderId}
+                gameName={card.gameName}
+                imageUrl={card.imageUrl}
+                points={card.points}
+                pending={!card.confirmed}
+                compact
+              />
+            ))}
+          </div>
+        </>
+      )}
 
       <form onSubmit={handleSaveInstagram} className="account-instagram-field">
         <label htmlFor="account-instagram">Seu Instagram (opcional)</label>
