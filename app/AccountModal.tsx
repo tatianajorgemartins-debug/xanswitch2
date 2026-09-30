@@ -65,7 +65,7 @@ export default function AccountModal({
   return (
     <div className="purchase-modal-overlay" onClick={onClose}>
       <div
-        className="account-modal"
+        className={`account-modal${user ? ' is-logged-in' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-label={user ? 'Minha conta' : 'Entrar'}

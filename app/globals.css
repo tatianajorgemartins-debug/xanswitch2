@@ -2312,6 +2312,45 @@ label {
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   animation: purchase-pop-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: max-width 0.25s ease;
+}
+/* Logado, o popup mostra bem mais coisa (coleção de cards, lista de
+   desejos) do que a tela de login — por isso só fica mais largo nesse
+   caso, em telas com espaço de sobra pra isso. */
+@media (min-width: 640px) {
+  .account-modal.is-logged-in {
+    max-width: 640px;
+  }
+}
+
+/* Barra de rolagem com a cara do site (roxo/dourado) em vez do estilo
+   cinza padrão do navegador — tanto na rolagem vertical do popup inteiro
+   quanto na rolagem horizontal da tira de cards colecionáveis. */
+.account-modal,
+.account-cards-row {
+  scrollbar-width: thin;
+  scrollbar-color: var(--purple) rgba(255, 255, 255, 0.06);
+}
+.account-modal::-webkit-scrollbar,
+.account-cards-row::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+.account-modal::-webkit-scrollbar-track,
+.account-cards-row::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+.account-modal::-webkit-scrollbar-thumb,
+.account-cards-row::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--purple), var(--purple-2));
+  border-radius: 8px;
+  border: 2px solid var(--panel);
+  background-clip: padding-box;
+}
+.account-modal::-webkit-scrollbar-thumb:hover,
+.account-cards-row::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--gold), var(--gold-2));
 }
 /* Link "Entrar" / "Criar conta" que alterna o modo do formulário — parece
    texto sublinhado, não um botão, pra não competir com o botão principal. */
