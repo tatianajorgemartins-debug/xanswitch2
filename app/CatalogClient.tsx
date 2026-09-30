@@ -710,7 +710,7 @@ export default function CatalogClient({
       {reviewsModalOpen && (
         <div className="purchase-modal-overlay" onClick={() => setReviewsModalOpen(false)}>
           <div
-            className="purchase-modal"
+            className="purchase-modal is-reviews-modal"
             role="dialog"
             aria-modal="true"
             aria-label="Avaliações dos clientes"

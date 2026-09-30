@@ -1083,6 +1083,15 @@ label {
   }
 }
 
+/* Popup de avaliações (CatalogClient.tsx): mais largo que o modal padrão —
+   o grid de 4 colunas (.reviews-grid) fica espremido demais na largura de
+   480px usada pelas outras etapas do modal de compra. */
+@media (min-width: 640px) {
+  .purchase-modal.is-reviews-modal {
+    max-width: 880px;
+  }
+}
+
 @keyframes purchase-fade-in {
   from {
     opacity: 0;
