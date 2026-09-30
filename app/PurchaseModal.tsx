@@ -20,9 +20,10 @@ import type { Platform, GameType } from '@/lib/db';
 import { getContrastColor } from '@/lib/color';
 import { generatePixPayload, type PixPayload } from '@/lib/pix';
 import { isValidEmail, REFERRAL_SOURCES } from '@/lib/validation';
-import { signUp, signIn, translateAuthError } from '@/lib/wishlist';
+import { signUp, signIn, translateAuthError, getAccessToken } from '@/lib/wishlist';
 import { CollectibleCard, DownloadCardButton } from './CollectibleCard';
 import { confirmOrderAction, logCreditLinkClickAction } from './orderActions';
+import { getCheckoutDiscountAction } from './cardActions';
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -56,6 +57,17 @@ export default function PurchaseModal({
   const [pixError, setPixError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
+
+  // Desconto de fidelidade: só faz sentido perguntar se esse jogo aceita
+  // (marcado no admin) — 'checking' busca se há crédito disponível pra essa
+  // conta, 'offer' mostra a pergunta "usar o desconto?", 'done' é o estado
+  // final (sem oferta, ou já resolvido) — só a partir dele o Pix é gerado,
+  // pra garantir que o Pix mostrado já saia com o valor certo.
+  const [discountStage, setDiscountStage] = useState<'checking' | 'offer' | 'done'>(
+    item.discountEligible ? 'checking' : 'done'
+  );
+  const [availableDiscountAmount, setAvailableDiscountAmount] = useState(0);
+  const [discountApplied, setDiscountApplied] = useState(false);
 
   // Índice da captura de tela aberta em tela cheia (a "lightbox"), ou null
   // se nenhuma estiver aberta. Fica aqui em cima (não dentro do StepSummary)
@@ -95,17 +107,51 @@ export default function PurchaseModal({
     };
   }, []);
 
-  // Ao entrar na etapa 3 (pagamento), gera o Pix. Tudo roda no navegador —
-  // não existe gateway de pagamento nem chamada de API paga envolvida em
-  // gerar o QR Code.
+  // Ao entrar na etapa 3, antes de gerar o Pix, checa se tem um desconto de
+  // fidelidade pronto pra usar nesse jogo — só se o jogo aceitar desconto e
+  // a pessoa estiver logada. Roda uma vez só (a troca de estado pra 'offer'
+  // ou 'done' impede rodar de novo).
   useEffect(() => {
-    if (step !== 3 || startedRef.current) return;
+    if (step !== 3 || discountStage !== 'checking') return;
+    let cancelled = false;
+    getAccessToken()
+      .then((token) => {
+        if (!token) return null;
+        return getCheckoutDiscountAction(token);
+      })
+      .then((result) => {
+        if (cancelled) return;
+        if (result?.available) {
+          setAvailableDiscountAmount(result.amount);
+          setDiscountStage('offer');
+        } else {
+          setDiscountStage('done');
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setDiscountStage('done');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [step, discountStage]);
+
+  // O valor final já considera o desconto escolhido na oferta acima — o Pix
+  // só é gerado depois que esse valor está definitivo (discountStage ===
+  // 'done'), pra nunca mostrar um QR Code com o valor errado.
+  const effectivePrice = discountApplied ? Math.max(0, item.price - availableDiscountAmount) : item.price;
+
+  // Ao entrar na etapa 3 (pagamento), já com o valor final decidido, gera o
+  // Pix. Tudo roda no navegador — não existe gateway de pagamento nem
+  // chamada de API paga envolvida em gerar o QR Code.
+  useEffect(() => {
+    if (step !== 3 || discountStage !== 'done' || startedRef.current) return;
     startedRef.current = true;
 
-    generatePixPayload(item.price, item.name)
+    generatePixPayload(effectivePrice, item.name)
       .then(setPix)
       .catch((err: Error) => setPixError(err.message));
-  }, [step, item]);
+  }, [step, discountStage, effectivePrice, item]);
 
   function handleCopy() {
     if (!pix) return;
@@ -170,15 +216,28 @@ export default function PurchaseModal({
             />
           )}
 
-          {step === 3 && (
+          {step === 3 && (discountStage === 'checking' || discountStage === 'offer') && (
+            <DiscountOffer
+              stage={discountStage}
+              amount={availableDiscountAmount}
+              price={item.price}
+              onChoose={(useDiscount) => {
+                setDiscountApplied(useDiscount);
+                setDiscountStage('done');
+              }}
+            />
+          )}
+
+          {step === 3 && discountStage === 'done' && (
             <StepPayment
               gameId={item.id}
               gameName={item.name}
               price={item.price}
-              priceLabel={priceLabel}
+              priceLabel={effectivePrice.toFixed(2).replace('.', ',')}
               email={user?.email ?? email}
               referralSource={referralSource}
               setReferralSource={setReferralSource}
+              applyDiscount={discountApplied}
               pix={pix}
               pixError={pixError}
               copied={copied}
@@ -722,6 +781,49 @@ export function ReferralSourcePicker({
   );
 }
 
+// Aparece só quando o jogo aceita desconto de fidelidade E a pessoa tem um
+// crédito de R$20 disponível (ver getCheckoutDiscountAction) — pergunta se
+// quer usar esse desconto NESSA compra antes de gerar o Pix, já que o valor
+// do QR Code depende dessa escolha.
+function DiscountOffer({
+  stage,
+  amount,
+  price,
+  onChoose
+}: {
+  stage: 'checking' | 'offer';
+  amount: number;
+  price: number;
+  onChoose: (useDiscount: boolean) => void;
+}) {
+  if (stage === 'checking') {
+    return <p style={{ textAlign: 'center', color: 'var(--ink-dim)', fontWeight: 600 }}>Verificando desconto disponível...</p>;
+  }
+
+  const amountLabel = amount.toFixed(2).replace('.', ',');
+  const finalLabel = Math.max(0, price - amount).toFixed(2).replace('.', ',');
+
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <p style={{ fontSize: 34, marginBottom: 8 }}>🎟️</p>
+      <p style={{ fontWeight: 700, fontSize: 15, color: 'var(--ink)', marginBottom: 8 }}>
+        Você tem R$ {amountLabel} de desconto disponível!
+      </p>
+      <p style={{ fontSize: 13.5, color: 'var(--ink-dim)', lineHeight: 1.5, marginBottom: 20 }}>
+        Quer usar esse desconto nessa compra? O valor final ficaria em <strong>R$ {finalLabel}</strong>.
+      </p>
+      <div className="purchase-modal-actions">
+        <button type="button" className="btn primary" onClick={() => onChoose(true)}>
+          Usar meu desconto
+        </button>
+        <button type="button" className="btn ghost" onClick={() => onChoose(false)}>
+          Não, pagar o valor cheio
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Etapa 4 — pagamento via Pix: QR Code de verdade (gerado no navegador, sem
 // gateway de pagamento) + o texto "Pix Copia e Cola" com botão de copiar,
 // timer de reserva e o botão que salva o pedido e dispara os avisos
@@ -734,6 +836,7 @@ function StepPayment({
   email,
   referralSource,
   setReferralSource,
+  applyDiscount,
   pix,
   pixError,
   copied,
@@ -749,6 +852,7 @@ function StepPayment({
   email: string;
   referralSource: string | null;
   setReferralSource: (v: string | null) => void;
+  applyDiscount: boolean;
   pix: PixPayload | null;
   pixError: string | null;
   copied: boolean;
@@ -763,7 +867,8 @@ function StepPayment({
   async function handleConfirm() {
     setConfirming(true);
     setConfirmError(null);
-    const result = await confirmOrderAction(gameId, gameName, price, email, referralSource);
+    const accessToken = applyDiscount ? await getAccessToken() : null;
+    const result = await confirmOrderAction(gameId, gameName, price, email, referralSource, applyDiscount, accessToken);
     if (result.ok) {
       onConfirmed();
     } else {

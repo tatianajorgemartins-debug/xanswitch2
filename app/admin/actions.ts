@@ -21,6 +21,10 @@ import {
   deleteReview,
   deleteOrder,
   setOrderCardPointsConfirmed,
+  createPointAdjustment,
+  getSiteSetting,
+  setSiteSetting,
+  REVIEWS_BANNER_KEY,
   type Platform,
   type GameType
 } from '@/lib/db';
@@ -162,6 +166,7 @@ export async function createGameAction(
   const screenshots = parseScreenshots(formData);
   const { value: creditPaymentUrl, error: creditPaymentUrlError } = parseCreditPaymentUrl(formData);
   const cardPoints = parseCardPoints(formData);
+  const discountEligible = formData.get('discountEligible') === 'on';
 
   if (!name) return { error: 'Digite o nome do jogo.' };
   if (Number.isNaN(price) || price < 0) return { error: 'Preço inválido.' };
@@ -191,7 +196,8 @@ export async function createGameAction(
     description,
     screenshots,
     credit_payment_url: creditPaymentUrl,
-    card_points: cardPoints
+    card_points: cardPoints,
+    discount_eligible: discountEligible
   });
 
   revalidatePath('/admin');
@@ -227,6 +233,7 @@ export async function updateGameAction(
   const screenshots = parseScreenshots(formData);
   const { value: creditPaymentUrl, error: creditPaymentUrlError } = parseCreditPaymentUrl(formData);
   const cardPoints = parseCardPoints(formData);
+  const discountEligible = formData.get('discountEligible') === 'on';
 
   if (!id) return { error: 'Jogo inválido.' };
   if (!name) return { error: 'Digite o nome do jogo.' };
@@ -292,7 +299,8 @@ export async function updateGameAction(
     description,
     screenshots,
     credit_payment_url: creditPaymentUrl,
-    card_points: cardPoints
+    card_points: cardPoints,
+    discount_eligible: discountEligible
   });
 
   revalidatePath('/admin');
@@ -370,4 +378,53 @@ export async function confirmOrderPointsAction(id: number, confirmed: boolean): 
   await requireAuth();
   await setOrderCardPointsConfirmed(id, confirmed);
   revalidatePath('/admin');
+}
+
+// Ajuste manual de pontos de um cliente — em "🎖️ Clientes" no admin. `points`
+// pode ser negativo (ex: pra corrigir um engano). Fica registrado como um
+// lançamento à parte (não mexe em pedido nenhum), então o histórico de por
+// que o total mudou nunca se perde.
+export async function adjustClientPointsAction(email: string, points: number, note: string): Promise<void> {
+  await requireAuth();
+  if (!email.trim() || !Number.isFinite(points) || points === 0) return;
+  await createPointAdjustment({ customer_email: email.trim(), points: Math.round(points), note: note.trim() || null });
+  revalidatePath('/admin');
+}
+
+// Banner fino que aparece no lugar das avaliações na página principal — só
+// uma imagem, que você troca quando quiser (as avaliações continuam
+// existindo, só que atrás do botão "Ver avaliações" — ver ReviewsModal em
+// CatalogClient.tsx).
+export async function updateReviewsBannerAction(formData: FormData): Promise<{ error: string | null }> {
+  await requireAuth();
+  const file = formData.get('image');
+  if (!file || !(file instanceof File) || file.size === 0) {
+    return { error: 'Escolha uma imagem.' };
+  }
+  const originalBytes = Buffer.from(await file.arrayBuffer());
+  // Um banner largo e baixo (mais fino que os de Destaque da semana) — o
+  // mesmo tratamento de compressão dos outros banners do site.
+  const { buffer, contentType, extension } = await compressImage(originalBytes, 1600, 78);
+  const url = await uploadImageBuffer(`site/${Date.now()}-banner-avaliacoes.${extension}`, buffer, contentType);
+
+  const previousUrl = await getSiteSetting(REVIEWS_BANNER_KEY);
+  await setSiteSetting(REVIEWS_BANNER_KEY, url);
+  if (previousUrl) {
+    await deleteImageByUrl(previousUrl).catch(() => {});
+  }
+
+  revalidatePath('/admin');
+  revalidatePath('/');
+  return { error: null };
+}
+
+export async function removeReviewsBannerAction(): Promise<void> {
+  await requireAuth();
+  const previousUrl = await getSiteSetting(REVIEWS_BANNER_KEY);
+  await setSiteSetting(REVIEWS_BANNER_KEY, null);
+  if (previousUrl) {
+    await deleteImageByUrl(previousUrl).catch(() => {});
+  }
+  revalidatePath('/admin');
+  revalidatePath('/');
 }

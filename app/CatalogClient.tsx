@@ -48,6 +48,9 @@ export type Item = {
   // Quantos pontos o card colecionável desse jogo vale (1 a 5), configurado
   // no admin — ver CollectibleCard.tsx.
   cardPoints: number;
+  // Se esse jogo aceita desconto de fidelidade (troca de pontos), marcado
+  // no admin — ver a etapa de pagamento em PurchaseModal.tsx.
+  discountEligible: boolean;
 };
 
 export type ReviewItem = {
@@ -72,6 +75,7 @@ export default function CatalogClient({
   mostWantedItems,
   reviews,
   whatsappContactUrl,
+  reviewsBannerUrl,
   initialGameId
 }: {
   items: Item[];
@@ -86,6 +90,10 @@ export default function CatalogClient({
   mostWantedItems: Item[];
   reviews: ReviewItem[];
   whatsappContactUrl: string | null;
+  // Imagem do banner fino que substitui as avaliações na página principal —
+  // null enquanto não subir nada no admin (ver ReviewsBannerPanel). As
+  // avaliações em si continuam existindo, atrás do botão "Ver avaliações".
+  reviewsBannerUrl: string | null;
   // Só vem preenchido quando a página é acessada pelo link direto de um
   // jogo (app/jogo/[id]/page.tsx) — abre o modal de compra desse jogo
   // assim que a página carrega, sem precisar clicar em nada.
@@ -95,6 +103,7 @@ export default function CatalogClient({
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [reviewFormOpen, setReviewFormOpen] = useState(false);
+  const [reviewsModalOpen, setReviewsModalOpen] = useState(false);
   const [franchiseFilter, setFranchiseFilter] = useState('');
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>('all');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
@@ -467,6 +476,13 @@ export default function CatalogClient({
           </svg>
           Deixe um comentário
         </button>
+
+        <button type="button" className="btn ghost" onClick={() => setReviewsModalOpen(true)}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={14} height={14} style={{ flex: 'none' }}>
+            <path d="M12 17.3l-5.4 3 1.4-6-4.6-4 6-.5L12 4l2.6 5.8 6 .5-4.6 4 1.4 6z" strokeLinejoin="round" strokeLinecap="round" />
+          </svg>
+          Ver avaliações
+        </button>
       </div>
 
       {reviewFormOpen && (
@@ -553,7 +569,12 @@ export default function CatalogClient({
         onFilterFlag={handleFilterFlag}
       />
 
-      <ReviewsSection reviews={reviews} />
+      {reviewsBannerUrl && (
+        <div className="reviews-banner">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={reviewsBannerUrl} alt="" />
+        </div>
+      )}
 
       <div ref={gridAnchorRef} className="grid-anchor" />
 
@@ -681,6 +702,44 @@ export default function CatalogClient({
             setAccountModalOpen(true);
           }}
         />
+      )}
+
+      {/* Popup com as avaliações, aberto pelo botão "Ver avaliações" — o
+          mesmo conteúdo que antes ficava fixo na página, só que agora atrás
+          de um clique, pra dar lugar ao banner de pontos ali em cima. */}
+      {reviewsModalOpen && (
+        <div className="purchase-modal-overlay" onClick={() => setReviewsModalOpen(false)}>
+          <div
+            className="purchase-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Avaliações dos clientes"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="purchase-modal-header">
+              <span className="purchase-modal-title">Avaliações dos clientes</span>
+              <button
+                type="button"
+                className="purchase-modal-close"
+                onClick={() => setReviewsModalOpen(false)}
+                aria-label="Fechar"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={18} height={18}>
+                  <path d="M5 5l14 14M19 5L5 19" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+            <div className="purchase-modal-body">
+              {reviews.length > 0 ? (
+                <ReviewsSection reviews={reviews} />
+              ) : (
+                <p style={{ textAlign: 'center', color: 'var(--ink-dim)', fontWeight: 600, padding: '20px 0' }}>
+                  Ainda não temos avaliações por aqui.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {wishlistError && (

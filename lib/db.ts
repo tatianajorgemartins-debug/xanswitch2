@@ -43,6 +43,10 @@ export type Game = {
   // Quantos pontos o card colecionável desse jogo vale (1 a 5) — ver
   // CollectibleCard.tsx e a seção de gamificação do README.
   card_points: number;
+  // Se marcado, o cliente pode usar um desconto de fidelidade (trocado por
+  // pontos) na compra desse jogo — ver a seção "Troca de pontos por
+  // desconto" do README.
+  discount_eligible: boolean;
   created_at: Date; // timestamptz comes back as a real Date, not a string
   updated_at: Date;
 };
@@ -96,10 +100,11 @@ export async function createGame(data: {
   screenshots: string[];
   credit_payment_url: string | null;
   card_points: number;
+  discount_eligible: boolean;
 }): Promise<Game> {
   const rows = await getSql()`
-    INSERT INTO games (name, price, original_price, image_url, banner_image_url, has_badge, badge_text, badge_color, franchise, platform, game_type, is_featured, is_bestseller, is_upcoming, description, screenshots, credit_payment_url, card_points)
-    VALUES (${data.name}, ${data.price}, ${data.original_price}, ${data.image_url}, ${data.banner_image_url}, ${data.has_badge}, ${data.badge_text}, ${data.badge_color}, ${data.franchise}, ${data.platform}, ${data.game_type}, ${data.is_featured}, ${data.is_bestseller}, ${data.is_upcoming}, ${data.description}, ${JSON.stringify(data.screenshots)}::jsonb, ${data.credit_payment_url}, ${data.card_points})
+    INSERT INTO games (name, price, original_price, image_url, banner_image_url, has_badge, badge_text, badge_color, franchise, platform, game_type, is_featured, is_bestseller, is_upcoming, description, screenshots, credit_payment_url, card_points, discount_eligible)
+    VALUES (${data.name}, ${data.price}, ${data.original_price}, ${data.image_url}, ${data.banner_image_url}, ${data.has_badge}, ${data.badge_text}, ${data.badge_color}, ${data.franchise}, ${data.platform}, ${data.game_type}, ${data.is_featured}, ${data.is_bestseller}, ${data.is_upcoming}, ${data.description}, ${JSON.stringify(data.screenshots)}::jsonb, ${data.credit_payment_url}, ${data.card_points}, ${data.discount_eligible})
     RETURNING *
   `;
   return rows[0] as Game;
@@ -126,6 +131,7 @@ export async function updateGame(
     screenshots: string[];
     credit_payment_url: string | null;
     card_points: number;
+    discount_eligible: boolean;
   }
 ): Promise<Game> {
   const rows = await getSql()`
@@ -148,6 +154,7 @@ export async function updateGame(
       screenshots = ${JSON.stringify(data.screenshots)}::jsonb,
       credit_payment_url = ${data.credit_payment_url},
       card_points = ${data.card_points},
+      discount_eligible = ${data.discount_eligible},
       updated_at = now()
     WHERE id = ${id}
     RETURNING *
@@ -174,6 +181,28 @@ export async function incrementVisitCount(): Promise<void> {
   await getSql()`
     INSERT INTO site_settings (key, value) VALUES ('visit_count', '1')
     ON CONFLICT (key) DO UPDATE SET value = (COALESCE(site_settings.value, '0')::int + 1)::text
+  `;
+}
+
+// Acesso genérico à tabela site_settings (chave/valor) — usado hoje pelo
+// banner que substitui as avaliações na página principal (ver
+// REVIEWS_BANNER_KEY em app/admin/actions.ts), mas serve pra qualquer
+// configuração futura de "um valor só pro site inteiro", sem precisar de
+// uma coluna nova pra cada uma.
+export async function getSiteSetting(key: string): Promise<string | null> {
+  const rows = await getSql()`SELECT value FROM site_settings WHERE key = ${key}`;
+  return (rows[0]?.value as string | undefined) ?? null;
+}
+
+// Chave usada em site_settings pra guardar a URL do banner fino que
+// substitui as avaliações na página principal (ver updateReviewsBannerAction
+// em app/admin/actions.ts e como app/page.tsx / CatalogClient.tsx usam ela).
+export const REVIEWS_BANNER_KEY = 'reviews_banner_image_url';
+
+export async function setSiteSetting(key: string, value: string | null): Promise<void> {
+  await getSql()`
+    INSERT INTO site_settings (key, value) VALUES (${key}, ${value})
+    ON CONFLICT (key) DO UPDATE SET value = ${value}
   `;
 }
 
@@ -259,6 +288,10 @@ export type Order = {
   card_points_earned: number;
   card_image_url: string | null;
   card_points_confirmed: boolean;
+  // Quanto de desconto (R$) foi usado nesse pedido, trocado por pontos —
+  // ver a seção "Troca de pontos por desconto" do README. Zero quando
+  // nenhum desconto foi aplicado.
+  discount_applied: string; // numeric comes back as string from postgres
   created_at: Date;
 };
 
@@ -271,10 +304,11 @@ export async function createOrder(data: {
   payment_method: string;
   card_points_earned: number;
   card_image_url: string | null;
+  discount_applied: number;
 }): Promise<Order> {
   const rows = await getSql()`
-    INSERT INTO orders (game_id, game_name, price, customer_email, referral_source, payment_method, card_points_earned, card_image_url)
-    VALUES (${data.game_id}, ${data.game_name}, ${data.price}, ${data.customer_email}, ${data.referral_source}, ${data.payment_method}, ${data.card_points_earned}, ${data.card_image_url})
+    INSERT INTO orders (game_id, game_name, price, customer_email, referral_source, payment_method, card_points_earned, card_image_url, discount_applied)
+    VALUES (${data.game_id}, ${data.game_name}, ${data.price}, ${data.customer_email}, ${data.referral_source}, ${data.payment_method}, ${data.card_points_earned}, ${data.card_image_url}, ${data.discount_applied})
     RETURNING *
   `;
   return rows[0] as Order;
@@ -311,4 +345,100 @@ export async function deleteOrder(id: number): Promise<void> {
 // realmente caiu na conta.
 export async function setOrderCardPointsConfirmed(id: number, confirmed: boolean): Promise<void> {
   await getSql()`UPDATE orders SET card_points_confirmed = ${confirmed} WHERE id = ${id}`;
+}
+
+// --- Pontos e desconto de fidelidade ---
+// (ver db/migration-loyalty-discounts.sql pra entender as tabelas)
+
+export type PointAdjustment = {
+  id: number;
+  customer_email: string;
+  points: number;
+  note: string | null;
+  created_at: Date;
+};
+
+// Ajuste manual de pontos — usado tanto por você no admin (correção,
+// bônus) quanto pelo próprio sistema quando o cliente troca 5 pontos por
+// um desconto (nesse caso `points` é negativo, ex: -5).
+export async function createPointAdjustment(data: {
+  customer_email: string;
+  points: number;
+  note: string | null;
+}): Promise<PointAdjustment> {
+  const rows = await getSql()`
+    INSERT INTO point_adjustments (customer_email, points, note)
+    VALUES (${data.customer_email}, ${data.points}, ${data.note})
+    RETURNING *
+  `;
+  return rows[0] as PointAdjustment;
+}
+
+export async function getPointAdjustmentsByEmail(email: string): Promise<PointAdjustment[]> {
+  const rows = await getSql()`
+    SELECT * FROM point_adjustments WHERE lower(customer_email) = lower(${email}) ORDER BY created_at DESC
+  `;
+  return rows as PointAdjustment[];
+}
+
+// Soma de todos os ajustes manuais de um cliente (pode ser negativa) —
+// usado no admin, em "🎖️ Clientes", pra somar ao total confirmado dos
+// pedidos e chegar no total de pontos de verdade.
+export async function getPointAdjustmentTotal(email: string): Promise<number> {
+  const rows = await getSql()`
+    SELECT COALESCE(SUM(points), 0)::int AS total FROM point_adjustments WHERE lower(customer_email) = lower(${email})
+  `;
+  return (rows[0]?.total as number) ?? 0;
+}
+
+// Soma de ajustes por cliente, de uma vez só — usado no admin em
+// "🎖️ Clientes" pra somar ao total de cada um sem uma consulta por cliente.
+export async function getAllPointAdjustmentTotals(): Promise<Record<string, number>> {
+  const rows = await getSql()`
+    SELECT lower(customer_email) AS email, COALESCE(SUM(points), 0)::int AS total
+    FROM point_adjustments
+    GROUP BY lower(customer_email)
+  `;
+  const result: Record<string, number> = {};
+  for (const row of rows) {
+    result[row.email as string] = row.total as number;
+  }
+  return result;
+}
+
+export type DiscountCredit = {
+  id: number;
+  customer_email: string;
+  amount: string; // numeric comes back as string from postgres
+  status: string;
+  used_order_id: number | null;
+  created_at: Date;
+  used_at: Date | null;
+};
+
+export async function createDiscountCredit(email: string, amount: number): Promise<DiscountCredit> {
+  const rows = await getSql()`
+    INSERT INTO discount_credits (customer_email, amount)
+    VALUES (${email}, ${amount})
+    RETURNING *
+  `;
+  return rows[0] as DiscountCredit;
+}
+
+// O crédito de desconto disponível mais antigo de um cliente (ou null se
+// não tiver nenhum) — é o que a tela de pagamento oferece pra usar.
+export async function getAvailableDiscountCredit(email: string): Promise<DiscountCredit | null> {
+  const rows = await getSql()`
+    SELECT * FROM discount_credits
+    WHERE lower(customer_email) = lower(${email}) AND status = 'available'
+    ORDER BY created_at ASC
+    LIMIT 1
+  `;
+  return (rows[0] as DiscountCredit) ?? null;
+}
+
+export async function markDiscountCreditUsed(id: number, orderId: number): Promise<void> {
+  await getSql()`
+    UPDATE discount_credits SET status = 'used', used_order_id = ${orderId}, used_at = now() WHERE id = ${id}
+  `;
 }

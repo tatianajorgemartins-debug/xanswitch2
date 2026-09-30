@@ -54,6 +54,27 @@ export function translateAuthError(message: string): string {
   return known[message] ?? message;
 }
 
+// Manda um e-mail de "esqueci minha senha" — o link leva pra
+// /redefinir-senha, onde a pessoa escolhe uma senha nova. Funciona em
+// qualquer navegador/aparelho (diferente do antigo "link mágico" de login,
+// que dava problema nisso) porque o Supabase valida esse link a partir do
+// próprio token que vem nele, não de uma sessão salva de antes no
+// navegador de origem.
+export async function sendPasswordResetEmail(email: string): Promise<void> {
+  const { error } = await getSupabaseBrowser().auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/redefinir-senha`
+  });
+  if (error) throw new Error(error.message);
+}
+
+// Define uma senha nova pra quem chegou em /redefinir-senha com uma sessão
+// de recuperação válida (o Supabase já autentica a pessoa temporariamente
+// assim que ela abre o link do e-mail).
+export async function updatePassword(newPassword: string): Promise<void> {
+  const { error } = await getSupabaseBrowser().auth.updateUser({ password: newPassword });
+  if (error) throw new Error(error.message);
+}
+
 // O "token de acesso" da sessão atual — precisa ser enviado pra Server
 // Actions que leem dados do cliente logado (ver getMyCardsAction em
 // app/cardActions.ts), porque uma Server Action roda no servidor e não tem

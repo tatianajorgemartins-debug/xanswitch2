@@ -1,5 +1,13 @@
 import { redirect } from 'next/navigation';
-import { getAllGames, getVisitCount, getAllReviews, getRecentOrders } from '@/lib/db';
+import {
+  getAllGames,
+  getVisitCount,
+  getAllReviews,
+  getRecentOrders,
+  getAllPointAdjustmentTotals,
+  getSiteSetting,
+  REVIEWS_BANNER_KEY
+} from '@/lib/db';
 import { isAuthenticated } from '@/lib/auth';
 import { getWishlistCounts } from '@/lib/supabaseAdmin';
 import AdminClient from './AdminClient';
@@ -22,6 +30,8 @@ export default async function AdminPage() {
   // exemplo, logo depois do deploy, antes de rodar a migração), não deixa
   // isso quebrar o painel inteiro — só mostra "Mais desejados" vazio.
   const wishlistCounts = await getWishlistCounts().catch(() => new Map<number, number>());
+  const pointAdjustmentTotals = await getAllPointAdjustmentTotals();
+  const reviewsBannerUrl = await getSiteSetting(REVIEWS_BANNER_KEY);
   return (
     <AdminClient
       initialGames={games}
@@ -29,6 +39,8 @@ export default async function AdminPage() {
       reviews={reviews}
       orders={orders}
       wishlistCounts={Object.fromEntries(wishlistCounts)}
+      pointAdjustmentTotals={pointAdjustmentTotals}
+      reviewsBannerUrl={reviewsBannerUrl}
     />
   );
 }

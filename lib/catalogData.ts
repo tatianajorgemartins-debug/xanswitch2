@@ -9,7 +9,7 @@
 // a prévia de compartilhamento — generateMetadata — quanto pra desenhar a
 // página em si), o banco só é consultado uma vez.
 import { cache } from 'react';
-import { getActiveGames, getApprovedReviews, type Game } from './db';
+import { getActiveGames, getApprovedReviews, getSiteSetting, REVIEWS_BANNER_KEY, type Game } from './db';
 import { buildWhatsAppContactLink, formatPriceBR } from './whatsapp';
 import { getWishlistCounts } from './supabaseAdmin';
 import type { Item, ReviewItem } from '@/app/CatalogClient';
@@ -37,7 +37,8 @@ function toItem(g: Game): Item {
     description: g.description,
     screenshots: g.screenshots,
     creditPaymentUrl: g.credit_payment_url,
-    cardPoints: g.card_points
+    cardPoints: g.card_points,
+    discountEligible: g.discount_eligible
   };
 }
 
@@ -67,11 +68,17 @@ export type CatalogData = {
   mostWantedItems: Item[];
   reviews: ReviewItem[];
   whatsappContactUrl: string | null;
+  // Banner fino mostrado no lugar das avaliações na página principal — as
+  // avaliações continuam existindo atrás do botão "Ver avaliações" (ver
+  // ReviewsModal em CatalogClient.tsx). null enquanto você não subir uma
+  // imagem no admin.
+  reviewsBannerUrl: string | null;
 };
 
 export const loadCatalogData = cache(async (): Promise<CatalogData> => {
   const games = await getActiveGames();
   const reviews = await getApprovedReviews();
+  const reviewsBannerUrl = await getSiteSetting(REVIEWS_BANNER_KEY);
 
   const items = games.map(toItem);
   const featuredItems = byRecentFirst(games.filter((g) => g.is_featured)).map(toItem);
@@ -96,6 +103,7 @@ export const loadCatalogData = cache(async (): Promise<CatalogData> => {
     upcomingItems,
     mostWantedItems,
     reviews: reviews.map(toReviewItem),
-    whatsappContactUrl: buildWhatsAppContactLink()
+    whatsappContactUrl: buildWhatsAppContactLink(),
+    reviewsBannerUrl
   };
 });

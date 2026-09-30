@@ -14,7 +14,10 @@ export type CardData = {
 
 const MAX_GEMS = 5;
 const CANVAS_WIDTH = 750;
-const CANVAS_HEIGHT = 1000;
+// Mais alto que antes pra caber a caixa da capa QUADRADA (ver imageBoxH
+// abaixo) — alguns jogos tinham a logo cortada numa caixa retangular mais
+// baixa, então agora ela sempre tem a mesma largura e altura.
+const CANVAS_HEIGHT = 1060;
 
 // Cores do design system do site (ver :root em app/globals.css) — repetidas
 // aqui porque um <canvas> não lê variáveis CSS, só valores concretos.
@@ -163,13 +166,15 @@ export async function renderCollectibleCard(canvas: HTMLCanvasElement, data: Car
   ctx.font = titleFont;
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'center';
-  fitTextInBox(ctx, data.gameName.toUpperCase(), w / 2, bannerY + bannerHeight / 2, w - 160, 30);
+  fitTextInBox(ctx, data.gameName.toUpperCase(), w / 2, bannerY + bannerHeight / 2, w - 160, 26);
 
-  // --- Área central: a capa do jogo ---
+  // --- Área central: a capa do jogo — SEMPRE quadrada (mesma largura e
+  // altura), pra nenhuma logo de jogo ficar cortada como acontecia com a
+  // caixa retangular antiga.
   const imageBoxX = 70;
   const imageBoxY = bannerY + bannerHeight + 28;
   const imageBoxW = w - 140;
-  const imageBoxH = 470;
+  const imageBoxH = imageBoxW;
   roundedRectPath(ctx, imageBoxX, imageBoxY, imageBoxW, imageBoxH, 16);
   ctx.save();
   ctx.clip();
@@ -268,7 +273,7 @@ function fitTextInBox(
   startSize: number
 ): void {
   let size = startSize;
-  while (size > 14) {
+  while (size > 12) {
     ctx.font = `700 ${size}px "Press Start 2P", cursive`;
     if (ctx.measureText(text).width <= maxWidth) break;
     size -= 2;

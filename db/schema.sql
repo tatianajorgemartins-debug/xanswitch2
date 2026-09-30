@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS games (
   screenshots JSONB NOT NULL DEFAULT '[]',
   credit_payment_url TEXT,
   card_points INTEGER NOT NULL DEFAULT 1,
+  discount_eligible BOOLEAN NOT NULL DEFAULT FALSE,
   sort_name TEXT GENERATED ALWAYS AS (lower(name)) STORED,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -67,9 +68,32 @@ CREATE TABLE IF NOT EXISTS orders (
   card_points_earned INTEGER NOT NULL DEFAULT 0,
   card_image_url TEXT,
   card_points_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
+  discount_applied NUMERIC(10, 2) NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS orders_created_at_idx ON orders (created_at DESC);
+
+-- Ajustes manuais de pontos (admin) e trocas de pontos por desconto — ver
+-- db/migration-loyalty-discounts.sql pra explicação completa.
+CREATE TABLE IF NOT EXISTS point_adjustments (
+  id SERIAL PRIMARY KEY,
+  customer_email TEXT NOT NULL,
+  points INTEGER NOT NULL,
+  note TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS point_adjustments_email_idx ON point_adjustments (customer_email);
+
+CREATE TABLE IF NOT EXISTS discount_credits (
+  id SERIAL PRIMARY KEY,
+  customer_email TEXT NOT NULL,
+  amount NUMERIC(10, 2) NOT NULL DEFAULT 20,
+  status TEXT NOT NULL DEFAULT 'available',
+  used_order_id INTEGER,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  used_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS discount_credits_email_idx ON discount_credits (customer_email);
 
 -- Se a tabela já existia antes do campo de preço original ser adicionado,
 -- esta linha garante que o banco seja atualizado sem perder dados.
@@ -102,3 +126,8 @@ ALTER TABLE games ADD COLUMN IF NOT EXISTS card_points INTEGER NOT NULL DEFAULT 
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS card_points_earned INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS card_image_url TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS card_points_confirmed BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Idem para a troca de pontos por desconto (ver
+-- db/migration-loyalty-discounts.sql).
+ALTER TABLE games ADD COLUMN IF NOT EXISTS discount_eligible BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_applied NUMERIC(10, 2) NOT NULL DEFAULT 0;

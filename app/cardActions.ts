@@ -1,21 +1,25 @@
 'use server';
 
-// Busca os cards colecionáveis e o total de pontos de quem está logado —
-// usado pela seção "🎴 Minha coleção" dentro do popup de conta (ver
-// AccountModal.tsx).
+// Busca os cards colecionáveis, pontos e desconto de fidelidade de quem
+// está logado — usado pela seção "🎴 Minha coleção" dentro do popup de
+// conta (ver AccountModal.tsx) e pela troca de pontos por desconto.
 //
-// Por que recebe um "token" em vez de só confiar num e-mail que o navegador
-// manda: uma Server Action roda no servidor, sem acesso direto à sessão do
-// Supabase (essa sessão vive só no navegador — este projeto não usa
-// cookies de sessão do lado do servidor, veja lib/supabaseBrowser.ts). Se
-// essa função aceitasse só um e-mail solto como parâmetro, qualquer pessoa
-// poderia chamá-la fingindo ser outro cliente e ver os cards dela. Em vez
-// disso, o navegador manda o "access token" da sessão atual (ver
-// getAccessToken em lib/wishlist.ts), e aqui a gente pede pro próprio
-// Supabase confirmar de quem é esse token — só depois disso confiamos no
-// e-mail que ele devolve.
-import { getOrdersByEmail, type Order } from '@/lib/db';
-import { createClient } from '@supabase/supabase-js';
+// Todas as funções aqui recebem um "token" (ver getAccessToken em
+// lib/wishlist.ts) em vez de confiar num e-mail solto — é assim que a
+// gente confirma, com o próprio Supabase, que quem está pedindo é
+// realmente o dono da conta (ver lib/supabaseAuthServer.ts).
+import {
+  getOrdersByEmail,
+  getPointAdjustmentTotal,
+  createPointAdjustment,
+  createDiscountCredit,
+  getAvailableDiscountCredit,
+  type Order
+} from '@/lib/db';
+import { verifyAccessToken } from '@/lib/supabaseAuthServer';
+
+const POINTS_PER_DISCOUNT = 5;
+const DISCOUNT_AMOUNT = 20;
 
 export type CardSummary = {
   orderId: number;
@@ -27,7 +31,15 @@ export type CardSummary = {
 };
 
 export type MyCardsResult =
-  | { ok: true; cards: CardSummary[]; totalPoints: number; pendingPoints: number }
+  | {
+      ok: true;
+      cards: CardSummary[];
+      confirmedPoints: number;
+      pendingPoints: number;
+      availableDiscountCount: number;
+      discountAmount: number;
+      pointsPerDiscount: number;
+    }
   | { ok: false; error: string };
 
 function toCardSummary(order: Order): CardSummary {
@@ -41,24 +53,81 @@ function toCardSummary(order: Order): CardSummary {
   };
 }
 
-export async function getMyCardsAction(accessToken: string): Promise<MyCardsResult> {
-  if (!accessToken) {
-    return { ok: false, error: 'Sessão inválida — entre de novo na sua conta.' };
-  }
+// Soma os pontos confirmados de pedidos com os ajustes manuais (admin ou
+// resgates de desconto) — esse é o total "de verdade" de um cliente.
+async function getConfirmedPointsTotal(email: string, orders: Order[]): Promise<number> {
+  const fromOrders = orders.filter((o) => o.card_points_confirmed).reduce((sum, o) => sum + o.card_points_earned, 0);
+  const fromAdjustments = await getPointAdjustmentTotal(email);
+  return fromOrders + fromAdjustments;
+}
 
-  // Client "cru" do Supabase, só com a chave pública (anon) — verificar um
-  // token de acesso não precisa da chave secreta, só confirma que o token
-  // foi mesmo emitido pelo Supabase e ainda é válido.
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-  const { data, error } = await supabase.auth.getUser(accessToken);
-  if (error || !data.user?.email) {
+export async function getMyCardsAction(accessToken: string): Promise<MyCardsResult> {
+  const email = await verifyAccessToken(accessToken);
+  if (!email) {
     return { ok: false, error: 'Sessão expirada — entre de novo na sua conta.' };
   }
 
-  const orders = await getOrdersByEmail(data.user.email);
+  const orders = await getOrdersByEmail(email);
   const cards = orders.filter((o) => o.card_points_earned > 0).map(toCardSummary);
-  const totalPoints = cards.filter((c) => c.confirmed).reduce((sum, c) => sum + c.points, 0);
-  const pendingPoints = cards.filter((c) => !c.confirmed).reduce((sum, c) => sum + c.points, 0);
+  const pendingPoints = orders
+    .filter((o) => o.card_points_earned > 0 && !o.card_points_confirmed)
+    .reduce((sum, o) => sum + o.card_points_earned, 0);
+  const confirmedPoints = await getConfirmedPointsTotal(email, orders);
 
-  return { ok: true, cards, totalPoints, pendingPoints };
+  const availableCredit = await getAvailableDiscountCredit(email);
+  // Só pra saber SE existe (a troca é sempre de 5 em 5 pontos, um crédito
+  // por vez) — não precisa contar quantos exatamente pra essa tela.
+  const availableDiscountCount = availableCredit ? 1 : 0;
+
+  return {
+    ok: true,
+    cards,
+    confirmedPoints,
+    pendingPoints,
+    availableDiscountCount,
+    discountAmount: DISCOUNT_AMOUNT,
+    pointsPerDiscount: POINTS_PER_DISCOUNT
+  };
+}
+
+export type RedeemDiscountResult =
+  | { ok: true; remainingPoints: number }
+  | { ok: false; error: string };
+
+// Troca 5 pontos confirmados por um crédito de R$20 de desconto — chamado
+// pelo botão "Trocar pontos por desconto" em "Minha coleção". O desconto
+// fica disponível pra usar na PRÓXIMA compra de um jogo marcado como
+// elegível no admin (ver StepSummary em PurchaseModal.tsx).
+export async function redeemDiscountAction(accessToken: string): Promise<RedeemDiscountResult> {
+  const email = await verifyAccessToken(accessToken);
+  if (!email) {
+    return { ok: false, error: 'Sessão expirada — entre de novo na sua conta.' };
+  }
+
+  const orders = await getOrdersByEmail(email);
+  const confirmedPoints = await getConfirmedPointsTotal(email, orders);
+  if (confirmedPoints < POINTS_PER_DISCOUNT) {
+    return { ok: false, error: `Você precisa de ${POINTS_PER_DISCOUNT} pontos confirmados pra trocar por desconto.` };
+  }
+
+  await createPointAdjustment({
+    customer_email: email,
+    points: -POINTS_PER_DISCOUNT,
+    note: `Troca de ${POINTS_PER_DISCOUNT} pontos por R$ ${DISCOUNT_AMOUNT.toFixed(2).replace('.', ',')} de desconto`
+  });
+  await createDiscountCredit(email, DISCOUNT_AMOUNT);
+
+  return { ok: true, remainingPoints: confirmedPoints - POINTS_PER_DISCOUNT };
+}
+
+export type CheckoutDiscountResult = { available: boolean; amount: number };
+
+// Versão enxuta, usada na tela de compra (PurchaseModal.tsx) só pra saber
+// se tem um desconto pronto pra usar nesse jogo — sem precisar carregar a
+// coleção inteira.
+export async function getCheckoutDiscountAction(accessToken: string): Promise<CheckoutDiscountResult> {
+  const email = await verifyAccessToken(accessToken);
+  if (!email) return { available: false, amount: 0 };
+  const credit = await getAvailableDiscountCredit(email);
+  return credit ? { available: true, amount: parseFloat(credit.amount) } : { available: false, amount: 0 };
 }

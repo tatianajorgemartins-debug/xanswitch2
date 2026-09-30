@@ -14,10 +14,11 @@ import {
   getInstagramHandle,
   saveInstagramHandle,
   translateAuthError,
-  getAccessToken
+  getAccessToken,
+  sendPasswordResetEmail
 } from '@/lib/wishlist';
-import { getMyCardsAction, type CardSummary } from './cardActions';
-import { CollectibleCard } from './CollectibleCard';
+import { getMyCardsAction, redeemDiscountAction, type CardSummary } from './cardActions';
+import { CollectibleCard, DownloadCardButton } from './CollectibleCard';
 
 const WISHLIST_PREVIEW_LIMIT = 5;
 
@@ -115,11 +116,30 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [status, setStatus] = useState<'idle' | 'submitting' | 'needsConfirmation' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [resetStatus, setResetStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
 
   function switchMode(next: 'login' | 'signup') {
     setMode(next);
     setStatus('idle');
     setErrorMessage('');
+    setResetStatus('idle');
+  }
+
+  async function handleForgotPassword() {
+    if (!email.trim()) {
+      setStatus('error');
+      setErrorMessage('Digite seu e-mail acima primeiro, aí clica em "Esqueci minha senha" de novo.');
+      return;
+    }
+    setResetStatus('sending');
+    try {
+      await sendPasswordResetEmail(email.trim());
+      setResetStatus('sent');
+    } catch {
+      // O Supabase não deixa saber se o e-mail existe ou não por segurança
+      // — então mesmo num erro, mostramos a mesma mensagem de "enviamos".
+      setResetStatus('sent');
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -190,6 +210,25 @@ function LoginForm() {
         disabled={status === 'submitting'}
         autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
       />
+      {mode === 'login' && (
+        <p style={{ textAlign: 'right', margin: '6px 0 0' }}>
+          {resetStatus === 'sent' ? (
+            <span style={{ fontSize: 12.5, color: 'var(--green)', fontWeight: 700 }}>
+              ✓ Se esse e-mail tiver conta, mandamos um link pra trocar a senha.
+            </span>
+          ) : (
+            <button
+              type="button"
+              className="account-mode-switch"
+              style={{ fontSize: 12.5 }}
+              onClick={handleForgotPassword}
+              disabled={resetStatus === 'sending'}
+            >
+              {resetStatus === 'sending' ? 'Enviando...' : 'Esqueci minha senha'}
+            </button>
+          )}
+        </p>
+      )}
       {status === 'error' && (
         <p style={{ color: '#ff8a8a', fontSize: 13, fontWeight: 600, margin: '10px 0 0' }}>{errorMessage}</p>
       )}
@@ -255,12 +294,21 @@ function LoggedInView({
   // continua valendo pra lista inteira, mesmo com o resto escondido.
   const [showAllWishlist, setShowAllWishlist] = useState(false);
 
-  // Cards colecionáveis + pontos (ver "🎴 Minha coleção" mais abaixo).
+  // Cards colecionáveis + pontos — ficam escondidos atrás do botão "Ver
+  // coleção de cards" (ver mais abaixo), então só busca no servidor na
+  // primeira vez que a pessoa clica, não toda vez que abre "Minha conta".
+  const [collectionOpen, setCollectionOpen] = useState(false);
+  const [collectionLoaded, setCollectionLoaded] = useState(false);
   const [cards, setCards] = useState<CardSummary[]>([]);
-  const [totalPoints, setTotalPoints] = useState(0);
+  const [confirmedPoints, setConfirmedPoints] = useState(0);
   const [pendingPoints, setPendingPoints] = useState(0);
-  const [loadingCards, setLoadingCards] = useState(true);
+  const [availableDiscountCount, setAvailableDiscountCount] = useState(0);
+  const [discountAmount, setDiscountAmount] = useState(20);
+  const [pointsPerDiscount, setPointsPerDiscount] = useState(5);
+  const [loadingCards, setLoadingCards] = useState(false);
   const [cardsError, setCardsError] = useState('');
+  const [redeeming, setRedeeming] = useState(false);
+  const [redeemMessage, setRedeemMessage] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -277,37 +325,64 @@ function LoggedInView({
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    // A Server Action getMyCardsAction roda no servidor e precisa de um
-    // jeito de confirmar quem está pedindo — por isso manda o token da
-    // sessão atual em vez de só o e-mail (ver o comentário em
-    // app/cardActions.ts pra entender por quê).
+  // A Server Action getMyCardsAction roda no servidor e precisa de um jeito
+  // de confirmar quem está pedindo — por isso manda o token da sessão atual
+  // em vez de só o e-mail (ver o comentário em app/cardActions.ts pra
+  // entender por quê).
+  function loadCollection() {
+    setLoadingCards(true);
+    setCardsError('');
     getAccessToken()
       .then((token) => {
         if (!token) throw new Error('Sessão inválida — entre de novo na sua conta.');
         return getMyCardsAction(token);
       })
       .then((result) => {
-        if (cancelled) return;
         if (result.ok) {
           setCards(result.cards);
-          setTotalPoints(result.totalPoints);
+          setConfirmedPoints(result.confirmedPoints);
           setPendingPoints(result.pendingPoints);
+          setAvailableDiscountCount(result.availableDiscountCount);
+          setDiscountAmount(result.discountAmount);
+          setPointsPerDiscount(result.pointsPerDiscount);
+          setCollectionLoaded(true);
         } else {
           setCardsError(result.error);
         }
       })
       .catch((err) => {
-        if (!cancelled) setCardsError(err instanceof Error ? err.message : 'Não foi possível carregar seus cards.');
+        setCardsError(err instanceof Error ? err.message : 'Não foi possível carregar seus cards.');
       })
-      .finally(() => {
-        if (!cancelled) setLoadingCards(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      .finally(() => setLoadingCards(false));
+  }
+
+  function handleToggleCollection() {
+    const opening = !collectionOpen;
+    setCollectionOpen(opening);
+    if (opening && !collectionLoaded) loadCollection();
+  }
+
+  async function handleRedeemDiscount() {
+    setRedeeming(true);
+    setRedeemMessage('');
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Sessão inválida — entre de novo na sua conta.');
+      const result = await redeemDiscountAction(token);
+      if (result.ok) {
+        setRedeemMessage(
+          `✓ Desconto de R$ ${discountAmount.toFixed(2).replace('.', ',')} liberado! Use na sua próxima compra de um jogo elegível.`
+        );
+        loadCollection();
+      } else {
+        setRedeemMessage(result.error);
+      }
+    } catch (err) {
+      setRedeemMessage(err instanceof Error ? err.message : 'Não foi possível trocar agora.');
+    } finally {
+      setRedeeming(false);
+    }
+  }
 
   async function handleSaveInstagram(e: React.FormEvent) {
     e.preventDefault();
@@ -363,47 +438,84 @@ function LoggedInView({
 
       <div className="account-section-header">
         <p className="purchase-description-label" style={{ margin: 0 }}>
-          🎴 Minha coleção {cards.length > 0 ? `(${cards.length})` : ''}
+          🎴 Cards colecionáveis
         </p>
+        <button type="button" className="account-select-all" onClick={handleToggleCollection}>
+          {collectionOpen ? 'Esconder' : 'Ver coleção de cards'}
+        </button>
       </div>
 
-      {loadingCards ? (
-        <p style={{ fontSize: 13, color: 'var(--ink-dim)', padding: '4px 2px' }}>Carregando seus cards...</p>
-      ) : cardsError ? (
-        <p style={{ color: '#ff8a8a', fontSize: 12.5, fontWeight: 600, padding: '4px 2px' }}>{cardsError}</p>
-      ) : cards.length === 0 ? (
-        <div className="account-wishlist-empty">
-          <p style={{ fontSize: 30, margin: '0 0 6px' }}>🎴</p>
-          <p style={{ margin: 0 }}>Sua primeira compra confirmada já vem com um card de presente.</p>
-        </div>
-      ) : (
-        <>
-          <div className="account-points-summary">
-            <div>
-              <p className="account-points-value">{totalPoints}</p>
-              <p className="account-points-label">pontos confirmados</p>
-            </div>
-            {pendingPoints > 0 && (
+      {collectionOpen &&
+        (loadingCards ? (
+          <p style={{ fontSize: 13, color: 'var(--ink-dim)', padding: '4px 2px' }}>Carregando seus cards...</p>
+        ) : cardsError ? (
+          <p style={{ color: '#ff8a8a', fontSize: 12.5, fontWeight: 600, padding: '4px 2px' }}>{cardsError}</p>
+        ) : cards.length === 0 ? (
+          <div className="account-wishlist-empty">
+            <p style={{ fontSize: 30, margin: '0 0 6px' }}>🎴</p>
+            <p style={{ margin: 0 }}>Sua primeira compra confirmada já vem com um card de presente.</p>
+          </div>
+        ) : (
+          <>
+            <div className="account-points-summary">
               <div>
-                <p className="account-points-value is-pending">{pendingPoints}</p>
-                <p className="account-points-label">pendente{pendingPoints > 1 ? 's' : ''}</p>
+                <p className="account-points-value">{confirmedPoints}</p>
+                <p className="account-points-label">pontos confirmados</p>
+              </div>
+              {pendingPoints > 0 && (
+                <div>
+                  <p className="account-points-value is-pending">{pendingPoints}</p>
+                  <p className="account-points-label">pendente{pendingPoints > 1 ? 's' : ''}</p>
+                </div>
+              )}
+            </div>
+
+            {availableDiscountCount > 0 && (
+              <p className="account-discount-available">
+                🎟️ Você tem R$ {discountAmount.toFixed(2).replace('.', ',')} de desconto pronto pra usar na sua
+                próxima compra de um jogo elegível!
+              </p>
+            )}
+
+            {confirmedPoints >= pointsPerDiscount && (
+              <div className="account-redeem-box">
+                <p>
+                  Troque {pointsPerDiscount} pontos por R$ {discountAmount.toFixed(2).replace('.', ',')} de desconto
+                </p>
+                <button type="button" className="btn credit" onClick={handleRedeemDiscount} disabled={redeeming}>
+                  {redeeming ? 'Trocando...' : 'Trocar pontos por desconto'}
+                </button>
               </div>
             )}
-          </div>
-          <div className="account-cards-row">
-            {cards.map((card) => (
-              <CollectibleCard
-                key={card.orderId}
-                gameName={card.gameName}
-                imageUrl={card.imageUrl}
-                points={card.points}
-                pending={!card.confirmed}
-                compact
-              />
-            ))}
-          </div>
-        </>
-      )}
+            {redeemMessage && (
+              <p
+                style={{
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  color: redeemMessage.startsWith('✓') ? 'var(--green)' : '#ff8a8a',
+                  margin: '8px 2px 0'
+                }}
+              >
+                {redeemMessage}
+              </p>
+            )}
+
+            <div className="account-cards-row">
+              {cards.map((card) => (
+                <div key={card.orderId} className="account-card-item">
+                  <CollectibleCard
+                    gameName={card.gameName}
+                    imageUrl={card.imageUrl}
+                    points={card.points}
+                    pending={!card.confirmed}
+                    compact
+                  />
+                  <DownloadCardButton gameName={card.gameName} imageUrl={card.imageUrl} points={card.points} />
+                </div>
+              ))}
+            </div>
+          </>
+        ))}
 
       <form onSubmit={handleSaveInstagram} className="account-instagram-field">
         <label htmlFor="account-instagram">Seu Instagram (opcional)</label>

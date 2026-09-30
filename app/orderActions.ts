@@ -1,8 +1,9 @@
 'use server';
 
-import { createOrder, getGameById } from '@/lib/db';
+import { createOrder, getGameById, getAvailableDiscountCredit, markDiscountCreditUsed } from '@/lib/db';
 import { notifyNewOrder } from '@/lib/notifications';
 import { isValidEmail, isValidReferralSource } from '@/lib/validation';
+import { verifyAccessToken } from '@/lib/supabaseAuthServer';
 
 export type ConfirmOrderResult = { ok: true } | { ok: false; error: string };
 
@@ -13,19 +14,20 @@ function sanitizeReferralSource(value: string | null): string | null {
   return value && isValidReferralSource(value) ? value : null;
 }
 
-// Busca, direto no banco (não confia no que o navegador mandou), quantos
-// pontos o card desse jogo vale agora e qual é a capa atual — assim o
-// "card colecionável" salvo no pedido sempre reflete o jogo de verdade no
-// momento da compra, mesmo que o cliente tenha ficado com a tela aberta
-// por um tempo antes de confirmar. Se o jogo não existir mais (raro — foi
-// excluído do catálogo entre o cliente abrir a tela e confirmar o
-// pagamento), o pedido é salvo sem card (0 pontos, sem imagem) em vez de
-// falhar o pedido inteiro por causa disso.
-async function snapshotCardFromGame(gameId: number | null): Promise<{ points: number; imageUrl: string | null }> {
-  if (!gameId) return { points: 0, imageUrl: null };
+// Busca, direto no banco (não confia no que o navegador mandou), os dados
+// do jogo no momento da compra: quantos pontos o card vale, qual é a capa
+// atual, e se esse jogo aceita desconto de fidelidade. Assim o pedido
+// sempre reflete o jogo de verdade, mesmo que o cliente tenha ficado com a
+// tela aberta um tempo antes de confirmar. Se o jogo não existir mais
+// (raro — foi excluído do catálogo nesse meio tempo), o pedido é salvo sem
+// card e sem desconto em vez de falhar o pedido inteiro por causa disso.
+async function snapshotGameForOrder(
+  gameId: number | null
+): Promise<{ points: number; imageUrl: string | null; discountEligible: boolean }> {
+  if (!gameId) return { points: 0, imageUrl: null, discountEligible: false };
   const game = await getGameById(gameId);
-  if (!game) return { points: 0, imageUrl: null };
-  return { points: game.card_points, imageUrl: game.image_url };
+  if (!game) return { points: 0, imageUrl: null, discountEligible: false };
+  return { points: game.card_points, imageUrl: game.image_url, discountEligible: game.discount_eligible };
 }
 
 // Chamada quando o cliente clica em "Já paguei — confirmar pedido" na tela
@@ -34,40 +36,70 @@ async function snapshotCardFromGame(gameId: number | null): Promise<{ points: nu
 // automática de que o Pix caiu na conta — exatamente como já era antes,
 // só que agora fica registrado com e-mail e é avisado automaticamente
 // (ver lib/notifications.ts) em vez de depender de abrir o WhatsApp.
+//
+// applyDiscount + accessToken: se o cliente escolheu usar um desconto de
+// fidelidade (ver a etapa de desconto em StepPayment), confirmamos de novo
+// aqui, no servidor, que o token é válido e que existe mesmo um crédito
+// disponível pra essa conta — nunca confiamos só no que o navegador falou
+// que "tem desconto".
 export async function confirmOrderAction(
   gameId: number | null,
   gameName: string,
   price: number,
   email: string,
-  referralSource: string | null
+  referralSource: string | null,
+  applyDiscount: boolean,
+  accessToken: string | null
 ): Promise<ConfirmOrderResult> {
   const trimmedEmail = email.trim();
   if (!isValidEmail(trimmedEmail)) {
     return { ok: false, error: 'Digite um e-mail válido.' };
   }
 
-  const card = await snapshotCardFromGame(gameId);
+  const game = await snapshotGameForOrder(gameId);
 
+  let finalPrice = price;
+  let discountApplied = 0;
+  let creditIdToMark: number | null = null;
+
+  if (applyDiscount && game.discountEligible) {
+    const verifiedEmail = await verifyAccessToken(accessToken);
+    if (verifiedEmail && verifiedEmail.toLowerCase() === trimmedEmail.toLowerCase()) {
+      const credit = await getAvailableDiscountCredit(verifiedEmail);
+      if (credit) {
+        discountApplied = Math.min(price, parseFloat(credit.amount));
+        finalPrice = Math.max(0, price - discountApplied);
+        creditIdToMark = credit.id;
+      }
+    }
+  }
+
+  let order;
   try {
-    await createOrder({
+    order = await createOrder({
       game_id: gameId,
       game_name: gameName,
-      price,
+      price: finalPrice,
       customer_email: trimmedEmail,
       referral_source: sanitizeReferralSource(referralSource),
       payment_method: 'pix',
-      card_points_earned: card.points,
-      card_image_url: card.imageUrl
+      card_points_earned: game.points,
+      card_image_url: game.imageUrl,
+      discount_applied: discountApplied
     });
   } catch {
     return { ok: false, error: 'Não foi possível registrar seu pedido agora. Tente novamente em instantes.' };
+  }
+
+  if (creditIdToMark) {
+    await markDiscountCreditUsed(creditIdToMark, order.id).catch(() => {});
   }
 
   // O pedido já está salvo no banco nesse ponto — se a notificação falhar
   // (e-mail fora do ar, CallMeBot indisponível etc.), o pedido continua
   // valendo e visível em /admin > Pedidos, então não há por que travar a
   // tela do cliente esperando ou tratando erro aqui.
-  await notifyNewOrder({ items: [{ gameName, price }], total: price, customerEmail: trimmedEmail });
+  await notifyNewOrder({ items: [{ gameName, price: finalPrice }], total: finalPrice, customerEmail: trimmedEmail });
 
   return { ok: true };
 }
@@ -76,6 +108,9 @@ export async function confirmOrderAction(
 // vários jogos de uma vez pela lista de desejos (ver BulkPurchaseModal.tsx)
 // — um registro de pedido por jogo (assim cada um aparece separado em
 // "📋 Pedidos" no admin), mas um único aviso cobrindo a lista inteira.
+// Por enquanto essa compra em lote não aceita desconto de fidelidade — como
+// cada jogo pode ou não ser elegível, aplicar um desconto só numa parte do
+// carrinho complicaria bastante a conta; fica pra uma próxima versão.
 export async function confirmBulkOrderAction(
   items: { id: number | null; name: string; price: number }[],
   total: number,
@@ -91,7 +126,7 @@ export async function confirmBulkOrderAction(
   try {
     await Promise.all(
       items.map(async (it) => {
-        const card = await snapshotCardFromGame(it.id);
+        const game = await snapshotGameForOrder(it.id);
         return createOrder({
           game_id: it.id,
           game_name: it.name,
@@ -99,8 +134,9 @@ export async function confirmBulkOrderAction(
           customer_email: trimmedEmail,
           referral_source: sanitizedReferralSource,
           payment_method: 'pix',
-          card_points_earned: card.points,
-          card_image_url: card.imageUrl
+          card_points_earned: game.points,
+          card_image_url: game.imageUrl,
+          discount_applied: 0
         });
       })
     );
@@ -138,9 +174,10 @@ export async function logCreditLinkClickAction(
     customer_email: null,
     referral_source: sanitizeReferralSource(referralSource),
     payment_method: 'credito',
-    // Sem card nesse caminho: esse pedido não tem e-mail, então não tem
-    // como saber a qual conta de cliente o card pertenceria.
+    // Sem card nem desconto nesse caminho: esse pedido não tem e-mail,
+    // então não tem como saber a qual conta de cliente pertenceria.
     card_points_earned: 0,
-    card_image_url: null
+    card_image_url: null,
+    discount_applied: 0
   }).catch(() => {});
 }

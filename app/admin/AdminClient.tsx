@@ -19,6 +19,9 @@ import {
   setReviewFeaturedAction,
   deleteOrderAction,
   confirmOrderPointsAction,
+  adjustClientPointsAction,
+  updateReviewsBannerAction,
+  removeReviewsBannerAction,
   type GameFormState
 } from './actions';
 
@@ -29,13 +32,17 @@ export default function AdminClient({
   visitCount,
   reviews,
   orders,
-  wishlistCounts
+  wishlistCounts,
+  pointAdjustmentTotals,
+  reviewsBannerUrl
 }: {
   initialGames: Game[];
   visitCount: number;
   reviews: Review[];
   orders: Order[];
   wishlistCounts: Record<number, number>;
+  pointAdjustmentTotals: Record<string, number>;
+  reviewsBannerUrl: string | null;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -44,6 +51,7 @@ export default function AdminClient({
   const [showOrdersPanel, setShowOrdersPanel] = useState(false);
   const [showWishlistPanel, setShowWishlistPanel] = useState(false);
   const [showClientsPanel, setShowClientsPanel] = useState(false);
+  const [showBannerPanel, setShowBannerPanel] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingGame, setEditingGame] = useState<Game | null>(null);
 
@@ -134,9 +142,10 @@ export default function AdminClient({
   }, [games, wishlistCounts]);
 
   // Um resumo por cliente (e-mail), pra tela "🎖️ Clientes" — soma os pontos
-  // confirmados e pendentes de cada um e lista os jogos que já levou.
-  // Calculado direto da lista de pedidos que já veio pronta do servidor —
-  // não precisa de outra consulta ao banco só pra isso.
+  // confirmados e pendentes de cada um (incluindo ajustes manuais feitos
+  // aqui no admin) e lista os jogos que já levou. Calculado direto da lista
+  // de pedidos que já veio pronta do servidor — não precisa de outra
+  // consulta ao banco só pra isso.
   const clientSummaries = useMemo(() => {
     const byEmail = new Map<
       string,
@@ -153,10 +162,14 @@ export default function AdminClient({
       }
       byEmail.set(key, entry);
     }
+    for (const [key, adjustment] of Object.entries(pointAdjustmentTotals)) {
+      const entry = byEmail.get(key);
+      if (entry) entry.confirmedPoints += adjustment;
+    }
     return Array.from(byEmail.values())
       .filter((c) => c.games.length > 0)
       .sort((a, b) => b.confirmedPoints - a.confirmedPoints);
-  }, [orders]);
+  }, [orders, pointAdjustmentTotals]);
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 20px 80px' }}>
@@ -238,6 +251,9 @@ export default function AdminClient({
         <button className="btn ghost" onClick={() => setShowClientsPanel((s) => !s)}>
           🎖️ Clientes ({clientSummaries.length})
         </button>
+        <button className="btn ghost" onClick={() => setShowBannerPanel((s) => !s)}>
+          🖼️ Banner de avaliações
+        </button>
       </div>
 
       {showReviewsPanel && (
@@ -256,6 +272,8 @@ export default function AdminClient({
       {showWishlistPanel && <WishlistPanel entries={mostWantedGames} />}
 
       {showClientsPanel && <ClientsPanel clients={clientSummaries} />}
+
+      {showBannerPanel && <ReviewsBannerPanel currentUrl={reviewsBannerUrl} />}
 
       {panelOpen && (
         <GameFormPanel
@@ -710,6 +728,28 @@ function ClientsPanel({
 }: {
   clients: { email: string; confirmedPoints: number; pendingPoints: number; games: string[] }[];
 }) {
+  const router = useRouter();
+  const [openEmail, setOpenEmail] = useState<string | null>(null);
+  const [pointsInput, setPointsInput] = useState('');
+  const [noteInput, setNoteInput] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  function openEditor(email: string) {
+    setOpenEmail(email);
+    setPointsInput('');
+    setNoteInput('');
+  }
+
+  async function handleApply(email: string) {
+    const points = Number(pointsInput);
+    if (!Number.isFinite(points) || points === 0) return;
+    setSaving(true);
+    await adjustClientPointsAction(email, points, noteInput);
+    setSaving(false);
+    setOpenEmail(null);
+    router.refresh();
+  }
+
   return (
     <div
       style={{
@@ -733,51 +773,164 @@ function ClientsPanel({
             <div
               key={c.email}
               style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: 10,
                 padding: '10px 4px',
-                borderBottom: '1px solid rgba(255,255,255,.06)',
-                flexWrap: 'wrap'
+                borderBottom: '1px solid rgba(255,255,255,.06)'
               }}
             >
-              <div style={{ minWidth: 0 }}>
-                <strong style={{ fontSize: 14, display: 'block' }}>{c.email}</strong>
-                <span style={{ fontSize: 12.5, color: 'var(--ink-dim)' }}>{c.games.join(', ')}</span>
-              </div>
-              <div style={{ display: 'flex', gap: 8, flex: 'none' }}>
-                <span
-                  style={{
-                    fontSize: 12.5,
-                    fontWeight: 700,
-                    color: '#2b1a00',
-                    background: 'linear-gradient(135deg, var(--gold), var(--gold-2))',
-                    borderRadius: 6,
-                    padding: '3px 10px'
-                  }}
-                >
-                  {c.confirmedPoints} pts
-                </span>
-                {c.pendingPoints > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div style={{ minWidth: 0 }}>
+                  <strong style={{ fontSize: 14, display: 'block' }}>{c.email}</strong>
+                  <span style={{ fontSize: 12.5, color: 'var(--ink-dim)' }}>{c.games.join(', ')}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flex: 'none', alignItems: 'center' }}>
                   <span
                     style={{
                       fontSize: 12.5,
                       fontWeight: 700,
-                      color: 'var(--ink-dim)',
-                      border: '1px solid rgba(255,255,255,.2)',
+                      color: '#2b1a00',
+                      background: 'linear-gradient(135deg, var(--gold), var(--gold-2))',
                       borderRadius: 6,
                       padding: '3px 10px'
                     }}
                   >
-                    +{c.pendingPoints} pendente{c.pendingPoints > 1 ? 's' : ''}
+                    {c.confirmedPoints} pts
                   </span>
-                )}
+                  {c.pendingPoints > 0 && (
+                    <span
+                      style={{
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        color: 'var(--ink-dim)',
+                        border: '1px solid rgba(255,255,255,.2)',
+                        borderRadius: 6,
+                        padding: '3px 10px'
+                      }}
+                    >
+                      +{c.pendingPoints} pendente{c.pendingPoints > 1 ? 's' : ''}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    style={{ padding: '4px 10px', fontSize: 12.5 }}
+                    onClick={() => (openEmail === c.email ? setOpenEmail(null) : openEditor(c.email))}
+                  >
+                    {openEmail === c.email ? 'Cancelar' : '✏️ Editar pontos'}
+                  </button>
+                </div>
               </div>
+
+              {openEmail === c.email && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 10 }}>
+                  <input
+                    type="number"
+                    placeholder="ex: 5 ou -5"
+                    value={pointsInput}
+                    onChange={(e) => setPointsInput(e.target.value)}
+                    style={{ width: 110 }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Motivo (opcional)"
+                    value={noteInput}
+                    onChange={(e) => setNoteInput(e.target.value)}
+                    style={{ flex: 1, minWidth: 160 }}
+                  />
+                  <button
+                    type="button"
+                    className="btn primary"
+                    style={{ padding: '6px 14px', fontSize: 12.5 }}
+                    disabled={saving || !pointsInput}
+                    onClick={() => handleApply(c.email)}
+                  >
+                    {saving ? 'Salvando...' : 'Aplicar'}
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// Banner fino que substitui as avaliações na página principal — troca de
+// imagem quando você quiser (ver updateReviewsBannerAction/
+// removeReviewsBannerAction em actions.ts). As avaliações continuam
+// existindo, só que atrás do botão "Ver avaliações" no catálogo.
+function ReviewsBannerPanel({ currentUrl }: { currentUrl: string | null }) {
+  const router = useRouter();
+  const [preview, setPreview] = useState<string | null>(currentUrl);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPreview(URL.createObjectURL(file));
+  }
+
+  async function handleSubmit(formData: FormData) {
+    setSubmitting(true);
+    setError(null);
+    const result = await updateReviewsBannerAction(formData);
+    setSubmitting(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    router.refresh();
+  }
+
+  async function handleRemove() {
+    setSubmitting(true);
+    await removeReviewsBannerAction();
+    setSubmitting(false);
+    setPreview(null);
+    router.refresh();
+  }
+
+  return (
+    <div
+      style={{
+        background: 'var(--panel)',
+        border: '1px solid rgba(164,99,255,.25)',
+        borderRadius: 14,
+        padding: 16,
+        marginBottom: 20
+      }}
+    >
+      <h4 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--ink-dim)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+        Banner de avaliações
+      </h4>
+      <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--ink-dim)', lineHeight: 1.5 }}>
+        Esse banner aparece na página principal no lugar das avaliações (que continuam existindo, só que atrás
+        do botão "Ver avaliações"). Use uma imagem mais fina que os banners de destaque.
+      </p>
+
+      {preview && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={preview}
+          alt=""
+          style={{ width: '100%', maxWidth: 480, borderRadius: 10, border: '1px solid rgba(164,99,255,.3)', marginBottom: 14, display: 'block' }}
+        />
+      )}
+
+      <form action={handleSubmit} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+        <input ref={fileInputRef} name="image" type="file" accept="image/*" onChange={handleFileChange} />
+        <button type="submit" className="btn primary" disabled={submitting}>
+          {submitting ? 'Enviando...' : preview === currentUrl ? 'Trocar imagem' : 'Salvar banner'}
+        </button>
+        {currentUrl && (
+          <button type="button" className="btn ghost" disabled={submitting} onClick={handleRemove}>
+            Remover banner
+          </button>
+        )}
+      </form>
+      {error && <p style={{ color: '#ff8a8a', fontSize: 13, fontWeight: 600, marginTop: 10 }}>{error}</p>}
     </div>
   );
 }
@@ -1167,6 +1320,24 @@ function GameFormPanel({
           <p style={{ margin: '6px 2px 0', fontSize: 12.5, color: 'var(--ink-dim)' }}>
             Quanto vale o card desse jogo pro cliente que comprar — aparece como "gemas" preenchidas no card
             (ex: 3 pontos = 3 de 5 gemas) e soma pro total de pontos da conta dele.
+          </p>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              id="discountEligible"
+              name="discountEligible"
+              type="checkbox"
+              defaultChecked={game?.discount_eligible ?? false}
+              style={{ width: 18, height: 18, accentColor: 'var(--green)' }}
+            />
+            <label htmlFor="discountEligible" style={{ margin: 0, textTransform: 'none', fontSize: 14, color: 'var(--ink)' }}>
+              Jogo elegível pra desconto de pontos
+            </label>
+          </div>
+          <p style={{ margin: '6px 2px 0', fontSize: 12.5, color: 'var(--ink-dim)' }}>
+            Se marcado, o cliente pode usar um desconto de R$ 20 (trocado por 5 pontos) na compra desse jogo.
           </p>
         </div>
 
