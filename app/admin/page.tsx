@@ -6,7 +6,8 @@ import {
   getRecentOrders,
   getAllPointAdjustmentTotals,
   getSiteSetting,
-  REVIEWS_BANNER_KEY
+  REVIEWS_BANNER_KEY,
+  LOYALTY_DISCOUNT_AMOUNT_KEY
 } from '@/lib/db';
 import { isAuthenticated } from '@/lib/auth';
 import { getWishlistCounts } from '@/lib/supabaseAdmin';
@@ -32,6 +33,9 @@ export default async function AdminPage() {
   const wishlistCounts = await getWishlistCounts().catch(() => new Map<number, number>());
   const pointAdjustmentTotals = await getAllPointAdjustmentTotals();
   const reviewsBannerUrl = await getSiteSetting(REVIEWS_BANNER_KEY);
+  const rawDiscountAmount = await getSiteSetting(LOYALTY_DISCOUNT_AMOUNT_KEY);
+  const parsedDiscountAmount = rawDiscountAmount ? parseFloat(rawDiscountAmount) : NaN;
+  const discountAmount = Number.isFinite(parsedDiscountAmount) && parsedDiscountAmount > 0 ? parsedDiscountAmount : 20;
   return (
     <AdminClient
       initialGames={games}
@@ -41,6 +45,7 @@ export default async function AdminPage() {
       wishlistCounts={Object.fromEntries(wishlistCounts)}
       pointAdjustmentTotals={pointAdjustmentTotals}
       reviewsBannerUrl={reviewsBannerUrl}
+      discountAmount={discountAmount}
     />
   );
 }

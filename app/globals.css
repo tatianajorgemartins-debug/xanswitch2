@@ -2514,6 +2514,73 @@ label {
   color: var(--green);
 }
 
+/* Botão de entrada da coleção de cards — bem mais chamativo que um link de
+   texto normal, porque é a porta de entrada pro sistema de pontos inteiro
+   (cards, pontos, desconto de fidelidade). */
+.account-collection-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(255, 210, 78, 0.16), rgba(164, 99, 255, 0.16));
+  border: 1.5px solid var(--gold);
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: 0 0 18px rgba(255, 210, 78, 0.18);
+  transition: box-shadow 0.2s ease, transform 0.15s ease, border-color 0.2s ease;
+}
+.account-collection-toggle:hover {
+  box-shadow: 0 0 26px rgba(255, 210, 78, 0.32);
+  transform: translateY(-1px);
+}
+.account-collection-toggle:active {
+  transform: translateY(0) scale(0.99);
+}
+.account-collection-toggle.is-open {
+  border-color: var(--purple);
+  box-shadow: 0 0 18px rgba(164, 99, 255, 0.28);
+}
+.account-collection-toggle-icon {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  font-size: 19px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-2));
+  box-shadow: 0 0 12px rgba(255, 210, 78, 0.5);
+}
+.account-collection-toggle-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.account-collection-toggle-text strong {
+  font-size: 14.5px;
+  color: var(--ink);
+}
+.account-collection-toggle-text span {
+  font-size: 12px;
+  color: var(--ink-dim);
+  font-weight: 600;
+}
+.account-collection-toggle-chevron {
+  flex: none;
+  color: var(--gold);
+  transition: transform 0.2s ease;
+}
+.account-collection-toggle.is-open .account-collection-toggle-chevron {
+  transform: rotate(180deg);
+  color: var(--purple);
+}
+
 /* Explica a diferença entre a caixinha (seleção pra comprar) e o coração
    (tirar da lista de desejos) — sem isso, era comum confundir as duas
    coisas e achar que desmarcar a caixinha desfavoritava o jogo. */

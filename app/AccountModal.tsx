@@ -436,14 +436,24 @@ function LoggedInView({
         </div>
       </div>
 
-      <div className="account-section-header">
-        <p className="purchase-description-label" style={{ margin: 0 }}>
-          🎴 Cards colecionáveis
-        </p>
-        <button type="button" className="account-select-all" onClick={handleToggleCollection}>
-          {collectionOpen ? 'Esconder' : 'Ver coleção de cards'}
-        </button>
-      </div>
+      <button type="button" className={`account-collection-toggle${collectionOpen ? ' is-open' : ''}`} onClick={handleToggleCollection}>
+        <span className="account-collection-toggle-icon" aria-hidden="true">🎴</span>
+        <span className="account-collection-toggle-text">
+          <strong>{collectionOpen ? 'Esconder coleção' : 'Ver coleção de cards'}</strong>
+          {!collectionOpen && <span>seus cards e pontos de fidelidade</span>}
+        </span>
+        <svg
+          className="account-collection-toggle-chevron"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.4"
+          width={16}
+          height={16}
+        >
+          <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
 
       {collectionOpen &&
         (loadingCards ? (

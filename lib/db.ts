@@ -199,6 +199,14 @@ export async function getSiteSetting(key: string): Promise<string | null> {
 // em app/admin/actions.ts e como app/page.tsx / CatalogClient.tsx usam ela).
 export const REVIEWS_BANNER_KEY = 'reviews_banner_image_url';
 
+// Chave usada em site_settings pra guardar quantos reais valem os 5 pontos
+// trocados por desconto (ver updateLoyaltyDiscountAmountAction em
+// app/admin/actions.ts e getDiscountAmount em app/cardActions.ts). Só afeta
+// créditos NOVOS gerados a partir da troca — um crédito já concedido guarda
+// o valor de quando foi criado (discount_credits.amount), então mudar esse
+// valor no admin nunca muda o valor de um desconto que o cliente já tem.
+export const LOYALTY_DISCOUNT_AMOUNT_KEY = 'loyalty_discount_amount';
+
 export async function setSiteSetting(key: string, value: string | null): Promise<void> {
   await getSql()`
     INSERT INTO site_settings (key, value) VALUES (${key}, ${value})

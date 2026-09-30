@@ -22,6 +22,7 @@ import {
   adjustClientPointsAction,
   updateReviewsBannerAction,
   removeReviewsBannerAction,
+  updateLoyaltyDiscountAmountAction,
   type GameFormState
 } from './actions';
 
@@ -34,7 +35,8 @@ export default function AdminClient({
   orders,
   wishlistCounts,
   pointAdjustmentTotals,
-  reviewsBannerUrl
+  reviewsBannerUrl,
+  discountAmount
 }: {
   initialGames: Game[];
   visitCount: number;
@@ -43,6 +45,7 @@ export default function AdminClient({
   wishlistCounts: Record<number, number>;
   pointAdjustmentTotals: Record<string, number>;
   reviewsBannerUrl: string | null;
+  discountAmount: number;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -149,15 +152,31 @@ export default function AdminClient({
   const clientSummaries = useMemo(() => {
     const byEmail = new Map<
       string,
-      { email: string; confirmedPoints: number; pendingPoints: number; games: string[] }
+      {
+        email: string;
+        confirmedPoints: number;
+        pendingPoints: number;
+        games: string[];
+        pendingOrders: { id: number; gameName: string; points: number; createdAt: string }[];
+      }
     >();
     for (const o of orders) {
       if (!o.customer_email || o.payment_method !== 'pix') continue;
       const key = o.customer_email.toLowerCase();
-      const entry = byEmail.get(key) ?? { email: o.customer_email, confirmedPoints: 0, pendingPoints: 0, games: [] };
+      const entry =
+        byEmail.get(key) ?? { email: o.customer_email, confirmedPoints: 0, pendingPoints: 0, games: [], pendingOrders: [] };
       if (o.card_points_earned > 0) {
-        if (o.card_points_confirmed) entry.confirmedPoints += o.card_points_earned;
-        else entry.pendingPoints += o.card_points_earned;
+        if (o.card_points_confirmed) {
+          entry.confirmedPoints += o.card_points_earned;
+        } else {
+          entry.pendingPoints += o.card_points_earned;
+          entry.pendingOrders.push({
+            id: o.id,
+            gameName: o.game_name,
+            points: o.card_points_earned,
+            createdAt: o.created_at.toString()
+          });
+        }
         entry.games.push(o.game_name);
       }
       byEmail.set(key, entry);
@@ -265,13 +284,13 @@ export default function AdminClient({
         />
       )}
 
-      {showOrdersPanel && (
-        <OrdersPanel orders={orders} onDelete={handleDeleteOrder} onConfirmPoints={handleConfirmOrderPoints} />
-      )}
+      {showOrdersPanel && <OrdersPanel orders={orders} onDelete={handleDeleteOrder} />}
 
       {showWishlistPanel && <WishlistPanel entries={mostWantedGames} />}
 
-      {showClientsPanel && <ClientsPanel clients={clientSummaries} />}
+      {showClientsPanel && (
+        <ClientsPanel clients={clientSummaries} onConfirmPoints={handleConfirmOrderPoints} discountAmount={discountAmount} />
+      )}
 
       {showBannerPanel && <ReviewsBannerPanel currentUrl={reviewsBannerUrl} />}
 
@@ -599,12 +618,10 @@ function FeaturedToggleButton({
 // continua sendo feita manualmente, vendo o Pix cair na sua conta.
 function OrdersPanel({
   orders,
-  onDelete,
-  onConfirmPoints
+  onDelete
 }: {
   orders: Order[];
   onDelete: (id: number) => void;
-  onConfirmPoints: (id: number, confirmed: boolean) => void;
 }) {
   return (
     <div
@@ -690,25 +707,12 @@ function OrdersPanel({
                     <span style={{ color: 'var(--gold)', fontWeight: 700, fontSize: 12.5 }}>
                       🎴 {o.card_points_earned} {o.card_points_earned === 1 ? 'ponto' : 'pontos'}
                     </span>
-                    <label
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        fontSize: 12.5,
-                        fontWeight: 700,
-                        color: o.card_points_confirmed ? 'var(--green)' : 'var(--ink-dim)',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={o.card_points_confirmed}
-                        onChange={(e) => onConfirmPoints(o.id, e.target.checked)}
-                        style={{ width: 15, height: 15, accentColor: 'var(--green)' }}
-                      />
-                      {o.card_points_confirmed ? '✓ Pontos confirmados' : 'Confirmar pontos'}
-                    </label>
+                    {/* Confirmar os pontos agora é feito em "🎖️ Clientes", junto
+                        com o resto do que envolve pontos de cada cliente — aqui
+                        fica só o status, pra não duplicar a ação em dois lugares. */}
+                    <span style={{ fontSize: 12.5, fontWeight: 700, color: o.card_points_confirmed ? 'var(--green)' : 'var(--ink-dim)' }}>
+                      {o.card_points_confirmed ? '✓ Pontos confirmados' : '⏳ Pontos pendentes'}
+                    </span>
                   </div>
                 )}
               </div>
@@ -724,15 +728,30 @@ function OrdersPanel({
 }
 
 function ClientsPanel({
-  clients
+  clients,
+  onConfirmPoints,
+  discountAmount
 }: {
-  clients: { email: string; confirmedPoints: number; pendingPoints: number; games: string[] }[];
+  clients: {
+    email: string;
+    confirmedPoints: number;
+    pendingPoints: number;
+    games: string[];
+    pendingOrders: { id: number; gameName: string; points: number; createdAt: string }[];
+  }[];
+  onConfirmPoints: (id: number, confirmed: boolean) => void;
+  discountAmount: number;
 }) {
   const router = useRouter();
   const [openEmail, setOpenEmail] = useState<string | null>(null);
   const [pointsInput, setPointsInput] = useState('');
   const [noteInput, setNoteInput] = useState('');
   const [saving, setSaving] = useState(false);
+  const [confirmingId, setConfirmingId] = useState<number | null>(null);
+  const [discountInput, setDiscountInput] = useState(discountAmount.toFixed(2));
+  const [savingDiscount, setSavingDiscount] = useState(false);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+  const [discountSaved, setDiscountSaved] = useState(false);
 
   function openEditor(email: string) {
     setOpenEmail(email);
@@ -750,6 +769,27 @@ function ClientsPanel({
     router.refresh();
   }
 
+  async function handleConfirmOrder(id: number) {
+    setConfirmingId(id);
+    await onConfirmPoints(id, true);
+    setConfirmingId(null);
+  }
+
+  async function handleSaveDiscount() {
+    const amount = Number(discountInput.replace(',', '.'));
+    setSavingDiscount(true);
+    setDiscountError(null);
+    setDiscountSaved(false);
+    const result = await updateLoyaltyDiscountAmountAction(amount);
+    setSavingDiscount(false);
+    if (result.error) {
+      setDiscountError(result.error);
+      return;
+    }
+    setDiscountSaved(true);
+    router.refresh();
+  }
+
   return (
     <div
       style={{
@@ -760,6 +800,32 @@ function ClientsPanel({
         marginBottom: 20
       }}
     >
+      <h4 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--ink-dim)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+        Valor do desconto por troca de pontos
+      </h4>
+      <p style={{ margin: '0 0 10px', fontSize: 12.5, color: 'var(--ink-dim)', lineHeight: 1.5 }}>
+        A cada 5 pontos confirmados, o cliente pode trocar por esse valor de desconto na próxima compra de um jogo
+        elegível. Mudar aqui só vale pra trocas novas — descontos que os clientes já têm guardado não mudam de valor.
+      </p>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
+        <span style={{ fontSize: 13, color: 'var(--ink-dim)' }}>R$</span>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={discountInput}
+          onChange={(e) => {
+            setDiscountInput(e.target.value);
+            setDiscountSaved(false);
+          }}
+          style={{ width: 100 }}
+        />
+        <button type="button" className="btn primary" style={{ padding: '6px 14px', fontSize: 12.5 }} disabled={savingDiscount} onClick={handleSaveDiscount}>
+          {savingDiscount ? 'Salvando...' : 'Salvar'}
+        </button>
+        {discountSaved && <span style={{ fontSize: 12.5, color: 'var(--green)', fontWeight: 700 }}>✓ Salvo!</span>}
+        {discountError && <span style={{ fontSize: 12.5, color: '#ff8a8a', fontWeight: 700 }}>{discountError}</span>}
+      </div>
+
       <h4 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--ink-dim)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
         Clientes com cards (mais pontos primeiro)
       </h4>
@@ -845,6 +911,41 @@ function ClientsPanel({
                   >
                     {saving ? 'Salvando...' : 'Aplicar'}
                   </button>
+                </div>
+              )}
+
+              {c.pendingOrders.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
+                  {c.pendingOrders.map((o) => (
+                    <div
+                      key={o.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: 10,
+                        flexWrap: 'wrap',
+                        background: 'var(--bg-dark)',
+                        border: '1px solid rgba(255,255,255,.1)',
+                        borderRadius: 8,
+                        padding: '6px 10px'
+                      }}
+                    >
+                      <span style={{ fontSize: 12.5, color: 'var(--ink-dim)' }}>
+                        ⏳ {o.gameName} — {o.points} {o.points === 1 ? 'ponto' : 'pontos'} ·{' '}
+                        {new Date(o.createdAt).toLocaleDateString('pt-BR')}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn ghost"
+                        style={{ padding: '3px 10px', fontSize: 12 }}
+                        disabled={confirmingId === o.id}
+                        onClick={() => handleConfirmOrder(o.id)}
+                      >
+                        {confirmingId === o.id ? 'Confirmando...' : '✓ Confirmar pontos'}
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

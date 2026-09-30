@@ -14,12 +14,23 @@ import {
   createPointAdjustment,
   createDiscountCredit,
   getAvailableDiscountCredit,
+  getSiteSetting,
+  LOYALTY_DISCOUNT_AMOUNT_KEY,
   type Order
 } from '@/lib/db';
 import { verifyAccessToken } from '@/lib/supabaseAuthServer';
 
 const POINTS_PER_DISCOUNT = 5;
-const DISCOUNT_AMOUNT = 20;
+const DEFAULT_DISCOUNT_AMOUNT = 20;
+
+// Valor configurável no admin (ver ReviewsBannerPanel... na verdade
+// LoyaltySettingsPanel em AdminClient.tsx) — cai pra R$20 se ainda não
+// tiver sido configurado ou vier um valor inválido salvo por engano.
+async function getDiscountAmount(): Promise<number> {
+  const raw = await getSiteSetting(LOYALTY_DISCOUNT_AMOUNT_KEY);
+  const parsed = raw ? parseFloat(raw) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_DISCOUNT_AMOUNT;
+}
 
 export type CardSummary = {
   orderId: number;
@@ -85,7 +96,7 @@ export async function getMyCardsAction(accessToken: string): Promise<MyCardsResu
     confirmedPoints,
     pendingPoints,
     availableDiscountCount,
-    discountAmount: DISCOUNT_AMOUNT,
+    discountAmount: await getDiscountAmount(),
     pointsPerDiscount: POINTS_PER_DISCOUNT
   };
 }
@@ -94,10 +105,11 @@ export type RedeemDiscountResult =
   | { ok: true; remainingPoints: number }
   | { ok: false; error: string };
 
-// Troca 5 pontos confirmados por um crédito de R$20 de desconto — chamado
-// pelo botão "Trocar pontos por desconto" em "Minha coleção". O desconto
-// fica disponível pra usar na PRÓXIMA compra de um jogo marcado como
-// elegível no admin (ver StepSummary em PurchaseModal.tsx).
+// Troca 5 pontos confirmados por um crédito de desconto (valor configurável
+// no admin, ver getDiscountAmount acima) — chamado pelo botão "Trocar
+// pontos por desconto" em "Minha coleção". O desconto fica disponível pra
+// usar na PRÓXIMA compra de um jogo marcado como elegível no admin (ver
+// StepSummary em PurchaseModal.tsx).
 export async function redeemDiscountAction(accessToken: string): Promise<RedeemDiscountResult> {
   const email = await verifyAccessToken(accessToken);
   if (!email) {
@@ -110,12 +122,13 @@ export async function redeemDiscountAction(accessToken: string): Promise<RedeemD
     return { ok: false, error: `Você precisa de ${POINTS_PER_DISCOUNT} pontos confirmados pra trocar por desconto.` };
   }
 
+  const discountAmount = await getDiscountAmount();
   await createPointAdjustment({
     customer_email: email,
     points: -POINTS_PER_DISCOUNT,
-    note: `Troca de ${POINTS_PER_DISCOUNT} pontos por R$ ${DISCOUNT_AMOUNT.toFixed(2).replace('.', ',')} de desconto`
+    note: `Troca de ${POINTS_PER_DISCOUNT} pontos por R$ ${discountAmount.toFixed(2).replace('.', ',')} de desconto`
   });
-  await createDiscountCredit(email, DISCOUNT_AMOUNT);
+  await createDiscountCredit(email, discountAmount);
 
   return { ok: true, remainingPoints: confirmedPoints - POINTS_PER_DISCOUNT };
 }

@@ -25,6 +25,7 @@ import {
   getSiteSetting,
   setSiteSetting,
   REVIEWS_BANNER_KEY,
+  LOYALTY_DISCOUNT_AMOUNT_KEY,
   type Platform,
   type GameType
 } from '@/lib/db';
@@ -389,6 +390,20 @@ export async function adjustClientPointsAction(email: string, points: number, no
   if (!email.trim() || !Number.isFinite(points) || points === 0) return;
   await createPointAdjustment({ customer_email: email.trim(), points: Math.round(points), note: note.trim() || null });
   revalidatePath('/admin');
+}
+
+// Valor em reais de um crédito de desconto (trocado a cada 5 pontos) — ver
+// "🎖️ Clientes" no admin e getDiscountAmount em app/cardActions.ts. Só vale
+// pra créditos NOVOS a partir de agora: um crédito que o cliente já tem
+// guardado mantém o valor de quando foi gerado.
+export async function updateLoyaltyDiscountAmountAction(amount: number): Promise<{ error: string | null }> {
+  await requireAuth();
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { error: 'Digite um valor válido, maior que zero.' };
+  }
+  await setSiteSetting(LOYALTY_DISCOUNT_AMOUNT_KEY, amount.toFixed(2));
+  revalidatePath('/admin');
+  return { error: null };
 }
 
 // Banner fino que aparece no lugar das avaliações na página principal — só
