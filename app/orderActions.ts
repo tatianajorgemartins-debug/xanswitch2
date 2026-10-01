@@ -155,29 +155,47 @@ export async function confirmBulkOrderAction(
 
 // Chamada quando o cliente clica em "Continuar pro pagamento" no caminho de
 // crédito parcelado, um instante antes do link externo abrir (ver
-// StepSummary em PurchaseModal.tsx). Esse caminho não pede e-mail — o
-// pagamento em si acontece inteiramente fora do site, no link que você
-// configurou — então aqui só registra a intenção (jogo, preço e "como
-// conheceu a loja", se respondido) pra aparecer em /admin > Pedidos.
-// Silenciosa de propósito: se o registro falhar, não faz sentido travar
-// nem avisar o cliente, que já está de saída pra pagar em outro site.
-export async function logCreditLinkClickAction(
+// StepCreditPayment em PurchaseModal.tsx). O pagamento em si continua
+// acontecendo inteiramente fora do site, no link que você configurou — mas
+// agora esse caminho passa pela mesma etapa de e-mail/conta que o Pix (ver
+// StepChecklistAndEmail), então também dá pra registrar o pedido com e-mail
+// e premiar o card colecionável, igual já acontecia só no Pix. Os pontos
+// entram como pendentes (mesma lógica do Pix) até você confirmar o
+// pagamento manualmente em "🎖️ Clientes".
+export async function confirmCreditOrderAction(
   gameId: number | null,
   gameName: string,
   price: number,
+  email: string,
   referralSource: string | null
-): Promise<void> {
-  await createOrder({
-    game_id: gameId,
-    game_name: gameName,
-    price,
-    customer_email: null,
-    referral_source: sanitizeReferralSource(referralSource),
-    payment_method: 'credito',
-    // Sem card nem desconto nesse caminho: esse pedido não tem e-mail,
-    // então não tem como saber a qual conta de cliente pertenceria.
-    card_points_earned: 0,
-    card_image_url: null,
-    discount_applied: 0
-  }).catch(() => {});
+): Promise<ConfirmOrderResult> {
+  const trimmedEmail = email.trim();
+  if (!isValidEmail(trimmedEmail)) {
+    return { ok: false, error: 'Digite um e-mail válido.' };
+  }
+
+  const game = await snapshotGameForOrder(gameId);
+
+  try {
+    await createOrder({
+      game_id: gameId,
+      game_name: gameName,
+      price,
+      customer_email: trimmedEmail,
+      referral_source: sanitizeReferralSource(referralSource),
+      payment_method: 'credito',
+      card_points_earned: game.points,
+      card_image_url: game.imageUrl,
+      // Desconto de fidelidade não se aplica aqui: o pagamento é feito
+      // inteiramente fora do site, então não tem como ajustar o valor
+      // cobrado no link externo a partir daqui.
+      discount_applied: 0
+    });
+  } catch {
+    return { ok: false, error: 'Não foi possível registrar seu pedido agora. Tente novamente em instantes.' };
+  }
+
+  await notifyNewOrder({ items: [{ gameName, price }], total: price, customerEmail: trimmedEmail });
+
+  return { ok: true };
 }

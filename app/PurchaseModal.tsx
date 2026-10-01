@@ -22,7 +22,7 @@ import { generatePixPayload, type PixPayload } from '@/lib/pix';
 import { isValidEmail, REFERRAL_SOURCES } from '@/lib/validation';
 import { signUp, signIn, translateAuthError, getAccessToken } from '@/lib/wishlist';
 import { CollectibleCard, DownloadCardButton } from './CollectibleCard';
-import { confirmOrderAction, logCreditLinkClickAction } from './orderActions';
+import { confirmOrderAction, confirmCreditOrderAction } from './orderActions';
 import { getCheckoutDiscountAction } from './cardActions';
 
 type Step = 1 | 2 | 3 | 4;
@@ -39,6 +39,12 @@ export default function PurchaseModal({
   onViewCollection: () => void;
 }) {
   const [step, setStep] = useState<Step>(1);
+
+  // Qual forma de pagamento foi escolhida na etapa 1 — define o que a
+  // etapa 3 mostra (Pix com QR Code, ou o link externo de crédito
+  // parcelado). Os dois caminhos passam pela mesma etapa de e-mail/conta
+  // (etapa 2) e os dois premiam o card colecionável no final.
+  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'credito'>('pix');
 
   // A única confirmação exigida antes do pagamento: a conta precisa estar
   // com saldo zerado (Brasil e Japão), senão o resgate do código não
@@ -113,6 +119,13 @@ export default function PurchaseModal({
   // ou 'done' impede rodar de novo).
   useEffect(() => {
     if (step !== 3 || discountStage !== 'checking') return;
+    if (paymentMethod !== 'pix') {
+      // Desconto de fidelidade só vale pro Pix — no crédito parcelado o
+      // pagamento acontece inteiramente num link externo, sem como ajustar
+      // o valor cobrado por lá.
+      setDiscountStage('done');
+      return;
+    }
     let cancelled = false;
     getAccessToken()
       .then((token) => {
@@ -134,7 +147,7 @@ export default function PurchaseModal({
     return () => {
       cancelled = true;
     };
-  }, [step, discountStage]);
+  }, [step, discountStage, paymentMethod]);
 
   // O valor final já considera o desconto escolhido na oferta acima — o Pix
   // só é gerado depois que esse valor está definitivo (discountStage ===
@@ -145,13 +158,13 @@ export default function PurchaseModal({
   // Pix. Tudo roda no navegador — não existe gateway de pagamento nem
   // chamada de API paga envolvida em gerar o QR Code.
   useEffect(() => {
-    if (step !== 3 || discountStage !== 'done' || startedRef.current) return;
+    if (step !== 3 || discountStage !== 'done' || paymentMethod !== 'pix' || startedRef.current) return;
     startedRef.current = true;
 
     generatePixPayload(effectivePrice, item.name)
       .then(setPix)
       .catch((err: Error) => setPixError(err.message));
-  }, [step, discountStage, effectivePrice, item]);
+  }, [step, discountStage, paymentMethod, effectivePrice, item]);
 
   function handleCopy() {
     if (!pix) return;
@@ -199,7 +212,10 @@ export default function PurchaseModal({
             <StepSummary
               item={item}
               priceLabel={priceLabel}
-              onNext={() => setStep(2)}
+              onNext={(method) => {
+                setPaymentMethod(method);
+                setStep(2);
+              }}
               onOpenScreenshot={setLightboxIndex}
             />
           )}
@@ -216,7 +232,7 @@ export default function PurchaseModal({
             />
           )}
 
-          {step === 3 && (discountStage === 'checking' || discountStage === 'offer') && (
+          {step === 3 && paymentMethod === 'pix' && (discountStage === 'checking' || discountStage === 'offer') && (
             <DiscountOffer
               stage={discountStage}
               amount={availableDiscountAmount}
@@ -228,7 +244,7 @@ export default function PurchaseModal({
             />
           )}
 
-          {step === 3 && discountStage === 'done' && (
+          {step === 3 && paymentMethod === 'pix' && discountStage === 'done' && (
             <StepPayment
               gameId={item.id}
               gameName={item.name}
@@ -248,11 +264,27 @@ export default function PurchaseModal({
             />
           )}
 
+          {step === 3 && paymentMethod === 'credito' && (
+            <StepCreditPayment
+              gameId={item.id}
+              gameName={item.name}
+              price={item.price}
+              priceLabel={priceLabel}
+              email={user?.email ?? email}
+              creditPaymentUrl={item.creditPaymentUrl}
+              referralSource={referralSource}
+              setReferralSource={setReferralSource}
+              onBack={() => setStep(2)}
+              onConfirmed={() => setStep(4)}
+            />
+          )}
+
           {step === 4 && (
             <StepCardReveal
               gameName={item.name}
               imageUrl={item.imageUrl}
               points={item.cardPoints}
+              paymentMethod={paymentMethod}
               onViewCollection={onViewCollection}
               onClose={onClose}
             />
@@ -298,28 +330,11 @@ function StepSummary({
 }: {
   item: Item;
   priceLabel: string;
-  onNext: () => void;
+  onNext: (method: 'pix' | 'credito') => void;
   onOpenScreenshot: (index: number) => void;
 }) {
   const galleryRef = useRef<HTMLDivElement>(null);
   const [shareCopied, setShareCopied] = useState(false);
-
-  // Antes de abrir o link de pagamento parcelado (que sai do site), mostra
-  // a mesma pergunta opcional "como você conheceu a loja?" usada na tela do
-  // Pix — só então abre o link, numa aba nova.
-  const [showCreditReferral, setShowCreditReferral] = useState(false);
-  const [creditReferralSource, setCreditReferralSource] = useState<string | null>(null);
-
-  function handleOpenCreditLink() {
-    if (!item.creditPaymentUrl) return;
-    // window.open primeiro, de forma síncrona — se ficasse esperando a
-    // Server Action abaixo terminar, alguns navegadores tratariam a aba
-    // nova como um popup não solicitado pelo clique e bloqueariam.
-    window.open(item.creditPaymentUrl, '_blank', 'noopener,noreferrer');
-    // Só um registro em segundo plano pra aparecer em /admin > Pedidos —
-    // não tem nada pra esperar aqui, o cliente já está de saída.
-    logCreditLinkClickAction(item.id, item.name, item.price, creditReferralSource).catch(() => {});
-  }
 
   // As setinhas da galeria só rolam a tira de miniaturas — a largura de uma
   // miniatura + o espaçamento entre elas, então cada clique anda "uma foto"
@@ -456,31 +471,17 @@ function StepSummary({
         </div>
 
         <div className="purchase-modal-actions">
-          {item.creditPaymentUrl && showCreditReferral ? (
-            <>
-              <ReferralSourcePicker value={creditReferralSource} onChange={setCreditReferralSource} />
-              <button type="button" className="btn credit product-cta" onClick={handleOpenCreditLink}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={17} height={17}>
-                  <rect x="1.5" y="5" width="21" height="14" rx="2.2" />
-                  <path d="M1.5 10h21" strokeLinecap="round" />
-                </svg>
-                Continuar pro pagamento
-              </button>
-              <button type="button" className="purchase-step-back" onClick={() => setShowCreditReferral(false)}>
-                ← Voltar
-              </button>
-            </>
-          ) : item.creditPaymentUrl ? (
+          {item.creditPaymentUrl ? (
             <>
               <p className="purchase-payment-choice-label">Como você quer pagar?</p>
               <div className="purchase-payment-choice">
-                <button type="button" className="btn primary product-cta" onClick={onNext}>
+                <button type="button" className="btn primary product-cta" onClick={() => onNext('pix')}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={17} height={17}>
                     <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   Pix à vista
                 </button>
-                <button type="button" className="btn credit product-cta" onClick={() => setShowCreditReferral(true)}>
+                <button type="button" className="btn credit product-cta" onClick={() => onNext('credito')}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={17} height={17}>
                     <rect x="1.5" y="5" width="21" height="14" rx="2.2" />
                     <path d="M1.5 10h21" strokeLinecap="round" />
@@ -490,7 +491,7 @@ function StepSummary({
               </div>
             </>
           ) : (
-            <button type="button" className="btn primary product-cta" onClick={onNext}>
+            <button type="button" className="btn primary product-cta" onClick={() => onNext('pix')}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={17} height={17}>
                 <circle cx="9" cy="21" r="1.4" fill="currentColor" stroke="none" />
                 <circle cx="18" cy="21" r="1.4" fill="currentColor" stroke="none" />
@@ -945,6 +946,92 @@ function StepPayment({
   );
 }
 
+// Etapa 3 (variante crédito parcelado) — explica que o pagamento acontece
+// num link externo (configurado por você no admin), pergunta "como você
+// conheceu a loja?" e, ao clicar em "Continuar pro pagamento", abre o link
+// numa aba nova E registra o pedido com o e-mail já coletado na etapa 2 —
+// é esse registro que premia o card colecionável, igual já acontecia só no
+// Pix (ver confirmCreditOrderAction em orderActions.ts).
+function StepCreditPayment({
+  gameId,
+  gameName,
+  price,
+  priceLabel,
+  email,
+  creditPaymentUrl,
+  referralSource,
+  setReferralSource,
+  onBack,
+  onConfirmed
+}: {
+  gameId: number;
+  gameName: string;
+  price: number;
+  priceLabel: string;
+  email: string;
+  creditPaymentUrl: string | null;
+  referralSource: string | null;
+  setReferralSource: (v: string | null) => void;
+  onBack: () => void;
+  onConfirmed: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+
+  async function handleContinue() {
+    if (!creditPaymentUrl) return;
+    // window.open primeiro, de forma síncrona — se ficasse esperando a
+    // Server Action abaixo terminar, alguns navegadores tratariam a aba
+    // nova como um popup não solicitado pelo clique e bloqueariam.
+    window.open(creditPaymentUrl, '_blank', 'noopener,noreferrer');
+
+    setConfirming(true);
+    setConfirmError(null);
+    const result = await confirmCreditOrderAction(gameId, gameName, price, email, referralSource);
+    if (result.ok) {
+      onConfirmed();
+    } else {
+      setConfirmError(result.error);
+      setConfirming(false);
+    }
+  }
+
+  return (
+    <>
+      <p className="purchase-pix-amount">R$ {priceLabel}</p>
+
+      <div className="purchase-urgency-box">
+        <p>
+          O pagamento parcelado acontece numa aba separada, fora da XAN Switch. Ao clicar em "Continuar pro
+          pagamento", abrimos essa aba e já registramos seu pedido aqui — seu card colecionável é liberado na
+          hora. Conclua o pagamento por lá; seu código chega por e-mail assim que a gente confirmar.
+        </p>
+      </div>
+
+      <ReferralSourcePicker value={referralSource} onChange={setReferralSource} />
+
+      {confirmError && (
+        <p style={{ color: '#ff8a8a', fontSize: 13, fontWeight: 600, textAlign: 'center', marginBottom: 12 }}>
+          {confirmError}
+        </p>
+      )}
+
+      <div className="purchase-modal-actions">
+        <button type="button" className="btn credit" onClick={handleContinue} disabled={confirming}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={17} height={17}>
+            <rect x="1.5" y="5" width="21" height="14" rx="2.2" />
+            <path d="M1.5 10h21" strokeLinecap="round" />
+          </svg>
+          {confirming ? 'Registrando...' : 'Continuar pro pagamento'}
+        </button>
+        <button type="button" className="purchase-step-back" onClick={onBack} disabled={confirming}>
+          ← Voltar
+        </button>
+      </div>
+    </>
+  );
+}
+
 // Etapa 4 — tela final, depois que o pedido já foi salvo e as notificações
 // automáticas já foram disparadas (ver StepPayment acima). Mostra o card
 // colecionável ganho nessa compra, com a animação de revelação (ver
@@ -954,19 +1041,23 @@ function StepCardReveal({
   gameName,
   imageUrl,
   points,
+  paymentMethod,
   onViewCollection,
   onClose
 }: {
   gameName: string;
   imageUrl: string | null;
   points: number;
+  paymentMethod: 'pix' | 'credito';
   onViewCollection: () => void;
   onClose: () => void;
 }) {
   return (
     <>
       <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 15, color: 'var(--ink)', marginBottom: 4 }}>
-        Pagamento confirmado! Seu código chega no seu e-mail ainda hoje 🎮
+        {paymentMethod === 'pix'
+          ? 'Pagamento confirmado! Seu código chega no seu e-mail ainda hoje 🎮'
+          : 'Pedido registrado! Conclua o pagamento na aba que abrimos — seu código chega por e-mail assim que confirmarmos 🎮'}
       </p>
       <p style={{ textAlign: 'center', fontSize: 13.5, color: 'var(--ink-dim)', marginBottom: 18 }}>
         E olha só o que você ganhou:

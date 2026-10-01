@@ -161,7 +161,7 @@ export default function AdminClient({
       }
     >();
     for (const o of orders) {
-      if (!o.customer_email || o.payment_method !== 'pix') continue;
+      if (!o.customer_email) continue;
       const key = o.customer_email.toLowerCase();
       const entry =
         byEmail.get(key) ?? { email: o.customer_email, confirmedPoints: 0, pendingPoints: 0, games: [], pendingOrders: [] };

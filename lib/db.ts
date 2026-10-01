@@ -267,14 +267,14 @@ export async function deleteReview(id: number): Promise<void> {
 
 // Pedidos: um registro é criado quando o cliente clica em "Já paguei —
 // confirmar pedido" no fluxo Pix, ou em "Continuar pro pagamento" no fluxo
-// de crédito parcelado (ver confirmOrderAction e logCreditLinkClickAction
+// de crédito parcelado (ver confirmOrderAction e confirmCreditOrderAction
 // em app/orderActions.ts). Como não existe gateway de pagamento, isso é
 // uma declaração/intenção do próprio cliente — não uma confirmação
 // automática de que o dinheiro realmente caiu na conta. status guarda em
 // que pé está o atendimento (por padrão 'aguardando_codigo': pagamento
-// declarado, código ainda não enviado). payment_method diferencia os dois
-// caminhos — o de crédito não tem e-mail, já que essa etapa não existe
-// nesse fluxo (o pagamento em si acontece num link externo).
+// declarado, código ainda não enviado). payment_method só diferencia os
+// dois caminhos pra fins de exibição no admin — os dois pedem e-mail e os
+// dois premiam o card colecionável.
 export type Order = {
   id: number;
   game_id: number | null;
@@ -286,13 +286,13 @@ export type Order = {
   // pagamento — null quando o cliente não respondeu.
   referral_source: string | null;
   payment_method: string;
-  // Card colecionável ganho nesse pedido (só em compras por Pix — ver
-  // confirmOrderAction). card_points_earned e card_image_url são uma
-  // "foto" dos dados do jogo no momento da compra, pra o card não mudar se
-  // você editar o jogo depois. card_points_confirmed começa falso e só
-  // vira true quando você confirma manualmente em /admin > Pedidos —
-  // porque não existe gateway de pagamento pra confirmar sozinho que o Pix
-  // realmente caiu na conta.
+  // Card colecionável ganho nesse pedido (Pix ou crédito parcelado — ver
+  // confirmOrderAction e confirmCreditOrderAction). card_points_earned e
+  // card_image_url são uma "foto" dos dados do jogo no momento da compra,
+  // pra o card não mudar se você editar o jogo depois. card_points_confirmed
+  // começa falso e só vira true quando você confirma manualmente em
+  // "🎖️ Clientes" — porque não existe gateway de pagamento pra confirmar
+  // sozinho que o dinheiro realmente caiu na conta.
   card_points_earned: number;
   card_image_url: string | null;
   card_points_confirmed: boolean;
@@ -329,15 +329,14 @@ export async function getRecentOrders(limit = 100): Promise<Order[]> {
   return rows as Order[];
 }
 
-// Todos os pedidos por Pix de um e-mail específico, usados pra montar "Minha
-// coleção" (ver app/cardActions.ts). Comparação sem diferenciar
-// maiúsculas/minúsculas, porque e-mail não é case-sensitive na prática — e
-// só pedidos por Pix têm e-mail e ganham card (crédito parcelado não gera
-// card, ver logCreditLinkClickAction em app/orderActions.ts).
+// Todos os pedidos (Pix ou crédito parcelado) de um e-mail específico,
+// usados pra montar "Minha coleção" (ver app/cardActions.ts). Comparação
+// sem diferenciar maiúsculas/minúsculas, porque e-mail não é case-sensitive
+// na prática.
 export async function getOrdersByEmail(email: string): Promise<Order[]> {
   const rows = await getSql()`
     SELECT * FROM orders
-    WHERE payment_method = 'pix' AND lower(customer_email) = lower(${email})
+    WHERE lower(customer_email) = lower(${email})
     ORDER BY created_at DESC
   `;
   return rows as Order[];
