@@ -5,6 +5,7 @@ import {
   getAllReviews,
   getRecentOrders,
   getAllPointAdjustmentTotals,
+  getAllAvailableDiscountCreditTotals,
   getSiteSetting,
   REVIEWS_BANNER_KEY,
   LOYALTY_DISCOUNT_AMOUNT_KEY
@@ -32,6 +33,7 @@ export default async function AdminPage() {
   // isso quebrar o painel inteiro — só mostra "Mais desejados" vazio.
   const wishlistCounts = await getWishlistCounts().catch(() => new Map<number, number>());
   const pointAdjustmentTotals = await getAllPointAdjustmentTotals();
+  const availableDiscountCreditTotals = await getAllAvailableDiscountCreditTotals();
   const reviewsBannerUrl = await getSiteSetting(REVIEWS_BANNER_KEY);
   const rawDiscountAmount = await getSiteSetting(LOYALTY_DISCOUNT_AMOUNT_KEY);
   const parsedDiscountAmount = rawDiscountAmount ? parseFloat(rawDiscountAmount) : NaN;
@@ -44,6 +46,7 @@ export default async function AdminPage() {
       orders={orders}
       wishlistCounts={Object.fromEntries(wishlistCounts)}
       pointAdjustmentTotals={pointAdjustmentTotals}
+      availableDiscountCreditTotals={availableDiscountCreditTotals}
       reviewsBannerUrl={reviewsBannerUrl}
       discountAmount={discountAmount}
     />

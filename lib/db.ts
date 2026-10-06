@@ -449,3 +449,20 @@ export async function markDiscountCreditUsed(id: number, orderId: number): Promi
     UPDATE discount_credits SET status = 'used', used_order_id = ${orderId}, used_at = now() WHERE id = ${id}
   `;
 }
+
+// Soma dos créditos de desconto ainda disponíveis por cliente, de uma vez
+// só — usado no admin em "🎖️ Clientes" pra mostrar quem já tem um cupom
+// pronto pra usar, antes de decidir dar (ou não) outro na mão.
+export async function getAllAvailableDiscountCreditTotals(): Promise<Record<string, number>> {
+  const rows = await getSql()`
+    SELECT lower(customer_email) AS email, COALESCE(SUM(amount), 0)::numeric AS total
+    FROM discount_credits
+    WHERE status = 'available'
+    GROUP BY lower(customer_email)
+  `;
+  const result: Record<string, number> = {};
+  for (const row of rows) {
+    result[row.email as string] = parseFloat(row.total as string);
+  }
+  return result;
+}

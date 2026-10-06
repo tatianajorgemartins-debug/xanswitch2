@@ -23,6 +23,7 @@ import {
   updateReviewsBannerAction,
   removeReviewsBannerAction,
   updateLoyaltyDiscountAmountAction,
+  createManualDiscountCreditAction,
   type GameFormState
 } from './actions';
 
@@ -35,6 +36,7 @@ export default function AdminClient({
   orders,
   wishlistCounts,
   pointAdjustmentTotals,
+  availableDiscountCreditTotals,
   reviewsBannerUrl,
   discountAmount
 }: {
@@ -44,6 +46,7 @@ export default function AdminClient({
   orders: Order[];
   wishlistCounts: Record<number, number>;
   pointAdjustmentTotals: Record<string, number>;
+  availableDiscountCreditTotals: Record<string, number>;
   reviewsBannerUrl: string | null;
   discountAmount: number;
 }) {
@@ -156,6 +159,7 @@ export default function AdminClient({
         email: string;
         confirmedPoints: number;
         pendingPoints: number;
+        availableCredit: number;
         games: string[];
         pendingOrders: { id: number; gameName: string; points: number; createdAt: string }[];
       }
@@ -164,7 +168,8 @@ export default function AdminClient({
       if (!o.customer_email) continue;
       const key = o.customer_email.toLowerCase();
       const entry =
-        byEmail.get(key) ?? { email: o.customer_email, confirmedPoints: 0, pendingPoints: 0, games: [], pendingOrders: [] };
+        byEmail.get(key) ??
+        { email: o.customer_email, confirmedPoints: 0, pendingPoints: 0, availableCredit: 0, games: [], pendingOrders: [] };
       if (o.card_points_earned > 0) {
         if (o.card_points_confirmed) {
           entry.confirmedPoints += o.card_points_earned;
@@ -185,10 +190,14 @@ export default function AdminClient({
       const entry = byEmail.get(key);
       if (entry) entry.confirmedPoints += adjustment;
     }
+    for (const [key, credit] of Object.entries(availableDiscountCreditTotals)) {
+      const entry = byEmail.get(key);
+      if (entry) entry.availableCredit = credit;
+    }
     return Array.from(byEmail.values())
       .filter((c) => c.games.length > 0)
       .sort((a, b) => b.confirmedPoints - a.confirmedPoints);
-  }, [orders, pointAdjustmentTotals]);
+  }, [orders, pointAdjustmentTotals, availableDiscountCreditTotals]);
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 20px 80px' }}>
@@ -736,6 +745,7 @@ function ClientsPanel({
     email: string;
     confirmedPoints: number;
     pendingPoints: number;
+    availableCredit: number;
     games: string[];
     pendingOrders: { id: number; gameName: string; points: number; createdAt: string }[];
   }[];
@@ -752,6 +762,10 @@ function ClientsPanel({
   const [savingDiscount, setSavingDiscount] = useState(false);
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [discountSaved, setDiscountSaved] = useState(false);
+  const [openCouponEmail, setOpenCouponEmail] = useState<string | null>(null);
+  const [couponInput, setCouponInput] = useState('');
+  const [savingCoupon, setSavingCoupon] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
 
   function openEditor(email: string) {
     setOpenEmail(email);
@@ -773,6 +787,26 @@ function ClientsPanel({
     setConfirmingId(id);
     await onConfirmPoints(id, true);
     setConfirmingId(null);
+  }
+
+  function openCouponEditor(email: string) {
+    setOpenCouponEmail(email);
+    setCouponInput(discountAmount.toFixed(2));
+    setCouponError(null);
+  }
+
+  async function handleGiveCoupon(email: string) {
+    const amount = Number(couponInput.replace(',', '.'));
+    setSavingCoupon(true);
+    setCouponError(null);
+    const result = await createManualDiscountCreditAction(email, amount);
+    setSavingCoupon(false);
+    if (result.error) {
+      setCouponError(result.error);
+      return;
+    }
+    setOpenCouponEmail(null);
+    router.refresh();
   }
 
   async function handleSaveDiscount() {
@@ -875,6 +909,21 @@ function ClientsPanel({
                       +{c.pendingPoints} pendente{c.pendingPoints > 1 ? 's' : ''}
                     </span>
                   )}
+                  {c.availableCredit > 0 && (
+                    <span
+                      title="Cupom(s) de desconto disponível(is), ainda não usado(s)"
+                      style={{
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        color: 'var(--green)',
+                        border: '1px solid rgba(78,240,95,.35)',
+                        borderRadius: 6,
+                        padding: '3px 10px'
+                      }}
+                    >
+                      🎟️ R$ {c.availableCredit.toFixed(2).replace('.', ',')} disponível
+                    </span>
+                  )}
                   <button
                     type="button"
                     className="btn ghost"
@@ -882,6 +931,14 @@ function ClientsPanel({
                     onClick={() => (openEmail === c.email ? setOpenEmail(null) : openEditor(c.email))}
                   >
                     {openEmail === c.email ? 'Cancelar' : '✏️ Editar pontos'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    style={{ padding: '4px 10px', fontSize: 12.5 }}
+                    onClick={() => (openCouponEmail === c.email ? setOpenCouponEmail(null) : openCouponEditor(c.email))}
+                  >
+                    {openCouponEmail === c.email ? 'Cancelar' : '🎟️ Dar cupom'}
                   </button>
                 </div>
               </div>
@@ -911,6 +968,35 @@ function ClientsPanel({
                   >
                     {saving ? 'Salvando...' : 'Aplicar'}
                   </button>
+                </div>
+              )}
+
+              {openCouponEmail === c.email && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                  <p style={{ margin: 0, fontSize: 12.5, color: 'var(--ink-dim)', lineHeight: 1.5 }}>
+                    Dá um cupom de desconto pra esse cliente usar na próxima compra de um jogo elegível — não
+                    desconta pontos dele, é só pra compensar algum problema.
+                  </p>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, color: 'var(--ink-dim)' }}>R$</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={couponInput}
+                      onChange={(e) => setCouponInput(e.target.value)}
+                      style={{ width: 100 }}
+                    />
+                    <button
+                      type="button"
+                      className="btn primary"
+                      style={{ padding: '6px 14px', fontSize: 12.5 }}
+                      disabled={savingCoupon || !couponInput}
+                      onClick={() => handleGiveCoupon(c.email)}
+                    >
+                      {savingCoupon ? 'Salvando...' : 'Dar cupom'}
+                    </button>
+                    {couponError && <span style={{ fontSize: 12.5, color: '#ff8a8a', fontWeight: 700 }}>{couponError}</span>}
+                  </div>
                 </div>
               )}
 

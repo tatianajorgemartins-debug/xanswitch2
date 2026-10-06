@@ -1743,6 +1743,63 @@ label {
   color: var(--gold);
 }
 
+/* Banner de desconto de fidelidade na página do jogo (GameDiscountBanner em
+   PurchaseModal.tsx) — aparece logo abaixo do preço, didático de propósito:
+   mostra se já tem desconto aplicado, se já dá pra resgatar um novo com os
+   pontos atuais, ou quanto falta, sem precisar ir em "Minha conta" achar
+   essa opção. */
+.purchase-discount-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(164, 99, 255, 0.1);
+  border: 1px solid rgba(164, 99, 255, 0.35);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+.purchase-discount-banner.is-redeemable {
+  background: linear-gradient(135deg, rgba(255, 210, 78, 0.16), rgba(164, 99, 255, 0.12));
+  border-color: var(--gold);
+}
+.purchase-discount-banner.is-applied {
+  background: rgba(78, 240, 95, 0.1);
+  border-color: rgba(78, 240, 95, 0.4);
+}
+.purchase-discount-banner-icon {
+  font-size: 20px;
+  flex: none;
+  line-height: 1;
+}
+.purchase-discount-banner p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.45;
+}
+.purchase-discount-banner strong {
+  color: var(--gold);
+}
+.purchase-discount-banner.is-applied strong {
+  color: var(--green);
+}
+.purchase-discount-banner-link {
+  display: inline-block;
+  margin-top: 6px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--purple);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.purchase-discount-banner-link:hover {
+  color: var(--green);
+}
+
 /* Linha "Logado como fulano@email.com" — substitui o campo de e-mail (e a
    senha) da etapa 2 quando o cliente já está logado (ver
    StepChecklistAndEmail em PurchaseModal.tsx). */
@@ -2126,6 +2183,21 @@ label {
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
+/* Aviso de que já tem desconto de fidelidade pronto (ou pontos
+   suficientes) — a ação de resgatar/usar em si fica na página do jogo (ver
+   GameDiscountBanner em PurchaseModal.tsx), aqui é só informativo. */
+.account-discount-available {
+  background: rgba(78, 240, 95, 0.1);
+  border: 1px solid rgba(78, 240, 95, 0.35);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 0 0 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
 .account-cards-row {
   display: flex;
   gap: 14px;

@@ -22,6 +22,7 @@ import {
   deleteOrder,
   setOrderCardPointsConfirmed,
   createPointAdjustment,
+  createDiscountCredit,
   getSiteSetting,
   setSiteSetting,
   REVIEWS_BANNER_KEY,
@@ -402,6 +403,25 @@ export async function updateLoyaltyDiscountAmountAction(amount: number): Promise
     return { error: 'Digite um valor válido, maior que zero.' };
   }
   await setSiteSetting(LOYALTY_DISCOUNT_AMOUNT_KEY, amount.toFixed(2));
+  revalidatePath('/admin');
+  return { error: null };
+}
+
+// Cupom de desconto dado manualmente pra um cliente — pra quando algo dá
+// errado no resgate normal (por pontos, direto na página do jogo) e você
+// precisa compensar na mão. Diferente da troca por pontos, esse cupom NÃO
+// desconta pontos do cliente — é um crédito à parte, que ele pode usar na
+// próxima compra de um jogo elegível, igual qualquer outro crédito de
+// fidelidade (ver createDiscountCredit em lib/db.ts).
+export async function createManualDiscountCreditAction(email: string, amount: number): Promise<{ error: string | null }> {
+  await requireAuth();
+  if (!email.trim()) {
+    return { error: 'Digite o e-mail do cliente.' };
+  }
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { error: 'Digite um valor válido, maior que zero.' };
+  }
+  await createDiscountCredit(email.trim(), amount);
   revalidatePath('/admin');
   return { error: null };
 }

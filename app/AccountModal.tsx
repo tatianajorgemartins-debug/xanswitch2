@@ -17,7 +17,7 @@ import {
   getAccessToken,
   sendPasswordResetEmail
 } from '@/lib/wishlist';
-import { getMyCardsAction, redeemDiscountAction, type CardSummary } from './cardActions';
+import { getMyCardsAction, type CardSummary } from './cardActions';
 import { CollectibleCard, DownloadCardButton } from './CollectibleCard';
 
 const WISHLIST_PREVIEW_LIMIT = 5;
@@ -307,8 +307,6 @@ function LoggedInView({
   const [pointsPerDiscount, setPointsPerDiscount] = useState(5);
   const [loadingCards, setLoadingCards] = useState(false);
   const [cardsError, setCardsError] = useState('');
-  const [redeeming, setRedeeming] = useState(false);
-  const [redeemMessage, setRedeemMessage] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -360,28 +358,6 @@ function LoggedInView({
     const opening = !collectionOpen;
     setCollectionOpen(opening);
     if (opening && !collectionLoaded) loadCollection();
-  }
-
-  async function handleRedeemDiscount() {
-    setRedeeming(true);
-    setRedeemMessage('');
-    try {
-      const token = await getAccessToken();
-      if (!token) throw new Error('Sessão inválida — entre de novo na sua conta.');
-      const result = await redeemDiscountAction(token);
-      if (result.ok) {
-        setRedeemMessage(
-          `✓ Desconto de R$ ${discountAmount.toFixed(2).replace('.', ',')} liberado! Use na sua próxima compra de um jogo elegível.`
-        );
-        loadCollection();
-      } else {
-        setRedeemMessage(result.error);
-      }
-    } catch (err) {
-      setRedeemMessage(err instanceof Error ? err.message : 'Não foi possível trocar agora.');
-    } finally {
-      setRedeeming(false);
-    }
   }
 
   async function handleSaveInstagram(e: React.FormEvent) {
@@ -480,34 +456,18 @@ function LoggedInView({
               )}
             </div>
 
-            {availableDiscountCount > 0 && (
+            {availableDiscountCount > 0 ? (
               <p className="account-discount-available">
-                🎟️ Você tem R$ {discountAmount.toFixed(2).replace('.', ',')} de desconto pronto pra usar na sua
-                próxima compra de um jogo elegível!
+                🎟️ Você tem R$ {discountAmount.toFixed(2).replace('.', ',')} de desconto pronto pra usar! Abra a
+                página de um jogo com desconto disponível pra aplicar na compra.
               </p>
-            )}
-
-            {confirmedPoints >= pointsPerDiscount && (
-              <div className="account-redeem-box">
-                <p>
-                  Troque {pointsPerDiscount} pontos por R$ {discountAmount.toFixed(2).replace('.', ',')} de desconto
+            ) : (
+              confirmedPoints >= pointsPerDiscount && (
+                <p className="account-discount-available">
+                  🎟️ Você já tem pontos suficientes pra um desconto! Abra a página de um jogo com desconto
+                  disponível — a opção de resgatar aparece por lá.
                 </p>
-                <button type="button" className="btn credit" onClick={handleRedeemDiscount} disabled={redeeming}>
-                  {redeeming ? 'Trocando...' : 'Trocar pontos por desconto'}
-                </button>
-              </div>
-            )}
-            {redeemMessage && (
-              <p
-                style={{
-                  fontSize: 12.5,
-                  fontWeight: 600,
-                  color: redeemMessage.startsWith('✓') ? 'var(--green)' : '#ff8a8a',
-                  margin: '8px 2px 0'
-                }}
-              >
-                {redeemMessage}
-              </p>
+              )
             )}
 
             <div className="account-cards-row">

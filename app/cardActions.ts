@@ -102,14 +102,14 @@ export async function getMyCardsAction(accessToken: string): Promise<MyCardsResu
 }
 
 export type RedeemDiscountResult =
-  | { ok: true; remainingPoints: number }
+  | { ok: true; remainingPoints: number; amount: number }
   | { ok: false; error: string };
 
 // Troca 5 pontos confirmados por um crédito de desconto (valor configurável
-// no admin, ver getDiscountAmount acima) — chamado pelo botão "Trocar
-// pontos por desconto" em "Minha coleção". O desconto fica disponível pra
-// usar na PRÓXIMA compra de um jogo marcado como elegível no admin (ver
-// StepSummary em PurchaseModal.tsx).
+// no admin, ver getDiscountAmount acima) — chamado direto na página do
+// jogo (ver GameDiscountBanner em PurchaseModal.tsx), assim que o cliente
+// já tem pontos suficientes. O desconto é aplicado na hora nessa mesma
+// compra (se for via Pix — ver confirmOrderAction em orderActions.ts).
 export async function redeemDiscountAction(accessToken: string): Promise<RedeemDiscountResult> {
   const email = await verifyAccessToken(accessToken);
   if (!email) {
@@ -130,17 +130,54 @@ export async function redeemDiscountAction(accessToken: string): Promise<RedeemD
   });
   await createDiscountCredit(email, discountAmount);
 
-  return { ok: true, remainingPoints: confirmedPoints - POINTS_PER_DISCOUNT };
+  return { ok: true, remainingPoints: confirmedPoints - POINTS_PER_DISCOUNT, amount: discountAmount };
 }
 
-export type CheckoutDiscountResult = { available: boolean; amount: number };
+export type GameDiscountOffer = {
+  // false quando não está logado — nesse caso não dá pra saber se tem
+  // pontos, então a página do jogo simplesmente não mostra nada sobre
+  // desconto de fidelidade.
+  ok: boolean;
+  // Já existe um crédito pronto pra usar (de uma troca anterior) — nesse
+  // caso a página do jogo já aplica ele de cara, sem precisar resgatar de
+  // novo.
+  hasAvailableCredit: boolean;
+  availableAmount: number;
+  confirmedPoints: number;
+  pointsPerDiscount: number;
+  // Quanto valeria um resgate NOVO, se o cliente tiver pontos suficientes
+  // e ainda não tiver nenhum crédito disponível.
+  discountAmount: number;
+};
 
-// Versão enxuta, usada na tela de compra (PurchaseModal.tsx) só pra saber
-// se tem um desconto pronto pra usar nesse jogo — sem precisar carregar a
-// coleção inteira.
-export async function getCheckoutDiscountAction(accessToken: string): Promise<CheckoutDiscountResult> {
+// Busca tudo que a página do jogo precisa mostrar sobre desconto de
+// fidelidade pra esse cliente (ver GameDiscountBanner em
+// PurchaseModal.tsx) — se já tem um crédito pronto, ou se já tem pontos
+// suficientes pra resgatar um novo ali mesmo, na hora.
+export async function getGameDiscountOfferAction(accessToken: string): Promise<GameDiscountOffer> {
+  const discountAmount = await getDiscountAmount();
   const email = await verifyAccessToken(accessToken);
-  if (!email) return { available: false, amount: 0 };
+  if (!email) {
+    return {
+      ok: false,
+      hasAvailableCredit: false,
+      availableAmount: 0,
+      confirmedPoints: 0,
+      pointsPerDiscount: POINTS_PER_DISCOUNT,
+      discountAmount
+    };
+  }
+
   const credit = await getAvailableDiscountCredit(email);
-  return credit ? { available: true, amount: parseFloat(credit.amount) } : { available: false, amount: 0 };
+  const orders = await getOrdersByEmail(email);
+  const confirmedPoints = await getConfirmedPointsTotal(email, orders);
+
+  return {
+    ok: true,
+    hasAvailableCredit: !!credit,
+    availableAmount: credit ? parseFloat(credit.amount) : 0,
+    confirmedPoints,
+    pointsPerDiscount: POINTS_PER_DISCOUNT,
+    discountAmount
+  };
 }

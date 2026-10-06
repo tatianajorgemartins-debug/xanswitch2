@@ -23,7 +23,7 @@ import { isValidEmail, REFERRAL_SOURCES } from '@/lib/validation';
 import { signUp, signIn, translateAuthError, getAccessToken } from '@/lib/wishlist';
 import { CollectibleCard, DownloadCardButton } from './CollectibleCard';
 import { confirmOrderAction, confirmCreditOrderAction } from './orderActions';
-import { getCheckoutDiscountAction } from './cardActions';
+import { getGameDiscountOfferAction, redeemDiscountAction, type GameDiscountOffer } from './cardActions';
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -64,16 +64,25 @@ export default function PurchaseModal({
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
 
-  // Desconto de fidelidade: só faz sentido perguntar se esse jogo aceita
-  // (marcado no admin) — 'checking' busca se há crédito disponível pra essa
-  // conta, 'offer' mostra a pergunta "usar o desconto?", 'done' é o estado
-  // final (sem oferta, ou já resolvido) — só a partir dele o Pix é gerado,
-  // pra garantir que o Pix mostrado já saia com o valor certo.
-  const [discountStage, setDiscountStage] = useState<'checking' | 'offer' | 'done'>(
-    item.discountEligible ? 'checking' : 'done'
-  );
-  const [availableDiscountAmount, setAvailableDiscountAmount] = useState(0);
-  const [discountApplied, setDiscountApplied] = useState(false);
+  // Desconto de fidelidade — resolvido logo na etapa 1 (página do jogo),
+  // pra já aparecer "didático e fácil de usar": se o cliente já tem pontos
+  // suficientes (ou um crédito pronto de uma troca anterior), a oferta já
+  // aparece ali, com o preço final em destaque, em vez de ficar escondida
+  // dentro de "Minha coleção". `discountResolved` trava a geração do Pix
+  // até a gente saber com certeza se tem desconto ou não, pra nunca mostrar
+  // um QR Code com o valor errado.
+  const [discountResolved, setDiscountResolved] = useState(!item.discountEligible);
+  const [discountOffer, setDiscountOffer] = useState<GameDiscountOffer | null>(null);
+  // Valor já garantido pra essa compra — vem tanto de um crédito que já
+  // existia (aplicado automaticamente) quanto de um resgate feito na hora,
+  // direto nessa página (ver handleRedeemDiscount mais abaixo).
+  const [appliedDiscountAmount, setAppliedDiscountAmount] = useState(0);
+  // Deixa a pessoa "guardar" o desconto pra usar depois, em vez de usar
+  // agora — não desfaz o resgate (o crédito continua existindo pro
+  // cliente), só não aplica nessa compra específica.
+  const [discountOptedOut, setDiscountOptedOut] = useState(false);
+  const [redeemingDiscount, setRedeemingDiscount] = useState(false);
+  const [redeemError, setRedeemError] = useState<string | null>(null);
 
   // Índice da captura de tela aberta em tela cheia (a "lightbox"), ou null
   // se nenhuma estiver aberta. Fica aqui em cima (não dentro do StepSummary)
@@ -113,58 +122,74 @@ export default function PurchaseModal({
     };
   }, []);
 
-  // Ao entrar na etapa 3, antes de gerar o Pix, checa se tem um desconto de
-  // fidelidade pronto pra usar nesse jogo — só se o jogo aceitar desconto e
-  // a pessoa estiver logada. Roda uma vez só (a troca de estado pra 'offer'
-  // ou 'done' impede rodar de novo).
+  // Assim que o modal abre (etapa 1, a "página" do jogo), já busca se esse
+  // cliente tem desconto de fidelidade pra usar aqui — só se o jogo aceitar
+  // desconto (marcado no admin). Roda uma vez só, pro mesmo jogo.
   useEffect(() => {
-    if (step !== 3 || discountStage !== 'checking') return;
-    if (paymentMethod !== 'pix') {
-      // Desconto de fidelidade só vale pro Pix — no crédito parcelado o
-      // pagamento acontece inteiramente num link externo, sem como ajustar
-      // o valor cobrado por lá.
-      setDiscountStage('done');
-      return;
-    }
+    if (!item.discountEligible) return;
     let cancelled = false;
     getAccessToken()
-      .then((token) => {
-        if (!token) return null;
-        return getCheckoutDiscountAction(token);
-      })
+      .then((token) => (token ? getGameDiscountOfferAction(token) : null))
       .then((result) => {
         if (cancelled) return;
-        if (result?.available) {
-          setAvailableDiscountAmount(result.amount);
-          setDiscountStage('offer');
-        } else {
-          setDiscountStage('done');
+        if (result) {
+          setDiscountOffer(result);
+          if (result.ok && result.hasAvailableCredit) {
+            setAppliedDiscountAmount(result.availableAmount);
+          }
         }
+        setDiscountResolved(true);
       })
       .catch(() => {
-        if (!cancelled) setDiscountStage('done');
+        if (!cancelled) setDiscountResolved(true);
       });
     return () => {
       cancelled = true;
     };
-  }, [step, discountStage, paymentMethod]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.id, item.discountEligible]);
 
-  // O valor final já considera o desconto escolhido na oferta acima — o Pix
-  // só é gerado depois que esse valor está definitivo (discountStage ===
-  // 'done'), pra nunca mostrar um QR Code com o valor errado.
-  const effectivePrice = discountApplied ? Math.max(0, item.price - availableDiscountAmount) : item.price;
+  // Resgata um desconto NOVO (o cliente já tem pontos suficientes) direto
+  // da página do jogo e já aplica nessa compra — ver GameDiscountBanner
+  // dentro de StepSummary, mais abaixo.
+  async function handleRedeemDiscount() {
+    setRedeemingDiscount(true);
+    setRedeemError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Sessão expirada — entre de novo na sua conta.');
+      const result = await redeemDiscountAction(token);
+      if (result.ok) {
+        setAppliedDiscountAmount(result.amount);
+        setDiscountOptedOut(false);
+        setDiscountOffer((prev) => (prev ? { ...prev, hasAvailableCredit: true, availableAmount: result.amount } : prev));
+      } else {
+        setRedeemError(result.error);
+      }
+    } catch (err) {
+      setRedeemError(err instanceof Error ? err.message : 'Não foi possível resgatar agora.');
+    } finally {
+      setRedeemingDiscount(false);
+    }
+  }
+
+  // Só conta como aplicado se for pagamento por Pix — no crédito parcelado
+  // o pagamento acontece inteiramente num link externo, sem como ajustar o
+  // valor cobrado por lá (ver StepCreditPayment).
+  const discountApplied = paymentMethod === 'pix' && appliedDiscountAmount > 0 && !discountOptedOut;
+  const effectivePrice = discountApplied ? Math.max(0, item.price - appliedDiscountAmount) : item.price;
 
   // Ao entrar na etapa 3 (pagamento), já com o valor final decidido, gera o
   // Pix. Tudo roda no navegador — não existe gateway de pagamento nem
   // chamada de API paga envolvida em gerar o QR Code.
   useEffect(() => {
-    if (step !== 3 || discountStage !== 'done' || paymentMethod !== 'pix' || startedRef.current) return;
+    if (step !== 3 || paymentMethod !== 'pix' || !discountResolved || startedRef.current) return;
     startedRef.current = true;
 
     generatePixPayload(effectivePrice, item.name)
       .then(setPix)
       .catch((err: Error) => setPixError(err.message));
-  }, [step, discountStage, paymentMethod, effectivePrice, item]);
+  }, [step, paymentMethod, discountResolved, effectivePrice, item]);
 
   function handleCopy() {
     if (!pix) return;
@@ -212,6 +237,14 @@ export default function PurchaseModal({
             <StepSummary
               item={item}
               priceLabel={priceLabel}
+              discountResolved={discountResolved}
+              discountOffer={discountOffer}
+              appliedDiscountAmount={appliedDiscountAmount}
+              discountOptedOut={discountOptedOut}
+              redeemingDiscount={redeemingDiscount}
+              redeemError={redeemError}
+              onRedeemDiscount={handleRedeemDiscount}
+              onToggleDiscountOptOut={() => setDiscountOptedOut((v) => !v)}
               onNext={(method) => {
                 setPaymentMethod(method);
                 setStep(2);
@@ -232,19 +265,7 @@ export default function PurchaseModal({
             />
           )}
 
-          {step === 3 && paymentMethod === 'pix' && (discountStage === 'checking' || discountStage === 'offer') && (
-            <DiscountOffer
-              stage={discountStage}
-              amount={availableDiscountAmount}
-              price={item.price}
-              onChoose={(useDiscount) => {
-                setDiscountApplied(useDiscount);
-                setDiscountStage('done');
-              }}
-            />
-          )}
-
-          {step === 3 && paymentMethod === 'pix' && discountStage === 'done' && (
+          {step === 3 && paymentMethod === 'pix' && (
             <StepPayment
               gameId={item.id}
               gameName={item.name}
@@ -325,11 +346,27 @@ const GAME_TYPE_LABEL: Record<GameType, string> = {
 function StepSummary({
   item,
   priceLabel,
+  discountResolved,
+  discountOffer,
+  appliedDiscountAmount,
+  discountOptedOut,
+  redeemingDiscount,
+  redeemError,
+  onRedeemDiscount,
+  onToggleDiscountOptOut,
   onNext,
   onOpenScreenshot
 }: {
   item: Item;
   priceLabel: string;
+  discountResolved: boolean;
+  discountOffer: GameDiscountOffer | null;
+  appliedDiscountAmount: number;
+  discountOptedOut: boolean;
+  redeemingDiscount: boolean;
+  redeemError: string | null;
+  onRedeemDiscount: () => void;
+  onToggleDiscountOptOut: () => void;
   onNext: (method: 'pix' | 'credito') => void;
   onOpenScreenshot: (index: number) => void;
 }) {
@@ -437,6 +474,20 @@ function StepSummary({
           {item.originalPriceLabel && <span className="product-price-old">R$ {item.originalPriceLabel}</span>}
           <span className="product-price">R$ {priceLabel}</span>
         </div>
+
+        {item.discountEligible && (
+          <GameDiscountBanner
+            price={item.price}
+            discountResolved={discountResolved}
+            discountOffer={discountOffer}
+            appliedDiscountAmount={appliedDiscountAmount}
+            discountOptedOut={discountOptedOut}
+            redeeming={redeemingDiscount}
+            redeemError={redeemError}
+            onRedeem={onRedeemDiscount}
+            onToggleOptOut={onToggleDiscountOptOut}
+          />
+        )}
 
         <div className="product-meta-grid">
           <div className="product-meta-chip">
@@ -782,45 +833,117 @@ export function ReferralSourcePicker({
   );
 }
 
-// Aparece só quando o jogo aceita desconto de fidelidade E a pessoa tem um
-// crédito de R$20 disponível (ver getCheckoutDiscountAction) — pergunta se
-// quer usar esse desconto NESSA compra antes de gerar o Pix, já que o valor
-// do QR Code depende dessa escolha.
-function DiscountOffer({
-  stage,
-  amount,
+// Aparece na própria página do jogo (etapa 1), bem perto do preço — é o
+// que resolve o problema de clientes que não conseguiam achar/usar o
+// desconto de fidelidade escondido dentro de "Minha coleção". Mostra
+// sempre o estado mais claro possível: se já tem um desconto pronto
+// (aplicado na hora), se já pode resgatar um novo com os pontos que tem, ou
+// quanto falta pra chegar lá — e sempre deixa claro que só vale pagando no
+// Pix, já que no crédito parcelado o valor é fixado no link externo.
+function GameDiscountBanner({
   price,
-  onChoose
+  discountResolved,
+  discountOffer,
+  appliedDiscountAmount,
+  discountOptedOut,
+  redeeming,
+  redeemError,
+  onRedeem,
+  onToggleOptOut
 }: {
-  stage: 'checking' | 'offer';
-  amount: number;
   price: number;
-  onChoose: (useDiscount: boolean) => void;
+  discountResolved: boolean;
+  discountOffer: GameDiscountOffer | null;
+  appliedDiscountAmount: number;
+  discountOptedOut: boolean;
+  redeeming: boolean;
+  redeemError: string | null;
+  onRedeem: () => void;
+  onToggleOptOut: () => void;
 }) {
-  if (stage === 'checking') {
-    return <p style={{ textAlign: 'center', color: 'var(--ink-dim)', fontWeight: 600 }}>Verificando desconto disponível...</p>;
+  if (!discountResolved || !discountOffer) return null;
+
+  const finalLabel = Math.max(0, price - appliedDiscountAmount).toFixed(2).replace('.', ',');
+  const appliedLabel = appliedDiscountAmount.toFixed(2).replace('.', ',');
+
+  // Não logado: não dá pra saber se tem pontos, mas vale explicar que o
+  // recurso existe — é comum alguém nem saber que precisa entrar na conta
+  // pra ver isso.
+  if (!discountOffer.ok) {
+    return (
+      <div className="purchase-discount-banner">
+        <span className="purchase-discount-banner-icon" aria-hidden="true">🎟️</span>
+        <p>
+          Esse jogo aceita desconto de fidelidade! Entre na sua conta (lá em cima) pra ver se você já tem pontos
+          suficientes.
+        </p>
+      </div>
+    );
   }
 
-  const amountLabel = amount.toFixed(2).replace('.', ',');
-  const finalLabel = Math.max(0, price - amount).toFixed(2).replace('.', ',');
-
-  return (
-    <div style={{ textAlign: 'center' }}>
-      <p style={{ fontSize: 34, marginBottom: 8 }}>🎟️</p>
-      <p style={{ fontWeight: 700, fontSize: 15, color: 'var(--ink)', marginBottom: 8 }}>
-        Você tem R$ {amountLabel} de desconto disponível!
-      </p>
-      <p style={{ fontSize: 13.5, color: 'var(--ink-dim)', lineHeight: 1.5, marginBottom: 20 }}>
-        Quer usar esse desconto nessa compra? O valor final ficaria em <strong>R$ {finalLabel}</strong>.
-      </p>
-      <div className="purchase-modal-actions">
-        <button type="button" className="btn primary" onClick={() => onChoose(true)}>
-          Usar meu desconto
-        </button>
-        <button type="button" className="btn ghost" onClick={() => onChoose(false)}>
-          Não, pagar o valor cheio
-        </button>
+  if (appliedDiscountAmount > 0 && !discountOptedOut) {
+    return (
+      <div className="purchase-discount-banner is-applied">
+        <span className="purchase-discount-banner-icon" aria-hidden="true">🎟️</span>
+        <div>
+          <p>
+            Desconto de fidelidade aplicado! Pagando no Pix, esse jogo sai por <strong>R$ {finalLabel}</strong> em
+            vez de R$ {price.toFixed(2).replace('.', ',')} (desconto de R$ {appliedLabel}).
+          </p>
+          <button type="button" className="purchase-discount-banner-link" onClick={onToggleOptOut}>
+            Não usar esse desconto agora
+          </button>
+        </div>
       </div>
+    );
+  }
+
+  if (appliedDiscountAmount > 0 && discountOptedOut) {
+    return (
+      <div className="purchase-discount-banner">
+        <span className="purchase-discount-banner-icon" aria-hidden="true">🎟️</span>
+        <div>
+          <p>Você guardou seu desconto de R$ {appliedLabel} pra usar depois — ele continua disponível.</p>
+          <button type="button" className="purchase-discount-banner-link" onClick={onToggleOptOut}>
+            Usar nesse jogo agora
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (discountOffer.confirmedPoints >= discountOffer.pointsPerDiscount) {
+    const discountLabel = discountOffer.discountAmount.toFixed(2).replace('.', ',');
+    const newFinalLabel = Math.max(0, price - discountOffer.discountAmount).toFixed(2).replace('.', ',');
+    return (
+      <div className="purchase-discount-banner is-redeemable">
+        <span className="purchase-discount-banner-icon" aria-hidden="true">🎟️</span>
+        <div>
+          <p>
+            Você tem <strong>{discountOffer.confirmedPoints} pontos</strong>! Resgate R$ {discountLabel} de desconto
+            nesse jogo agora — pagando no Pix, o preço cai pra <strong>R$ {newFinalLabel}</strong> em vez de R${' '}
+            {price.toFixed(2).replace('.', ',')}.
+          </p>
+          <button type="button" className="btn credit" style={{ marginTop: 8 }} onClick={onRedeem} disabled={redeeming}>
+            {redeeming ? 'Resgatando...' : 'Resgatar desconto agora'}
+          </button>
+          {redeemError && (
+            <p style={{ color: '#ff8a8a', fontSize: 12.5, fontWeight: 600, marginTop: 8 }}>{redeemError}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Ainda não tem pontos suficientes — mostra o progresso, pra deixar claro
+  // que o sistema existe e como chegar lá (didático, em vez de escondido).
+  return (
+    <div className="purchase-discount-banner">
+      <span className="purchase-discount-banner-icon" aria-hidden="true">🎴</span>
+      <p>
+        Você tem {discountOffer.confirmedPoints} de {discountOffer.pointsPerDiscount} pontos pra um desconto de
+        fidelidade nesse jogo.
+      </p>
     </div>
   );
 }
