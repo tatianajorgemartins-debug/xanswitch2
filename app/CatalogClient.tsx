@@ -113,6 +113,10 @@ export default function CatalogClient({
   const [query, setQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // Só importa no celular (≤700px, ver .catalog-toolbar-extra em
+  // globals.css) — no computador os botões ficam sempre visíveis, esse
+  // estado nem é consultado pelo CSS daquele breakpoint pra cima.
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [reviewFormOpen, setReviewFormOpen] = useState(false);
   const [reviewsModalOpen, setReviewsModalOpen] = useState(false);
   const [franchiseFilter, setFranchiseFilter] = useState('');
@@ -457,61 +461,26 @@ export default function CatalogClient({
           )}
         </div>
 
-        <div className="view-toggle">
-          <button
-            type="button"
-            className={viewMode === 'grid' ? 'active' : ''}
-            onClick={() => setViewMode('grid')}
-            aria-label="Ver em grade"
-            title="Grade"
-          >
-            <svg viewBox="0 0 24 24" fill="currentColor" width={16} height={16}>
-              <rect x="3" y="3" width="8" height="8" rx="1.5" />
-              <rect x="13" y="3" width="8" height="8" rx="1.5" />
-              <rect x="3" y="13" width="8" height="8" rx="1.5" />
-              <rect x="13" y="13" width="8" height="8" rx="1.5" />
+        {/* Só aparece no celular (≤700px) — abre/fecha o grupo de botões
+            "secundários" logo abaixo (.catalog-toolbar-extra). No
+            computador esse botão fica escondido via CSS, porque lá esses
+            botões já aparecem direto na barra. */}
+        <button
+          type="button"
+          className="btn ghost catalog-toolbar-menu-btn"
+          onClick={() => setMobileMenuOpen((v) => !v)}
+          aria-label={mobileMenuOpen ? 'Fechar mais opções' : 'Mais opções'}
+          aria-expanded={mobileMenuOpen}
+        >
+          {mobileMenuOpen ? (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={16} height={16}>
+              <path d="M5 5l14 14M19 5L5 19" strokeLinecap="round" />
             </svg>
-          </button>
-          <button
-            type="button"
-            className={viewMode === 'list' ? 'active' : ''}
-            onClick={() => setViewMode('list')}
-            aria-label="Ver em lista"
-            title="Lista"
-          >
-            <svg viewBox="0 0 24 24" fill="currentColor" width={16} height={16}>
-              <rect x="3" y="4.5" width="18" height="3" rx="1.2" />
-              <rect x="3" y="10.5" width="18" height="3" rx="1.2" />
-              <rect x="3" y="16.5" width="18" height="3" rx="1.2" />
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={16} height={16}>
+              <path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round" />
             </svg>
-          </button>
-        </div>
-
-        <button type="button" className="btn ghost" onClick={() => setFiltersOpen((v) => !v)}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={14} height={14} style={{ flex: 'none' }}>
-            <path d="M3 4h18l-7 8v7l-4-2v-5L3 4z" strokeLinejoin="round" strokeLinecap="round" />
-          </svg>
-          Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-        </button>
-
-        {isFiltering && (
-          <button type="button" className="btn ghost" onClick={clearEverything}>
-            ✕ Limpar tudo
-          </button>
-        )}
-
-        <button type="button" className="btn ghost" onClick={() => setReviewFormOpen((v) => !v)}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={14} height={14} style={{ flex: 'none' }}>
-            <path d="M4 4h16v12H8l-4 4V4z" strokeLinejoin="round" strokeLinecap="round" />
-          </svg>
-          Deixe um comentário
-        </button>
-
-        <button type="button" className="btn ghost" onClick={() => setReviewsModalOpen(true)}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={14} height={14} style={{ flex: 'none' }}>
-            <path d="M12 17.3l-5.4 3 1.4-6-4.6-4 6-.5L12 4l2.6 5.8 6 .5-4.6 4 1.4 6z" strokeLinejoin="round" strokeLinecap="round" />
-          </svg>
-          Ver avaliações
+          )}
         </button>
 
         {featuredFranchise && (
@@ -523,6 +492,65 @@ export default function CatalogClient({
             {featuredFranchise.label}
           </button>
         )}
+
+        <div className={`catalog-toolbar-extra${mobileMenuOpen ? ' is-open' : ''}`}>
+          <div className="view-toggle">
+            <button
+              type="button"
+              className={viewMode === 'grid' ? 'active' : ''}
+              onClick={() => setViewMode('grid')}
+              aria-label="Ver em grade"
+              title="Grade"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" width={16} height={16}>
+                <rect x="3" y="3" width="8" height="8" rx="1.5" />
+                <rect x="13" y="3" width="8" height="8" rx="1.5" />
+                <rect x="3" y="13" width="8" height="8" rx="1.5" />
+                <rect x="13" y="13" width="8" height="8" rx="1.5" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className={viewMode === 'list' ? 'active' : ''}
+              onClick={() => setViewMode('list')}
+              aria-label="Ver em lista"
+              title="Lista"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" width={16} height={16}>
+                <rect x="3" y="4.5" width="18" height="3" rx="1.2" />
+                <rect x="3" y="10.5" width="18" height="3" rx="1.2" />
+                <rect x="3" y="16.5" width="18" height="3" rx="1.2" />
+              </svg>
+            </button>
+          </div>
+
+          <button type="button" className="btn ghost" onClick={() => setFiltersOpen((v) => !v)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={14} height={14} style={{ flex: 'none' }}>
+              <path d="M3 4h18l-7 8v7l-4-2v-5L3 4z" strokeLinejoin="round" strokeLinecap="round" />
+            </svg>
+            Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+          </button>
+
+          {isFiltering && (
+            <button type="button" className="btn ghost" onClick={clearEverything}>
+              ✕ Limpar tudo
+            </button>
+          )}
+
+          <button type="button" className="btn ghost" onClick={() => setReviewFormOpen((v) => !v)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={14} height={14} style={{ flex: 'none' }}>
+              <path d="M4 4h16v12H8l-4 4V4z" strokeLinejoin="round" strokeLinecap="round" />
+            </svg>
+            Deixe um comentário
+          </button>
+
+          <button type="button" className="btn ghost" onClick={() => setReviewsModalOpen(true)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={14} height={14} style={{ flex: 'none' }}>
+              <path d="M12 17.3l-5.4 3 1.4-6-4.6-4 6-.5L12 4l2.6 5.8 6 .5-4.6 4 1.4 6z" strokeLinejoin="round" strokeLinecap="round" />
+            </svg>
+            Ver avaliações
+          </button>
+        </div>
       </div>
 
       {reviewFormOpen && (

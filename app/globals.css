@@ -646,7 +646,12 @@ textarea:focus {
 
 .catalog-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  /* 200px (não 180px): com a largura útil do conteúdo em 1200px (ver o
+     comentário sobre maxWidth 1240 em CatalogClient.tsx), 180px deixava
+     caber uma 6ª coluna por engano — 200px garante no máximo 5 por linha
+     no computador, que é o número pretendido (ver comentário no
+     .most-wanted-section logo abaixo). */
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 20px;
 }
 @media (max-width: 480px) {
@@ -844,12 +849,18 @@ textarea:focus {
   color: var(--green);
 }
 
-/* Barra de busca + botões de ação acima do catálogo (CatalogClient.tsx) —
-   sempre numa linha só: em vez de quebrar linha quando não cabe tudo (o
-   que empurrava o botão de franquia em destaque pra uma terceira linha
-   sozinho), a barra inteira rola na horizontal. Os filhos nunca encolhem
-   (flex-shrink: 0), então cada botão mantém sua largura normal mesmo com
-   pouco espaço — só a rolagem muda. */
+/* Barra de busca + botões de ação acima do catálogo (CatalogClient.tsx).
+   Desktop: tudo numa linha só, com a busca esticando (flex-grow) pra
+   preencher o espaço entre o fim dos botões e a margem direita do site —
+   sem isso, os botões ficavam "flutuando" à esquerda, sem alcançar a
+   margem, enquanto a busca ficava com uma largura fixa menor que o
+   necessário.
+   Mobile (≤700px): só a busca, o botão de franquia em destaque e um
+   hamburguer ficam na linha principal — os demais botões (grade/lista,
+   Filtros, Limpar tudo, Deixe um comentário, Ver avaliações) vão pra
+   dentro de .catalog-toolbar-extra, que só aparece (abaixo, ocupando a
+   linha inteira) quando o hamburguer é clicado. Isso evita uma barra
+   lotada e cortada em telas pequenas. */
 .catalog-toolbar {
   display: flex;
   align-items: center;
@@ -885,13 +896,81 @@ textarea:focus {
   border: 1px solid rgba(164, 99, 255, 0.3);
   border-radius: 10px;
   padding: 10px 14px;
-  width: 260px;
+  order: 1;
+  flex: 1 1 220px;
+  min-width: 0;
+  max-width: 480px;
 }
 .catalog-toolbar-search input {
   background: none;
   border: none;
   padding: 0;
   width: 100%;
+  min-width: 0;
+}
+
+/* Grupo com os botões "secundários" — em telas largas é só mais um grupo
+   inline na mesma linha (display: contents faz os filhos dele se
+   comportarem como se fossem filhos diretos do flex .catalog-toolbar);
+   em telas estreitas vira um painel que ocupa a linha inteira, abaixo da
+   busca/franquia/hamburguer. */
+.catalog-toolbar-extra {
+  display: contents;
+  order: 3;
+}
+/* display: contents tira o wrapper da árvore de layout, mas ele continua
+   valendo pra seletores de CSS — por isso ".catalog-toolbar > *" (que olha
+   só pros filhos DIRETOS de verdade) não alcança esses botões aqui dentro.
+   Precisa repetir a regra "não encolher" especificamente pra eles. */
+.catalog-toolbar-extra > * {
+  flex: none;
+}
+/* .btn.catalog-toolbar-menu-btn (duas classes, não uma só) de propósito:
+   garante mais especificidade que a regra base ".btn" (que vem DEPOIS
+   dessa aqui no arquivo e tem padding próprio) — sem isso, o padding de
+   ".btn" ganhava da sobreposição e o botão ficava largo demais. */
+.btn.catalog-toolbar-menu-btn {
+  display: none;
+  order: 2;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  padding: 0;
+}
+.catalog-toolbar .featured-franchise-btn {
+  order: 4;
+}
+
+@media (max-width: 700px) {
+  .catalog-toolbar {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+  .catalog-toolbar-search {
+    flex: 1 1 140px;
+    max-width: none;
+  }
+  .btn.catalog-toolbar-menu-btn {
+    display: flex;
+  }
+  .catalog-toolbar .featured-franchise-btn {
+    order: 3;
+  }
+  .catalog-toolbar-extra {
+    display: none;
+    order: 10;
+    flex-basis: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .catalog-toolbar-extra.is-open {
+    display: flex;
+  }
+  .catalog-toolbar-extra .view-toggle {
+    align-self: flex-start;
+  }
 }
 
 /* Grid/list view switcher next to the search bar. */
