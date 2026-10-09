@@ -201,10 +201,12 @@ export const REVIEWS_BANNER_KEY = 'reviews_banner_image_url';
 
 // Chave usada em site_settings pra guardar quantos reais valem os 5 pontos
 // trocados por desconto (ver updateLoyaltyDiscountAmountAction em
-// app/admin/actions.ts e getDiscountAmount em app/cardActions.ts). Só afeta
-// créditos NOVOS gerados a partir da troca — um crédito já concedido guarda
-// o valor de quando foi criado (discount_credits.amount), então mudar esse
-// valor no admin nunca muda o valor de um desconto que o cliente já tem.
+// app/admin/actions.ts e getDiscountAmount em app/cardActions.ts). Mudar
+// esse valor também atualiza, na hora, todo crédito AINDA disponível (ver
+// updateAvailableDiscountCreditsAmount mais abaixo) — assim o que aparece
+// na página do jogo nunca fica "fora de sincronia" com o valor configurado
+// aqui. Créditos já usados mantêm o valor histórico de quando foram
+// gastos, sem alteração.
 export const LOYALTY_DISCOUNT_AMOUNT_KEY = 'loyalty_discount_amount';
 
 // Chaves usadas em site_settings pro botão de "franquia em destaque" que
@@ -454,6 +456,18 @@ export async function getAvailableDiscountCredit(email: string): Promise<Discoun
     LIMIT 1
   `;
   return (rows[0] as DiscountCredit) ?? null;
+}
+
+// Atualiza o valor de todos os créditos AINDA NÃO usados pro novo valor
+// configurado (ver updateLoyaltyDiscountAmountAction em
+// app/admin/actions.ts) — assim um cliente que já tinha um desconto
+// guardado de antes não fica preso ao valor antigo quando você muda o
+// valor padrão. Créditos já usados (status 'used') nunca são tocados —
+// esses são histórico de pedidos de verdade, não "em aberto".
+export async function updateAvailableDiscountCreditsAmount(amount: number): Promise<void> {
+  await getSql()`
+    UPDATE discount_credits SET amount = ${amount} WHERE status = 'available'
+  `;
 }
 
 export async function markDiscountCreditUsed(id: number, orderId: number): Promise<void> {

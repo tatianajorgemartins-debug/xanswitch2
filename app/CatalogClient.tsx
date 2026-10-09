@@ -414,7 +414,14 @@ export default function CatalogClient({
         </div>
       </header>
 
-      <div className="page-content" style={{ maxWidth: 1200, margin: '0 auto', paddingLeft: 20, paddingRight: 20, paddingBottom: 80 }}>
+      {/* maxWidth 1240 (não 1200) de propósito: com os 20px de padding dos
+          dois lados, a largura útil do conteúdo continua 1200px — mas essa
+          combinação é o que faz a margem esquerda bater exatamente com a
+          do cabeçalho fixo (.site-header-bar-inner), que usa padding 20px
+          num container de largura cheia por fora de um maxWidth 1200 por
+          dentro. As duas contas davam 20px de diferença uma da outra antes
+          disso, o que ficava visível na barra de botões logo abaixo. */}
+      <div className="page-content" style={{ maxWidth: 1240, margin: '0 auto', paddingLeft: 20, paddingRight: 20, paddingBottom: 80 }}>
         <div className="catalog-toolbar">
         <div className="catalog-toolbar-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={16} height={16} style={{ color: 'var(--ink-dim)', flex: 'none' }}>

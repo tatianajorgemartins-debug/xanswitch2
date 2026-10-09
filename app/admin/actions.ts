@@ -23,6 +23,7 @@ import {
   setOrderCardPointsConfirmed,
   createPointAdjustment,
   createDiscountCredit,
+  updateAvailableDiscountCreditsAmount,
   getSiteSetting,
   setSiteSetting,
   REVIEWS_BANNER_KEY,
@@ -397,16 +398,19 @@ export async function adjustClientPointsAction(email: string, points: number, no
 }
 
 // Valor em reais de um crédito de desconto (trocado a cada 5 pontos) — ver
-// "🎖️ Clientes" no admin e getDiscountAmount em app/cardActions.ts. Só vale
-// pra créditos NOVOS a partir de agora: um crédito que o cliente já tem
-// guardado mantém o valor de quando foi gerado.
+// "🎖️ Clientes" no admin e getDiscountAmount em app/cardActions.ts. Também
+// atualiza na hora todo crédito que algum cliente já tenha guardado e
+// ainda não usou, pra nunca ficar "fora de sincronia" com o que a página
+// do jogo mostra. Créditos já usados (histórico) não são tocados.
 export async function updateLoyaltyDiscountAmountAction(amount: number): Promise<{ error: string | null }> {
   await requireAuth();
   if (!Number.isFinite(amount) || amount <= 0) {
     return { error: 'Digite um valor válido, maior que zero.' };
   }
   await setSiteSetting(LOYALTY_DISCOUNT_AMOUNT_KEY, amount.toFixed(2));
+  await updateAvailableDiscountCreditsAmount(amount);
   revalidatePath('/admin');
+  revalidatePath('/');
   return { error: null };
 }
 
