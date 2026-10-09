@@ -844,6 +844,56 @@ textarea:focus {
   color: var(--green);
 }
 
+/* Barra de busca + botões de ação acima do catálogo (CatalogClient.tsx) —
+   sempre numa linha só: em vez de quebrar linha quando não cabe tudo (o
+   que empurrava o botão de franquia em destaque pra uma terceira linha
+   sozinho), a barra inteira rola na horizontal. Os filhos nunca encolhem
+   (flex-shrink: 0), então cada botão mantém sua largura normal mesmo com
+   pouco espaço — só a rolagem muda. */
+.catalog-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin-top: 18px;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--purple) rgba(255, 255, 255, 0.06);
+}
+.catalog-toolbar::-webkit-scrollbar {
+  height: 7px;
+}
+.catalog-toolbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+.catalog-toolbar::-webkit-scrollbar-thumb {
+  background: var(--purple);
+  border-radius: 8px;
+}
+.catalog-toolbar > * {
+  flex: none;
+}
+.catalog-toolbar-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel);
+  border: 1px solid rgba(164, 99, 255, 0.3);
+  border-radius: 10px;
+  padding: 10px 14px;
+  width: 260px;
+}
+.catalog-toolbar-search input {
+  background: none;
+  border: none;
+  padding: 0;
+  width: 100%;
+}
+
 /* Grid/list view switcher next to the search bar. */
 .view-toggle {
   display: flex;

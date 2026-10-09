@@ -415,20 +415,8 @@ export default function CatalogClient({
       </header>
 
       <div className="page-content" style={{ maxWidth: 1200, margin: '0 auto', paddingLeft: 20, paddingRight: 20, paddingBottom: 80 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', marginTop: 18, marginBottom: 10 }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            background: 'var(--panel)',
-            border: '1px solid rgba(164,99,255,.3)',
-            borderRadius: 10,
-            padding: '10px 14px',
-            flex: '1 1 260px',
-            maxWidth: 420
-          }}
-        >
+        <div className="catalog-toolbar">
+        <div className="catalog-toolbar-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={16} height={16} style={{ color: 'var(--ink-dim)', flex: 'none' }}>
             <circle cx="11" cy="11" r="7" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -438,7 +426,6 @@ export default function CatalogClient({
             placeholder="Buscar jogo..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            style={{ background: 'none', border: 'none', padding: 0, width: '100%' }}
           />
           {query && (
             <button
