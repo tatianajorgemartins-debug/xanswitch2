@@ -975,6 +975,37 @@ textarea:focus {
   cursor: not-allowed;
 }
 
+/* Botão de franquia em destaque (CatalogClient.tsx), do lado de "Ver
+   avaliações" — só aparece quando configurado no admin, pra divulgar uma
+   promoção específica. Precisa chamar mais atenção que os outros botões
+   "ghost" ao lado, por isso o gradiente + brilho pulsante, em vez de só
+   mais um btn.ghost igual aos demais. */
+.btn.featured-franchise-btn {
+  background: linear-gradient(135deg, var(--purple), var(--gold));
+  border-color: transparent;
+  color: #fff;
+  font-weight: 800;
+  box-shadow: 0 0 14px rgba(255, 210, 78, 0.45);
+  animation: featured-franchise-pulse 2.4s ease-in-out infinite;
+}
+.btn.featured-franchise-btn:hover {
+  filter: brightness(1.1);
+}
+@keyframes featured-franchise-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 10px rgba(255, 210, 78, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 210, 78, 0.65);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn.featured-franchise-btn {
+    animation: none;
+  }
+}
+
 input[type='text'],
 input[type='number'],
 input[type='password'],

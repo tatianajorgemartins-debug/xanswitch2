@@ -207,6 +207,18 @@ export const REVIEWS_BANNER_KEY = 'reviews_banner_image_url';
 // valor no admin nunca muda o valor de um desconto que o cliente já tem.
 export const LOYALTY_DISCOUNT_AMOUNT_KEY = 'loyalty_discount_amount';
 
+// Chaves usadas em site_settings pro botão de "franquia em destaque" que
+// aparece do lado do botão "Ver avaliações" no catálogo — pra divulgar uma
+// promoção específica (ex: "Jogos de Zelda em destaque"). Ver
+// updateFeaturedFranchiseAction em app/admin/actions.ts e como
+// CatalogClient.tsx usa esses valores. featuredFranchiseEnabled controla só
+// se o botão aparece — o nome da franquia e o texto do botão ficam
+// guardados mesmo quando desativado, pra não precisar digitar de novo da
+// próxima vez.
+export const FEATURED_FRANCHISE_ENABLED_KEY = 'featured_franchise_enabled';
+export const FEATURED_FRANCHISE_KEY = 'featured_franchise';
+export const FEATURED_FRANCHISE_LABEL_KEY = 'featured_franchise_label';
+
 export async function setSiteSetting(key: string, value: string | null): Promise<void> {
   await getSql()`
     INSERT INTO site_settings (key, value) VALUES (${key}, ${value})

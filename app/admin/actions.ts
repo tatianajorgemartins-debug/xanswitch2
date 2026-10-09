@@ -27,6 +27,9 @@ import {
   setSiteSetting,
   REVIEWS_BANNER_KEY,
   LOYALTY_DISCOUNT_AMOUNT_KEY,
+  FEATURED_FRANCHISE_ENABLED_KEY,
+  FEATURED_FRANCHISE_KEY,
+  FEATURED_FRANCHISE_LABEL_KEY,
   type Platform,
   type GameType
 } from '@/lib/db';
@@ -423,6 +426,29 @@ export async function createManualDiscountCreditAction(email: string, amount: nu
   }
   await createDiscountCredit(email.trim(), amount);
   revalidatePath('/admin');
+  return { error: null };
+}
+
+// Botão de franquia em destaque, do lado de "Ver avaliações" no catálogo —
+// pra divulgar uma promoção específica (ex: "🔥 Jogos de Zelda"). enabled
+// controla só se o botão aparece; franchise e label continuam guardados
+// mesmo desativado, pra não precisar configurar tudo de novo da próxima
+// vez. label vazio cai no texto padrão "🔥 Jogos de {franchise}" (ver
+// loadCatalogData em lib/catalogData.ts).
+export async function updateFeaturedFranchiseAction(
+  enabled: boolean,
+  franchise: string,
+  label: string
+): Promise<{ error: string | null }> {
+  await requireAuth();
+  if (enabled && !franchise.trim()) {
+    return { error: 'Escolha uma franquia pra ativar o botão.' };
+  }
+  await setSiteSetting(FEATURED_FRANCHISE_ENABLED_KEY, enabled ? 'true' : 'false');
+  await setSiteSetting(FEATURED_FRANCHISE_KEY, franchise.trim() || null);
+  await setSiteSetting(FEATURED_FRANCHISE_LABEL_KEY, label.trim() || null);
+  revalidatePath('/admin');
+  revalidatePath('/');
   return { error: null };
 }
 

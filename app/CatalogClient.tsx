@@ -76,7 +76,9 @@ export default function CatalogClient({
   reviews,
   whatsappContactUrl,
   reviewsBannerUrl,
-  initialGameId
+  featuredFranchise,
+  initialGameId,
+  initialFranchiseFilter
 }: {
   items: Item[];
   featuredItems: Item[];
@@ -94,10 +96,19 @@ export default function CatalogClient({
   // null enquanto não subir nada no admin (ver ReviewsBannerPanel). As
   // avaliações em si continuam existindo, atrás do botão "Ver avaliações".
   reviewsBannerUrl: string | null;
+  // Botão de franquia em destaque (ex: "🔥 Jogos de Zelda"), configurado no
+  // admin — null quando desativado. Aparece do lado de "Ver avaliações" e,
+  // ao clicar, filtra o catálogo pra essa franquia (ver
+  // FeaturedFranchisePanel em AdminClient.tsx).
+  featuredFranchise: { franchise: string; label: string } | null;
   // Só vem preenchido quando a página é acessada pelo link direto de um
   // jogo (app/jogo/[id]/page.tsx) — abre o modal de compra desse jogo
   // assim que a página carrega, sem precisar clicar em nada.
   initialGameId?: number;
+  // Só vem preenchido quando a página é acessada pelo link direto de uma
+  // franquia (app/franquia/[name]/page.tsx) — já filtra o catálogo pra essa
+  // franquia ao carregar, sem precisar clicar em nada.
+  initialFranchiseFilter?: string;
 }) {
   const [query, setQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
@@ -142,6 +153,17 @@ export default function CatalogClient({
     if (item) setSelectedItem(item);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialGameId]);
+
+  // Mesma ideia, mas pro link direto de uma franquia
+  // (app/franquia/[name]/page.tsx) — já filtra o catálogo sozinho ao
+  // carregar. scrollToGrid é declarado mais abaixo nesse mesmo componente,
+  // mas já existe aqui por causa do hoisting normal de function declaration.
+  useEffect(() => {
+    if (!initialFranchiseFilter) return;
+    setFranchiseFilter(initialFranchiseFilter);
+    scrollToGrid();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialFranchiseFilter]);
 
   // Conta do cliente (login por e-mail) e lista de desejos dele. `user` fica
   // null enquanto ninguém logou. `wishlistIds` guarda só os ids dos jogos
@@ -348,6 +370,20 @@ export default function CatalogClient({
     scrollToGrid();
   }
 
+  // Botão de franquia em destaque (ver render mais abaixo) — mesma lógica
+  // de handleFilterFlag, só que filtrando por franquia em vez de "mais
+  // vendido"/"mais aguardado".
+  function handleFranchiseHighlight(franchise: string) {
+    setQuery('');
+    setPlatformFilter('all');
+    setTypeFilter('all');
+    setPriceMin('');
+    setPriceMax('');
+    setQuickFilter(null);
+    setFranchiseFilter(franchise);
+    scrollToGrid();
+  }
+
   function clearFilters() {
     setFranchiseFilter('');
     setPlatformFilter('all');
@@ -483,6 +519,16 @@ export default function CatalogClient({
           </svg>
           Ver avaliações
         </button>
+
+        {featuredFranchise && (
+          <button
+            type="button"
+            className="btn featured-franchise-btn"
+            onClick={() => handleFranchiseHighlight(featuredFranchise.franchise)}
+          >
+            {featuredFranchise.label}
+          </button>
+        )}
       </div>
 
       {reviewFormOpen && (

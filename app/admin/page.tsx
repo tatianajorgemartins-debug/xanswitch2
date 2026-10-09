@@ -8,7 +8,10 @@ import {
   getAllAvailableDiscountCreditTotals,
   getSiteSetting,
   REVIEWS_BANNER_KEY,
-  LOYALTY_DISCOUNT_AMOUNT_KEY
+  LOYALTY_DISCOUNT_AMOUNT_KEY,
+  FEATURED_FRANCHISE_ENABLED_KEY,
+  FEATURED_FRANCHISE_KEY,
+  FEATURED_FRANCHISE_LABEL_KEY
 } from '@/lib/db';
 import { isAuthenticated } from '@/lib/auth';
 import { getWishlistCounts } from '@/lib/supabaseAdmin';
@@ -38,6 +41,9 @@ export default async function AdminPage() {
   const rawDiscountAmount = await getSiteSetting(LOYALTY_DISCOUNT_AMOUNT_KEY);
   const parsedDiscountAmount = rawDiscountAmount ? parseFloat(rawDiscountAmount) : NaN;
   const discountAmount = Number.isFinite(parsedDiscountAmount) && parsedDiscountAmount > 0 ? parsedDiscountAmount : 20;
+  const featuredFranchiseEnabled = (await getSiteSetting(FEATURED_FRANCHISE_ENABLED_KEY)) === 'true';
+  const featuredFranchiseName = (await getSiteSetting(FEATURED_FRANCHISE_KEY)) ?? '';
+  const featuredFranchiseLabel = (await getSiteSetting(FEATURED_FRANCHISE_LABEL_KEY)) ?? '';
   return (
     <AdminClient
       initialGames={games}
@@ -49,6 +55,9 @@ export default async function AdminPage() {
       availableDiscountCreditTotals={availableDiscountCreditTotals}
       reviewsBannerUrl={reviewsBannerUrl}
       discountAmount={discountAmount}
+      featuredFranchiseEnabled={featuredFranchiseEnabled}
+      featuredFranchiseName={featuredFranchiseName}
+      featuredFranchiseLabel={featuredFranchiseLabel}
     />
   );
 }

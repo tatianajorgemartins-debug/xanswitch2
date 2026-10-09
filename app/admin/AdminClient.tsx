@@ -24,6 +24,7 @@ import {
   removeReviewsBannerAction,
   updateLoyaltyDiscountAmountAction,
   createManualDiscountCreditAction,
+  updateFeaturedFranchiseAction,
   type GameFormState
 } from './actions';
 
@@ -38,7 +39,10 @@ export default function AdminClient({
   pointAdjustmentTotals,
   availableDiscountCreditTotals,
   reviewsBannerUrl,
-  discountAmount
+  discountAmount,
+  featuredFranchiseEnabled,
+  featuredFranchiseName,
+  featuredFranchiseLabel
 }: {
   initialGames: Game[];
   visitCount: number;
@@ -49,6 +53,9 @@ export default function AdminClient({
   availableDiscountCreditTotals: Record<string, number>;
   reviewsBannerUrl: string | null;
   discountAmount: number;
+  featuredFranchiseEnabled: boolean;
+  featuredFranchiseName: string;
+  featuredFranchiseLabel: string;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -58,6 +65,7 @@ export default function AdminClient({
   const [showWishlistPanel, setShowWishlistPanel] = useState(false);
   const [showClientsPanel, setShowClientsPanel] = useState(false);
   const [showBannerPanel, setShowBannerPanel] = useState(false);
+  const [showFranchisePanel, setShowFranchisePanel] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingGame, setEditingGame] = useState<Game | null>(null);
 
@@ -161,15 +169,31 @@ export default function AdminClient({
         pendingPoints: number;
         availableCredit: number;
         games: string[];
+        lastPurchaseAt: string;
         pendingOrders: { id: number; gameName: string; points: number; createdAt: string }[];
+        cards: { id: number; gameName: string; imageUrl: string | null; points: number; confirmed: boolean; createdAt: string }[];
       }
     >();
     for (const o of orders) {
       if (!o.customer_email) continue;
       const key = o.customer_email.toLowerCase();
+      const createdAt = o.created_at.toString();
       const entry =
         byEmail.get(key) ??
-        { email: o.customer_email, confirmedPoints: 0, pendingPoints: 0, availableCredit: 0, games: [], pendingOrders: [] };
+        {
+          email: o.customer_email,
+          confirmedPoints: 0,
+          pendingPoints: 0,
+          availableCredit: 0,
+          games: [],
+          lastPurchaseAt: createdAt,
+          pendingOrders: [],
+          cards: []
+        };
+      // orders já vem do servidor ordenado do mais recente pro mais antigo
+      // (ver getRecentOrders) — o primeiro pedido que achamos de cada
+      // cliente já é o mais recente dele.
+      if (createdAt > entry.lastPurchaseAt) entry.lastPurchaseAt = createdAt;
       if (o.card_points_earned > 0) {
         if (o.card_points_confirmed) {
           entry.confirmedPoints += o.card_points_earned;
@@ -179,10 +203,18 @@ export default function AdminClient({
             id: o.id,
             gameName: o.game_name,
             points: o.card_points_earned,
-            createdAt: o.created_at.toString()
+            createdAt
           });
         }
         entry.games.push(o.game_name);
+        entry.cards.push({
+          id: o.id,
+          gameName: o.game_name,
+          imageUrl: o.card_image_url,
+          points: o.card_points_earned,
+          confirmed: o.card_points_confirmed,
+          createdAt
+        });
       }
       byEmail.set(key, entry);
     }
@@ -196,7 +228,7 @@ export default function AdminClient({
     }
     return Array.from(byEmail.values())
       .filter((c) => c.games.length > 0)
-      .sort((a, b) => b.confirmedPoints - a.confirmedPoints);
+      .sort((a, b) => (a.lastPurchaseAt < b.lastPurchaseAt ? 1 : -1));
   }, [orders, pointAdjustmentTotals, availableDiscountCreditTotals]);
 
   return (
@@ -282,6 +314,9 @@ export default function AdminClient({
         <button className="btn ghost" onClick={() => setShowBannerPanel((s) => !s)}>
           🖼️ Banner de avaliações
         </button>
+        <button className="btn ghost" onClick={() => setShowFranchisePanel((s) => !s)}>
+          🔥 Franquia em destaque{featuredFranchiseEnabled ? ` (${featuredFranchiseName})` : ''}
+        </button>
       </div>
 
       {showReviewsPanel && (
@@ -298,10 +333,24 @@ export default function AdminClient({
       {showWishlistPanel && <WishlistPanel entries={mostWantedGames} />}
 
       {showClientsPanel && (
-        <ClientsPanel clients={clientSummaries} onConfirmPoints={handleConfirmOrderPoints} discountAmount={discountAmount} />
+        <ClientsPanel
+          clients={clientSummaries}
+          onConfirmPoints={handleConfirmOrderPoints}
+          onDeleteCard={handleDeleteOrder}
+          discountAmount={discountAmount}
+        />
       )}
 
       {showBannerPanel && <ReviewsBannerPanel currentUrl={reviewsBannerUrl} />}
+
+      {showFranchisePanel && (
+        <FeaturedFranchisePanel
+          allFranchises={allFranchises}
+          enabled={featuredFranchiseEnabled}
+          franchise={featuredFranchiseName}
+          label={featuredFranchiseLabel}
+        />
+      )}
 
       {panelOpen && (
         <GameFormPanel
@@ -697,19 +746,6 @@ function OrdersPanel({
                   {o.referral_source && (
                     <span style={{ color: 'var(--ink-dim)', fontSize: 12.5 }}>📣 {o.referral_source}</span>
                   )}
-                  <span
-                    style={{
-                      fontSize: 11.5,
-                      fontWeight: 700,
-                      color: 'var(--purple-2)',
-                      background: 'rgba(164,99,255,.12)',
-                      border: '1px solid rgba(164,99,255,.3)',
-                      borderRadius: 6,
-                      padding: '2px 8px'
-                    }}
-                  >
-                    {o.status}
-                  </span>
                 </div>
                 {o.card_points_earned > 0 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -739,6 +775,7 @@ function OrdersPanel({
 function ClientsPanel({
   clients,
   onConfirmPoints,
+  onDeleteCard,
   discountAmount
 }: {
   clients: {
@@ -747,30 +784,48 @@ function ClientsPanel({
     pendingPoints: number;
     availableCredit: number;
     games: string[];
+    lastPurchaseAt: string;
     pendingOrders: { id: number; gameName: string; points: number; createdAt: string }[];
+    cards: { id: number; gameName: string; imageUrl: string | null; points: number; confirmed: boolean; createdAt: string }[];
   }[];
   onConfirmPoints: (id: number, confirmed: boolean) => void;
+  onDeleteCard: (id: number) => void;
   discountAmount: number;
 }) {
   const router = useRouter();
-  const [openEmail, setOpenEmail] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [expandedEmail, setExpandedEmail] = useState<string | null>(null);
   const [pointsInput, setPointsInput] = useState('');
   const [noteInput, setNoteInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [discountInput, setDiscountInput] = useState(discountAmount.toFixed(2));
   const [savingDiscount, setSavingDiscount] = useState(false);
   const [discountError, setDiscountError] = useState<string | null>(null);
   const [discountSaved, setDiscountSaved] = useState(false);
-  const [openCouponEmail, setOpenCouponEmail] = useState<string | null>(null);
   const [couponInput, setCouponInput] = useState('');
   const [savingCoupon, setSavingCoupon] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponSaved, setCouponSaved] = useState(false);
 
-  function openEditor(email: string) {
-    setOpenEmail(email);
+  const filteredClients = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return clients;
+    return clients.filter((c) => c.email.toLowerCase().includes(q) || c.games.some((g) => g.toLowerCase().includes(q)));
+  }, [clients, search]);
+
+  function toggleExpanded(email: string) {
+    if (expandedEmail === email) {
+      setExpandedEmail(null);
+      return;
+    }
+    setExpandedEmail(email);
     setPointsInput('');
     setNoteInput('');
+    setCouponInput(discountAmount.toFixed(2));
+    setCouponError(null);
+    setCouponSaved(false);
   }
 
   async function handleApply(email: string) {
@@ -779,7 +834,8 @@ function ClientsPanel({
     setSaving(true);
     await adjustClientPointsAction(email, points, noteInput);
     setSaving(false);
-    setOpenEmail(null);
+    setPointsInput('');
+    setNoteInput('');
     router.refresh();
   }
 
@@ -789,23 +845,24 @@ function ClientsPanel({
     setConfirmingId(null);
   }
 
-  function openCouponEditor(email: string) {
-    setOpenCouponEmail(email);
-    setCouponInput(discountAmount.toFixed(2));
-    setCouponError(null);
+  async function handleDelete(id: number) {
+    setDeletingId(id);
+    await onDeleteCard(id);
+    setDeletingId(null);
   }
 
   async function handleGiveCoupon(email: string) {
     const amount = Number(couponInput.replace(',', '.'));
     setSavingCoupon(true);
     setCouponError(null);
+    setCouponSaved(false);
     const result = await createManualDiscountCreditAction(email, amount);
     setSavingCoupon(false);
     if (result.error) {
       setCouponError(result.error);
       return;
     }
-    setOpenCouponEmail(null);
+    setCouponSaved(true);
     router.refresh();
   }
 
@@ -860,182 +917,288 @@ function ClientsPanel({
         {discountError && <span style={{ fontSize: 12.5, color: '#ff8a8a', fontWeight: 700 }}>{discountError}</span>}
       </div>
 
-      <h4 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--ink-dim)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
-        Clientes com cards (mais pontos primeiro)
-      </h4>
-      {clients.length === 0 ? (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+        <h4 style={{ margin: 0, fontSize: 13, color: 'var(--ink-dim)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+          Clientes com cards (compra mais recente primeiro)
+        </h4>
+        <input
+          type="text"
+          placeholder="Buscar por e-mail ou jogo..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ maxWidth: 260 }}
+        />
+      </div>
+
+      {filteredClients.length === 0 ? (
         <p style={{ color: 'var(--ink-dim)', fontSize: 14, padding: '6px 2px', margin: 0 }}>
-          Ninguém ganhou um card ainda.
+          {clients.length === 0 ? 'Ninguém ganhou um card ainda.' : 'Nenhum cliente encontrado.'}
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {clients.map((c) => (
-            <div
-              key={c.email}
-              style={{
-                padding: '10px 4px',
-                borderBottom: '1px solid rgba(255,255,255,.06)'
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <div style={{ minWidth: 0 }}>
-                  <strong style={{ fontSize: 14, display: 'block' }}>{c.email}</strong>
-                  <span style={{ fontSize: 12.5, color: 'var(--ink-dim)' }}>{c.games.join(', ')}</span>
-                </div>
-                <div style={{ display: 'flex', gap: 8, flex: 'none', alignItems: 'center' }}>
-                  <span
-                    style={{
-                      fontSize: 12.5,
-                      fontWeight: 700,
-                      color: '#2b1a00',
-                      background: 'linear-gradient(135deg, var(--gold), var(--gold-2))',
-                      borderRadius: 6,
-                      padding: '3px 10px'
-                    }}
-                  >
-                    {c.confirmedPoints} pts
-                  </span>
-                  {c.pendingPoints > 0 && (
-                    <span
-                      style={{
-                        fontSize: 12.5,
-                        fontWeight: 700,
-                        color: 'var(--ink-dim)',
-                        border: '1px solid rgba(255,255,255,.2)',
-                        borderRadius: 6,
-                        padding: '3px 10px'
-                      }}
-                    >
-                      +{c.pendingPoints} pendente{c.pendingPoints > 1 ? 's' : ''}
+          {filteredClients.map((c) => {
+            const expanded = expandedEmail === c.email;
+            return (
+              <div
+                key={c.email}
+                style={{
+                  border: '1px solid rgba(255,255,255,.08)',
+                  borderRadius: 10,
+                  background: expanded ? 'rgba(164,99,255,.05)' : 'transparent',
+                  overflow: 'hidden'
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleExpanded(c.email)}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 10,
+                    flexWrap: 'wrap',
+                    padding: '10px 12px',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <strong style={{ fontSize: 14, display: 'block', color: 'var(--ink)' }}>{c.email}</strong>
+                    <span style={{ fontSize: 12.5, color: 'var(--ink-dim)' }}>
+                      Última compra: {new Date(c.lastPurchaseAt).toLocaleDateString('pt-BR')} · {c.cards.length}{' '}
+                      {c.cards.length === 1 ? 'card' : 'cards'}
                     </span>
-                  )}
-                  {c.availableCredit > 0 && (
-                    <span
-                      title="Cupom(s) de desconto disponível(is), ainda não usado(s)"
-                      style={{
-                        fontSize: 12.5,
-                        fontWeight: 700,
-                        color: 'var(--green)',
-                        border: '1px solid rgba(78,240,95,.35)',
-                        borderRadius: 6,
-                        padding: '3px 10px'
-                      }}
-                    >
-                      🎟️ R$ {c.availableCredit.toFixed(2).replace('.', ',')} disponível
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    className="btn ghost"
-                    style={{ padding: '4px 10px', fontSize: 12.5 }}
-                    onClick={() => (openEmail === c.email ? setOpenEmail(null) : openEditor(c.email))}
-                  >
-                    {openEmail === c.email ? 'Cancelar' : '✏️ Editar pontos'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn ghost"
-                    style={{ padding: '4px 10px', fontSize: 12.5 }}
-                    onClick={() => (openCouponEmail === c.email ? setOpenCouponEmail(null) : openCouponEditor(c.email))}
-                  >
-                    {openCouponEmail === c.email ? 'Cancelar' : '🎟️ Dar cupom'}
-                  </button>
-                </div>
-              </div>
-
-              {openEmail === c.email && (
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 10 }}>
-                  <input
-                    type="number"
-                    placeholder="ex: 5 ou -5"
-                    value={pointsInput}
-                    onChange={(e) => setPointsInput(e.target.value)}
-                    style={{ width: 110 }}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Motivo (opcional)"
-                    value={noteInput}
-                    onChange={(e) => setNoteInput(e.target.value)}
-                    style={{ flex: 1, minWidth: 160 }}
-                  />
-                  <button
-                    type="button"
-                    className="btn primary"
-                    style={{ padding: '6px 14px', fontSize: 12.5 }}
-                    disabled={saving || !pointsInput}
-                    onClick={() => handleApply(c.email)}
-                  >
-                    {saving ? 'Salvando...' : 'Aplicar'}
-                  </button>
-                </div>
-              )}
-
-              {openCouponEmail === c.email && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
-                  <p style={{ margin: 0, fontSize: 12.5, color: 'var(--ink-dim)', lineHeight: 1.5 }}>
-                    Dá um cupom de desconto pra esse cliente usar na próxima compra de um jogo elegível — não
-                    desconta pontos dele, é só pra compensar algum problema.
-                  </p>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <span style={{ fontSize: 13, color: 'var(--ink-dim)' }}>R$</span>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={couponInput}
-                      onChange={(e) => setCouponInput(e.target.value)}
-                      style={{ width: 100 }}
-                    />
-                    <button
-                      type="button"
-                      className="btn primary"
-                      style={{ padding: '6px 14px', fontSize: 12.5 }}
-                      disabled={savingCoupon || !couponInput}
-                      onClick={() => handleGiveCoupon(c.email)}
-                    >
-                      {savingCoupon ? 'Salvando...' : 'Dar cupom'}
-                    </button>
-                    {couponError && <span style={{ fontSize: 12.5, color: '#ff8a8a', fontWeight: 700 }}>{couponError}</span>}
                   </div>
-                </div>
-              )}
-
-              {c.pendingOrders.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
-                  {c.pendingOrders.map((o) => (
-                    <div
-                      key={o.id}
+                  <div style={{ display: 'flex', gap: 8, flex: 'none', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span
                       style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: 10,
-                        flexWrap: 'wrap',
-                        background: 'var(--bg-dark)',
-                        border: '1px solid rgba(255,255,255,.1)',
-                        borderRadius: 8,
-                        padding: '6px 10px'
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        color: '#2b1a00',
+                        background: 'linear-gradient(135deg, var(--gold), var(--gold-2))',
+                        borderRadius: 6,
+                        padding: '3px 10px'
                       }}
                     >
-                      <span style={{ fontSize: 12.5, color: 'var(--ink-dim)' }}>
-                        ⏳ {o.gameName} — {o.points} {o.points === 1 ? 'ponto' : 'pontos'} ·{' '}
-                        {new Date(o.createdAt).toLocaleDateString('pt-BR')}
-                      </span>
-                      <button
-                        type="button"
-                        className="btn ghost"
-                        style={{ padding: '3px 10px', fontSize: 12 }}
-                        disabled={confirmingId === o.id}
-                        onClick={() => handleConfirmOrder(o.id)}
+                      {c.confirmedPoints} pts
+                    </span>
+                    {c.pendingPoints > 0 && (
+                      <span
+                        style={{
+                          fontSize: 12.5,
+                          fontWeight: 700,
+                          color: 'var(--ink-dim)',
+                          border: '1px solid rgba(255,255,255,.2)',
+                          borderRadius: 6,
+                          padding: '3px 10px'
+                        }}
                       >
-                        {confirmingId === o.id ? 'Confirmando...' : '✓ Confirmar pontos'}
-                      </button>
+                        +{c.pendingPoints} pendente{c.pendingPoints > 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {c.availableCredit > 0 && (
+                      <span
+                        title="Cupom(s) de desconto disponível(is), ainda não usado(s)"
+                        style={{
+                          fontSize: 12.5,
+                          fontWeight: 700,
+                          color: 'var(--green)',
+                          border: '1px solid rgba(78,240,95,.35)',
+                          borderRadius: 6,
+                          padding: '3px 10px'
+                        }}
+                      >
+                        🎟️ R$ {c.availableCredit.toFixed(2).replace('.', ',')}
+                      </span>
+                    )}
+                    <span style={{ color: 'var(--ink-dim)', fontSize: 14 }}>{expanded ? '▲' : '▼'}</span>
+                  </div>
+                </button>
+
+                {expanded && (
+                  <div style={{ padding: '0 12px 14px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {c.pendingOrders.length > 0 && (
+                      <div>
+                        <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)', textTransform: 'uppercase' }}>
+                          Pontos pendentes de confirmação
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {c.pendingOrders.map((o) => (
+                            <div
+                              key={o.id}
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                gap: 10,
+                                flexWrap: 'wrap',
+                                background: 'var(--bg-dark)',
+                                border: '1px solid rgba(255,255,255,.1)',
+                                borderRadius: 8,
+                                padding: '6px 10px'
+                              }}
+                            >
+                              <span style={{ fontSize: 12.5, color: 'var(--ink-dim)' }}>
+                                ⏳ {o.gameName} — {o.points} {o.points === 1 ? 'ponto' : 'pontos'} ·{' '}
+                                {new Date(o.createdAt).toLocaleDateString('pt-BR')}
+                              </span>
+                              <button
+                                type="button"
+                                className="btn ghost"
+                                style={{ padding: '3px 10px', fontSize: 12 }}
+                                disabled={confirmingId === o.id}
+                                onClick={() => handleConfirmOrder(o.id)}
+                              >
+                                {confirmingId === o.id ? 'Confirmando...' : '✓ Confirmar pontos'}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                      <div style={{ flex: '1 1 260px', minWidth: 240 }}>
+                        <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)', textTransform: 'uppercase' }}>
+                          ✏️ Ajustar pontos
+                        </p>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <input
+                            type="number"
+                            placeholder="ex: 5 ou -5"
+                            value={pointsInput}
+                            onChange={(e) => setPointsInput(e.target.value)}
+                            style={{ width: 90 }}
+                          />
+                          <input
+                            type="text"
+                            placeholder="Motivo (opcional)"
+                            value={noteInput}
+                            onChange={(e) => setNoteInput(e.target.value)}
+                            style={{ flex: 1, minWidth: 120 }}
+                          />
+                          <button
+                            type="button"
+                            className="btn primary"
+                            style={{ padding: '6px 14px', fontSize: 12.5 }}
+                            disabled={saving || !pointsInput}
+                            onClick={() => handleApply(c.email)}
+                          >
+                            {saving ? 'Salvando...' : 'Aplicar'}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div style={{ flex: '1 1 260px', minWidth: 240 }}>
+                        <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)', textTransform: 'uppercase' }}>
+                          🎟️ Dar cupom (não mexe nos pontos)
+                        </p>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <span style={{ fontSize: 13, color: 'var(--ink-dim)' }}>R$</span>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={couponInput}
+                            onChange={(e) => {
+                              setCouponInput(e.target.value);
+                              setCouponSaved(false);
+                            }}
+                            style={{ width: 90 }}
+                          />
+                          <button
+                            type="button"
+                            className="btn primary"
+                            style={{ padding: '6px 14px', fontSize: 12.5 }}
+                            disabled={savingCoupon || !couponInput}
+                            onClick={() => handleGiveCoupon(c.email)}
+                          >
+                            {savingCoupon ? 'Salvando...' : 'Dar cupom'}
+                          </button>
+                          {couponSaved && <span style={{ fontSize: 12.5, color: 'var(--green)', fontWeight: 700 }}>✓ Dado!</span>}
+                          {couponError && <span style={{ fontSize: 12.5, color: '#ff8a8a', fontWeight: 700 }}>{couponError}</span>}
+                        </div>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+
+                    <div>
+                      <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)', textTransform: 'uppercase' }}>
+                        🎴 Cards ({c.cards.length})
+                      </p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                        {c.cards
+                          .slice()
+                          .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+                          .map((card) => (
+                            <div
+                              key={card.id}
+                              style={{
+                                width: 150,
+                                background: 'var(--bg-dark)',
+                                border: '1px solid rgba(255,255,255,.1)',
+                                borderRadius: 10,
+                                padding: 10,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 6
+                              }}
+                            >
+                              {card.imageUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={card.imageUrl}
+                                  alt=""
+                                  style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: 6 }}
+                                />
+                              ) : (
+                                <div
+                                  style={{
+                                    width: '100%',
+                                    aspectRatio: '1 / 1',
+                                    borderRadius: 6,
+                                    background: 'var(--panel)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: 11,
+                                    color: 'var(--ink-dim)'
+                                  }}
+                                >
+                                  sem capa
+                                </div>
+                              )}
+                              <strong style={{ fontSize: 12, color: 'var(--ink)', lineHeight: 1.3 }}>{card.gameName}</strong>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                                <span style={{ fontSize: 11.5, fontWeight: 700, color: card.confirmed ? 'var(--green)' : 'var(--ink-dim)' }}>
+                                  {card.confirmed ? '✓ Confirmado' : '⏳ Pendente'}
+                                </span>
+                                <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--gold)' }}>
+                                  {card.points} {card.points === 1 ? 'pt' : 'pts'}
+                                </span>
+                              </div>
+                              <span style={{ fontSize: 11, color: 'var(--ink-dim)' }}>
+                                {new Date(card.createdAt).toLocaleDateString('pt-BR')}
+                              </span>
+                              <button
+                                type="button"
+                                className="btn ghost"
+                                style={{ padding: '4px 8px', fontSize: 11.5, justifyContent: 'center' }}
+                                disabled={deletingId === card.id}
+                                onClick={() => handleDelete(card.id)}
+                              >
+                                {deletingId === card.id ? 'Removendo...' : '🗑 Remover card'}
+                              </button>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -1118,6 +1281,152 @@ function ReviewsBannerPanel({ currentUrl }: { currentUrl: string | null }) {
         )}
       </form>
       {error && <p style={{ color: '#ff8a8a', fontSize: 13, fontWeight: 600, marginTop: 10 }}>{error}</p>}
+    </div>
+  );
+}
+
+// Botão de franquia em destaque, do lado de "Ver avaliações" no catálogo —
+// pra divulgar uma promoção específica (ex: "Jogos de Zelda em destaque").
+// Também gera um link direto (/franquia/<nome>) que já abre o site filtrado
+// nessa franquia, pra compartilhar nas redes sociais.
+function FeaturedFranchisePanel({
+  allFranchises,
+  enabled: initialEnabled,
+  franchise: initialFranchise,
+  label: initialLabel
+}: {
+  allFranchises: string[];
+  enabled: boolean;
+  franchise: string;
+  label: string;
+}) {
+  const router = useRouter();
+  const [enabled, setEnabled] = useState(initialEnabled);
+  const [franchise, setFranchise] = useState(initialFranchise || allFranchises[0] || '');
+  const [label, setLabel] = useState(initialLabel);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    const result = await updateFeaturedFranchiseAction(enabled, franchise, label);
+    setSaving(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    setSaved(true);
+    router.refresh();
+  }
+
+  const shareableLink =
+    typeof window !== 'undefined' && franchise ? `${window.location.origin}/franquia/${encodeURIComponent(franchise)}` : '';
+
+  async function handleCopyLink() {
+    if (!shareableLink) return;
+    try {
+      await navigator.clipboard.writeText(shareableLink);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2500);
+    } catch {
+      // Sem permissão de área de transferência — sem fallback melhor do
+      // que simplesmente não fazer nada (o link já está escrito na tela).
+    }
+  }
+
+  return (
+    <div
+      style={{
+        background: 'var(--panel)',
+        border: '1px solid rgba(164,99,255,.25)',
+        borderRadius: 14,
+        padding: 16,
+        marginBottom: 20
+      }}
+    >
+      <h4 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--ink-dim)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+        Franquia em destaque
+      </h4>
+      <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--ink-dim)', lineHeight: 1.5 }}>
+        Um botão chamativo do lado de "Ver avaliações" no catálogo, pra divulgar uma promoção específica — ex:
+        ativando com "Legend Of Zelda", aparece um botão que mostra só os jogos dessa franquia quando clicado.
+      </p>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+        <input
+          id="franchise-enabled"
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => {
+            setEnabled(e.target.checked);
+            setSaved(false);
+          }}
+          style={{ width: 18, height: 18, accentColor: 'var(--green)' }}
+        />
+        <label htmlFor="franchise-enabled" style={{ fontSize: 14, color: 'var(--ink)', fontWeight: 600 }}>
+          Ativar o botão no catálogo
+        </label>
+      </div>
+
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 14 }}>
+        <div style={{ flex: '1 1 200px', minWidth: 180 }}>
+          <label htmlFor="franchise-select">Franquia</label>
+          <select
+            id="franchise-select"
+            value={franchise}
+            onChange={(e) => {
+              setFranchise(e.target.value);
+              setSaved(false);
+            }}
+          >
+            {allFranchises.length === 0 && <option value="">Nenhuma franquia cadastrada ainda</option>}
+            {allFranchises.map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div style={{ flex: '2 1 260px', minWidth: 220 }}>
+          <label htmlFor="franchise-label">Texto do botão (opcional)</label>
+          <input
+            id="franchise-label"
+            type="text"
+            placeholder={`Padrão: 🔥 Jogos de ${franchise || '...'}`}
+            value={label}
+            onChange={(e) => {
+              setLabel(e.target.value);
+              setSaved(false);
+            }}
+          />
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 }}>
+        <button type="button" className="btn primary" disabled={saving} onClick={handleSave}>
+          {saving ? 'Salvando...' : 'Salvar'}
+        </button>
+        {saved && <span style={{ fontSize: 12.5, color: 'var(--green)', fontWeight: 700 }}>✓ Salvo!</span>}
+        {error && <span style={{ fontSize: 12.5, color: '#ff8a8a', fontWeight: 700 }}>{error}</span>}
+      </div>
+
+      {franchise && (
+        <div>
+          <p style={{ margin: '0 0 6px', fontSize: 12.5, color: 'var(--ink-dim)' }}>
+            Link direto pra compartilhar (abre o site já filtrado nessa franquia, mesmo com o botão desativado):
+          </p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input type="text" readOnly value={shareableLink} onFocus={(e) => e.target.select()} style={{ flex: 1, minWidth: 220 }} />
+            <button type="button" className="btn ghost" onClick={handleCopyLink}>
+              {linkCopied ? '✓ Copiado!' : 'Copiar link'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

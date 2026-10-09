@@ -9,7 +9,16 @@
 // a prévia de compartilhamento — generateMetadata — quanto pra desenhar a
 // página em si), o banco só é consultado uma vez.
 import { cache } from 'react';
-import { getActiveGames, getApprovedReviews, getSiteSetting, REVIEWS_BANNER_KEY, type Game } from './db';
+import {
+  getActiveGames,
+  getApprovedReviews,
+  getSiteSetting,
+  REVIEWS_BANNER_KEY,
+  FEATURED_FRANCHISE_ENABLED_KEY,
+  FEATURED_FRANCHISE_KEY,
+  FEATURED_FRANCHISE_LABEL_KEY,
+  type Game
+} from './db';
 import { buildWhatsAppContactLink, formatPriceBR } from './whatsapp';
 import { getWishlistCounts } from './supabaseAdmin';
 import type { Item, ReviewItem } from '@/app/CatalogClient';
@@ -73,12 +82,24 @@ export type CatalogData = {
   // ReviewsModal em CatalogClient.tsx). null enquanto você não subir uma
   // imagem no admin.
   reviewsBannerUrl: string | null;
+  // Botão de franquia em destaque, do lado de "Ver avaliações" — null
+  // quando desativado no admin. Ver FeaturedFranchisePanel em
+  // AdminClient.tsx e o botão em CatalogClient.tsx.
+  featuredFranchise: { franchise: string; label: string } | null;
 };
 
 export const loadCatalogData = cache(async (): Promise<CatalogData> => {
   const games = await getActiveGames();
   const reviews = await getApprovedReviews();
   const reviewsBannerUrl = await getSiteSetting(REVIEWS_BANNER_KEY);
+
+  const featuredFranchiseEnabled = (await getSiteSetting(FEATURED_FRANCHISE_ENABLED_KEY)) === 'true';
+  const featuredFranchiseName = await getSiteSetting(FEATURED_FRANCHISE_KEY);
+  const featuredFranchiseLabel = await getSiteSetting(FEATURED_FRANCHISE_LABEL_KEY);
+  const featuredFranchise =
+    featuredFranchiseEnabled && featuredFranchiseName
+      ? { franchise: featuredFranchiseName, label: featuredFranchiseLabel || `🔥 Jogos de ${featuredFranchiseName}` }
+      : null;
 
   const items = games.map(toItem);
   const featuredItems = byRecentFirst(games.filter((g) => g.is_featured)).map(toItem);
@@ -104,6 +125,7 @@ export const loadCatalogData = cache(async (): Promise<CatalogData> => {
     mostWantedItems,
     reviews: reviews.map(toReviewItem),
     whatsappContactUrl: buildWhatsAppContactLink(),
-    reviewsBannerUrl
+    reviewsBannerUrl,
+    featuredFranchise
   };
 });
