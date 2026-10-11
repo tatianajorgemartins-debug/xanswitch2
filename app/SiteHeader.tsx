@@ -6,15 +6,25 @@ export default function SiteHeader({
   whatsappContactUrl,
   wishlistCount,
   accountLabel,
-  onOpenAccount
+  onOpenAccount,
+  activeCatalog
 }: {
   whatsappContactUrl: string | null;
-  wishlistCount: number;
+  wishlistCount?: number;
   // "Minha conta" pra quem não logou; @instagram ou a inicial do e-mail pra
   // quem já logou (calculado em CatalogClient.tsx, que sabe quem é o
   // usuário e o Instagram salvo dele).
-  accountLabel: string;
-  onOpenAccount: () => void;
+  accountLabel?: string;
+  // Deixado de fora (undefined) esconde o botão de conta inteiro — é o que
+  // o catálogo de produtos físicos faz por enquanto, já que login/lista de
+  // desejos ainda são recursos só do catálogo digital (ver
+  // PhysicalCatalogClient.tsx).
+  onOpenAccount?: () => void;
+  // Em qual dos dois catálogos esse header está sendo mostrado — controla
+  // qual lado do seletor fica "aceso" (ver .catalog-switcher em
+  // globals.css). 'digital' = jogos (app/CatalogClient.tsx), 'fisico' =
+  // produtos físicos (app/PhysicalCatalogClient.tsx).
+  activeCatalog: 'digital' | 'fisico';
 }) {
   return (
     <div className="site-header">
@@ -23,15 +33,35 @@ export default function SiteHeader({
         <img src="/logo.png" alt="XAN Switch" />
       </div>
 
+      {/* Alterna entre os dois catálogos do site — sempre leva pra raiz de
+          cada um (não carrega filtros/estado de um catálogo no outro, que
+          são páginas Next completamente separadas). */}
+      <div className="catalog-switcher" role="group" aria-label="Escolher catálogo">
+        <a href="/" className={`catalog-switcher-option${activeCatalog === 'digital' ? ' active' : ''}`} aria-current={activeCatalog === 'digital'}>
+          <span aria-hidden="true">🎮</span>
+          <span className="catalog-switcher-label">Jogos digitais</span>
+        </a>
+        <a
+          href="/produtos-fisicos"
+          className={`catalog-switcher-option${activeCatalog === 'fisico' ? ' active' : ''}`}
+          aria-current={activeCatalog === 'fisico'}
+        >
+          <span aria-hidden="true">📦</span>
+          <span className="catalog-switcher-label">Produtos físicos</span>
+        </a>
+      </div>
+
       <div className="site-header-icons">
-        <button type="button" className="account-button" onClick={onOpenAccount} aria-label="Minha conta">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="8" r="3.4" />
-            <path d="M4.5 20c1.4-3.8 4.4-6 7.5-6s6.1 2.2 7.5 6" strokeLinecap="round" />
-          </svg>
-          <span className="account-button-label">{accountLabel}</span>
-          {wishlistCount > 0 && <span className="account-button-badge">{wishlistCount}</span>}
-        </button>
+        {onOpenAccount && (
+          <button type="button" className="account-button" onClick={onOpenAccount} aria-label="Minha conta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="8" r="3.4" />
+              <path d="M4.5 20c1.4-3.8 4.4-6 7.5-6s6.1 2.2 7.5 6" strokeLinecap="round" />
+            </svg>
+            <span className="account-button-label">{accountLabel}</span>
+            {!!wishlistCount && wishlistCount > 0 && <span className="account-button-badge">{wishlistCount}</span>}
+          </button>
+        )}
 
         <a
           href={INSTAGRAM_URL}

@@ -1,0 +1,41 @@
+// Busca os dados do catálogo PÚBLICO de produtos físicos — equivalente a
+// lib/catalogData.ts, só que pro segundo catálogo. Fica num arquivo à
+// parte pelo mesmo motivo: o link direto de um produto
+// (app/produtos-fisicos/[id]/page.tsx) e a página principal desse catálogo
+// (app/produtos-fisicos/page.tsx) precisam dos mesmos dados, e o cache()
+// do React garante que o banco só é consultado uma vez por requisição.
+import { cache } from 'react';
+import { getPublishedPhysicalProducts, type PhysicalProduct } from './physicalProducts';
+import { formatPriceBR } from './whatsapp';
+
+export type PhysicalItem = {
+  id: number;
+  name: string;
+  price: number;
+  priceLabel: string;
+  originalPriceLabel: string | null;
+  imageUrl: string | null;
+  description: string | null;
+};
+
+function toPhysicalItem(p: PhysicalProduct): PhysicalItem {
+  return {
+    id: p.id,
+    name: p.name,
+    price: parseFloat(p.price),
+    priceLabel: formatPriceBR(p.price),
+    originalPriceLabel:
+      p.original_price && parseFloat(p.original_price) > parseFloat(p.price) ? formatPriceBR(p.original_price) : null,
+    imageUrl: p.image_url,
+    description: p.description
+  };
+}
+
+export type PhysicalCatalogData = {
+  items: PhysicalItem[];
+};
+
+export const loadPhysicalCatalogData = cache(async (): Promise<PhysicalCatalogData> => {
+  const products = await getPublishedPhysicalProducts();
+  return { items: products.map(toPhysicalItem) };
+});

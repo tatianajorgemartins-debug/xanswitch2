@@ -781,6 +781,51 @@ textarea:focus {
   flex: none;
 }
 
+/* Seletor entre os dois catálogos do site (SiteHeader.tsx) — um grupo de
+   duas opções, igual o .view-toggle de grade/lista do catálogo, só que
+   são dois links <a> de verdade (cada catálogo é uma página separada),
+   não um estado de JS. O lado correspondente à página atual fica aceso
+   (.active), deixando claro em qual catálogo a pessoa está. */
+.catalog-switcher {
+  display: flex;
+  gap: 4px;
+  background: var(--panel);
+  border: 1px solid rgba(164, 99, 255, 0.3);
+  border-radius: 10px;
+  padding: 4px;
+  flex: none;
+}
+.catalog-switcher-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 7px;
+  color: var(--ink-dim);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.catalog-switcher-option.active {
+  background: linear-gradient(135deg, var(--purple), var(--purple-2));
+  color: #fff;
+}
+.catalog-switcher-option:not(.active):hover {
+  color: var(--ink);
+}
+@media (max-width: 640px) {
+  /* Sem espaço sobrando no celular pro texto das duas opções junto da
+     logo + botão de conta + ícones sociais — some só o texto, os emojis
+     continuam dando pra entender e alcançar com o dedo. */
+  .catalog-switcher-label {
+    display: none;
+  }
+  .catalog-switcher-option {
+    padding: 7px 9px;
+  }
+}
+
 .social-icon {
   flex: none;
   width: 38px;

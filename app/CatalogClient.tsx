@@ -414,6 +414,7 @@ export default function CatalogClient({
             wishlistCount={wishlistIds.size}
             accountLabel={accountLabel}
             onOpenAccount={() => setAccountModalOpen(true)}
+            activeCatalog="digital"
           />
         </div>
       </header>

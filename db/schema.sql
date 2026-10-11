@@ -73,6 +73,24 @@ CREATE TABLE IF NOT EXISTS orders (
 );
 CREATE INDEX IF NOT EXISTS orders_created_at_idx ON orders (created_at DESC);
 
+-- Segundo catálogo: produtos físicos (parceria com importadora), totalmente
+-- separado de "games" — ver db/migration-physical-products.sql.
+CREATE TABLE IF NOT EXISTS physical_products (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  price NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  original_price NUMERIC(10, 2),
+  image_url TEXT,
+  description TEXT,
+  published BOOLEAN NOT NULL DEFAULT TRUE,
+  is_demo BOOLEAN NOT NULL DEFAULT FALSE,
+  sort_name TEXT GENERATED ALWAYS AS (lower(name)) STORED,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS physical_products_sort_name_idx ON physical_products (sort_name);
+CREATE INDEX IF NOT EXISTS physical_products_published_idx ON physical_products (published);
+
 -- Ajustes manuais de pontos (admin) e trocas de pontos por desconto — ver
 -- db/migration-loyalty-discounts.sql pra explicação completa.
 CREATE TABLE IF NOT EXISTS point_adjustments (

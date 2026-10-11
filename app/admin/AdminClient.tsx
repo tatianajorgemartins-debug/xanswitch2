@@ -260,6 +260,9 @@ export default function AdminClient({
         <a href="/" target="_blank" rel="noreferrer" className="btn ghost">
           🔗 Ver catálogo público
         </a>
+        <a href="/admin/produtos-fisicos" className="btn ghost">
+          📦 Produtos físicos
+        </a>
         <form action={logoutAction}>
           <button type="submit" className="btn ghost">
             Sair

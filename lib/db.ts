@@ -1,15 +1,7 @@
-import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
-
-// Criado só na primeira consulta, não quando este arquivo é importado — assim,
-// nada quebra em ambientes que importam este módulo sem nunca chamar
-// nenhuma função dele mas também não têm DATABASE_URL configurada.
-let sqlInstance: NeonQueryFunction<false, false> | null = null;
-function getSql(): NeonQueryFunction<false, false> {
-  if (!sqlInstance) {
-    sqlInstance = neon(process.env.DATABASE_URL!);
-  }
-  return sqlInstance;
-}
+// A conexão em si mora em lib/sql.ts, compartilhada com
+// lib/physicalProducts.ts (catálogo de produtos físicos) — mesmo banco,
+// tabelas completamente separadas. Ver o comentário lá pra entender por quê.
+import { getSql } from './sql';
 
 export type Platform = 'switch1' | 'switch2' | 'both';
 export type GameType = 'base' | 'dlc' | 'update';
