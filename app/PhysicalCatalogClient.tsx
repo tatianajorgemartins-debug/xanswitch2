@@ -24,6 +24,8 @@ export default function PhysicalCatalogClient({
   initialProductId?: number;
 }) {
   const [selectedItem, setSelectedItem] = useState<PhysicalItem | null>(null);
+  const [query, setQuery] = useState('');
+  const filteredItems = items.filter((item) => item.name.toLowerCase().includes(query.trim().toLowerCase()));
 
   function openProduct(item: PhysicalItem) {
     setSelectedItem(item);
@@ -80,13 +82,44 @@ export default function PhysicalCatalogClient({
           </p>
         </div>
 
+        {/* Mesma busca do catálogo digital (ver .catalog-toolbar-search em
+            CatalogClient.tsx) — aqui só com o campo de busca, já que os
+            outros botões daquela barra (Filtros, avaliações, etc.) não se
+            aplicam a esse catálogo ainda. */}
+        <div className="catalog-toolbar" style={{ justifyContent: 'center', marginBottom: 22 }}>
+          <div className="catalog-toolbar-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={16} height={16} style={{ color: 'var(--ink-dim)', flex: 'none' }}>
+              <circle cx="11" cy="11" r="7" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input type="text" placeholder="Buscar produto..." value={query} onChange={(e) => setQuery(e.target.value)} />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                aria-label="Limpar busca"
+                title="Limpar busca"
+                style={{ background: 'none', border: 'none', color: 'var(--ink-dim)', cursor: 'pointer', padding: 0, flex: 'none', display: 'flex' }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={14} height={14}>
+                  <path d="M5 5l14 14M19 5L5 19" strokeLinecap="round" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+
         {items.length === 0 ? (
           <p style={{ textAlign: 'center', color: 'var(--ink-dim)', fontSize: 14, padding: '40px 0' }}>
             Nenhum produto disponível no momento. Volte em breve!
           </p>
+        ) : filteredItems.length === 0 ? (
+          <p style={{ textAlign: 'center', color: 'var(--ink-dim)', fontSize: 14, padding: '40px 0' }}>
+            Nenhum produto encontrado pra "{query}".
+          </p>
         ) : (
           <div className="catalog-grid">
-            {items.map((item) => (
+            {filteredItems.map((item) => (
               <PhysicalProductCard key={item.id} item={item} onSelect={() => openProduct(item)} />
             ))}
           </div>
