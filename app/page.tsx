@@ -1,3 +1,4 @@
+import { ViewTransition } from 'react';
 import { loadCatalogData } from '@/lib/catalogData';
 import CatalogClient from './CatalogClient';
 
@@ -11,5 +12,16 @@ export const revalidate = 300;
 
 export default async function CatalogPage() {
   const data = await loadCatalogData();
-  return <CatalogClient {...data} />;
+  // <ViewTransition> sem nome participa da transição "padrão" (crossfade)
+  // da View Transitions API — é o que anima a troca pro catálogo de
+  // produtos físicos (e vice-versa) pelo seletor no cabeçalho (ver
+  // SiteHeader.tsx, que usa <Link> em vez de <a> exatamente pra isso
+  // funcionar) em vez de trocar tudo instantaneamente. Duração controlada
+  // em app/globals.css. Sem suporte do navegador, a navegação continua
+  // funcionando normal, só sem a animação.
+  return (
+    <ViewTransition>
+      <CatalogClient {...data} />
+    </ViewTransition>
+  );
 }

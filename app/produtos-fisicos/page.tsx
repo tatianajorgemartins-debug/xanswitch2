@@ -1,3 +1,4 @@
+import { ViewTransition } from 'react';
 import { loadPhysicalCatalogData } from '@/lib/physicalCatalogData';
 import { buildWhatsAppContactLink } from '@/lib/whatsapp';
 import PhysicalCatalogClient from '@/app/PhysicalCatalogClient';
@@ -10,5 +11,10 @@ export const revalidate = 300;
 
 export default async function PhysicalProductsPage() {
   const data = await loadPhysicalCatalogData();
-  return <PhysicalCatalogClient items={data.items} whatsappContactUrl={buildWhatsAppContactLink()} />;
+  // Ver o comentário em app/page.tsx sobre o <ViewTransition>.
+  return (
+    <ViewTransition>
+      <PhysicalCatalogClient items={data.items} whatsappContactUrl={buildWhatsAppContactLink()} />
+    </ViewTransition>
+  );
 }

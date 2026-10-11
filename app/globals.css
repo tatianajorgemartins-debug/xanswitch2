@@ -17,6 +17,46 @@
   --ink-dim: #b7aed4;
 }
 
+/* Transição entre o catálogo digital (/) e o de produtos físicos
+   (/produtos-fisicos), ao trocar pelo seletor no cabeçalho (ver
+   catalog-switcher em SiteHeader.tsx e <ViewTransition> em cada
+   page.tsx). Um crossfade simples — a página antiga esmaece enquanto a
+   nova aparece, com um leve zoom de 1% só pra dar uma sensação de
+   profundidade, sem nenhum slide ou efeito chamativo. 0.5s no total (as
+   duas animações rodam ao mesmo tempo, uma por cima da outra). Sem
+   suporte do navegador pra View Transitions API, a troca de página
+   continua funcionando normalmente, só sem a animação. */
+::view-transition-old(root) {
+  animation: 0.5s ease both xan-page-fade-out;
+}
+::view-transition-new(root) {
+  animation: 0.5s ease both xan-page-fade-in;
+}
+@keyframes xan-page-fade-out {
+  to {
+    opacity: 0;
+    transform: scale(1.01);
+  }
+}
+@keyframes xan-page-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.99);
+  }
+}
+/* Sem isso, a sobreposição que a View Transitions API desenha por cima da
+   página captura os cliques enquanto a animação roda — com ela, dá pra
+   continuar clicando normalmente mesmo durante os 0.5s da troca. */
+::view-transition {
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0s;
+  }
+}
+
 * {
   box-sizing: border-box;
 }

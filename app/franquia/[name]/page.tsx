@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ViewTransition } from 'react';
 import { notFound } from 'next/navigation';
 import { loadCatalogData } from '@/lib/catalogData';
 import CatalogClient from '@/app/CatalogClient';
@@ -48,5 +49,10 @@ export default async function FranchisePage({ params }: { params: Promise<{ name
   const { data, exists, decoded } = await findFranchise(name);
   if (!exists) notFound();
 
-  return <CatalogClient {...data} initialFranchiseFilter={decoded} />;
+  // Ver o comentário em app/page.tsx sobre o <ViewTransition>.
+  return (
+    <ViewTransition>
+      <CatalogClient {...data} initialFranchiseFilter={decoded} />
+    </ViewTransition>
+  );
 }

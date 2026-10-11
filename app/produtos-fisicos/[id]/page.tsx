@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ViewTransition } from 'react';
 import { notFound } from 'next/navigation';
 import { loadPhysicalCatalogData } from '@/lib/physicalCatalogData';
 import { buildWhatsAppContactLink } from '@/lib/whatsapp';
@@ -41,5 +42,10 @@ export default async function PhysicalProductPage({ params }: { params: Promise<
   const { data, item } = await findProduct(id);
   if (!item) notFound();
 
-  return <PhysicalCatalogClient items={data.items} whatsappContactUrl={buildWhatsAppContactLink()} initialProductId={item.id} />;
+  // Ver o comentário em app/page.tsx sobre o <ViewTransition>.
+  return (
+    <ViewTransition>
+      <PhysicalCatalogClient items={data.items} whatsappContactUrl={buildWhatsAppContactLink()} initialProductId={item.id} />
+    </ViewTransition>
+  );
 }

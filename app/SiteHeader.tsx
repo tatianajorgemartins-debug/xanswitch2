@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 const INSTAGRAM_URL = 'https://instagram.com/xan.switch';
 
 export default function SiteHeader({
@@ -35,20 +37,24 @@ export default function SiteHeader({
 
       {/* Alterna entre os dois catálogos do site — sempre leva pra raiz de
           cada um (não carrega filtros/estado de um catálogo no outro, que
-          são páginas Next completamente separadas). */}
+          são páginas Next completamente separadas). Usa <Link> (navegação
+          client-side), não <a>, de propósito: é isso que deixa a troca
+          passar pela View Transitions API (ver <ViewTransition> em cada
+          page.tsx e a duração em globals.css) em vez de recarregar a
+          página inteira na hora. */}
       <div className="catalog-switcher" role="group" aria-label="Escolher catálogo">
-        <a href="/" className={`catalog-switcher-option${activeCatalog === 'digital' ? ' active' : ''}`} aria-current={activeCatalog === 'digital'}>
+        <Link href="/" className={`catalog-switcher-option${activeCatalog === 'digital' ? ' active' : ''}`} aria-current={activeCatalog === 'digital'}>
           <span aria-hidden="true">🎮</span>
           <span className="catalog-switcher-label">Jogos digitais</span>
-        </a>
-        <a
+        </Link>
+        <Link
           href="/produtos-fisicos"
           className={`catalog-switcher-option${activeCatalog === 'fisico' ? ' active' : ''}`}
           aria-current={activeCatalog === 'fisico'}
         >
           <span aria-hidden="true">📦</span>
           <span className="catalog-switcher-label">Produtos físicos</span>
-        </a>
+        </Link>
       </div>
 
       <div className="site-header-icons">
