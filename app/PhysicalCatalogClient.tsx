@@ -58,7 +58,10 @@ export default function PhysicalCatalogClient({
 
   return (
     <>
-      <header className="site-header-bar">
+      {/* viewTransitionName: ver o mesmo comentário em CatalogClient.tsx —
+          mantém o cabeçalho parado durante o crossfade da troca de
+          catálogo, em vez de esmaecer/mexer junto com o resto da página. */}
+      <header className="site-header-bar" style={{ viewTransitionName: 'site-header' }}>
         <div className="site-header-bar-inner">
           <SiteHeader whatsappContactUrl={whatsappContactUrl} activeCatalog="fisico" />
         </div>

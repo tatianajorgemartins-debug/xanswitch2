@@ -407,7 +407,12 @@ export default function CatalogClient({
 
   return (
     <>
-      <header className="site-header-bar">
+      {/* viewTransitionName: deixa o cabeçalho FORA do crossfade da troca de
+          catálogo (ver <ViewTransition> em page.tsx) — sem isso, ele
+          esmaecia/dava um leve zoom junto com o resto da página, e os
+          elementos pareciam "pular" de lugar por um instante. Ver a regra
+          ::view-transition-group(site-header) em globals.css. */}
+      <header className="site-header-bar" style={{ viewTransitionName: 'site-header' }}>
         <div className="site-header-bar-inner">
           <SiteHeader
             whatsappContactUrl={whatsappContactUrl}

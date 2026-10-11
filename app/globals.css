@@ -44,6 +44,23 @@
     transform: scale(0.99);
   }
 }
+/* O cabeçalho (.site-header-bar, marcado com viewTransitionName:
+   "site-header" em CatalogClient.tsx e PhysicalCatalogClient.tsx) fica de
+   fora desse crossfade — sem isso, ele entrava na mesma animação do resto
+   da página (o leve zoom incluso) e os elementos dele pareciam "pular" de
+   lugar por um instante a cada troca de catálogo. Com essas regras, ele
+   simplesmente continua parado, por cima da transição do conteúdo. */
+::view-transition-group(site-header) {
+  animation: none;
+  z-index: 100;
+}
+::view-transition-old(site-header) {
+  display: none;
+}
+::view-transition-new(site-header) {
+  animation: none;
+}
+
 /* Sem isso, a sobreposição que a View Transitions API desenha por cima da
    página captura os cliques enquanto a animação roda — com ela, dá pra
    continuar clicando normalmente mesmo durante os 0.5s da troca. */
@@ -1196,7 +1213,14 @@ textarea:focus {
    mais um btn.ghost igual aos demais. */
 .btn.featured-franchise-btn {
   background: linear-gradient(135deg, var(--purple), var(--gold));
-  border-color: transparent;
+  /* "border: none" (em vez de só mudar a cor pra transparent) de
+     propósito — uma borda "transparente" de 1px por cima desse gradiente
+     deixava uma linha fina e clara visível na borda esquerda, um
+     artefato de antialiasing entre as duas camadas. Sem borda nenhuma, o
+     padding cresce 1px pra manter o botão do mesmo tamanho que os
+     outros .btn (que têm border de 1px). */
+  border: none;
+  padding: 11px 17px;
   color: #fff;
   font-weight: 800;
   box-shadow: 0 0 14px rgba(255, 210, 78, 0.45);
