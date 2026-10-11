@@ -75,8 +75,8 @@ export default function PhysicalCatalogClient({
           <h1 style={{ fontFamily: "'Press Start 2P', cursive", fontSize: 18, color: 'var(--ink)', margin: 0 }}>
             📦 Produtos Físicos
           </h1>
-          <p style={{ color: 'var(--ink-dim)', fontSize: 13.5, marginTop: 8 }}>
-            Acessórios e itens físicos pra Nintendo Switch, com entrega pela nossa parceria com importadora.
+          <p style={{ color: 'var(--ink-dim)', fontSize: 13.5, marginTop: 8, fontWeight: 700, letterSpacing: 0.4 }}>
+            PÁGINA EM DESENVOLVIMENTO
           </p>
         </div>
 
