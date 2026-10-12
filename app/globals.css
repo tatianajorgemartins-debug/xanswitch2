@@ -998,6 +998,11 @@ textarea:focus {
   border: 1px solid rgba(164, 99, 255, 0.3);
   border-radius: 10px;
   padding: 10px 14px;
+  /* Altura explícita (em vez de deixar o padding decidir sozinho) — é o
+     que garante que essa caixa e o botão de hambúrguer (mesma altura,
+     ver .btn.catalog-toolbar-menu-btn) fiquem alinhados certinho lado a
+     lado, em vez de um ficar sutilmente mais alto/baixo que o outro. */
+  min-height: 44px;
   order: 1;
   flex: 1 1 220px;
   min-width: 0;
@@ -1036,8 +1041,14 @@ textarea:focus {
   order: 2;
   align-items: center;
   justify-content: center;
-  width: 40px;
+  width: 44px;
+  height: 44px;
   padding: 0;
+  /* Borda mais visível que o padrão herdado de .btn (que é bem discreta)
+     — no celular, esse botão fica sozinho do lado da busca, sem outros
+     botões "ghost" por perto pra dar contexto, então precisa de um
+     contorno que se note por si só. */
+  border-color: rgba(164, 99, 255, 0.6);
 }
 .catalog-toolbar .featured-franchise-btn {
   order: 4;
