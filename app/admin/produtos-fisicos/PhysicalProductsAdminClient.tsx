@@ -119,6 +119,7 @@ export default function PhysicalProductsAdminClient({ initialProducts }: { initi
           {products.map((product) => (
             <div
               key={product.id}
+              className="admin-row"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -277,6 +278,7 @@ function ProductFormPanel({
 
   return (
     <div
+      className="admin-panel"
       style={{
         background: 'var(--panel)',
         border: '1px solid rgba(164,99,255,.3)',

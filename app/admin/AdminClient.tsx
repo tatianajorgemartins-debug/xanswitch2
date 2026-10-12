@@ -366,6 +366,7 @@ export default function AdminClient({
 
       {showArchived && (
         <div
+          className="admin-panel"
           style={{
             background: 'var(--panel)',
             border: '1px solid rgba(164,99,255,.25)',
@@ -686,6 +687,7 @@ function OrdersPanel({
 }) {
   return (
     <div
+      className="admin-panel"
       style={{
         background: 'var(--panel)',
         border: '1px solid rgba(164,99,255,.25)',
@@ -886,6 +888,7 @@ function ClientsPanel({
 
   return (
     <div
+      className="admin-panel"
       style={{
         background: 'var(--panel)',
         border: '1px solid rgba(164,99,255,.25)',
@@ -944,6 +947,7 @@ function ClientsPanel({
             return (
               <div
                 key={c.email}
+                className="admin-row"
                 style={{
                   border: '1px solid rgba(255,255,255,.08)',
                   borderRadius: 10,
@@ -1022,7 +1026,7 @@ function ClientsPanel({
                 </button>
 
                 {expanded && (
-                  <div style={{ padding: '0 12px 14px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div className="admin-panel" style={{ padding: '0 12px 14px', display: 'flex', flexDirection: 'column', gap: 14 }}>
                     {c.pendingOrders.length > 0 && (
                       <div>
                         <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: 'var(--ink-dim)', textTransform: 'uppercase' }}>
@@ -1247,6 +1251,7 @@ function ReviewsBannerPanel({ currentUrl }: { currentUrl: string | null }) {
 
   return (
     <div
+      className="admin-panel"
       style={{
         background: 'var(--panel)',
         border: '1px solid rgba(164,99,255,.25)',
@@ -1343,6 +1348,7 @@ function FeaturedFranchisePanel({
 
   return (
     <div
+      className="admin-panel"
       style={{
         background: 'var(--panel)',
         border: '1px solid rgba(164,99,255,.25)',
@@ -1437,6 +1443,7 @@ function FeaturedFranchisePanel({
 function WishlistPanel({ entries }: { entries: { game: Game; count: number }[] }) {
   return (
     <div
+      className="admin-panel"
       style={{
         background: 'var(--panel)',
         border: '1px solid rgba(164,99,255,.25)',
@@ -1518,6 +1525,7 @@ function ReviewsPanel({
 
   return (
     <div
+      className="admin-panel"
       style={{
         background: 'var(--panel)',
         border: '1px solid rgba(164,99,255,.25)',
@@ -1666,6 +1674,7 @@ function GameFormPanel({
 
   return (
     <div
+      className="admin-panel"
       style={{
         background: 'var(--panel)',
         border: '1px solid rgba(164,99,255,.35)',
