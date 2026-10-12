@@ -1047,6 +1047,11 @@ textarea:focus {
   .catalog-toolbar {
     flex-wrap: wrap;
     overflow: visible;
+    /* A busca e o hambúrguer já ocupam a linha inteira sozinhos (a busca
+       cresce com flex:1), então isso não muda nada neles — é só pra
+       centralizar o botão de franquia (flex-basis:100% logo abaixo), que
+       fica numa linha só pra ele. */
+    justify-content: center;
   }
   .catalog-toolbar-search {
     flex: 1 1 140px;
@@ -1057,6 +1062,10 @@ textarea:focus {
   }
   .catalog-toolbar .featured-franchise-btn {
     order: 3;
+    /* Força esse botão pra própria linha, embaixo da busca + hambúrguer,
+       em vez de tentar encaixar do lado deles (onde ficava apertado com
+       textos de franquia mais compridos). */
+    flex-basis: 100%;
   }
   .catalog-toolbar-extra {
     display: none;
