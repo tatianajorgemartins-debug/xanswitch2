@@ -177,7 +177,13 @@ export default function AdminClient({
     for (const o of orders) {
       if (!o.customer_email) continue;
       const key = o.customer_email.toLowerCase();
-      const createdAt = o.created_at.toString();
+      // .toISOString() (não .toString()) de propósito: o Postgres devolve
+      // created_at como um Date de verdade, e Date.toString() começa com o
+      // dia da semana ("Sat Oct 17..."), que não ordena cronologicamente
+      // como texto — isso fazia "mais recente primeiro" sair tudo errado
+      // (parecia aleatório). ISO ("2026-10-17T...") ordena certinho como
+      // string comum, sem precisar converter pra número em cada comparação.
+      const createdAt = new Date(o.created_at).toISOString();
       const entry =
         byEmail.get(key) ??
         {
