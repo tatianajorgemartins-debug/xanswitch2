@@ -831,6 +831,53 @@
   }
 }
 
+/* No celular, os botões de pagamento ficam presos no pé da janela do jogo,
+   visíveis assim que ela abre, sem precisar rolar até o fim. */
+@media (max-width: 639px) {
+  /* Um elemento "sticky" só gruda dentro da caixa do pai. O bloco de
+     informações começa abaixo da capa, então em telas baixas ele ainda está
+     fora da tela quando a janela abre. Com display: contents, o pai passa a
+     ser a grade inteira do produto, que começa no topo da janela. */
+  .redesign .purchase-modal.is-product-step .product-layout {
+    row-gap: 0;
+  }
+  .redesign .purchase-modal.is-product-step .product-media {
+    margin-bottom: 20px;
+  }
+  .redesign .purchase-modal.is-product-step .product-info {
+    display: contents;
+  }
+  .redesign .purchase-modal.is-product-step .product-info > * {
+    min-width: 0;
+  }
+  .redesign .purchase-modal.is-product-step .purchase-modal-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    gap: 8px;
+    margin: 16px -22px -24px;
+    padding: 12px 22px calc(12px + env(safe-area-inset-bottom, 0px));
+    background: var(--surface);
+    box-shadow: 0 -14px 24px rgba(5, 3, 12, 0.65);
+  }
+  .redesign .purchase-modal.is-product-step .purchase-payment-choice-label {
+    display: none;
+  }
+  .redesign .purchase-modal.is-product-step .purchase-payment-choice {
+    gap: 8px;
+  }
+  .redesign .purchase-modal.is-product-step .purchase-modal-actions .product-cta {
+    min-height: 46px;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  .redesign .purchase-modal.is-product-step .purchase-modal-actions .btn.ghost {
+    min-height: 34px;
+    background: none;
+    font-size: 14px;
+  }
+}
+
 /* ---------- Fim da página e botões flutuantes ---------- */
 .redesign .site-footer-line {
   margin-top: 96px;
