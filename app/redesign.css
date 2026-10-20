@@ -840,6 +840,10 @@
   }
 }
 @media (max-width: 600px) {
+  /* Banner dos cards colecionáveis só no computador. */
+  .redesign .reviews-banner {
+    display: none;
+  }
   .redesign .promo-section-main {
     height: 248px;
   }
