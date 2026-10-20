@@ -1159,3 +1159,73 @@
 :root[data-theme='light'] .redesign.theme-enabled .account-collection-toggle-chevron {
   color: var(--accent);
 }
+
+/* Chave de tema (computador): duas opções e uma pílula que desliza, no
+   mesmo estilo do seletor de catálogo. No celular vira um botão só. */
+.redesign .theme-switch {
+  position: relative;
+  isolation: isolate;
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 40px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--surface);
+}
+.redesign .theme-switch-thumb {
+  position: absolute;
+  z-index: -1;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: 999px;
+  background: var(--accent-fill);
+  transition: transform 0.5s cubic-bezier(0.34, 1.35, 0.5, 1);
+}
+:root[data-theme='light'] .redesign.theme-enabled .theme-switch-thumb {
+  transform: translateX(100%);
+}
+.redesign .theme-switch-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.3s ease, transform 0.15s ease;
+}
+.redesign .theme-switch-option:hover {
+  color: var(--ink);
+}
+.redesign .theme-switch-option:active {
+  transform: scale(0.92);
+}
+.redesign .theme-switch-option.is-dark,
+:root[data-theme='light'] .redesign.theme-enabled .theme-switch-option.is-light {
+  color: var(--accent-ink);
+}
+:root[data-theme='light'] .redesign.theme-enabled .theme-switch-option.is-dark {
+  color: var(--muted);
+}
+.redesign .theme-toggle {
+  display: none;
+}
+@media (max-width: 700px) {
+  .redesign .theme-switch {
+    display: none;
+  }
+  .redesign .theme-toggle {
+    display: flex;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .redesign .theme-switch-thumb {
+    transition: none;
+  }
+}

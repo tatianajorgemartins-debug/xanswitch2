@@ -18,6 +18,26 @@ function GamepadIcon() {
   );
 }
 
+function MoonIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={16} height={16} aria-hidden="true">
+      <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={16} height={16} aria-hidden="true">
+      <circle cx="12" cy="12" r="4" />
+      <path
+        d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function BoxIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={16} height={16} aria-hidden="true">
@@ -197,27 +217,44 @@ export default function SiteHeader({
         )}
 
         {themeControl && (
-          <button
-            type="button"
-            className="social-icon theme-toggle"
-            onClick={themeControl.toggle}
-            aria-label={themeControl.theme === 'light' ? 'Ativar modo escuro' : 'Ativar modo claro'}
-            title={themeControl.theme === 'light' ? 'Modo escuro' : 'Modo claro'}
-          >
-            {themeControl.theme === 'light' ? (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" strokeLinejoin="round" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="4" />
-                <path
-                  d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"
-                  strokeLinecap="round"
-                />
-              </svg>
-            )}
-          </button>
+          <>
+            {/* Computador: chave de duas opções com a pílula deslizante (a
+                posição da pílula vem do data-theme do <html>, então já
+                nasce no lugar certo e só anima quando a pessoa troca). */}
+            <div className="theme-switch" role="group" aria-label="Tema do site">
+              <span className="theme-switch-thumb" aria-hidden="true" />
+              <button
+                type="button"
+                className="theme-switch-option is-dark"
+                onClick={() => themeControl.setTheme('dark')}
+                aria-pressed={themeControl.theme === 'dark'}
+                aria-label="Modo escuro"
+                title="Modo escuro"
+              >
+                <MoonIcon />
+              </button>
+              <button
+                type="button"
+                className="theme-switch-option is-light"
+                onClick={() => themeControl.setTheme('light')}
+                aria-pressed={themeControl.theme === 'light'}
+                aria-label="Modo claro"
+                title="Modo claro"
+              >
+                <SunIcon />
+              </button>
+            </div>
+            {/* Celular: um botão só, que alterna. */}
+            <button
+              type="button"
+              className="social-icon theme-toggle"
+              onClick={themeControl.toggle}
+              aria-label={themeControl.theme === 'light' ? 'Ativar modo escuro' : 'Ativar modo claro'}
+              title={themeControl.theme === 'light' ? 'Modo escuro' : 'Modo claro'}
+            >
+              {themeControl.theme === 'light' ? <MoonIcon /> : <SunIcon />}
+            </button>
+          </>
         )}
 
         <a

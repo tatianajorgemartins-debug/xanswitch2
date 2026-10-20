@@ -13,7 +13,9 @@ export const THEME_STORAGE_KEY = 'xan-theme';
 
 export const THEME_INIT_SCRIPT = `try{var t=localStorage.getItem('${THEME_STORAGE_KEY}');document.documentElement.dataset.theme=t==='light'?'light':'dark'}catch(e){}`;
 
-const ThemeContext = createContext<{ theme: Theme; toggle: () => void } | null>(null);
+const ThemeContext = createContext<{ theme: Theme; toggle: () => void; setTheme: (theme: Theme) => void } | null>(
+  null
+);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>('dark');
@@ -22,8 +24,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setTheme(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
   }, []);
 
-  function toggle() {
-    const next: Theme = theme === 'light' ? 'dark' : 'light';
+  function setThemeTo(next: Theme) {
     setTheme(next);
     document.documentElement.dataset.theme = next;
     try {
@@ -31,7 +32,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   }
 
-  return <ThemeContext.Provider value={{ theme, toggle }}>{children}</ThemeContext.Provider>;
+  const toggle = () => setThemeTo(theme === 'light' ? 'dark' : 'light');
+
+  return <ThemeContext.Provider value={{ theme, toggle, setTheme: setThemeTo }}>{children}</ThemeContext.Provider>;
 }
 
 export function useThemeToggle() {
