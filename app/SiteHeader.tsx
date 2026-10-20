@@ -1,6 +1,27 @@
 'use client';
 
 import Link from 'next/link';
+import { useDesignVariant } from './DesignVariant';
+
+function GamepadIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={16} height={16} aria-hidden="true">
+      <path d="M7 8h10a5 5 0 0 1 4.7 6.7l-.6 1.6a2.6 2.6 0 0 1-4.3 1L15 15.5H9l-1.8 1.8a2.6 2.6 0 0 1-4.3-1l-.6-1.6A5 5 0 0 1 7 8z" strokeLinejoin="round" />
+      <path d="M8 11v3M6.5 12.5h3" strokeLinecap="round" />
+      <circle cx="16" cy="11.5" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="17.6" cy="13.4" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function BoxIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={16} height={16} aria-hidden="true">
+      <path d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5z" strokeLinejoin="round" />
+      <path d="M3.5 7.5L12 12l8.5-4.5M12 12v9" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 const INSTAGRAM_URL = 'https://instagram.com/xan.switch';
 
@@ -28,6 +49,7 @@ export default function SiteHeader({
   // produtos físicos (app/PhysicalCatalogClient.tsx).
   activeCatalog: 'digital' | 'fisico';
 }) {
+  const isRedesign = useDesignVariant() === 'redesign';
   return (
     <div className="site-header">
       <div className="site-header-logo">
@@ -44,7 +66,7 @@ export default function SiteHeader({
           página inteira na hora. */}
       <div className="catalog-switcher" role="group" aria-label="Escolher catálogo">
         <Link href="/" className={`catalog-switcher-option${activeCatalog === 'digital' ? ' active' : ''}`} aria-current={activeCatalog === 'digital'}>
-          <span aria-hidden="true">🎮</span>
+          {isRedesign ? <GamepadIcon /> : <span aria-hidden="true">🎮</span>}
           <span className="catalog-switcher-label">Jogos digitais</span>
         </Link>
         <Link
@@ -52,7 +74,7 @@ export default function SiteHeader({
           className={`catalog-switcher-option${activeCatalog === 'fisico' ? ' active' : ''}`}
           aria-current={activeCatalog === 'fisico'}
         >
-          <span aria-hidden="true">📦</span>
+          {isRedesign ? <BoxIcon /> : <span aria-hidden="true">📦</span>}
           <span className="catalog-switcher-label">Produtos físicos</span>
         </Link>
       </div>

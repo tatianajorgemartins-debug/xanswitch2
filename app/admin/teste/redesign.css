@@ -1,0 +1,920 @@
+/* Visual novo em teste. Toda regra começa com .redesign, então nada aqui
+   vale fora da página de teste, mesmo depois que este arquivo é carregado.
+   Mesmas cores do site; cada uma com um papel só:
+   roxo = ação e seleção, verde = preço, dourado = promoção. */
+
+.redesign {
+  --bg: #0a0716;
+  --surface: #140d27;
+  --surface-2: #1c1338;
+  --surface-3: #271b4a;
+  --ink: #f4f1fb;
+  --muted: #b7aed4;
+  --accent: #a463ff;
+  --accent-fill: #7b2ff0;
+  --accent-fill-hover: #8c48f7;
+  --accent-ink: #ffffff;
+  --price: #4ef05f;
+  --promo: #ffd24e;
+  --promo-ink: #2b1a00;
+  --radius: 8px;
+  --font: var(--font-redesign), 'Helvetica Neue', Arial, sans-serif;
+  --step-small: 0.8125rem;
+  --step-body: 1rem;
+  --step-lead: clamp(1.0625rem, 0.95rem + 0.45vw, 1.3125rem);
+  --step-head: clamp(1.75rem, 1.2rem + 1.7vw, 2.75rem);
+  --step-display: clamp(1.875rem, 0.6rem + 4.4vw, 4.5rem);
+
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: var(--step-body);
+  line-height: 1.5;
+  color-scheme: dark;
+}
+.redesign *,
+.redesign *::before,
+.redesign *::after {
+  font-family: var(--font) !important;
+}
+.redesign ::selection {
+  background: var(--accent-fill);
+  color: var(--accent-ink);
+}
+.redesign :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.redesign .page-content {
+  padding-bottom: 140px !important;
+}
+
+/* ---------- Cabeçalho ---------- */
+.redesign .site-header-bar {
+  background: var(--bg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom: 0;
+  padding: 14px 20px;
+}
+.redesign .catalog-switcher {
+  background: var(--surface);
+  border: 0;
+  border-radius: 999px;
+  padding: 4px;
+}
+.redesign .catalog-switcher-option {
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.redesign .catalog-switcher-option.active {
+  background: var(--accent-fill);
+  color: var(--accent-ink);
+}
+.redesign .catalog-switcher-option:not(.active):hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+.redesign .account-button {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: none;
+  font-weight: 600;
+}
+.redesign .account-button:hover {
+  background: var(--surface-2);
+  filter: none;
+  transform: none;
+  box-shadow: none;
+}
+.redesign .account-button-badge {
+  box-shadow: none;
+}
+.redesign .social-icon {
+  border: 0;
+  background: var(--surface);
+  color: var(--ink);
+}
+.redesign .social-icon:hover {
+  background: var(--surface-2);
+  color: var(--accent);
+  transform: none;
+}
+
+/* ---------- Título da primeira tela ---------- */
+.redesign .catalog-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  align-items: end;
+  gap: 24px 48px;
+  padding: 40px 0 36px;
+}
+.redesign .catalog-intro-title {
+  margin: 0;
+  font-size: var(--step-display);
+  font-weight: 800;
+  font-stretch: 112%;
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.redesign .catalog-intro-lead {
+  margin: 0;
+  max-width: 40ch;
+  font-size: var(--step-lead);
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+/* ---------- Barra de busca e botões ---------- */
+.redesign .catalog-toolbar {
+  flex-wrap: wrap;
+  overflow: visible;
+  gap: 8px;
+  margin: 0 0 28px;
+  padding: 0;
+}
+.redesign .catalog-toolbar.is-centered {
+  justify-content: flex-start;
+  margin: 28px 0 28px;
+}
+.redesign .catalog-toolbar-search {
+  order: 0;
+  flex: 1 1 320px;
+  max-width: none;
+  min-height: 48px;
+  padding: 0 18px;
+  gap: 10px;
+  background: var(--surface);
+  border: 0;
+  border-radius: 999px;
+}
+.redesign .catalog-toolbar-search:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.redesign .catalog-toolbar-search input,
+.redesign .catalog-toolbar-search input:focus {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ink);
+  border: 0;
+  outline: none;
+}
+.redesign .catalog-toolbar-search input::placeholder {
+  color: var(--muted);
+}
+.redesign .catalog-toolbar-extra {
+  order: 1;
+}
+.redesign .catalog-toolbar .featured-franchise-btn {
+  order: 2;
+}
+.redesign .btn {
+  min-height: 48px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.redesign .btn:hover {
+  background: var(--surface-2);
+  border: 0;
+  transform: none;
+}
+.redesign .btn:active {
+  transform: scale(0.97);
+}
+.redesign .btn.ghost {
+  background: var(--surface);
+}
+.redesign .btn.primary,
+.redesign .btn.green {
+  background: var(--accent-fill);
+  color: var(--accent-ink);
+}
+.redesign .btn.primary:hover,
+.redesign .btn.green:hover {
+  background: var(--accent-fill-hover);
+  filter: none;
+}
+.redesign .btn.credit {
+  background: var(--promo);
+  color: var(--promo-ink);
+}
+.redesign .btn.credit:hover {
+  filter: brightness(1.06);
+}
+.redesign .btn.featured-franchise-btn {
+  background: var(--promo);
+  color: var(--promo-ink);
+  padding: 0 20px;
+  font-weight: 700;
+  box-shadow: none;
+  animation: none;
+}
+.redesign .btn.featured-franchise-btn:hover {
+  filter: brightness(1.06);
+}
+.redesign .btn.catalog-toolbar-menu-btn {
+  width: 48px;
+  height: 48px;
+  border: 0;
+}
+.redesign .view-toggle {
+  background: var(--surface);
+  border: 0;
+  border-radius: 999px;
+  padding: 4px;
+}
+.redesign .view-toggle button {
+  border-radius: 999px;
+  padding: 0 14px;
+  min-height: 40px;
+  color: var(--muted);
+}
+.redesign .view-toggle button.active {
+  background: var(--accent-fill);
+  color: var(--accent-ink);
+}
+
+/* Campos de formulário e painel de filtros */
+.redesign label {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+}
+.redesign input[type='text'],
+.redesign input[type='number'],
+.redesign input[type='password'],
+.redesign input[type='email'],
+.redesign select,
+.redesign textarea {
+  background: var(--surface-2);
+  border: 0;
+  border-radius: var(--radius);
+  font-size: 16px;
+  font-weight: 500;
+  padding: 12px 14px;
+}
+.redesign input:focus,
+.redesign select:focus,
+.redesign textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.redesign .filters-panel {
+  background: var(--surface);
+  border: 0;
+  border-radius: var(--radius);
+  padding: 20px;
+  margin: 0 0 28px;
+}
+
+/* ---------- Banners de destaque ---------- */
+.redesign .promo-section {
+  gap: 12px;
+  margin-bottom: 72px;
+}
+.redesign .promo-section-side {
+  gap: 12px;
+}
+.redesign .promo-banner,
+.redesign .promo-carousel {
+  border: 0;
+  border-radius: var(--radius);
+}
+.redesign .promo-banner {
+  background: var(--surface);
+}
+.redesign .promo-banner:hover,
+.redesign .promo-banner:focus-visible {
+  border: 0;
+  box-shadow: none;
+  transform: none;
+}
+.redesign .promo-banner:hover .promo-banner-image {
+  transform: scale(1.04);
+}
+.redesign .promo-banner-image {
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.redesign .promo-banner-overlay {
+  background: linear-gradient(90deg, rgba(6, 4, 14, 0.92) 0%, rgba(6, 4, 14, 0.62) 45%, rgba(6, 4, 14, 0.05) 100%);
+}
+.redesign .promo-banner-content {
+  gap: 10px;
+  padding: 28px 32px;
+}
+.redesign .promo-banner-category {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  text-shadow: none;
+  opacity: 0.85;
+}
+.redesign .promo-banner-name {
+  font-size: clamp(1.5rem, 1rem + 1.4vw, 2.25rem);
+  font-weight: 800;
+  font-stretch: 108%;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+}
+.redesign .promo-banner-price {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--price);
+  text-shadow: none;
+  font-variant-numeric: tabular-nums;
+}
+.redesign .promo-banner-price-old {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.redesign .promo-banner-cta {
+  margin-top: 8px;
+  padding: 12px 22px;
+  background: var(--accent-fill);
+  color: var(--accent-ink);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.redesign .promo-banner-small .promo-banner-content {
+  padding: 18px 22px;
+  gap: 6px;
+}
+.redesign .promo-banner-small .promo-banner-category {
+  font-size: 13px;
+}
+.redesign .promo-banner-small .promo-banner-name {
+  font-size: 19px;
+}
+.redesign .promo-banner-small .promo-banner-price {
+  font-size: 17px;
+}
+.redesign .promo-carousel-arrow {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  background: rgba(10, 7, 22, 0.72);
+}
+.redesign .promo-carousel-arrow:hover {
+  background: var(--accent-fill);
+}
+.redesign .promo-carousel-dot {
+  background: rgba(255, 255, 255, 0.35);
+}
+.redesign .promo-carousel-dot.active {
+  background: var(--ink);
+  box-shadow: none;
+}
+
+/* Banners de imagem (cards colecionáveis, Beedle Games) */
+.redesign .reviews-banner,
+.redesign .physical-catalog-banner {
+  border: 0;
+  border-radius: var(--radius);
+  margin-bottom: 72px;
+}
+.redesign .physical-catalog-banner {
+  margin: 24px 0 0;
+}
+
+/* ---------- Títulos de seção ---------- */
+.redesign .most-wanted-section {
+  margin-bottom: 72px;
+}
+.redesign .most-wanted-heading,
+.redesign .catalog-count {
+  margin: 0 0 24px;
+  font-size: var(--step-head);
+  font-weight: 800;
+  font-stretch: 108%;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  text-align: left;
+  text-transform: none;
+  text-shadow: none;
+  color: var(--ink);
+}
+.redesign .catalog-count-number {
+  color: var(--ink);
+}
+.redesign .section-divider {
+  display: none;
+}
+
+/* ---------- Cards ---------- */
+.redesign .catalog-grid {
+  gap: 32px 20px;
+}
+.redesign .cover-frame {
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface);
+  transition: none;
+}
+.redesign .cover-frame:hover {
+  background: var(--surface);
+  box-shadow: none;
+  transform: none;
+}
+.redesign .cover-frame img {
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.redesign .game-card:hover .cover-frame img {
+  transform: scale(1.05);
+}
+.redesign .game-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: var(--radius);
+}
+.redesign .game-card-badge {
+  top: 10px;
+  left: 10px;
+  max-width: calc(100% - 56px);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  clip-path: none;
+}
+.redesign .game-card-rank {
+  bottom: 10px;
+  left: 10px;
+  padding: 4px 9px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 800;
+  box-shadow: none;
+}
+.redesign .wishlist-heart-button {
+  top: 10px;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  background: rgba(10, 7, 22, 0.72);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.redesign .wishlist-heart-button:hover {
+  background: rgba(10, 7, 22, 0.9);
+}
+.redesign .wishlist-heart-button.active svg {
+  filter: none;
+}
+.redesign .game-card-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 8px;
+  padding: 12px 0 0;
+  text-align: left;
+}
+.redesign .game-card-name {
+  flex-basis: 100%;
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  min-height: 2.6em;
+}
+.redesign .game-card-price {
+  order: 1;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--price);
+  text-shadow: none;
+  font-variant-numeric: tabular-nums;
+}
+.redesign .game-card-old-price {
+  order: 2;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Visão em lista */
+.redesign .catalog-list {
+  gap: 4px;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+.redesign .list-row {
+  padding: 16px 20px;
+  background: var(--surface);
+  border: 0;
+  border-radius: var(--radius);
+}
+.redesign .list-row:hover {
+  background: var(--surface-2);
+}
+.redesign .list-row-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+.redesign .list-row-price {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--price);
+  text-shadow: none;
+  font-variant-numeric: tabular-nums;
+}
+.redesign .list-row-old-price {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.redesign .tag {
+  padding: 3px 9px;
+  border: 0;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.redesign .tag-platform,
+.redesign .tag-type {
+  background: var(--surface-3);
+  border: 0;
+  color: var(--ink);
+}
+
+/* ---------- Janelas (compra, avaliações, produto físico) ---------- */
+.redesign .purchase-modal-overlay {
+  background: rgba(5, 3, 12, 0.86);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.redesign .purchase-modal {
+  background: var(--surface);
+  border: 0;
+  border-radius: 12px;
+}
+.redesign .purchase-modal-header {
+  background: var(--surface);
+  border-bottom: 0;
+  padding: 20px 22px 8px;
+}
+.redesign .purchase-modal-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+.redesign .purchase-modal-close {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.redesign .purchase-modal-body {
+  padding: 16px 22px 24px;
+}
+.redesign .product-hero-cover {
+  border: 0;
+  background: var(--surface-2);
+  border-radius: var(--radius);
+}
+.redesign .product-hero-ribbon {
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  clip-path: none;
+}
+.redesign .product-price {
+  font-weight: 700;
+  color: var(--price);
+  text-shadow: none;
+  font-variant-numeric: tabular-nums;
+}
+.redesign .product-price-old {
+  color: var(--muted);
+}
+.redesign .purchase-description {
+  background: var(--surface-2);
+  border: 0;
+  border-radius: var(--radius);
+}
+.redesign .purchase-description-label {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+}
+.redesign .purchase-description-text {
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+.redesign .product-cta {
+  font-size: 16px;
+}
+
+.redesign .product-eyebrow {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+}
+.redesign .product-title {
+  font-size: 26px;
+  font-weight: 800;
+  font-stretch: 106%;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.redesign .product-meta-chip {
+  background: var(--surface-2);
+  border: 0;
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+.redesign .product-meta-chip-label {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+}
+.redesign .product-meta-chip-value {
+  font-size: 15px;
+  font-weight: 600;
+}
+.redesign .product-gallery-arrow {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.redesign .product-gallery-arrow:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+.redesign .purchase-gallery-thumb {
+  border-radius: 6px;
+  border: 2px solid transparent;
+}
+.redesign .purchase-gallery-thumb:hover,
+.redesign .purchase-gallery-thumb:focus-visible {
+  border-color: var(--accent);
+}
+.redesign .purchase-card-teaser,
+.redesign .purchase-discount-banner,
+.redesign .purchase-discount-banner.is-redeemable,
+.redesign .purchase-timer-box,
+.redesign .purchase-account-status,
+.redesign .purchase-checklist-item,
+.redesign .purchase-referral-item {
+  background: var(--surface-2);
+  border: 0;
+  border-radius: var(--radius);
+}
+.redesign .purchase-urgency-box,
+.redesign .purchase-discount-banner.is-applied,
+.redesign .purchase-checklist-item:has(input:checked) {
+  background: rgba(78, 240, 95, 0.1);
+  border: 0;
+}
+.redesign .purchase-referral-item:has(input:checked) {
+  background: var(--surface-3);
+}
+.redesign .purchase-card-teaser p,
+.redesign .purchase-discount-banner p {
+  font-size: 14px;
+  font-weight: 500;
+}
+.redesign .purchase-payment-choice-label,
+.redesign .purchase-email-label {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+}
+.redesign .purchase-timer-box strong,
+.redesign .purchase-pix-amount {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-shadow: none;
+}
+.redesign .purchase-pix-amount {
+  color: var(--price);
+}
+.redesign .purchase-pix-copy-row input {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace !important;
+}
+.redesign .purchase-region-tutorial img {
+  border: 0;
+  border-radius: var(--radius);
+}
+.redesign .purchase-step-back {
+  font-size: 15px;
+  font-weight: 600;
+}
+/* O preço no popup de produto físico vem centralizado direto no código;
+   no visual novo fica alinhado à esquerda, junto com o resto. */
+.redesign .product-price-row {
+  justify-content: flex-start !important;
+}
+
+/* A busca já é a cápsula; o campo dentro dela não tem fundo próprio. */
+.redesign .catalog-toolbar-search input[type='text'] {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* Setas do carrossel no canto de baixo, longe do nome, da etiqueta e do preço. */
+.redesign .promo-carousel-arrow {
+  top: auto;
+  bottom: 16px;
+  transform: none;
+}
+.redesign .promo-carousel-arrow.left {
+  left: auto;
+  right: 64px;
+}
+.redesign .promo-carousel-arrow.right {
+  right: 16px;
+}
+@media (max-width: 700px) {
+  .redesign .promo-carousel-arrow {
+    display: none;
+  }
+}
+@media (max-width: 900px) {
+  .redesign .promo-section {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .redesign .promo-section > * {
+    min-width: 0;
+  }
+}
+@media (max-width: 600px) {
+  .redesign .promo-section-main {
+    height: 248px;
+  }
+  .redesign .promo-section-side-compact {
+    height: 128px;
+  }
+  .redesign .promo-banner-content {
+    gap: 6px;
+    padding: 18px 20px 30px;
+    max-width: 88%;
+  }
+  .redesign .promo-banner-category {
+    font-size: 13px;
+  }
+  .redesign .promo-banner-name {
+    font-size: 22px;
+  }
+  .redesign .promo-banner-price {
+    font-size: 19px;
+  }
+  .redesign .promo-banner-cta {
+    margin-top: 4px;
+    padding: 10px 18px;
+    font-size: 14px;
+  }
+  .redesign .promo-banner-small .promo-banner-content {
+    padding: 14px 18px;
+    gap: 4px;
+  }
+  .redesign .promo-banner-small .promo-banner-name {
+    font-size: 17px;
+  }
+}
+
+/* "Os mais desejados": os cards dividem a largura toda, sem buraco à direita
+   quando há menos de cinco. */
+@media (min-width: 701px) {
+  .redesign .most-wanted-section .catalog-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+
+/* ---------- Fim da página e botões flutuantes ---------- */
+.redesign .site-footer-line {
+  margin-top: 96px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.redesign .back-to-top {
+  border-radius: 999px;
+  background: var(--accent-fill);
+  bottom: 84px;
+}
+
+/* ---------- Celular ---------- */
+@media (max-width: 900px) {
+  .redesign .catalog-intro {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 24px 0 28px;
+  }
+}
+@media (max-width: 700px) {
+  .redesign .catalog-toolbar {
+    margin-bottom: 20px;
+  }
+  .redesign .catalog-toolbar-search {
+    flex: 1 1 160px;
+  }
+  .redesign .catalog-toolbar .featured-franchise-btn {
+    order: 3;
+  }
+  .redesign .catalog-toolbar-extra.is-open {
+    gap: 8px;
+  }
+  .redesign .catalog-toolbar-extra .btn {
+    justify-content: flex-start;
+  }
+  .redesign .promo-section,
+  .redesign .most-wanted-section,
+  .redesign .reviews-banner {
+    margin-bottom: 48px;
+  }
+  .redesign .catalog-grid {
+    gap: 24px 12px;
+  }
+  .redesign .game-card-name {
+    font-size: 14px;
+  }
+  .redesign .game-card-price {
+    font-size: 16px;
+  }
+  .redesign .promo-banner-content {
+    padding: 20px;
+  }
+}
+@media (max-width: 640px) {
+  /* O seletor de catálogo vira uma linha inteira embaixo da logo, com os
+     nomes escritos em vez de só ícones. */
+  .redesign .site-header {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+  .redesign .catalog-switcher {
+    order: 3;
+    flex: 1 1 100%;
+  }
+  .redesign .catalog-switcher-option {
+    flex: 1;
+    justify-content: center;
+    padding: 9px 10px;
+  }
+  .redesign .catalog-switcher-label {
+    display: inline;
+  }
+  .redesign .page-content {
+    padding-top: 128px;
+  }
+  .redesign .grid-anchor {
+    scroll-margin-top: 132px;
+  }
+}
+@media (max-width: 480px) {
+  .redesign .site-header-bar {
+    padding: 10px 16px;
+  }
+  .redesign .page-content {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    padding-top: 118px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .redesign .game-card:hover .cover-frame img,
+  .redesign .promo-banner:hover .promo-banner-image {
+    transform: none;
+  }
+}

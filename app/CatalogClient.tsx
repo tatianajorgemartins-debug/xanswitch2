@@ -19,6 +19,7 @@ import ReviewForm from './ReviewForm';
 import PurchaseModal from './PurchaseModal';
 import AccountModal from './AccountModal';
 import BulkPurchaseModal from './BulkPurchaseModal';
+import { useDesignVariant } from './DesignVariant';
 
 export type Item = {
   id: number;
@@ -110,6 +111,7 @@ export default function CatalogClient({
   // franquia ao carregar, sem precisar clicar em nada.
   initialFranchiseFilter?: string;
 }) {
+  const isRedesign = useDesignVariant() === 'redesign';
   const [query, setQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -432,6 +434,15 @@ export default function CatalogClient({
           dentro. As duas contas davam 20px de diferença uma da outra antes
           disso, o que ficava visível na barra de botões logo abaixo. */}
       <div className="page-content" style={{ maxWidth: 1240, margin: '0 auto', paddingLeft: 20, paddingRight: 20, paddingBottom: 80 }}>
+        {isRedesign && (
+          <section className="catalog-intro">
+            <h1 className="catalog-intro-title">Jogos digitais de Nintendo Switch</h1>
+            <p className="catalog-intro-lead">
+              Pague no Pix e receba o código do jogo. Cada compra vale um card colecionável e pontos pra trocar por
+              desconto.
+            </p>
+          </section>
+        )}
         <div className="catalog-toolbar">
         <div className="catalog-toolbar-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={16} height={16} style={{ color: 'var(--ink-dim)', flex: 'none' }}>
@@ -670,7 +681,7 @@ export default function CatalogClient({
 
       {!isFiltering && liveMostWantedItems.length > 0 && (
         <div className="most-wanted-section">
-          <h2 className="most-wanted-heading">❤️ Mais desejados pelos clientes</h2>
+          <h2 className="most-wanted-heading">{isRedesign ? 'Os mais desejados' : '❤️ Mais desejados pelos clientes'}</h2>
           <div className="catalog-grid">
             {liveMostWantedItems.slice(0, 5).map((item, index) => (
               <div key={item.id} className={index === 4 ? 'most-wanted-fifth' : undefined}>
@@ -688,18 +699,8 @@ export default function CatalogClient({
         </div>
       )}
 
-      <p
-        style={{
-          textAlign: 'center',
-          fontSize: 13,
-          fontWeight: 700,
-          letterSpacing: 0.4,
-          textTransform: 'uppercase',
-          color: 'var(--ink-dim)',
-          margin: '0 0 22px'
-        }}
-      >
-        <span style={{ color: 'var(--green)' }}>{filtered.length}</span> jogos disponíveis
+      <p className="catalog-count">
+        <span className="catalog-count-number">{filtered.length}</span> jogos disponíveis
       </p>
 
       {filtered.length === 0 ? (
@@ -837,17 +838,7 @@ export default function CatalogClient({
         </button>
       )}
 
-      <p
-        style={{
-          textAlign: 'center',
-          color: 'var(--ink-dim)',
-          fontSize: 12.5,
-          fontWeight: 600,
-          marginTop: 50
-        }}
-      >
-        XAN SWITCH — Nintendo mais barato
-      </p>
+      <p className="site-footer-line">XAN SWITCH — Nintendo mais barato</p>
       </div>
     </>
   );
@@ -897,18 +888,7 @@ function GameCard({
           onSelect();
         }
       }}
-      style={{
-        textDecoration: 'none',
-        color: 'inherit',
-        cursor: 'pointer',
-        background: 'none',
-        border: 'none',
-        padding: 0,
-        textAlign: 'left',
-        font: 'inherit',
-        width: '100%',
-        position: 'relative'
-      }}
+      className="game-card"
     >
       <div className="cover-frame">
         <button
@@ -928,22 +908,14 @@ function GameCard({
 
         {rankStyle && (
           <div
-            style={{
-              position: 'absolute',
-              bottom: 7,
-              left: 7,
-              zIndex: 2,
-              padding: '3px 7px',
-              borderRadius: 6,
-              background: rankStyle.background,
-              color: rankStyle.color,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontFamily: "'Press Start 2P', cursive",
-              fontSize: 9,
-              boxShadow: `0 0 8px ${rankStyle.glow}`
-            }}
+            className="game-card-rank"
+            style={
+              {
+                background: rankStyle.background,
+                color: rankStyle.color,
+                '--rank-glow': rankStyle.glow
+              } as React.CSSProperties
+            }
             title={`${rank}º lugar entre os mais desejados`}
           >
             {rank}º
@@ -979,65 +951,17 @@ function GameCard({
 
         {item.hasBadge && (
           <div
-            style={{
-              position: 'absolute',
-              top: -2,
-              left: '6%',
-              background: item.badgeColor,
-              color: getContrastColor(item.badgeColor),
-              fontFamily: "'Press Start 2P', cursive",
-              fontSize: 8,
-              padding: '4px 8px',
-              maxWidth: '70%',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              clipPath: 'polygon(0 0, 100% 0, 92% 100%, 0% 100%)'
-            }}
+            className="game-card-badge"
+            style={{ background: item.badgeColor, color: getContrastColor(item.badgeColor) }}
           >
             {item.badgeText}
           </div>
         )}
       </div>
-      <div style={{ padding: '9px 2px 0', textAlign: 'center' }}>
-        <p
-          style={{
-            fontWeight: 700,
-            fontSize: 13.5,
-            color: 'var(--ink)',
-            margin: '0 0 3px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          {item.name}
-        </p>
-        {item.originalPriceLabel && (
-          <p
-            style={{
-              fontFamily: "'Rajdhani', sans-serif",
-              fontSize: 12,
-              fontWeight: 700,
-              color: '#8b83a8',
-              textDecoration: 'line-through',
-              margin: '0 0 2px'
-            }}
-          >
-            R$ {item.originalPriceLabel}
-          </p>
-        )}
-        <p
-          style={{
-            fontFamily: "'Press Start 2P', cursive",
-            fontSize: 12,
-            color: 'var(--green)',
-            textShadow: '0 0 8px var(--green-glow)',
-            margin: 0
-          }}
-        >
-          R$ {item.priceLabel}
-        </p>
+      <div className="game-card-info">
+        <p className="game-card-name">{item.name}</p>
+        {item.originalPriceLabel && <p className="game-card-old-price">R$ {item.originalPriceLabel}</p>}
+        <p className="game-card-price">R$ {item.priceLabel}</p>
       </div>
     </div>
   );
@@ -1102,18 +1026,7 @@ function ListRow({
         </svg>
       </button>
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <span
-          style={{
-            fontWeight: 700,
-            fontSize: 15,
-            color: 'var(--ink)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          {item.name}
-        </span>
+        <span className="list-row-name">{item.name}</span>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {item.hasBadge && (
             <span className="tag" style={{ background: item.badgeColor, color: getContrastColor(item.badgeColor) }}>
@@ -1125,29 +1038,8 @@ function ListRow({
         </div>
       </div>
       <span style={{ flex: 'none', textAlign: 'right' }}>
-        {item.originalPriceLabel && (
-          <span
-            style={{
-              display: 'block',
-              fontSize: 11.5,
-              fontWeight: 700,
-              color: '#8b83a8',
-              textDecoration: 'line-through'
-            }}
-          >
-            R$ {item.originalPriceLabel}
-          </span>
-        )}
-        <span
-          style={{
-            fontFamily: "'Press Start 2P', cursive",
-            fontSize: 11,
-            color: 'var(--green)',
-            textShadow: '0 0 8px var(--green-glow)'
-          }}
-        >
-          R$ {item.priceLabel}
-        </span>
+        {item.originalPriceLabel && <span className="list-row-old-price">R$ {item.originalPriceLabel}</span>}
+        <span className="list-row-price">R$ {item.priceLabel}</span>
       </span>
     </div>
   );

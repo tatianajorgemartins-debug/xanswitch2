@@ -9,6 +9,7 @@
 // já usados no catálogo digital, pra não parecer uma seção improvisada.
 import { useEffect, useMemo, useState } from 'react';
 import SiteHeader from './SiteHeader';
+import { useDesignVariant } from './DesignVariant';
 import type { PhysicalItem } from '@/lib/physicalCatalogData';
 
 export default function PhysicalCatalogClient({
@@ -27,6 +28,7 @@ export default function PhysicalCatalogClient({
   // detalhes desse produto assim que a página carrega.
   initialProductId?: number;
 }) {
+  const isRedesign = useDesignVariant() === 'redesign';
   const [selectedItem, setSelectedItem] = useState<PhysicalItem | null>(null);
   const [query, setQuery] = useState('');
   const [categoryFilterOpen, setCategoryFilterOpen] = useState(false);
@@ -93,6 +95,7 @@ export default function PhysicalCatalogClient({
             .reviews-banner do catálogo digital (ver globals.css), só com
             altura maior porque essa arte é um banner largo 3:1, não uma
             tira fina de avaliações. */}
+        {isRedesign && <h1 className="visually-hidden">Colecionáveis e games físicos da Beedle Games</h1>}
         {bannerUrl && (
           <div className="physical-catalog-banner">
             <img src={bannerUrl} alt="Loja parceira" />
@@ -103,7 +106,7 @@ export default function PhysicalCatalogClient({
             CatalogClient.tsx), com um botão "Categorias" do lado que abre
             um seletor de franquia (ver .filters-panel em globals.css,
             mesmo painel usado pelo "Filtros" do catálogo digital). */}
-        <div className="catalog-toolbar" style={{ justifyContent: 'center', marginBottom: 22, marginTop: 18 }}>
+        <div className="catalog-toolbar is-centered">
           <div className="catalog-toolbar-search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={16} height={16} style={{ color: 'var(--ink-dim)', flex: 'none' }}>
               <circle cx="11" cy="11" r="7" />
@@ -165,11 +168,19 @@ export default function PhysicalCatalogClient({
             {query ? `Nenhum produto encontrado pra "${query}".` : `Nenhum produto encontrado na categoria "${categoryFilter}".`}
           </p>
         ) : (
+          <>
+          {isRedesign && (
+            <p className="catalog-count">
+              <span className="catalog-count-number">{filteredItems.length}</span>{' '}
+              {filteredItems.length === 1 ? 'colecionável' : 'colecionáveis'}
+            </p>
+          )}
           <div className="catalog-grid">
             {filteredItems.map((item) => (
               <PhysicalProductCard key={item.id} item={item} onSelect={() => openProduct(item)} />
             ))}
           </div>
+          </>
         )}
       </div>
 
@@ -190,17 +201,7 @@ function PhysicalProductCard({ item, onSelect }: { item: PhysicalItem; onSelect:
           onSelect();
         }
       }}
-      style={{
-        textDecoration: 'none',
-        color: 'inherit',
-        cursor: 'pointer',
-        background: 'none',
-        border: 'none',
-        padding: 0,
-        textAlign: 'left',
-        font: 'inherit',
-        width: '100%'
-      }}
+      className="game-card"
     >
       <div className="cover-frame">
         {item.imageUrl ? (
@@ -222,45 +223,10 @@ function PhysicalProductCard({ item, onSelect }: { item: PhysicalItem; onSelect:
         )}
       </div>
 
-      <div style={{ padding: '9px 2px 0', textAlign: 'center' }}>
-        <p
-          style={{
-            fontWeight: 700,
-            fontSize: 13.5,
-            color: 'var(--ink)',
-            margin: '0 0 3px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          {item.name}
-        </p>
-        {item.originalPriceLabel && (
-          <p
-            style={{
-              fontFamily: "'Rajdhani', sans-serif",
-              fontSize: 12,
-              fontWeight: 700,
-              color: '#8b83a8',
-              textDecoration: 'line-through',
-              margin: '0 0 2px'
-            }}
-          >
-            R$ {item.originalPriceLabel}
-          </p>
-        )}
-        <p
-          style={{
-            fontFamily: "'Press Start 2P', cursive",
-            fontSize: 12,
-            color: 'var(--green)',
-            textShadow: '0 0 8px var(--green-glow)',
-            margin: 0
-          }}
-        >
-          R$ {item.priceLabel}
-        </p>
+      <div className="game-card-info">
+        <p className="game-card-name">{item.name}</p>
+        {item.originalPriceLabel && <p className="game-card-old-price">R$ {item.originalPriceLabel}</p>}
+        <p className="game-card-price">R$ {item.priceLabel}</p>
       </div>
     </div>
   );

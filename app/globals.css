@@ -128,6 +128,96 @@ a {
   }
 }
 
+/* Card de jogo / produto físico (CatalogClient.tsx, PhysicalCatalogClient.tsx)
+   — o card inteiro é clicável (div role="button"), com capa, selos e o
+   bloco de nome/preço embaixo. */
+.game-card {
+  position: relative;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.game-card-rank {
+  position: absolute;
+  bottom: 7px;
+  left: 7px;
+  z-index: 2;
+  padding: 3px 7px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 9px;
+  box-shadow: 0 0 8px var(--rank-glow);
+}
+.game-card-badge {
+  position: absolute;
+  top: -2px;
+  left: 6%;
+  max-width: 70%;
+  padding: 4px 8px;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  clip-path: polygon(0 0, 100% 0, 92% 100%, 0% 100%);
+}
+.game-card-info {
+  padding: 9px 2px 0;
+  text-align: center;
+}
+.game-card-name {
+  margin: 0 0 3px;
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.game-card-old-price {
+  margin: 0 0 2px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: #8b83a8;
+  text-decoration: line-through;
+}
+.game-card-price {
+  margin: 0;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 12px;
+  color: var(--green);
+  text-shadow: 0 0 8px var(--green-glow);
+}
+.catalog-count {
+  margin: 0 0 22px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.catalog-count-number {
+  color: var(--green);
+}
+.site-footer-line {
+  margin-top: 50px;
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-dim);
+}
+
 /* Invisible landmark the promo banners scroll to, offset so the fixed
    header never covers whatever it scrolls into view. */
 .grid-anchor {
@@ -589,9 +679,37 @@ textarea:focus {
   border: 1px solid rgba(43, 26, 0, 0.35);
 }
 .test-mode-bar-links a.is-active,
-.test-mode-bar-links a:hover {
+.test-mode-bar-links a:hover,
+.test-mode-bar-exit:hover {
   background: #2b1a00;
   color: var(--gold);
+}
+.test-mode-bar-exit {
+  color: #2b1a00;
+  text-decoration: none;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+@media (max-width: 700px) {
+  .test-mode-bar {
+    bottom: 10px;
+    gap: 6px;
+    flex-wrap: nowrap;
+    padding: 6px 8px;
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
+  .test-mode-bar-label-long {
+    display: none;
+  }
+  .test-mode-bar-links {
+    flex-wrap: nowrap;
+    gap: 3px;
+  }
+  .test-mode-bar-links a,
+  .test-mode-bar-exit {
+    padding: 4px 7px;
+  }
 }
 
 /* Approved customer reviews — a horizontally scrolling row of cards. */
@@ -904,6 +1022,27 @@ textarea:focus {
 .list-row:last-child {
   border-bottom: none;
 }
+.list-row-name {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.list-row-old-price {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #8b83a8;
+  text-decoration: line-through;
+}
+.list-row-price {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 11px;
+  color: var(--green);
+  text-shadow: 0 0 8px var(--green-glow);
+}
 .list-row:hover {
   background: rgba(78, 240, 95, 0.07);
 }
@@ -1119,6 +1258,21 @@ textarea:focus {
 }
 .catalog-toolbar > * {
   flex: none;
+}
+.catalog-toolbar.is-centered {
+  justify-content: center;
+  margin-bottom: 22px;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 .catalog-toolbar-search {
   display: flex;

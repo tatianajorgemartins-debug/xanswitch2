@@ -1,5 +1,6 @@
 import PromoCarousel, { type PromoSlide } from './PromoCarousel';
 import type { Item } from './CatalogClient';
+import { useDesignVariant } from './DesignVariant';
 
 export default function PromoSection({
   featuredItems,
@@ -14,6 +15,7 @@ export default function PromoSection({
   onViewGame: (name: string) => void;
   onFilterFlag: (flag: 'bestseller' | 'upcoming') => void;
 }) {
+  const isRedesign = useDesignVariant() === 'redesign';
   const hasFeatured = featuredItems.length > 0;
   const hasSide = mostWantedItems.length > 0 || upcomingItems.length > 0;
   if (!hasFeatured && !hasSide) return null;
@@ -27,13 +29,13 @@ export default function PromoSection({
 
   const mostWantedSlides: PromoSlide[] = mostWantedItems.map((item) => ({
     item,
-    category: '❤️ Mais desejados',
+    category: isRedesign ? 'Mais desejados' : '❤️ Mais desejados',
     onClick: () => onViewGame(item.name)
   }));
 
   const upcomingSlides: PromoSlide[] = upcomingItems.map((item) => ({
     item,
-    category: '👀 Mais aguardados',
+    category: isRedesign ? 'Mais aguardados' : '👀 Mais aguardados',
     priceOverride: 'EM BREVE',
     onClick: () => onFilterFlag('upcoming')
   }));
