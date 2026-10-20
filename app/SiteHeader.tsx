@@ -1,7 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { useLayoutEffect, useState } from 'react';
 import { useDesignVariant } from './DesignVariant';
+
+const SWITCHER_FROM_KEY = 'xan-catalog-switch-from';
 
 function GamepadIcon() {
   return (
@@ -30,6 +33,7 @@ export default function SiteHeader({
   wishlistCount,
   accountLabel,
   onOpenAccount,
+  accountHref,
   activeCatalog
 }: {
   whatsappContactUrl: string | null;
@@ -38,11 +42,12 @@ export default function SiteHeader({
   // quem já logou (calculado em CatalogClient.tsx, que sabe quem é o
   // usuário e o Instagram salvo dele).
   accountLabel?: string;
-  // Deixado de fora (undefined) esconde o botão de conta inteiro — é o que
-  // o catálogo de produtos físicos faz por enquanto, já que login/lista de
-  // desejos ainda são recursos só do catálogo digital (ver
-  // PhysicalCatalogClient.tsx).
+  // Abre o popup de conta na própria página (catálogo digital).
   onOpenAccount?: () => void;
+  // Sem onOpenAccount, o botão vira um link pra cá — o catálogo físico usa
+  // isso pra levar ao catálogo digital já com o popup de conta aberto, que
+  // é onde ficam login, pontos e lista de desejos.
+  accountHref?: string;
   // Em qual dos dois catálogos esse header está sendo mostrado — controla
   // qual lado do seletor fica "aceso" (ver .catalog-switcher em
   // globals.css). 'digital' = jogos (app/CatalogClient.tsx), 'fisico' =
@@ -50,11 +55,79 @@ export default function SiteHeader({
   activeCatalog: 'digital' | 'fisico';
 }) {
   const isRedesign = useDesignVariant() === 'redesign';
+
+  // Pílula do seletor que desliza de um lado pro outro, tipo o botão de
+  // liga/desliga do iPhone. Cada catálogo é uma página separada, então o
+  // cabeçalho é montado de novo na troca: o clique anota de onde a pessoa
+  // veio, e a página nova desenha a pílula nesse lado e anima até o lado
+  // certo (antes da primeira pintura, pra não piscar na posição final).
+  const [thumbAt, setThumbAt] = useState(activeCatalog);
+  const [thumbInstant, setThumbInstant] = useState(false);
+  useLayoutEffect(() => {
+    let from: string | null = null;
+    try {
+      from = sessionStorage.getItem(SWITCHER_FROM_KEY);
+    } catch {}
+    if ((from !== 'digital' && from !== 'fisico') || from === activeCatalog) {
+      setThumbInstant(false);
+      setThumbAt(activeCatalog);
+      return;
+    }
+    setThumbInstant(true);
+    setThumbAt(from);
+    let second = 0;
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => {
+        // Só apaga a anotação aqui (e não logo na leitura): se o efeito
+        // rodar duas vezes seguidas, a segunda ainda encontra o lado de
+        // origem e a animação não se perde.
+        try {
+          sessionStorage.removeItem(SWITCHER_FROM_KEY);
+        } catch {}
+        setThumbInstant(false);
+        setThumbAt(activeCatalog);
+      });
+    });
+    return () => {
+      cancelAnimationFrame(first);
+      cancelAnimationFrame(second);
+    };
+  }, [activeCatalog]);
+
+  function rememberSwitchFrom(target: 'digital' | 'fisico') {
+    if (target === activeCatalog) return;
+    try {
+      sessionStorage.setItem(SWITCHER_FROM_KEY, activeCatalog);
+    } catch {}
+  }
+
+  const shownCatalog = isRedesign ? thumbAt : activeCatalog;
+
+  const accountContent = (
+    <>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="8" r="3.4" />
+        <path d="M4.5 20c1.4-3.8 4.4-6 7.5-6s6.1 2.2 7.5 6" strokeLinecap="round" />
+      </svg>
+      <span className="account-button-label">{accountLabel}</span>
+      {!!wishlistCount && wishlistCount > 0 && <span className="account-button-badge">{wishlistCount}</span>}
+    </>
+  );
+
   return (
     <div className="site-header">
       <div className="site-header-logo">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.png" alt="XAN Switch" />
+        {activeCatalog === 'fisico' && (
+          <>
+            <span className="site-header-logo-plus" aria-hidden="true">
+              +
+            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/beedle-logo.png" alt="Beedle Games" className="site-header-partner-logo" />
+          </>
+        )}
       </div>
 
       {/* Alterna entre os dois catálogos do site — sempre leva pra raiz de
@@ -64,15 +137,29 @@ export default function SiteHeader({
           passar pela View Transitions API (ver <ViewTransition> em cada
           page.tsx e a duração em globals.css) em vez de recarregar a
           página inteira na hora. */}
-      <div className="catalog-switcher" role="group" aria-label="Escolher catálogo">
-        <Link href="/" className={`catalog-switcher-option${activeCatalog === 'digital' ? ' active' : ''}`} aria-current={activeCatalog === 'digital'}>
+      <div
+        className={`catalog-switcher${isRedesign ? ' has-thumb' : ''}`}
+        data-active={shownCatalog}
+        role="group"
+        aria-label="Escolher catálogo"
+      >
+        {isRedesign && (
+          <span className={`catalog-switcher-thumb${thumbInstant ? ' is-instant' : ''}`} aria-hidden="true" />
+        )}
+        <Link
+          href="/"
+          className={`catalog-switcher-option${shownCatalog === 'digital' ? ' active' : ''}`}
+          aria-current={activeCatalog === 'digital'}
+          onClick={() => rememberSwitchFrom('digital')}
+        >
           {isRedesign ? <GamepadIcon /> : <span aria-hidden="true">🎮</span>}
           <span className="catalog-switcher-label">Jogos digitais</span>
         </Link>
         <Link
           href="/produtos-fisicos"
-          className={`catalog-switcher-option${activeCatalog === 'fisico' ? ' active' : ''}`}
+          className={`catalog-switcher-option${shownCatalog === 'fisico' ? ' active' : ''}`}
           aria-current={activeCatalog === 'fisico'}
+          onClick={() => rememberSwitchFrom('fisico')}
         >
           {isRedesign ? <BoxIcon /> : <span aria-hidden="true">📦</span>}
           <span className="catalog-switcher-label">Produtos físicos</span>
@@ -80,15 +167,16 @@ export default function SiteHeader({
       </div>
 
       <div className="site-header-icons">
-        {onOpenAccount && (
+        {onOpenAccount ? (
           <button type="button" className="account-button" onClick={onOpenAccount} aria-label="Minha conta">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="8" r="3.4" />
-              <path d="M4.5 20c1.4-3.8 4.4-6 7.5-6s6.1 2.2 7.5 6" strokeLinecap="round" />
-            </svg>
-            <span className="account-button-label">{accountLabel}</span>
-            {!!wishlistCount && wishlistCount > 0 && <span className="account-button-badge">{wishlistCount}</span>}
+            {accountContent}
           </button>
+        ) : (
+          accountHref && (
+            <Link href={accountHref} className="account-button" aria-label="Minha conta">
+              {accountContent}
+            </Link>
+          )
         )}
 
         <a

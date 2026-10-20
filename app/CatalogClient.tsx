@@ -178,6 +178,17 @@ export default function CatalogClient({
   const [user, setUser] = useState<User | null>(null);
   const [wishlistIds, setWishlistIds] = useState<Set<number>>(new Set());
   const [accountModalOpen, setAccountModalOpen] = useState(false);
+  // "Minha conta" no catálogo de produtos físicos leva pra cá com ?conta=1
+  // (ver accountHref em PhysicalCatalogClient.tsx) — abre o popup sozinho e
+  // limpa o endereço.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('conta') !== '1') return;
+    setAccountModalOpen(true);
+    params.delete('conta');
+    const query = params.toString();
+    window.history.replaceState(null, '', window.location.pathname + (query ? `?${query}` : ''));
+  }, []);
   // Jogos selecionados pra compra em lote (null = modal fechado) — disparado
   // a partir da lista de desejos, dentro do popup de conta.
   const [bulkPurchaseItems, setBulkPurchaseItems] = useState<Item[] | null>(null);

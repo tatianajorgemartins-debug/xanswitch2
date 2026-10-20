@@ -58,11 +58,62 @@
   border-bottom: 0;
   padding: 14px 20px;
 }
+/* Logo à esquerda; seletor de catálogo, conta e redes sociais à direita. */
+.redesign .site-header {
+  justify-content: flex-start;
+  gap: 10px;
+}
+.redesign .site-header-logo {
+  margin-right: auto;
+}
 .redesign .catalog-switcher {
   background: var(--surface);
   border: 0;
   border-radius: 999px;
   padding: 4px;
+}
+/* Seletor com a pílula que desliza entre as opções (ver SiteHeader.tsx). */
+.redesign .catalog-switcher.has-thumb {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.redesign .catalog-switcher-thumb {
+  position: absolute;
+  z-index: -1;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: 999px;
+  background: var(--accent-fill);
+  transition: transform 0.5s cubic-bezier(0.34, 1.35, 0.5, 1);
+}
+.redesign .catalog-switcher[data-active='fisico'] .catalog-switcher-thumb {
+  transform: translateX(100%);
+}
+.redesign .catalog-switcher-thumb.is-instant {
+  transition: none;
+}
+.redesign .catalog-switcher.has-thumb .catalog-switcher-option {
+  justify-content: center;
+  transition: color 0.3s ease, transform 0.15s ease;
+}
+.redesign .catalog-switcher.has-thumb .catalog-switcher-option.active {
+  background: transparent;
+}
+.redesign .catalog-switcher.has-thumb .catalog-switcher-option:not(.active):hover {
+  background: transparent;
+}
+.redesign .catalog-switcher.has-thumb .catalog-switcher-option:active {
+  transform: scale(0.96);
+}
+@media (prefers-reduced-motion: reduce) {
+  .redesign .catalog-switcher-thumb {
+    transition: none;
+  }
 }
 .redesign .catalog-switcher-option {
   gap: 8px;
@@ -912,6 +963,16 @@
   .redesign .catalog-toolbar-extra {
     order: 10;
   }
+  /* Produtos físicos: busca na largura toda, "Entre em contato" e
+     "Categorias" lado a lado embaixo. */
+  .redesign .catalog-toolbar.is-centered .catalog-toolbar-search {
+    flex-basis: 100%;
+  }
+  .redesign .catalog-toolbar.is-centered > .btn {
+    flex: 1 1 0;
+    justify-content: center;
+    padding: 0 12px;
+  }
   .redesign .catalog-toolbar-extra.is-open {
     gap: 8px;
   }
@@ -970,6 +1031,41 @@
     padding-left: 16px !important;
     padding-right: 16px !important;
     padding-top: 118px;
+  }
+}
+@media (max-width: 340px) {
+  .redesign .page-content {
+    padding-top: 152px;
+  }
+}
+/* Celulares bem estreitos: logo dupla + "Minha conta" + ícones numa linha só. */
+@media (max-width: 380px) {
+  .redesign .site-header {
+    column-gap: 6px;
+  }
+  .redesign .site-header-logo {
+    gap: 4px;
+  }
+  .redesign .site-header-logo img {
+    height: 22px;
+  }
+  .redesign .site-header-logo img.site-header-partner-logo {
+    height: 17px;
+  }
+  .redesign .site-header-logo-plus {
+    font-size: 13px;
+  }
+  .redesign .account-button {
+    padding: 0 9px 0 8px;
+    gap: 4px;
+    font-size: 11px;
+  }
+  .redesign .site-header-icons {
+    gap: 5px;
+  }
+  .redesign .social-icon {
+    width: 28px;
+    height: 28px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

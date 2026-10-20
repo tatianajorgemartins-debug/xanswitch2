@@ -86,7 +86,12 @@ export default function PhysicalCatalogClient({
           catálogo, em vez de esmaecer/mexer junto com o resto da página. */}
       <header className="site-header-bar" style={{ viewTransitionName: 'site-header' }}>
         <div className="site-header-bar-inner">
-          <SiteHeader whatsappContactUrl={whatsappContactUrl} activeCatalog="fisico" />
+          <SiteHeader
+            whatsappContactUrl={whatsappContactUrl}
+            activeCatalog="fisico"
+            accountLabel="Minha conta"
+            accountHref="/?conta=1"
+          />
         </div>
       </header>
 
@@ -127,6 +132,15 @@ export default function PhysicalCatalogClient({
               </button>
             )}
           </div>
+
+          <a href={BEEDLE_GAMES_INSTAGRAM_URL} target="_blank" rel="noreferrer" className="btn ghost">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={15} height={15} style={{ flex: 'none' }}>
+              <rect x="3" y="3" width="18" height="18" rx="5" />
+              <circle cx="12" cy="12" r="4" />
+              <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+            </svg>
+            Entre em contato
+          </a>
 
           {categories.length > 0 && (
             <button type="button" className="btn ghost" onClick={() => setCategoryFilterOpen((v) => !v)}>

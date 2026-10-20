@@ -1092,6 +1092,19 @@ textarea:focus {
   width: auto;
   display: block;
 }
+/* Catálogo de produtos físicos: logo da XAN + logo da Beedle Games. */
+.site-header-logo {
+  gap: 12px;
+}
+.site-header-logo-plus {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink-dim);
+}
+.site-header-logo img.site-header-partner-logo {
+  height: 34px;
+}
 .site-header-icons {
   display: flex;
   gap: 10px;
@@ -1182,6 +1195,15 @@ textarea:focus {
   }
   .site-header-logo img {
     height: 26px;
+  }
+  .site-header-logo {
+    gap: 6px;
+  }
+  .site-header-logo-plus {
+    font-size: 16px;
+  }
+  .site-header-logo img.site-header-partner-logo {
+    height: 22px;
   }
   .site-header-icons {
     gap: 6px;
@@ -2910,6 +2932,7 @@ label {
    marca, em vez do estilo discreto dos ícones sociais. */
 .account-button {
   position: relative;
+  text-decoration: none;
   flex: none;
   display: flex;
   align-items: center;
