@@ -45,7 +45,12 @@ export default async function PhysicalProductPage({ params }: { params: Promise<
   // Ver o comentário em app/page.tsx sobre o <ViewTransition>.
   return (
     <ViewTransition>
-      <PhysicalCatalogClient items={data.items} whatsappContactUrl={buildWhatsAppContactLink()} initialProductId={item.id} />
+      <PhysicalCatalogClient
+        items={data.items}
+        bannerUrl={data.bannerUrl}
+        whatsappContactUrl={buildWhatsAppContactLink()}
+        initialProductId={item.id}
+      />
     </ViewTransition>
   );
 }

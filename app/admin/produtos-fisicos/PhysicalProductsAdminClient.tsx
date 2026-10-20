@@ -4,7 +4,7 @@
 // separado de app/admin/AdminClient.tsx (jogos digitais) de propósito,
 // pra existir uma separação de verdade entre as duas áreas de
 // gerenciamento, não só mais uma aba dentro do painel de jogos.
-import { useActionState, useEffect, useRef, useState } from 'react';
+import { useActionState, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFormStatus } from 'react-dom';
 import type { PhysicalProduct } from '@/lib/physicalProducts';
@@ -15,18 +15,30 @@ import {
   updatePhysicalProductAction,
   deletePhysicalProductAction,
   setPhysicalProductPublishedAction,
+  updatePhysicalBannerAction,
+  removePhysicalBannerAction,
   type PhysicalProductFormState
 } from './actions';
 
 const emptyFormState: PhysicalProductFormState = { error: null };
 
-export default function PhysicalProductsAdminClient({ initialProducts }: { initialProducts: PhysicalProduct[] }) {
+export default function PhysicalProductsAdminClient({
+  initialProducts,
+  bannerUrl,
+  allCategories
+}: {
+  initialProducts: PhysicalProduct[];
+  bannerUrl: string | null;
+  allCategories: string[];
+}) {
   const router = useRouter();
   const [products, setProducts] = useState(initialProducts);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<PhysicalProduct | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [showBannerPanel, setShowBannerPanel] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState('all');
 
   function openAddPanel() {
     setEditingProduct(null);
@@ -58,6 +70,10 @@ export default function PhysicalProductsAdminClient({ initialProducts }: { initi
   }
 
   const demoCount = products.filter((p) => p.is_demo).length;
+  const filteredProducts = useMemo(
+    () => (categoryFilter === 'all' ? products : products.filter((p) => (p.category ?? '') === categoryFilter)),
+    [products, categoryFilter]
+  );
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 20px 80px' }}>
@@ -100,14 +116,24 @@ export default function PhysicalProductsAdminClient({ initialProducts }: { initi
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <button type="button" className="btn primary" onClick={openAddPanel}>
           ＋ Adicionar produto
         </button>
+        <button type="button" className="btn ghost" onClick={() => setShowBannerPanel((s) => !s)}>
+          🖼️ Banner da loja parceira
+        </button>
       </div>
 
+      {showBannerPanel && <PhysicalBannerPanel currentUrl={bannerUrl} />}
+
       {panelOpen && (
-        <ProductFormPanel product={editingProduct} onClose={closePanel} onSaved={() => { closePanel(); router.refresh(); }} />
+        <ProductFormPanel
+          product={editingProduct}
+          allCategories={allCategories}
+          onClose={closePanel}
+          onSaved={() => { closePanel(); router.refresh(); }}
+        />
       )}
 
       {products.length === 0 ? (
@@ -115,8 +141,35 @@ export default function PhysicalProductsAdminClient({ initialProducts }: { initi
           Nenhum produto físico cadastrado ainda. Clique em "＋ Adicionar produto" pra começar.
         </p>
       ) : (
+        <>
+          {allCategories.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+              <label htmlFor="pp-category-filter" style={{ margin: 0, fontSize: 13, color: 'var(--ink-dim)', textTransform: 'none' }}>
+                Filtrar por categoria:
+              </label>
+              <select
+                id="pp-category-filter"
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                style={{ width: 'auto' }}
+              >
+                <option value="all">Todas ({products.length})</option>
+                {allCategories.map((c) => (
+                  <option key={c} value={c}>
+                    {c} ({products.filter((p) => p.category === c).length})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {filteredProducts.length === 0 ? (
+            <p style={{ color: 'var(--ink-dim)', fontSize: 14, padding: '20px 4px' }}>
+              Nenhum produto nessa categoria.
+            </p>
+          ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {products.map((product) => (
+          {filteredProducts.map((product) => (
             <div
               key={product.id}
               className="admin-row"
@@ -163,6 +216,20 @@ export default function PhysicalProductsAdminClient({ initialProducts }: { initi
               </div>
 
               <div style={{ display: 'flex', gap: 8, flex: 'none', alignItems: 'center', flexWrap: 'wrap' }}>
+                {product.category && (
+                  <span
+                    style={{
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      color: 'var(--purple)',
+                      border: '1px solid rgba(164,99,255,.4)',
+                      borderRadius: 6,
+                      padding: '3px 8px'
+                    }}
+                  >
+                    {product.category}
+                  </span>
+                )}
                 {product.is_demo && (
                   <span
                     style={{
@@ -219,6 +286,8 @@ export default function PhysicalProductsAdminClient({ initialProducts }: { initi
             </div>
           ))}
         </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -235,10 +304,12 @@ function SubmitButton({ isEditing }: { isEditing: boolean }) {
 
 function ProductFormPanel({
   product,
+  allCategories,
   onClose,
   onSaved
 }: {
   product: PhysicalProduct | null;
+  allCategories: string[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -302,6 +373,26 @@ function ProductFormPanel({
         <div style={{ marginBottom: 14 }}>
           <label htmlFor="pp-name">Nome do produto</label>
           <input id="pp-name" name="name" type="text" required defaultValue={product?.name ?? ''} placeholder="Ex: Controle sem fio para Nintendo Switch" />
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label htmlFor="pp-category">Categoria</label>
+          <input
+            id="pp-category"
+            name="category"
+            type="text"
+            list="pp-category-options"
+            defaultValue={product?.category ?? ''}
+            placeholder="Ex: Controles, Colecionáveis, Acessórios..."
+          />
+          <datalist id="pp-category-options">
+            {allCategories.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+          <p style={{ margin: '6px 2px 0', fontSize: 12.5, color: 'var(--ink-dim)' }}>
+            Digite uma categoria nova ou escolha uma já usada — igual a franquia nos jogos digitais.
+          </p>
         </div>
 
         <div style={{ display: 'flex', gap: 16, marginBottom: 14, flexWrap: 'wrap' }}>
@@ -402,6 +493,86 @@ function ProductFormPanel({
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+// Banner da loja parceira (ex: Beedle Games), mostrado no catálogo público
+// antes da grade de produtos — mesmo padrão do ReviewsBannerPanel em
+// app/admin/AdminClient.tsx.
+function PhysicalBannerPanel({ currentUrl }: { currentUrl: string | null }) {
+  const router = useRouter();
+  const [preview, setPreview] = useState<string | null>(currentUrl);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPreview(URL.createObjectURL(file));
+  }
+
+  async function handleSubmit(formData: FormData) {
+    setSubmitting(true);
+    setError(null);
+    const result = await updatePhysicalBannerAction(formData);
+    setSubmitting(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    router.refresh();
+  }
+
+  async function handleRemove() {
+    setSubmitting(true);
+    await removePhysicalBannerAction();
+    setSubmitting(false);
+    setPreview(null);
+    router.refresh();
+  }
+
+  return (
+    <div
+      className="admin-panel"
+      style={{
+        background: 'var(--panel)',
+        border: '1px solid rgba(164,99,255,.25)',
+        borderRadius: 14,
+        padding: 16,
+        marginBottom: 20
+      }}
+    >
+      <h4 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--ink-dim)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+        Banner da loja parceira
+      </h4>
+      <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--ink-dim)', lineHeight: 1.5 }}>
+        Esse banner aparece no topo do catálogo de produtos físicos, antes da grade de produtos (ex: o banner da
+        Beedle Games). Use uma imagem larga, tipo 3:1 (ex: 1920x640).
+      </p>
+
+      {preview && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={preview}
+          alt=""
+          style={{ width: '100%', maxWidth: 480, borderRadius: 10, border: '1px solid rgba(164,99,255,.3)', marginBottom: 14, display: 'block' }}
+        />
+      )}
+
+      <form action={handleSubmit} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+        <input ref={fileInputRef} name="image" type="file" accept="image/*" onChange={handleFileChange} />
+        <button type="submit" className="btn primary" disabled={submitting}>
+          {submitting ? 'Enviando...' : preview === currentUrl ? 'Trocar imagem' : 'Salvar banner'}
+        </button>
+        {currentUrl && (
+          <button type="button" className="btn ghost" disabled={submitting} onClick={handleRemove}>
+            Remover banner
+          </button>
+        )}
+      </form>
+      {error && <p style={{ color: '#ff8a8a', fontSize: 13, fontWeight: 600, marginTop: 10 }}>{error}</p>}
     </div>
   );
 }

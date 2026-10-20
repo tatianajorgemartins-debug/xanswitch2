@@ -531,6 +531,28 @@ textarea:focus {
   }
 }
 
+/* Banner da loja parceira do catálogo de produtos físicos (ex: Beedle
+   Games) — mesmo padrão do .reviews-banner acima, só mais alto porque
+   essa arte é um banner largo (proporção 3:1), não uma tira fina. */
+.physical-catalog-banner {
+  margin-bottom: 26px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(164, 99, 255, 0.35);
+}
+.physical-catalog-banner img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 320px;
+  object-fit: cover;
+}
+@media (max-width: 600px) {
+  .physical-catalog-banner img {
+    max-height: 160px;
+  }
+}
+
 /* Approved customer reviews — a horizontally scrolling row of cards. */
 .reviews-section {
   position: relative;

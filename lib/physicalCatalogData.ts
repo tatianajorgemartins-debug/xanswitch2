@@ -5,7 +5,7 @@
 // (app/produtos-fisicos/page.tsx) precisam dos mesmos dados, e o cache()
 // do React garante que o banco só é consultado uma vez por requisição.
 import { cache } from 'react';
-import { getPublishedPhysicalProducts, type PhysicalProduct } from './physicalProducts';
+import { getPublishedPhysicalProducts, getPhysicalCatalogBanner, type PhysicalProduct } from './physicalProducts';
 import { formatPriceBR } from './whatsapp';
 
 export type PhysicalItem = {
@@ -33,9 +33,12 @@ function toPhysicalItem(p: PhysicalProduct): PhysicalItem {
 
 export type PhysicalCatalogData = {
   items: PhysicalItem[];
+  // Banner da loja parceira (ex: Beedle Games), mostrado antes da grade —
+  // null enquanto não subir nada no admin.
+  bannerUrl: string | null;
 };
 
 export const loadPhysicalCatalogData = cache(async (): Promise<PhysicalCatalogData> => {
-  const products = await getPublishedPhysicalProducts();
-  return { items: products.map(toPhysicalItem) };
+  const [products, bannerUrl] = await Promise.all([getPublishedPhysicalProducts(), getPhysicalCatalogBanner()]);
+  return { items: products.map(toPhysicalItem), bannerUrl };
 });

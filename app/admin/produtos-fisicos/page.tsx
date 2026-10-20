@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
-import { getAllPhysicalProducts } from '@/lib/physicalProducts';
+import { getAllPhysicalProducts, getPhysicalCatalogBanner, getAllPhysicalProductCategories } from '@/lib/physicalProducts';
 import PhysicalProductsAdminClient from './PhysicalProductsAdminClient';
 
 // Área administrativa separada do catálogo de produtos físicos — mesmo
@@ -16,6 +16,10 @@ export default async function PhysicalProductsAdminPage() {
     redirect('/admin/login');
   }
 
-  const products = await getAllPhysicalProducts();
-  return <PhysicalProductsAdminClient initialProducts={products} />;
+  const [products, bannerUrl, allCategories] = await Promise.all([
+    getAllPhysicalProducts(),
+    getPhysicalCatalogBanner(),
+    getAllPhysicalProductCategories()
+  ]);
+  return <PhysicalProductsAdminClient initialProducts={products} bannerUrl={bannerUrl} allCategories={allCategories} />;
 }

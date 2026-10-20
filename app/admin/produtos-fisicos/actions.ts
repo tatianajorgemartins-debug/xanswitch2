@@ -16,7 +16,9 @@ import {
   updatePhysicalProduct,
   deletePhysicalProduct,
   setPhysicalProductPublished,
-  getPhysicalProductById
+  getPhysicalProductById,
+  getPhysicalCatalogBanner,
+  setPhysicalCatalogBanner
 } from '@/lib/physicalProducts';
 
 // Mesma checagem de sessão usada em app/admin/actions.ts — é o mesmo login
@@ -52,6 +54,7 @@ function parseProductFields(formData: FormData): {
   description: string | null;
   published: boolean;
   isDemo: boolean;
+  category: string | null;
   error: string | null;
 } {
   const name = String(formData.get('name') || '').trim();
@@ -62,16 +65,19 @@ function parseProductFields(formData: FormData): {
   const description = String(formData.get('description') || '').trim() || null;
   const published = formData.get('published') === 'on';
   const isDemo = formData.get('isDemo') === 'on';
+  const category = String(formData.get('category') || '').trim() || null;
 
-  if (!name) return { name, price, originalPrice, description, published, isDemo, error: 'Digite o nome do produto.' };
+  if (!name) {
+    return { name, price, originalPrice, description, published, isDemo, category, error: 'Digite o nome do produto.' };
+  }
   if (Number.isNaN(price) || price < 0) {
-    return { name, price, originalPrice, description, published, isDemo, error: 'Preço inválido.' };
+    return { name, price, originalPrice, description, published, isDemo, category, error: 'Preço inválido.' };
   }
   if (originalPrice !== null && (Number.isNaN(originalPrice) || originalPrice < 0)) {
-    return { name, price, originalPrice, description, published, isDemo, error: 'Preço original inválido.' };
+    return { name, price, originalPrice, description, published, isDemo, category, error: 'Preço original inválido.' };
   }
 
-  return { name, price, originalPrice, description, published, isDemo, error: null };
+  return { name, price, originalPrice, description, published, isDemo, category, error: null };
 }
 
 export async function createPhysicalProductAction(
@@ -92,7 +98,8 @@ export async function createPhysicalProductAction(
     image_url: imageUrl,
     description: fields.description,
     published: fields.published,
-    is_demo: fields.isDemo
+    is_demo: fields.isDemo,
+    category: fields.category
   });
 
   revalidatePath('/admin/produtos-fisicos');
@@ -133,7 +140,8 @@ export async function updatePhysicalProductAction(
     image_url: imageUrl,
     description: fields.description,
     published: fields.published,
-    is_demo: fields.isDemo
+    is_demo: fields.isDemo,
+    category: fields.category
   });
 
   revalidatePath('/admin/produtos-fisicos');
@@ -155,6 +163,43 @@ export async function deletePhysicalProductAction(id: number): Promise<void> {
 export async function setPhysicalProductPublishedAction(id: number, published: boolean): Promise<void> {
   await requireAuth();
   await setPhysicalProductPublished(id, published);
+  revalidatePath('/admin/produtos-fisicos');
+  revalidatePath('/produtos-fisicos');
+}
+
+// Banner da loja parceira (ex: Beedle Games), mostrado no topo do catálogo
+// de produtos físicos, antes da grade — você troca quando quiser, igual já
+// funciona pro banner que substitui as avaliações no catálogo digital.
+export async function updatePhysicalBannerAction(formData: FormData): Promise<{ error: string | null }> {
+  await requireAuth();
+  const file = formData.get('image');
+  if (!file || !(file instanceof File) || file.size === 0) {
+    return { error: 'Escolha uma imagem.' };
+  }
+  const originalBytes = Buffer.from(await file.arrayBuffer());
+  // Banner largo e baixo — o mesmo tratamento de compressão dos outros
+  // banners do site.
+  const { buffer, contentType, extension } = await compressImage(originalBytes, 1600, 80);
+  const url = await uploadImageBuffer(`produtos-fisicos/${Date.now()}-banner.${extension}`, buffer, contentType);
+
+  const previousUrl = await getPhysicalCatalogBanner();
+  await setPhysicalCatalogBanner(url);
+  if (previousUrl) {
+    await deleteImageByUrl(previousUrl).catch(() => {});
+  }
+
+  revalidatePath('/admin/produtos-fisicos');
+  revalidatePath('/produtos-fisicos');
+  return { error: null };
+}
+
+export async function removePhysicalBannerAction(): Promise<void> {
+  await requireAuth();
+  const previousUrl = await getPhysicalCatalogBanner();
+  await setPhysicalCatalogBanner(null);
+  if (previousUrl) {
+    await deleteImageByUrl(previousUrl).catch(() => {});
+  }
   revalidatePath('/admin/produtos-fisicos');
   revalidatePath('/produtos-fisicos');
 }

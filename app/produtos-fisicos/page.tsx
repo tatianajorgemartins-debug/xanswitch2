@@ -14,7 +14,7 @@ export default async function PhysicalProductsPage() {
   // Ver o comentário em app/page.tsx sobre o <ViewTransition>.
   return (
     <ViewTransition>
-      <PhysicalCatalogClient items={data.items} whatsappContactUrl={buildWhatsAppContactLink()} />
+      <PhysicalCatalogClient items={data.items} bannerUrl={data.bannerUrl} whatsappContactUrl={buildWhatsAppContactLink()} />
     </ViewTransition>
   );
 }

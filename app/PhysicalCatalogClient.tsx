@@ -2,21 +2,25 @@
 
 // Catálogo PÚBLICO de produtos físicos — componente separado de
 // CatalogClient.tsx (jogos digitais) de propósito. Nessa primeira etapa é
-// deliberadamente simples: sem banners, sem carrossel, sem lista de
-// desejos, sem fluxo de compra — só a grade de produtos e um popup com os
-// detalhes de cada um. Reaproveita o cabeçalho (SiteHeader), o grid e o
-// visual de card já usados no catálogo digital, pra não parecer uma seção
-// improvisada.
+// deliberadamente simples: sem carrossel, sem lista de desejos, sem fluxo
+// de compra — só o banner da loja parceira, a grade de produtos e um
+// popup com os detalhes de cada um. Reaproveita o cabeçalho (SiteHeader),
+// o grid e o visual de card já usados no catálogo digital, pra não
+// parecer uma seção improvisada.
 import { useEffect, useState } from 'react';
 import SiteHeader from './SiteHeader';
 import type { PhysicalItem } from '@/lib/physicalCatalogData';
 
 export default function PhysicalCatalogClient({
   items,
+  bannerUrl,
   whatsappContactUrl,
   initialProductId
 }: {
   items: PhysicalItem[];
+  // Banner da loja parceira (ex: Beedle Games) mostrado antes da grade —
+  // null enquanto não subir nada no admin.
+  bannerUrl: string | null;
   whatsappContactUrl: string | null;
   // Só vem preenchido quando a página é acessada pelo link direto de um
   // produto (app/produtos-fisicos/[id]/page.tsx) — abre o popup de
@@ -70,6 +74,16 @@ export default function PhysicalCatalogClient({
       </header>
 
       <div className="page-content" style={{ maxWidth: 1240, margin: '0 auto', paddingLeft: 20, paddingRight: 20, paddingBottom: 80 }}>
+        {/* Banner da loja parceira — mesmo tratamento visual do
+            .reviews-banner do catálogo digital (ver globals.css), só com
+            altura maior porque essa arte é um banner largo 3:1, não uma
+            tira fina de avaliações. */}
+        {bannerUrl && (
+          <div className="physical-catalog-banner">
+            <img src={bannerUrl} alt="Loja parceira" />
+          </div>
+        )}
+
         <div style={{ textAlign: 'center', margin: '18px 0 26px' }}>
           <p className="product-eyebrow" style={{ marginBottom: 4 }}>
             XAN Switch

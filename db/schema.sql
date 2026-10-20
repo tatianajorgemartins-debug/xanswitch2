@@ -84,12 +84,16 @@ CREATE TABLE IF NOT EXISTS physical_products (
   description TEXT,
   published BOOLEAN NOT NULL DEFAULT TRUE,
   is_demo BOOLEAN NOT NULL DEFAULT FALSE,
+  -- Texto livre, criado aos poucos no admin conforme os produtos vão
+  -- sendo cadastrados (ver db/migration-physical-products-category.sql).
+  category TEXT,
   sort_name TEXT GENERATED ALWAYS AS (lower(name)) STORED,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS physical_products_sort_name_idx ON physical_products (sort_name);
 CREATE INDEX IF NOT EXISTS physical_products_published_idx ON physical_products (published);
+CREATE INDEX IF NOT EXISTS physical_products_category_idx ON physical_products (category);
 
 -- Ajustes manuais de pontos (admin) e trocas de pontos por desconto — ver
 -- db/migration-loyalty-discounts.sql pra explicação completa.
@@ -149,3 +153,7 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS card_points_confirmed BOOLEAN NOT NU
 -- db/migration-loyalty-discounts.sql).
 ALTER TABLE games ADD COLUMN IF NOT EXISTS discount_eligible BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_applied NUMERIC(10, 2) NOT NULL DEFAULT 0;
+
+-- Idem para a categoria dos produtos físicos (ver
+-- db/migration-physical-products-category.sql).
+ALTER TABLE physical_products ADD COLUMN IF NOT EXISTS category TEXT;
