@@ -22,7 +22,7 @@
   --step-small: 0.8125rem;
   --step-body: 1rem;
   --step-lead: clamp(1.0625rem, 0.95rem + 0.45vw, 1.3125rem);
-  --step-head: clamp(1.75rem, 1.2rem + 1.7vw, 2.75rem);
+  --step-head: clamp(1.5rem, 1.1rem + 1.1vw, 2.125rem);
   --step-display: clamp(1.875rem, 0.6rem + 4.4vw, 4.5rem);
 
   min-height: 100vh;
@@ -81,16 +81,19 @@
   background: var(--surface-2);
 }
 .redesign .account-button {
-  background: var(--surface);
-  color: var(--ink);
+  background: var(--accent-fill);
+  color: var(--accent-ink);
   box-shadow: none;
-  font-weight: 600;
+  font-weight: 700;
 }
 .redesign .account-button:hover {
-  background: var(--surface-2);
+  background: var(--accent-fill-hover);
   filter: none;
   transform: none;
   box-shadow: none;
+}
+.redesign .account-button-label {
+  max-width: none;
 }
 .redesign .account-button-badge {
   box-shadow: none;

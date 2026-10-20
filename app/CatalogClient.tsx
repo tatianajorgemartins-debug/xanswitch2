@@ -313,7 +313,13 @@ export default function CatalogClient({
 
   // Texto do botão de conta no cabeçalho: prioriza o @ do Instagram, depois
   // a inicial do e-mail, e só mostra "Minha conta" pra quem não está logado.
-  const accountLabel = user ? (instagramHandle ? `@${instagramHandle}` : user.email?.charAt(0).toUpperCase() ?? 'Minha conta') : 'Minha conta';
+  // No visual novo é sempre "Minha conta", logado ou não.
+  const accountLabel =
+    isRedesign || !user
+      ? 'Minha conta'
+      : instagramHandle
+        ? `@${instagramHandle}`
+        : user.email?.charAt(0).toUpperCase() ?? 'Minha conta';
 
   const franchises = useMemo(() => {
     const set = new Set<string>();
