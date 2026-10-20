@@ -14,10 +14,10 @@ const archivo = Archivo({
 // (fonte, cores e o CSS de redesign.css, preso dentro de .redesign).
 // variant="current" devolve o visual antigo — usado só pela página de
 // teste (app/admin/teste), pra comparar. themeToggle liga o botão de modo
-// claro/escuro (também só na página de teste, por enquanto).
+// claro/escuro.
 export default function SiteShell({
   variant = 'redesign',
-  themeToggle = false,
+  themeToggle = true,
   children
 }: {
   variant?: DesignVariant;

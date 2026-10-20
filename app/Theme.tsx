@@ -4,9 +4,8 @@ import { createContext, useContext, useEffect, useState } from 'react';
 
 // Modo claro / escuro. O tema escolhido fica no atributo data-theme do
 // <html> (o script de THEME_INIT_SCRIPT aplica a escolha salva antes da
-// primeira pintura, sem piscar) e no localStorage. Por enquanto só a página
-// de teste liga isso (ver SiteShell themeToggle); no resto do site o
-// contexto é null e o botão nem aparece.
+// primeira pintura, sem piscar) e no localStorage. Ligado pelo SiteShell
+// (themeToggle); fora dele o contexto é null e o botão nem aparece.
 export type Theme = 'dark' | 'light';
 
 export const THEME_STORAGE_KEY = 'xan-theme';
