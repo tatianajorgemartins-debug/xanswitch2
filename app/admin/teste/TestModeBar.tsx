@@ -24,10 +24,10 @@ export default function TestModeBar({ view, design }: { view: 'digital' | 'fisic
       </nav>
       <nav className="test-mode-bar-links" aria-label="Visual">
         <Link href={href(view, 'redesign')} className={design === 'redesign' ? 'is-active' : ''}>
-          Visual novo
+          Visual do site
         </Link>
         <Link href={href(view, 'current')} className={design === 'current' ? 'is-active' : ''}>
-          Visual atual
+          Visual antigo
         </Link>
       </nav>
       <Link href="/admin" className="test-mode-bar-exit">

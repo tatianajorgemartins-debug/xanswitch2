@@ -1,4 +1,5 @@
 import { ViewTransition } from 'react';
+import SiteShell from './SiteShell';
 import { loadCatalogData } from '@/lib/catalogData';
 import CatalogClient from './CatalogClient';
 
@@ -20,8 +21,10 @@ export default async function CatalogPage() {
   // em app/globals.css. Sem suporte do navegador, a navegação continua
   // funcionando normal, só sem a animação.
   return (
-    <ViewTransition>
-      <CatalogClient {...data} />
-    </ViewTransition>
+    <SiteShell>
+      <ViewTransition>
+        <CatalogClient {...data} />
+      </ViewTransition>
+    </SiteShell>
   );
 }

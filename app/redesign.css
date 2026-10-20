@@ -1,5 +1,5 @@
-/* Visual novo em teste. Toda regra começa com .redesign, então nada aqui
-   vale fora da página de teste, mesmo depois que este arquivo é carregado.
+/* Visual do catálogo público (ver SiteShell.tsx). Toda regra começa com
+   .redesign, então nada aqui vale fora das páginas que usam o SiteShell.
    Mesmas cores do site; cada uma com um papel só:
    roxo = ação e seleção, verde = preço, dourado = promoção. */
 

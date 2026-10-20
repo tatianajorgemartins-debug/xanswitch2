@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { ViewTransition } from 'react';
+import SiteShell from '@/app/SiteShell';
 import { notFound } from 'next/navigation';
 import { loadCatalogData } from '@/lib/catalogData';
 import CatalogClient from '@/app/CatalogClient';
@@ -49,8 +50,10 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
   // Ver o comentário em app/page.tsx sobre o <ViewTransition> — mesma
   // transição ao trocar de catálogo a partir do link direto de um jogo.
   return (
-    <ViewTransition>
-      <CatalogClient {...data} initialGameId={game.id} />
-    </ViewTransition>
+    <SiteShell>
+      <ViewTransition>
+        <CatalogClient {...data} initialGameId={game.id} />
+      </ViewTransition>
+    </SiteShell>
   );
 }

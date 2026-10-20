@@ -1,4 +1,5 @@
 import { ViewTransition } from 'react';
+import SiteShell from '@/app/SiteShell';
 import { loadPhysicalCatalogData } from '@/lib/physicalCatalogData';
 import { buildWhatsAppContactLink } from '@/lib/whatsapp';
 import PhysicalCatalogClient from '@/app/PhysicalCatalogClient';
@@ -13,8 +14,10 @@ export default async function PhysicalProductsPage() {
   const data = await loadPhysicalCatalogData();
   // Ver o comentário em app/page.tsx sobre o <ViewTransition>.
   return (
-    <ViewTransition>
-      <PhysicalCatalogClient items={data.items} bannerUrl={data.bannerUrl} whatsappContactUrl={buildWhatsAppContactLink()} />
-    </ViewTransition>
+    <SiteShell>
+      <ViewTransition>
+        <PhysicalCatalogClient items={data.items} bannerUrl={data.bannerUrl} whatsappContactUrl={buildWhatsAppContactLink()} />
+      </ViewTransition>
+    </SiteShell>
   );
 }

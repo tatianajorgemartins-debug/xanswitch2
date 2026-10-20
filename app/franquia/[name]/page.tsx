@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { ViewTransition } from 'react';
+import SiteShell from '@/app/SiteShell';
 import { notFound } from 'next/navigation';
 import { loadCatalogData } from '@/lib/catalogData';
 import CatalogClient from '@/app/CatalogClient';
@@ -51,8 +52,10 @@ export default async function FranchisePage({ params }: { params: Promise<{ name
 
   // Ver o comentário em app/page.tsx sobre o <ViewTransition>.
   return (
-    <ViewTransition>
-      <CatalogClient {...data} initialFranchiseFilter={decoded} />
-    </ViewTransition>
+    <SiteShell>
+      <ViewTransition>
+        <CatalogClient {...data} initialFranchiseFilter={decoded} />
+      </ViewTransition>
+    </SiteShell>
   );
 }
