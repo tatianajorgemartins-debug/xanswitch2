@@ -16,6 +16,10 @@ export type PhysicalItem = {
   originalPriceLabel: string | null;
   imageUrl: string | null;
   description: string | null;
+  // Franquia/categoria (ex: "Naruto", "Dragon Ball Z") — usada no filtro de
+  // categorias da página pública (ver o botão "Categorias" em
+  // PhysicalCatalogClient.tsx).
+  category: string | null;
 };
 
 function toPhysicalItem(p: PhysicalProduct): PhysicalItem {
@@ -27,7 +31,8 @@ function toPhysicalItem(p: PhysicalProduct): PhysicalItem {
     originalPriceLabel:
       p.original_price && parseFloat(p.original_price) > parseFloat(p.price) ? formatPriceBR(p.original_price) : null,
     imageUrl: p.image_url,
-    description: p.description
+    description: p.description,
+    category: p.category
   };
 }
 

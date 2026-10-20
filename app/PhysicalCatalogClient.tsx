@@ -3,11 +3,11 @@
 // Catálogo PÚBLICO de produtos físicos — componente separado de
 // CatalogClient.tsx (jogos digitais) de propósito. Nessa primeira etapa é
 // deliberadamente simples: sem carrossel, sem lista de desejos, sem fluxo
-// de compra — só o banner da loja parceira, a grade de produtos e um
-// popup com os detalhes de cada um. Reaproveita o cabeçalho (SiteHeader),
-// o grid e o visual de card já usados no catálogo digital, pra não
-// parecer uma seção improvisada.
-import { useEffect, useState } from 'react';
+// de compra — só o banner da loja parceira, a busca, o filtro por
+// categoria (franquia), a grade de produtos e um popup com os detalhes de
+// cada um. Reaproveita o cabeçalho (SiteHeader), o grid e o visual de card
+// já usados no catálogo digital, pra não parecer uma seção improvisada.
+import { useEffect, useMemo, useState } from 'react';
 import SiteHeader from './SiteHeader';
 import type { PhysicalItem } from '@/lib/physicalCatalogData';
 
@@ -29,7 +29,22 @@ export default function PhysicalCatalogClient({
 }) {
   const [selectedItem, setSelectedItem] = useState<PhysicalItem | null>(null);
   const [query, setQuery] = useState('');
-  const filteredItems = items.filter((item) => item.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const [categoryFilterOpen, setCategoryFilterOpen] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState('');
+
+  const categories = useMemo(
+    () =>
+      Array.from(new Set(items.map((it) => it.category).filter((c): c is string => !!c))).sort((a, b) =>
+        a.localeCompare(b, 'pt-BR')
+      ),
+    [items]
+  );
+
+  const filteredItems = items.filter(
+    (item) =>
+      item.name.toLowerCase().includes(query.trim().toLowerCase()) &&
+      (categoryFilter === '' || item.category === categoryFilter)
+  );
 
   function openProduct(item: PhysicalItem) {
     setSelectedItem(item);
@@ -84,23 +99,11 @@ export default function PhysicalCatalogClient({
           </div>
         )}
 
-        <div style={{ textAlign: 'center', margin: '18px 0 26px' }}>
-          <p className="product-eyebrow" style={{ marginBottom: 4 }}>
-            XAN Switch
-          </p>
-          <h1 style={{ fontFamily: "'Press Start 2P', cursive", fontSize: 18, color: 'var(--ink)', margin: 0 }}>
-            📦 Produtos Físicos
-          </h1>
-          <p style={{ color: 'var(--ink-dim)', fontSize: 13.5, marginTop: 8, fontWeight: 700, letterSpacing: 0.4 }}>
-            PÁGINA EM DESENVOLVIMENTO
-          </p>
-        </div>
-
         {/* Mesma busca do catálogo digital (ver .catalog-toolbar-search em
-            CatalogClient.tsx) — aqui só com o campo de busca, já que os
-            outros botões daquela barra (Filtros, avaliações, etc.) não se
-            aplicam a esse catálogo ainda. */}
-        <div className="catalog-toolbar" style={{ justifyContent: 'center', marginBottom: 22 }}>
+            CatalogClient.tsx), com um botão "Categorias" do lado que abre
+            um seletor de franquia (ver .filters-panel em globals.css,
+            mesmo painel usado pelo "Filtros" do catálogo digital). */}
+        <div className="catalog-toolbar" style={{ justifyContent: 'center', marginBottom: 22, marginTop: 18 }}>
           <div className="catalog-toolbar-search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={16} height={16} style={{ color: 'var(--ink-dim)', flex: 'none' }}>
               <circle cx="11" cy="11" r="7" />
@@ -121,7 +124,37 @@ export default function PhysicalCatalogClient({
               </button>
             )}
           </div>
+
+          {categories.length > 0 && (
+            <button type="button" className="btn ghost" onClick={() => setCategoryFilterOpen((v) => !v)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={14} height={14} style={{ flex: 'none' }}>
+                <path d="M3 4h18l-7 8v7l-4-2v-5L3 4z" strokeLinejoin="round" strokeLinecap="round" />
+              </svg>
+              Categorias{categoryFilter ? ` (${categoryFilter})` : ''}
+            </button>
+          )}
         </div>
+
+        {categoryFilterOpen && categories.length > 0 && (
+          <div className="filters-panel">
+            <div>
+              <label htmlFor="pp-public-category">Categoria</label>
+              <select id="pp-public-category" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+                <option value="">Todas</option>
+                {categories.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {categoryFilter && (
+              <button type="button" className="btn ghost" onClick={() => setCategoryFilter('')} style={{ alignSelf: 'end' }}>
+                ✕ Limpar filtro
+              </button>
+            )}
+          </div>
+        )}
 
         {items.length === 0 ? (
           <p style={{ textAlign: 'center', color: 'var(--ink-dim)', fontSize: 14, padding: '40px 0' }}>
@@ -129,7 +162,7 @@ export default function PhysicalCatalogClient({
           </p>
         ) : filteredItems.length === 0 ? (
           <p style={{ textAlign: 'center', color: 'var(--ink-dim)', fontSize: 14, padding: '40px 0' }}>
-            Nenhum produto encontrado pra "{query}".
+            {query ? `Nenhum produto encontrado pra "${query}".` : `Nenhum produto encontrado na categoria "${categoryFilter}".`}
           </p>
         ) : (
           <div className="catalog-grid">
