@@ -266,10 +266,16 @@ function PhysicalProductCard({ item, onSelect }: { item: PhysicalItem; onSelect:
   );
 }
 
+// Perfil da loja parceira no Instagram — é lá que a compra desses produtos
+// acontece de verdade por enquanto (sem fluxo de pagamento próprio aqui no
+// site ainda, diferente dos jogos digitais via Pix).
+const BEEDLE_GAMES_INSTAGRAM_URL = 'https://www.instagram.com/beedle_games/';
+
 // Popup de detalhes — bem mais simples que o modal de compra dos jogos
-// digitais (PurchaseModal.tsx): sem etapas, sem pagamento, só a foto
-// grande, nome, preço e descrição. A compra desses produtos ainda não
-// acontece pelo site nessa primeira etapa.
+// digitais (PurchaseModal.tsx): sem etapas, sem pagamento por aqui, só a
+// foto grande, nome, preço, descrição e um botão "Comprar agora" que leva
+// pro Instagram da loja parceira (mesmo texto/estilo do botão de comprar
+// dos jogos digitais).
 function PhysicalProductModal({ item, onClose }: { item: PhysicalItem; onClose: () => void }) {
   return (
     <div className="purchase-modal-overlay" onClick={onClose}>
@@ -316,6 +322,25 @@ function PhysicalProductModal({ item, onClose }: { item: PhysicalItem; onClose: 
               <p className="purchase-description-text">{item.description}</p>
             </div>
           )}
+
+          <div className="purchase-modal-actions">
+            <a
+              href={BEEDLE_GAMES_INSTAGRAM_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="btn primary product-cta"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={17} height={17}>
+                <circle cx="9" cy="21" r="1.4" fill="currentColor" stroke="none" />
+                <circle cx="18" cy="21" r="1.4" fill="currentColor" stroke="none" />
+                <path d="M2.5 3h2.4l2.4 12.4a2 2 0 002 1.6h8.8a2 2 0 002-1.6L21.5 7H6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Comprar agora
+            </a>
+            <p style={{ fontSize: 12, color: 'var(--ink-dim)', textAlign: 'center', margin: '8px 0 0' }}>
+              Você será direcionado pro Instagram da Beedle Games pra fechar a compra.
+            </p>
+          </div>
         </div>
       </div>
     </div>
