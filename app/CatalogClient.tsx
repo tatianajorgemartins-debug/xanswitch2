@@ -495,6 +495,11 @@ export default function CatalogClient({
           aria-label={mobileMenuOpen ? 'Fechar mais opções' : 'Mais opções'}
           aria-expanded={mobileMenuOpen}
         >
+          {isRedesign && (
+            <span className="catalog-toolbar-menu-label" aria-hidden="true">
+              MENU
+            </span>
+          )}
           {mobileMenuOpen ? (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={16} height={16}>
               <path d="M5 5l14 14M19 5L5 19" strokeLinecap="round" />

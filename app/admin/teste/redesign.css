@@ -229,9 +229,16 @@
   filter: brightness(1.06);
 }
 .redesign .btn.catalog-toolbar-menu-btn {
-  width: 48px;
+  width: auto;
   height: 48px;
+  padding: 0 18px;
+  gap: 8px;
   border: 0;
+}
+.redesign .catalog-toolbar-menu-label {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 .redesign .view-toggle {
   background: var(--surface);
@@ -854,6 +861,9 @@
   }
   .redesign .catalog-toolbar .featured-franchise-btn {
     order: 3;
+  }
+  .redesign .catalog-toolbar-extra {
+    order: 10;
   }
   .redesign .catalog-toolbar-extra.is-open {
     gap: 8px;

@@ -63,14 +63,18 @@ export default function PromoSection({
               só — evita empilhar dois banners inteiros embaixo do de
               destaque, o que deixava a tela poluída antes de chegar no
               catálogo em si. */}
+          {/* No visual novo, o celular mostra só os "Mais aguardados" aqui —
+              os mais desejados já aparecem na vitrine própria logo abaixo. */}
+          {(!isRedesign || upcomingSlides.length > 0) && (
           <div className="promo-section-side-compact">
             <PromoCarousel
-              slides={[...mostWantedSlides, ...upcomingSlides]}
+              slides={isRedesign ? upcomingSlides : [...mostWantedSlides, ...upcomingSlides]}
               intervalMs={3500}
               size="small"
               showControls={false}
             />
           </div>
+          )}
         </>
       )}
     </div>
