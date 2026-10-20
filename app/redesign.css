@@ -1078,3 +1078,84 @@
     transform: none;
   }
 }
+
+/* ==========================================================================
+   Modo claro — só onde o SiteShell liga o botão de tema (.theme-enabled),
+   e só quando o <html> está com data-theme="light". O modo escuro é o
+   visual padrão acima, sem nenhuma mudança.
+   ========================================================================== */
+.redesign .logo-for-light {
+  display: none;
+}
+:root[data-theme='light'] .redesign.theme-enabled .logo-for-dark {
+  display: none;
+}
+:root[data-theme='light'] .redesign.theme-enabled .logo-for-light {
+  display: block;
+}
+
+:root[data-theme='light'] .redesign.theme-enabled {
+  --bg: #f7f5fc;
+  --surface: #ebe7f6;
+  --surface-2: #e1dcf0;
+  --surface-3: #d4cde8;
+  --ink: #1b1530;
+  --muted: #5b5277;
+  --accent: #6d28d9;
+  --accent-fill: #7b2ff0;
+  --accent-fill-hover: #6a22d8;
+  --accent-ink: #ffffff;
+  --price: #138a2a;
+  /* Variáveis antigas que o resto do CSS (globals.css) ainda usa. */
+  --ink-dim: #5b5277;
+  --panel: #ebe7f6;
+  --panel-2: #e1dcf0;
+  --bg-dark: #ffffff;
+  --purple: #6d28d9;
+  color-scheme: light;
+}
+
+/* Texto em cima das fotos dos banners continua claro (a foto tem uma
+   película escura por baixo do texto). */
+:root[data-theme='light'] .redesign.theme-enabled .promo-banner {
+  --ink: #f4f1fb;
+  --muted: #d5cfe8;
+  --price: #4ef05f;
+}
+:root[data-theme='light'] .redesign.theme-enabled .promo-carousel-arrow {
+  color: #ffffff;
+}
+
+:root[data-theme='light'] .redesign.theme-enabled .purchase-modal-overlay {
+  background: rgba(27, 21, 48, 0.55);
+}
+@media (max-width: 639px) {
+  :root[data-theme='light'] .redesign.theme-enabled .purchase-modal.is-product-step .purchase-modal-actions {
+    box-shadow: 0 -12px 24px rgba(27, 21, 48, 0.12);
+  }
+}
+:root[data-theme='light'] .redesign.theme-enabled .wishlist-heart-button {
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--ink);
+}
+:root[data-theme='light'] .redesign.theme-enabled .wishlist-heart-button:hover {
+  background: #ffffff;
+}
+:root[data-theme='light'] .redesign.theme-enabled .purchase-urgency-box,
+:root[data-theme='light'] .redesign.theme-enabled .purchase-discount-banner.is-applied,
+:root[data-theme='light'] .redesign.theme-enabled .purchase-checklist-item:has(input:checked) {
+  background: rgba(19, 138, 42, 0.12);
+}
+:root[data-theme='light'] .redesign.theme-enabled .catalog-switcher-option.active,
+:root[data-theme='light'] .redesign.theme-enabled .view-toggle button.active {
+  color: var(--accent-ink);
+}
+
+/* Destaques em dourado viram roxo no claro (dourado em fundo claro não dá
+   pra ler); o dourado continua nos botões e selos com fundo próprio. */
+:root[data-theme='light'] .redesign.theme-enabled .purchase-card-teaser strong,
+:root[data-theme='light'] .redesign.theme-enabled .purchase-discount-banner strong,
+:root[data-theme='light'] .redesign.theme-enabled .account-points-value,
+:root[data-theme='light'] .redesign.theme-enabled .account-collection-toggle-chevron {
+  color: var(--accent);
+}

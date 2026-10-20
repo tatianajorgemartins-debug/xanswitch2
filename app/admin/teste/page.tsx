@@ -35,7 +35,7 @@ export default async function TestPage({
 
   return (
     <>
-      <SiteShell variant={design}>
+      <SiteShell variant={design} themeToggle>
         {view === 'digital' ? (
           <CatalogClient {...await loadCatalogData()} />
         ) : (

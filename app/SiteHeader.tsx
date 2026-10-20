@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useLayoutEffect, useState } from 'react';
 import { useDesignVariant } from './DesignVariant';
+import { useThemeToggle } from './Theme';
 
 const SWITCHER_FROM_KEY = 'xan-catalog-switch-from';
 
@@ -55,6 +56,7 @@ export default function SiteHeader({
   activeCatalog: 'digital' | 'fisico';
 }) {
   const isRedesign = useDesignVariant() === 'redesign';
+  const themeControl = useThemeToggle();
 
   // Pílula do seletor que desliza de um lado pro outro, tipo o botão de
   // liga/desliga do iPhone. Cada catálogo é uma página separada, então o
@@ -116,16 +118,31 @@ export default function SiteHeader({
 
   return (
     <div className="site-header">
+      {/* Com o modo claro ligado, as duas versões de cada logo vão pra página
+          e o CSS mostra a do tema atual (letras brancas no escuro, escuras no
+          claro) — ver .logo-for-light / .logo-for-dark em redesign.css. */}
       <div className="site-header-logo">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="XAN Switch" />
+        <img src="/logo.png" alt="XAN Switch" className={themeControl ? 'logo-for-dark' : undefined} />
+        {themeControl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src="/logo-dark.png" alt="XAN Switch" className="logo-for-light" />
+        )}
         {activeCatalog === 'fisico' && (
           <>
             <span className="site-header-logo-plus" aria-hidden="true">
               +
             </span>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/beedle-logo.png" alt="Beedle Games" className="site-header-partner-logo" />
+            <img
+              src="/beedle-logo.png"
+              alt="Beedle Games"
+              className={`site-header-partner-logo${themeControl ? ' logo-for-dark' : ''}`}
+            />
+            {themeControl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src="/beedle-logo-dark.png" alt="Beedle Games" className="site-header-partner-logo logo-for-light" />
+            )}
           </>
         )}
       </div>
@@ -177,6 +194,30 @@ export default function SiteHeader({
               {accountContent}
             </Link>
           )
+        )}
+
+        {themeControl && (
+          <button
+            type="button"
+            className="social-icon theme-toggle"
+            onClick={themeControl.toggle}
+            aria-label={themeControl.theme === 'light' ? 'Ativar modo escuro' : 'Ativar modo claro'}
+            title={themeControl.theme === 'light' ? 'Modo escuro' : 'Modo claro'}
+          >
+            {themeControl.theme === 'light' ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" strokeLinejoin="round" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="4" />
+                <path
+                  d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"
+                  strokeLinecap="round"
+                />
+              </svg>
+            )}
+          </button>
         )}
 
         <a
