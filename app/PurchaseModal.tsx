@@ -510,7 +510,12 @@ function StepSummary({
             <p className="purchase-description-text">{item.description}</p>
           </div>
         )}
+      </div>
 
+      {/* Card colecionável + pagamento: no computador largo vira uma
+          terceira coluna (ver .product-buy em redesign.css); no celular e
+          no tablet continua logo abaixo das informações. */}
+      <div className="product-buy">
         <div className="purchase-card-teaser">
           <span className="purchase-card-teaser-icon" aria-hidden="true">
             🎴

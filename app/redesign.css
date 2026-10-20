@@ -727,6 +727,9 @@
 .redesign .product-meta-chip-value {
   font-size: 15px;
   font-weight: 600;
+  line-height: 1.3;
+  white-space: normal;
+  overflow: visible;
 }
 .redesign .product-gallery-arrow {
   width: 36px;
@@ -899,10 +902,12 @@
   .redesign .purchase-modal.is-product-step .product-media {
     margin-bottom: 20px;
   }
-  .redesign .purchase-modal.is-product-step .product-info {
+  .redesign .purchase-modal.is-product-step .product-info,
+  .redesign .purchase-modal.is-product-step .product-buy {
     display: contents;
   }
-  .redesign .purchase-modal.is-product-step .product-info > * {
+  .redesign .purchase-modal.is-product-step .product-info > *,
+  .redesign .purchase-modal.is-product-step .product-buy > * {
     min-width: 0;
   }
   .redesign .purchase-modal.is-product-step .purchase-modal-actions {
@@ -1227,5 +1232,29 @@
 @media (prefers-reduced-motion: reduce) {
   .redesign .theme-switch-thumb {
     transition: none;
+  }
+}
+
+/* Computador largo: janela do jogo em três colunas. Foto | informações |
+   card colecionável e pagamento. A coluna de compra acompanha a rolagem,
+   então os botões ficam sempre à vista. */
+@media (min-width: 1000px) {
+  .redesign .purchase-modal.is-product-step {
+    max-width: 1140px;
+  }
+  .redesign .purchase-modal.is-product-step .product-layout {
+    grid-template-columns: 300px minmax(0, 1fr) 300px;
+    gap: 28px;
+  }
+  .redesign .purchase-modal.is-product-step .product-buy {
+    grid-column: 3;
+    position: sticky;
+    top: 72px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .redesign .purchase-modal.is-product-step .product-buy .purchase-card-teaser {
+    margin-bottom: 0;
   }
 }

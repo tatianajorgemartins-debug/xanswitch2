@@ -1857,6 +1857,11 @@ label {
     grid-template-columns: 280px 1fr;
     align-items: start;
   }
+  /* Card colecionável + pagamento ficam na coluna das informações,
+     embaixo delas (ver .product-buy em PurchaseModal.tsx). */
+  .product-buy {
+    grid-column: 2;
+  }
 }
 
 .product-hero-cover {
