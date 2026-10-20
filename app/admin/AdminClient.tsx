@@ -269,6 +269,9 @@ export default function AdminClient({
         <a href="/admin/produtos-fisicos" className="btn ghost">
           📦 Produtos físicos
         </a>
+        <a href="/admin/teste" className="btn ghost">
+          🧪 Página de teste
+        </a>
         <form action={logoutAction}>
           <button type="submit" className="btn ghost">
             Sair

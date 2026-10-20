@@ -90,6 +90,9 @@ export default function PhysicalProductsAdminClient({
         <a href="/produtos-fisicos" target="_blank" rel="noreferrer" className="btn ghost">
           🔗 Ver catálogo público
         </a>
+        <a href="/admin/teste" className="btn ghost">
+          🧪 Página de teste
+        </a>
         <form action={logoutAction}>
           <button type="submit" className="btn ghost">
             Sair

@@ -553,6 +553,47 @@ textarea:focus {
   }
 }
 
+/* Barra fixa da página de teste (app/admin/teste) — amarela de propósito,
+   pra nunca ser confundida com o site no ar. */
+.test-mode-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: calc(100vw - 32px);
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--gold);
+  color: #2b1a00;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+}
+.test-mode-bar-links {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.test-mode-bar-links a {
+  color: #2b1a00;
+  text-decoration: none;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(43, 26, 0, 0.35);
+}
+.test-mode-bar-links a.is-active,
+.test-mode-bar-links a:hover {
+  background: #2b1a00;
+  color: var(--gold);
+}
+
 /* Approved customer reviews — a horizontally scrolling row of cards. */
 .reviews-section {
   position: relative;
