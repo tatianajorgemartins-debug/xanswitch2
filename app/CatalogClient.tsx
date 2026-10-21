@@ -912,7 +912,11 @@ export default function CatalogClient({
         </button>
       )}
 
-      <p className="site-footer-line">XAN SWITCH — Nintendo mais barato</p>
+      <p className="site-footer-line">
+        XAN SWITCH — Nintendo mais barato
+        <span aria-hidden="true"> · </span>
+        <a href="/privacidade">Política de privacidade</a>
+      </p>
       </div>
     </>
   );

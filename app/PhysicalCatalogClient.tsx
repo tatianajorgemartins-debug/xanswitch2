@@ -253,6 +253,12 @@ export default function PhysicalCatalogClient({
             )}
           </div>
         )}
+
+        <p className="site-footer-line">
+          XAN SWITCH + Beedle Games
+          <span aria-hidden="true"> · </span>
+          <a href="/privacidade">Política de privacidade</a>
+        </p>
       </div>
 
       {selectedItem && <PhysicalProductModal item={selectedItem} onClose={closeProduct} />}

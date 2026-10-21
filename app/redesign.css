@@ -1410,3 +1410,198 @@
     transition: none;
   }
 }
+
+/* ---------- Rodapé com link da política de privacidade ---------- */
+.redesign .site-footer-line a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 0.07em;
+}
+.redesign .site-footer-line a:hover {
+  color: var(--ink);
+}
+
+/* ---------- Página de política de privacidade (app/privacidade) ---------- */
+.redesign .legal-page {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 20px 96px;
+}
+.redesign .legal-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 0;
+}
+.redesign .legal-brand {
+  display: flex;
+}
+.redesign .legal-brand img {
+  height: 40px;
+  width: auto;
+}
+.redesign .legal-topbar .btn {
+  min-height: 44px;
+  text-decoration: none;
+}
+.redesign .legal-content {
+  max-width: 68ch;
+  padding-top: 40px;
+}
+.redesign .legal-content h1 {
+  margin: 0 0 20px;
+  font-size: var(--step-display);
+  font-weight: 800;
+  font-stretch: 112%;
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.redesign .legal-content .legal-lead {
+  margin: 0;
+  font-size: var(--step-lead);
+  line-height: 1.45;
+}
+.redesign .legal-content .legal-updated {
+  margin: 16px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+.redesign .legal-content section {
+  margin-top: 56px;
+}
+.redesign .legal-content h2 {
+  margin: 0 0 16px;
+  font-size: var(--step-head);
+  font-weight: 800;
+  font-stretch: 108%;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+.redesign .legal-content h3 {
+  margin: 28px 0 10px;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.redesign .legal-content p,
+.redesign .legal-content li {
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+.redesign .legal-content p {
+  margin: 0 0 14px;
+}
+.redesign .legal-content ul {
+  margin: 0 0 14px;
+  padding-left: 1.2em;
+}
+.redesign .legal-content li + li {
+  margin-top: 8px;
+}
+.redesign .legal-content li::marker {
+  color: var(--accent);
+}
+.redesign .legal-content a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 0.07em;
+}
+.redesign .legal-footer {
+  max-width: 68ch;
+  margin-top: 72px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.redesign .legal-footer a {
+  color: inherit;
+  text-decoration: none;
+}
+@media (max-width: 480px) {
+  .redesign .legal-page {
+    padding: 0 16px 72px;
+  }
+  .redesign .legal-brand img {
+    height: 28px;
+  }
+  .redesign .legal-content {
+    padding-top: 20px;
+  }
+  .redesign .legal-content section {
+    margin-top: 44px;
+  }
+  .redesign .legal-content p,
+  .redesign .legal-content li {
+    font-size: 16px;
+  }
+}
+
+.redesign .legal-content section {
+  scroll-margin-top: 24px;
+}
+.redesign .legal-toc {
+  display: none;
+}
+@media (min-width: 1000px) {
+  .redesign .legal-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 68ch) minmax(220px, 300px);
+    justify-content: space-between;
+    gap: 64px;
+  }
+  .redesign .legal-toc {
+    display: block;
+    position: sticky;
+    top: 24px;
+    align-self: start;
+    margin-top: 40px;
+    padding: 24px;
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .redesign .legal-toc-title {
+    margin: 0 0 12px;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .redesign .legal-toc ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .redesign .legal-toc li + li {
+    margin-top: 4px;
+  }
+  .redesign .legal-toc a {
+    display: block;
+    padding: 6px 10px;
+    margin: 0 -10px;
+    border-radius: 6px;
+    color: var(--muted);
+    font-size: 15px;
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .redesign .legal-toc a:hover {
+    background: var(--surface-2);
+    color: var(--ink);
+  }
+}
+html:has(.legal-page) {
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html:has(.legal-page) {
+    scroll-behavior: auto;
+  }
+}
+/* overflow-x: hidden no html/body (globals.css) impede o índice de ficar
+   grudado na tela; nesta página "clip" faz o mesmo papel sem esse efeito. */
+html:has(.legal-page),
+html:has(.legal-page) body {
+  overflow-x: clip;
+}
