@@ -1358,3 +1358,17 @@
     height: 26px;
   }
 }
+
+/* Área dos resultados ocupa pelo menos a altura da tela (menos o
+   cabeçalho), pra que, mesmo com poucos resultados, o título "X jogos
+   disponíveis" consiga chegar logo abaixo do cabeçalho ao pesquisar. */
+.redesign .catalog-results {
+  min-height: calc(100vh - 120px);
+  min-height: calc(100svh - 120px);
+}
+@media (max-width: 640px) {
+  .redesign .catalog-results {
+    min-height: calc(100vh - 150px);
+    min-height: calc(100svh - 150px);
+  }
+}

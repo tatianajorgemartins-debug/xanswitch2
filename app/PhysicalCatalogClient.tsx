@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SiteHeader from './SiteHeader';
 import { useDesignVariant } from './DesignVariant';
+import { scrollToResults } from './scrollToResults';
 import type { PhysicalItem } from '@/lib/physicalCatalogData';
 
 export default function PhysicalCatalogClient({
@@ -48,9 +49,7 @@ export default function PhysicalCatalogClient({
 
   // Enter na busca (ou "PESQUISAR"): desce até "X colecionáveis".
   function submitSearch() {
-    searchInputRef.current?.blur();
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    resultsRef.current?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    scrollToResults(resultsRef.current, searchInputRef.current);
   }
 
   // "Limpar filtro" ao lado de "X colecionáveis": limpa e volta pro topo.
@@ -219,8 +218,8 @@ export default function PhysicalCatalogClient({
             Nenhum produto disponível no momento. Volte em breve!
           </p>
         ) : (
-          <>
-            <div ref={resultsRef} className="catalog-count-row">
+          <div ref={resultsRef} className="catalog-results">
+            <div className="catalog-count-row">
               <p className="catalog-count">
                 <span className="catalog-count-number">{filteredItems.length}</span>{' '}
                 {filteredItems.length === 1 ? 'colecionável' : 'colecionáveis'}
@@ -247,7 +246,7 @@ export default function PhysicalCatalogClient({
                 ))}
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
 

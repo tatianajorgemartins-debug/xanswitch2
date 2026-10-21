@@ -20,6 +20,7 @@ import PurchaseModal from './PurchaseModal';
 import AccountModal from './AccountModal';
 import BulkPurchaseModal from './BulkPurchaseModal';
 import { useDesignVariant } from './DesignVariant';
+import { scrollToResults } from './scrollToResults';
 
 export type Item = {
   id: number;
@@ -130,6 +131,7 @@ export default function CatalogClient({
   const [showBackToTop, setShowBackToTop] = useState(false);
   const gridAnchorRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   // Jogo clicado no momento (null = nenhum modal aberto). É só esse estado
   // que controla o modal de compra — abrir um jogo é simplesmente colocar o
@@ -429,8 +431,7 @@ export default function CatalogClient({
   // disponíveis", com os resultados logo abaixo do cabeçalho. Tirar o foco
   // do campo fecha o teclado no celular, pra deixar os resultados à vista.
   function submitSearch() {
-    searchInputRef.current?.blur();
-    scrollToGrid();
+    scrollToResults(resultsRef.current, searchInputRef.current);
   }
 
   // "Limpar filtro" ao lado de "X jogos disponíveis": limpa busca e filtros
@@ -752,9 +753,13 @@ export default function CatalogClient({
         </div>
       )}
 
+      {/* min-height (ver .catalog-results no CSS): mesmo com poucos
+          resultados, sobra página pra rolar o título até o topo. */}
+      <div ref={resultsRef} className="catalog-results">
       <div className="catalog-count-row">
         <p className="catalog-count">
-          <span className="catalog-count-number">{filtered.length}</span> jogos disponíveis
+          <span className="catalog-count-number">{filtered.length}</span>{' '}
+          {filtered.length === 1 ? 'jogo disponível' : 'jogos disponíveis'}
         </p>
         {isFiltering && (
           <button type="button" className="btn ghost catalog-clear-filter" onClick={clearAndScrollTop}>
@@ -799,6 +804,7 @@ export default function CatalogClient({
           ))}
         </div>
       )}
+      </div>
 
       {/* O modal de compra só existe na tela quando um jogo foi clicado.
           Ele fica fora do fluxo normal da página (position: fixed no CSS),
