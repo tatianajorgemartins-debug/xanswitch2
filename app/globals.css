@@ -224,9 +224,6 @@ a {
 }
 .catalog-search-submit {
   display: none;
-}
-.catalog-toolbar-search:focus-within .catalog-search-submit {
-  display: inline-flex;
   align-items: center;
   padding: 6px 12px;
   border: 0;
@@ -235,6 +232,9 @@ a {
   color: #fff;
   font-weight: 800;
   cursor: pointer;
+}
+.catalog-toolbar-search:focus-within .catalog-search-submit {
+  display: inline-flex;
 }
 .site-footer-line {
   margin-top: 50px;
