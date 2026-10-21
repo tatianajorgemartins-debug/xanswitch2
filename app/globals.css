@@ -210,6 +210,32 @@ a {
 .catalog-count-number {
   color: var(--green);
 }
+.catalog-count-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 22px;
+  scroll-margin-top: 96px;
+}
+.catalog-count-row .catalog-count {
+  margin: 0;
+}
+.catalog-search-submit {
+  display: none;
+}
+.catalog-toolbar-search:focus-within .catalog-search-submit {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--purple-2);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
 .site-footer-line {
   margin-top: 50px;
   text-align: center;

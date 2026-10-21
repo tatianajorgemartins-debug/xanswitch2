@@ -129,6 +129,7 @@ export default function CatalogClient({
   const [quickFilter, setQuickFilter] = useState<QuickFilter>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const gridAnchorRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Jogo clicado no momento (null = nenhum modal aberto). É só esse estado
   // que controla o modal de compra — abrir um jogo é simplesmente colocar o
@@ -424,6 +425,22 @@ export default function CatalogClient({
     clearFilters();
   }
 
+  // Enter na busca (ou o botão "PESQUISAR"): desce até "X jogos
+  // disponíveis", com os resultados logo abaixo do cabeçalho. Tirar o foco
+  // do campo fecha o teclado no celular, pra deixar os resultados à vista.
+  function submitSearch() {
+    searchInputRef.current?.blur();
+    scrollToGrid();
+  }
+
+  // "Limpar filtro" ao lado de "X jogos disponíveis": limpa busca e filtros
+  // e volta pro topo da página.
+  function clearAndScrollTop() {
+    clearEverything();
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+  }
+
   return (
     <>
       {/* viewTransitionName: deixa o cabeçalho FORA do crossfade da troca de
@@ -467,10 +484,18 @@ export default function CatalogClient({
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
           <input
+            ref={searchInputRef}
             type="text"
             placeholder="Buscar jogo..."
             value={query}
+            enterKeyHint="search"
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                submitSearch();
+              }
+            }}
           />
           {query && (
             <button
@@ -493,6 +518,18 @@ export default function CatalogClient({
               </svg>
             </button>
           )}
+          {/* Aparece enquanto o campo está em foco (ver
+              .catalog-search-submit no CSS). O onMouseDown evita que o campo
+              perca o foco antes do clique — sem isso o botão sumiria no meio
+              do clique e ele não contaria. */}
+          <button
+            type="button"
+            className="catalog-search-submit"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={submitSearch}
+          >
+            PESQUISAR
+          </button>
         </div>
 
         {/* Só aparece no celular (≤700px) — abre/fecha o grupo de botões
@@ -569,12 +606,6 @@ export default function CatalogClient({
             </svg>
             Filtros{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
           </button>
-
-          {isFiltering && (
-            <button type="button" className="btn ghost" onClick={clearEverything}>
-              ✕ Limpar tudo
-            </button>
-          )}
 
           <button type="button" className="btn ghost" onClick={() => setReviewFormOpen((v) => !v)}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={14} height={14} style={{ flex: 'none' }}>
@@ -721,9 +752,19 @@ export default function CatalogClient({
         </div>
       )}
 
-      <p className="catalog-count">
-        <span className="catalog-count-number">{filtered.length}</span> jogos disponíveis
-      </p>
+      <div className="catalog-count-row">
+        <p className="catalog-count">
+          <span className="catalog-count-number">{filtered.length}</span> jogos disponíveis
+        </p>
+        {isFiltering && (
+          <button type="button" className="btn ghost catalog-clear-filter" onClick={clearAndScrollTop}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={13} height={13} aria-hidden="true">
+              <path d="M5 5l14 14M19 5L5 19" strokeLinecap="round" />
+            </svg>
+            Limpar filtro
+          </button>
+        )}
+      </div>
 
       {filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--ink-dim)' }}>

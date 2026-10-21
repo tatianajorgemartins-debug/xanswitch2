@@ -7,7 +7,7 @@
 // categoria (franquia), a grade de produtos e um popup com os detalhes de
 // cada um. Reaproveita o cabeçalho (SiteHeader), o grid e o visual de card
 // já usados no catálogo digital, pra não parecer uma seção improvisada.
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import SiteHeader from './SiteHeader';
 import { useDesignVariant } from './DesignVariant';
 import type { PhysicalItem } from '@/lib/physicalCatalogData';
@@ -41,6 +41,25 @@ export default function PhysicalCatalogClient({
       ),
     [items]
   );
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const isFiltering = query.trim() !== '' || categoryFilter !== '';
+
+  // Enter na busca (ou "PESQUISAR"): desce até "X colecionáveis".
+  function submitSearch() {
+    searchInputRef.current?.blur();
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    resultsRef.current?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+  }
+
+  // "Limpar filtro" ao lado de "X colecionáveis": limpa e volta pro topo.
+  function clearAndScrollTop() {
+    setQuery('');
+    setCategoryFilter('');
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+  }
 
   const filteredItems = items.filter(
     (item) =>
@@ -117,7 +136,20 @@ export default function PhysicalCatalogClient({
               <circle cx="11" cy="11" r="7" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
-            <input type="text" placeholder="Buscar produto..." value={query} onChange={(e) => setQuery(e.target.value)} />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Buscar produto..."
+              value={query}
+              enterKeyHint="search"
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  submitSearch();
+                }
+              }}
+            />
             {query && (
               <button
                 type="button"
@@ -131,6 +163,15 @@ export default function PhysicalCatalogClient({
                 </svg>
               </button>
             )}
+            {/* Mesmo botão "PESQUISAR" do catálogo digital (ver CatalogClient.tsx). */}
+            <button
+              type="button"
+              className="catalog-search-submit"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={submitSearch}
+            >
+              PESQUISAR
+            </button>
           </div>
 
           <a href={BEEDLE_GAMES_INSTAGRAM_URL} target="_blank" rel="noreferrer" className="btn ghost">
@@ -177,23 +218,35 @@ export default function PhysicalCatalogClient({
           <p style={{ textAlign: 'center', color: 'var(--ink-dim)', fontSize: 14, padding: '40px 0' }}>
             Nenhum produto disponível no momento. Volte em breve!
           </p>
-        ) : filteredItems.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'var(--ink-dim)', fontSize: 14, padding: '40px 0' }}>
-            {query ? `Nenhum produto encontrado pra "${query}".` : `Nenhum produto encontrado na categoria "${categoryFilter}".`}
-          </p>
         ) : (
           <>
-          {isRedesign && (
-            <p className="catalog-count">
-              <span className="catalog-count-number">{filteredItems.length}</span>{' '}
-              {filteredItems.length === 1 ? 'colecionável' : 'colecionáveis'}
-            </p>
-          )}
-          <div className="catalog-grid">
-            {filteredItems.map((item) => (
-              <PhysicalProductCard key={item.id} item={item} onSelect={() => openProduct(item)} />
-            ))}
-          </div>
+            <div ref={resultsRef} className="catalog-count-row">
+              <p className="catalog-count">
+                <span className="catalog-count-number">{filteredItems.length}</span>{' '}
+                {filteredItems.length === 1 ? 'colecionável' : 'colecionáveis'}
+              </p>
+              {isFiltering && (
+                <button type="button" className="btn ghost catalog-clear-filter" onClick={clearAndScrollTop}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={13} height={13} aria-hidden="true">
+                    <path d="M5 5l14 14M19 5L5 19" strokeLinecap="round" />
+                  </svg>
+                  Limpar filtro
+                </button>
+              )}
+            </div>
+            {filteredItems.length === 0 ? (
+              <p style={{ textAlign: 'center', color: 'var(--ink-dim)', fontSize: 14, padding: '40px 0' }}>
+                {query
+                  ? `Nenhum produto encontrado pra "${query}".`
+                  : `Nenhum produto encontrado na categoria "${categoryFilter}".`}
+              </p>
+            ) : (
+              <div className="catalog-grid">
+                {filteredItems.map((item) => (
+                  <PhysicalProductCard key={item.id} item={item} onSelect={() => openProduct(item)} />
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>
