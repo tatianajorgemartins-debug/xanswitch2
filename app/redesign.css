@@ -1608,7 +1608,7 @@ html:has(.legal-page) body {
 
 /* ==========================================================================
    EM TESTE (só na página de teste, .is-test-preview): no computador, os
-   prints do jogo viram uma grade de 4 por linha embaixo da capa, sem setas
+   prints do jogo viram uma grade de 2 por linha embaixo da capa, sem setas
    nem barra de rolagem.
    ========================================================================== */
 @media (min-width: 1000px) {
@@ -1620,8 +1620,8 @@ html:has(.legal-page) body {
   }
   .redesign.is-test-preview .purchase-modal.is-product-step .purchase-gallery {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
     overflow: visible;
     padding-bottom: 0;
   }
