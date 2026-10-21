@@ -1607,33 +1607,32 @@ html:has(.legal-page) body {
 }
 
 /* ==========================================================================
-   EM TESTE (só na página de teste, .is-test-preview): no computador, os
-   prints do jogo viram uma grade de 2 por linha embaixo da capa, sem setas
-   nem barra de rolagem.
+   Computador: os prints do jogo ficam numa grade de 2 por linha embaixo da
+   capa, sem setas nem barra de rolagem.
    ========================================================================== */
 @media (min-width: 1000px) {
-  .redesign.is-test-preview .purchase-modal.is-product-step .product-gallery-row {
+  .redesign .purchase-modal.is-product-step .product-gallery-row {
     margin-top: 12px;
   }
-  .redesign.is-test-preview .purchase-modal.is-product-step .product-gallery-arrow {
+  .redesign .purchase-modal.is-product-step .product-gallery-arrow {
     display: none;
   }
-  .redesign.is-test-preview .purchase-modal.is-product-step .purchase-gallery {
+  .redesign .purchase-modal.is-product-step .purchase-gallery {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
     overflow: visible;
     padding-bottom: 0;
   }
-  .redesign.is-test-preview .purchase-modal.is-product-step .purchase-gallery-thumb {
+  .redesign .purchase-modal.is-product-step .purchase-gallery-thumb {
     width: auto;
     height: auto;
     aspect-ratio: 4 / 3;
   }
-  .redesign.is-test-preview .purchase-modal.is-product-step .purchase-gallery-thumb img {
+  .redesign .purchase-modal.is-product-step .purchase-gallery-thumb img {
     transition: transform 0.3s ease;
   }
-  .redesign.is-test-preview .purchase-modal.is-product-step .purchase-gallery-thumb:hover img {
+  .redesign .purchase-modal.is-product-step .purchase-gallery-thumb:hover img {
     transform: scale(1.06);
   }
 }
