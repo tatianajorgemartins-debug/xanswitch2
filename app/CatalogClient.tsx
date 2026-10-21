@@ -480,7 +480,7 @@ export default function CatalogClient({
         )}
         <div className="catalog-toolbar">
         <div className="catalog-toolbar-search">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={16} height={16} style={{ color: 'var(--ink-dim)', flex: 'none' }}>
+          <svg className="catalog-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={16} height={16} style={{ color: 'var(--ink-dim)', flex: 'none' }} aria-hidden="true">
             <circle cx="11" cy="11" r="7" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
@@ -528,8 +528,13 @@ export default function CatalogClient({
             className="catalog-search-submit"
             onMouseDown={(e) => e.preventDefault()}
             onClick={submitSearch}
+          aria-label="Pesquisar"
           >
-            PESQUISAR
+            <span className="catalog-search-submit-label">PESQUISAR</span>
+            <svg className="catalog-search-submit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" width={17} height={17} aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
           </button>
         </div>
 

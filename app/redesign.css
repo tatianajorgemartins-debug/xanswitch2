@@ -1372,3 +1372,41 @@
     min-height: calc(100svh - 150px);
   }
 }
+
+/* Celular: o botão PESQUISAR vira só a lupa (sobra mais espaço pro texto)
+   e a lupa da esquerda some, deslizando, quando o campo recebe o foco. */
+.redesign .catalog-search-submit-icon {
+  display: none;
+}
+@media (max-width: 700px) {
+  .redesign .catalog-search-submit {
+    justify-content: center;
+    width: 38px;
+    padding: 0;
+  }
+  .redesign .catalog-search-submit-label {
+    display: none;
+  }
+  .redesign .catalog-search-submit-icon {
+    display: block;
+  }
+  .redesign .catalog-search-icon {
+    transform-origin: left center;
+    transition:
+      width 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
+      margin 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
+      opacity 0.2s ease,
+      transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .redesign .catalog-toolbar-search:focus-within .catalog-search-icon {
+    width: 0;
+    margin-right: -10px;
+    opacity: 0;
+    transform: scale(0.4) rotate(-25deg);
+  }
+}
+@media (max-width: 700px) and (prefers-reduced-motion: reduce) {
+  .redesign .catalog-search-icon {
+    transition: none;
+  }
+}

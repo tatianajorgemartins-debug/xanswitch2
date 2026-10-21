@@ -236,6 +236,9 @@ a {
 .catalog-toolbar-search:focus-within .catalog-search-submit {
   display: inline-flex;
 }
+.catalog-search-submit-icon {
+  display: none;
+}
 .site-footer-line {
   margin-top: 50px;
   text-align: center;
