@@ -14,14 +14,17 @@ const archivo = Archivo({
 // (fonte, cores e o CSS de redesign.css, preso dentro de .redesign).
 // variant="current" devolve o visual antigo — usado só pela página de
 // teste (app/admin/teste), pra comparar. themeToggle liga o botão de modo
-// claro/escuro.
+// claro/escuro. testPreview marca a página de teste (.is-test-preview), pra
+// experimentar mudanças de CSS só lá antes de levar pro site.
 export default function SiteShell({
   variant = 'redesign',
   themeToggle = true,
+  testPreview = false,
   children
 }: {
   variant?: DesignVariant;
   themeToggle?: boolean;
+  testPreview?: boolean;
   children: React.ReactNode;
 }) {
   if (variant !== 'redesign') {
@@ -29,7 +32,9 @@ export default function SiteShell({
   }
 
   const shell = (
-    <div className={`redesign ${archivo.variable}${themeToggle ? ' theme-enabled' : ''}`}>{children}</div>
+    <div className={`redesign ${archivo.variable}${themeToggle ? ' theme-enabled' : ''}${testPreview ? ' is-test-preview' : ''}`}>
+      {children}
+    </div>
   );
 
   return (
