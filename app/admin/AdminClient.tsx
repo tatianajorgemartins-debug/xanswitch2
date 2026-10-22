@@ -1823,6 +1823,21 @@ function GameFormPanel({
         </div>
 
         <div style={{ marginBottom: 14 }}>
+          <label htmlFor="amazonJpUrl">Link na Amazon Japão (opcional)</label>
+          <input
+            id="amazonJpUrl"
+            name="amazonJpUrl"
+            type="url"
+            defaultValue={game?.amazon_jp_url || ''}
+            placeholder="Ex: https://www.amazon.co.jp/dp/XXXXXXXXXX"
+          />
+          <p style={{ margin: '6px 2px 0', fontSize: 12.5, color: 'var(--ink-dim)' }}>
+            Só pra você: esse link vai junto no aviso de venda do Telegram, pra comprar o código rapidinho. O
+            cliente nunca vê.
+          </p>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
           <label htmlFor="cardPoints">Pontos do card colecionável (1 a 5)</label>
           <input
             id="cardPoints"

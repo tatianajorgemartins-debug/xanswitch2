@@ -157,3 +157,6 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_applied NUMERIC(10, 2) NOT 
 -- Idem para a categoria dos produtos físicos (ver
 -- db/migration-physical-products-category.sql).
 ALTER TABLE physical_products ADD COLUMN IF NOT EXISTS category TEXT;
+
+-- Link da Amazon Japão de cada jogo (ver db/migration-amazon-jp-url.sql).
+ALTER TABLE games ADD COLUMN IF NOT EXISTS amazon_jp_url TEXT;

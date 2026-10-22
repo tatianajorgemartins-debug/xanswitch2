@@ -39,6 +39,10 @@ export type Game = {
   // pontos) na compra desse jogo — ver a seção "Troca de pontos por
   // desconto" do README.
   discount_eligible: boolean;
+  // Link do jogo na Amazon Japão (onde a loja compra o código). Só vai no
+  // aviso de venda do Telegram e no admin — nunca pro catálogo público
+  // (ver toItem em lib/catalogData.ts).
+  amazon_jp_url: string | null;
   created_at: Date; // timestamptz comes back as a real Date, not a string
   updated_at: Date;
 };
@@ -93,10 +97,11 @@ export async function createGame(data: {
   credit_payment_url: string | null;
   card_points: number;
   discount_eligible: boolean;
+  amazon_jp_url: string | null;
 }): Promise<Game> {
   const rows = await getSql()`
-    INSERT INTO games (name, price, original_price, image_url, banner_image_url, has_badge, badge_text, badge_color, franchise, platform, game_type, is_featured, is_bestseller, is_upcoming, description, screenshots, credit_payment_url, card_points, discount_eligible)
-    VALUES (${data.name}, ${data.price}, ${data.original_price}, ${data.image_url}, ${data.banner_image_url}, ${data.has_badge}, ${data.badge_text}, ${data.badge_color}, ${data.franchise}, ${data.platform}, ${data.game_type}, ${data.is_featured}, ${data.is_bestseller}, ${data.is_upcoming}, ${data.description}, ${JSON.stringify(data.screenshots)}::jsonb, ${data.credit_payment_url}, ${data.card_points}, ${data.discount_eligible})
+    INSERT INTO games (name, price, original_price, image_url, banner_image_url, has_badge, badge_text, badge_color, franchise, platform, game_type, is_featured, is_bestseller, is_upcoming, description, screenshots, credit_payment_url, card_points, discount_eligible, amazon_jp_url)
+    VALUES (${data.name}, ${data.price}, ${data.original_price}, ${data.image_url}, ${data.banner_image_url}, ${data.has_badge}, ${data.badge_text}, ${data.badge_color}, ${data.franchise}, ${data.platform}, ${data.game_type}, ${data.is_featured}, ${data.is_bestseller}, ${data.is_upcoming}, ${data.description}, ${JSON.stringify(data.screenshots)}::jsonb, ${data.credit_payment_url}, ${data.card_points}, ${data.discount_eligible}, ${data.amazon_jp_url})
     RETURNING *
   `;
   return rows[0] as Game;
@@ -124,6 +129,7 @@ export async function updateGame(
     credit_payment_url: string | null;
     card_points: number;
     discount_eligible: boolean;
+    amazon_jp_url: string | null;
   }
 ): Promise<Game> {
   const rows = await getSql()`
@@ -147,6 +153,7 @@ export async function updateGame(
       credit_payment_url = ${data.credit_payment_url},
       card_points = ${data.card_points},
       discount_eligible = ${data.discount_eligible},
+      amazon_jp_url = ${data.amazon_jp_url},
       updated_at = now()
     WHERE id = ${id}
     RETURNING *

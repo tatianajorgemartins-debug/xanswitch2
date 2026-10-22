@@ -73,6 +73,18 @@ function parseCreditPaymentUrl(formData: FormData): { value: string | null; erro
   return { value: raw, error: null };
 }
 
+// Link do jogo na Amazon Japão (opcional): vai no aviso de venda do
+// Telegram. Mesma regra do link de crédito: se preenchido, tem que ser um
+// link de verdade.
+function parseAmazonJpUrl(formData: FormData): { value: string | null; error: string | null } {
+  const raw = String(formData.get('amazonJpUrl') || '').trim();
+  if (!raw) return { value: null, error: null };
+  if (!/^https?:\/\//i.test(raw)) {
+    return { value: null, error: 'O link da Amazon Japão precisa começar com http:// ou https://.' };
+  }
+  return { value: raw, error: null };
+}
+
 // Pontos do card colecionável desse jogo — um número inteiro de 1 a 5 (o
 // máximo de "gemas" que o card mostra, ver CollectibleCard.tsx). Qualquer
 // valor fora da faixa é limitado (clamp) pros extremos, em vez de dar erro
@@ -171,6 +183,7 @@ export async function createGameAction(
   const description = String(formData.get('description') || '').trim() || null;
   const screenshots = parseScreenshots(formData);
   const { value: creditPaymentUrl, error: creditPaymentUrlError } = parseCreditPaymentUrl(formData);
+  const { value: amazonJpUrl, error: amazonJpUrlError } = parseAmazonJpUrl(formData);
   const cardPoints = parseCardPoints(formData);
   const discountEligible = formData.get('discountEligible') === 'on';
 
@@ -180,6 +193,7 @@ export async function createGameAction(
     return { error: 'Preço original inválido.' };
   }
   if (creditPaymentUrlError) return { error: creditPaymentUrlError };
+  if (amazonJpUrlError) return { error: amazonJpUrlError };
 
   const imageUrl = (await uploadImageIfPresent(formData)) ?? null;
   const bannerImageUrl = (await uploadBannerImageIfPresent(formData)) ?? null;
@@ -203,7 +217,8 @@ export async function createGameAction(
     screenshots,
     credit_payment_url: creditPaymentUrl,
     card_points: cardPoints,
-    discount_eligible: discountEligible
+    discount_eligible: discountEligible,
+    amazon_jp_url: amazonJpUrl
   });
 
   revalidatePath('/admin');
@@ -238,6 +253,7 @@ export async function updateGameAction(
   const description = String(formData.get('description') || '').trim() || null;
   const screenshots = parseScreenshots(formData);
   const { value: creditPaymentUrl, error: creditPaymentUrlError } = parseCreditPaymentUrl(formData);
+  const { value: amazonJpUrl, error: amazonJpUrlError } = parseAmazonJpUrl(formData);
   const cardPoints = parseCardPoints(formData);
   const discountEligible = formData.get('discountEligible') === 'on';
 
@@ -248,6 +264,7 @@ export async function updateGameAction(
     return { error: 'Preço original inválido.' };
   }
   if (creditPaymentUrlError) return { error: creditPaymentUrlError };
+  if (amazonJpUrlError) return { error: amazonJpUrlError };
 
   const existing = await getGameById(id);
   if (!existing) return { error: 'Jogo não encontrado.' };
@@ -306,7 +323,8 @@ export async function updateGameAction(
     screenshots,
     credit_payment_url: creditPaymentUrl,
     card_points: cardPoints,
-    discount_eligible: discountEligible
+    discount_eligible: discountEligible,
+    amazon_jp_url: amazonJpUrl
   });
 
   revalidatePath('/admin');

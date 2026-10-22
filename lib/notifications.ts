@@ -14,7 +14,9 @@
 //   servidor.
 
 type OrderNotification = {
-  items: { gameName: string; price: number }[];
+  // amazonJpUrl: link do jogo na Amazon Japão (campo do admin), pra comprar
+  // o código direto do aviso. Null quando o jogo ainda não tem link.
+  items: { gameName: string; price: number; amazonJpUrl?: string | null }[];
   total: number;
   customerEmail: string;
 };
@@ -42,7 +44,14 @@ async function sendOrderEmail(order: OrderNotification): Promise<void> {
   }
 
   const horario = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-  const linhasJogos = order.items.map((it) => `<li>${it.gameName} — R$ ${formatPriceBR(it.price)}</li>`).join('');
+  const linhasJogos = order.items
+    .map(
+      (it) =>
+        `<li>${it.gameName} — R$ ${formatPriceBR(it.price)}${
+          it.amazonJpUrl ? ` — <a href="${it.amazonJpUrl}">Amazon Japão</a>` : ''
+        }</li>`
+    )
+    .join('');
 
   // Chamado direto via fetch na API HTTP do Resend, sem precisar instalar o
   // pacote deles — é só uma requisição POST comum com a chave no header.
@@ -96,9 +105,17 @@ async function sendOrderTelegram(order: OrderNotification): Promise<void> {
   // Bônus opcional — sem token/chat id configurados, simplesmente não envia.
   if (!token || !chatId) return;
 
-  const text = `🎮 Novo pedido!\nJogo(s): ${buildGamesList(order.items)}\nTotal: R$ ${formatPriceBR(
-    order.total
-  )}\nE-mail: ${order.customerEmail}`;
+  // Um bloco por jogo, com o link da Amazon Japão logo embaixo (o Telegram
+  // transforma o endereço em link clicável sozinho).
+  const jogos = order.items
+    .map(
+      (it) =>
+        `• ${it.gameName} — R$ ${formatPriceBR(it.price)}\n  🇯🇵 Amazon JP: ${
+          it.amazonJpUrl || '(sem link cadastrado no admin)'
+        }`
+    )
+    .join('\n\n');
+  const text = `🎮 Novo pedido!\n\n${jogos}\n\nTotal: R$ ${formatPriceBR(order.total)}\nE-mail: ${order.customerEmail}`;
 
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',

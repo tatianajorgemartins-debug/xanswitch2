@@ -23,11 +23,16 @@ function sanitizeReferralSource(value: string | null): string | null {
 // card e sem desconto em vez de falhar o pedido inteiro por causa disso.
 async function snapshotGameForOrder(
   gameId: number | null
-): Promise<{ points: number; imageUrl: string | null; discountEligible: boolean }> {
-  if (!gameId) return { points: 0, imageUrl: null, discountEligible: false };
+): Promise<{ points: number; imageUrl: string | null; discountEligible: boolean; amazonJpUrl: string | null }> {
+  if (!gameId) return { points: 0, imageUrl: null, discountEligible: false, amazonJpUrl: null };
   const game = await getGameById(gameId);
-  if (!game) return { points: 0, imageUrl: null, discountEligible: false };
-  return { points: game.card_points, imageUrl: game.image_url, discountEligible: game.discount_eligible };
+  if (!game) return { points: 0, imageUrl: null, discountEligible: false, amazonJpUrl: null };
+  return {
+    points: game.card_points,
+    imageUrl: game.image_url,
+    discountEligible: game.discount_eligible,
+    amazonJpUrl: game.amazon_jp_url
+  };
 }
 
 // Chamada quando o cliente clica em "Já paguei — confirmar pedido" na tela
@@ -99,7 +104,11 @@ export async function confirmOrderAction(
   // (e-mail fora do ar, CallMeBot indisponível etc.), o pedido continua
   // valendo e visível em /admin > Pedidos, então não há por que travar a
   // tela do cliente esperando ou tratando erro aqui.
-  await notifyNewOrder({ items: [{ gameName, price: finalPrice }], total: finalPrice, customerEmail: trimmedEmail });
+  await notifyNewOrder({
+    items: [{ gameName, price: finalPrice, amazonJpUrl: game.amazonJpUrl }],
+    total: finalPrice,
+    customerEmail: trimmedEmail
+  });
 
   return { ok: true };
 }
@@ -123,10 +132,12 @@ export async function confirmBulkOrderAction(
   }
   const sanitizedReferralSource = sanitizeReferralSource(referralSource);
 
+  const amazonJpUrls: (string | null)[] = [];
   try {
     await Promise.all(
-      items.map(async (it) => {
+      items.map(async (it, index) => {
         const game = await snapshotGameForOrder(it.id);
+        amazonJpUrls[index] = game.amazonJpUrl;
         return createOrder({
           game_id: it.id,
           game_name: it.name,
@@ -145,7 +156,7 @@ export async function confirmBulkOrderAction(
   }
 
   await notifyNewOrder({
-    items: items.map((it) => ({ gameName: it.name, price: it.price })),
+    items: items.map((it, index) => ({ gameName: it.name, price: it.price, amazonJpUrl: amazonJpUrls[index] ?? null })),
     total,
     customerEmail: trimmedEmail
   });
@@ -195,7 +206,11 @@ export async function confirmCreditOrderAction(
     return { ok: false, error: 'Não foi possível registrar seu pedido agora. Tente novamente em instantes.' };
   }
 
-  await notifyNewOrder({ items: [{ gameName, price }], total: price, customerEmail: trimmedEmail });
+  await notifyNewOrder({
+    items: [{ gameName, price, amazonJpUrl: game.amazonJpUrl }],
+    total: price,
+    customerEmail: trimmedEmail
+  });
 
   return { ok: true };
 }
