@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description: 'Quais dados a XAN Switch coleta, por que, com quem compartilha e como você exerce seus direitos pela LGPD.'
 };
 
-const UPDATED_AT = '21 de outubro de 2026';
+const UPDATED_AT = '23 de outubro de 2026';
 const SECTIONS: [string, string][] = [["quem-somos","Quem somos"],["dados","Quais dados coletamos e para quê"],["bases-legais","Com base em quê tratamos seus dados"],["compartilhamento","Com quem compartilhamos"],["retencao","Por quanto tempo guardamos"],["direitos","Seus direitos"],["seguranca","Segurança"],["menores","Menores de idade"],["mudancas","Mudanças nesta política"]];
 const INSTAGRAM_URL = 'https://instagram.com/xan.switch';
 
@@ -128,6 +128,11 @@ export default function PrivacyPage() {
               <li>
                 Seu navegador guarda sua preferência de tema (claro ou escuro) e, se você entrar na conta, a sua sessão
                 de login.
+              </li>
+              <li>
+                Se o site der algum erro no seu navegador, registramos a mensagem do erro, a página em que ele aconteceu
+                e o tipo de navegador e aparelho, só pra conseguir corrigir o problema. Esse registro não inclui seu
+                nome, e-mail nem nada que você digitou.
               </li>
               <li>Não usamos ferramentas de anúncios nem de rastreamento de terceiros, como Google Analytics ou pixel do Facebook.</li>
             </ul>
