@@ -3524,3 +3524,50 @@ label {
   z-index: 300;
   animation: xan-slide-up-in 0.25s ease;
 }
+
+/* Promoção (preço promocional do admin): selo no card, na lista, na janela
+   do jogo e a opção "Só jogos em promoção" do painel de filtros. */
+.game-card-sale {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 2;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--gold);
+  color: #2b1a00;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.tag-sale {
+  background: var(--gold);
+  color: #2b1a00;
+}
+.product-sale-badge {
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: var(--gold);
+  color: #2b1a00;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.filter-sale-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: end;
+  margin: 0;
+  padding: 10px 0;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 14px;
+  color: var(--ink);
+}
+.filter-sale-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--gold);
+}

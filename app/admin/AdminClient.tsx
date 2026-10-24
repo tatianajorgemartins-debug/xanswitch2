@@ -618,6 +618,22 @@ function AdminGameCard({
         <p style={{ fontFamily: "'Press Start 2P', cursive", fontSize: 12, color: 'var(--green)', textShadow: '0 0 8px var(--green-glow)', margin: 0 }}>
           R$ {parseFloat(game.price).toFixed(2).replace('.', ',')}
         </p>
+        {game.promo_price && parseFloat(game.promo_price) < parseFloat(game.price) && (
+          <p
+            style={{
+              display: 'inline-block',
+              margin: '6px 0 0',
+              padding: '3px 8px',
+              borderRadius: 6,
+              background: 'var(--gold)',
+              color: '#2b1a00',
+              fontSize: 12,
+              fontWeight: 800
+            }}
+          >
+            🏷️ PROMO R$ {parseFloat(game.promo_price).toFixed(2).replace('.', ',')}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -1804,6 +1820,32 @@ function GameFormPanel({
             defaultValue={game?.original_price ? parseFloat(game.original_price).toFixed(2) : ''}
             placeholder="Ex: 300.00"
           />
+        </div>
+
+        <div
+          style={{
+            marginBottom: 14,
+            padding: 14,
+            borderRadius: 10,
+            background: 'rgba(255,210,78,.08)',
+            border: '1px solid rgba(255,210,78,.35)'
+          }}
+        >
+          <label htmlFor="promoPrice">🏷️ Preço promocional (opcional)</label>
+          <input
+            id="promoPrice"
+            name="promoPrice"
+            type="text"
+            inputMode="decimal"
+            defaultValue={game?.promo_price ? parseFloat(game.promo_price).toFixed(2) : ''}
+            placeholder="Ex: 199.90"
+          />
+          <p style={{ margin: '6px 2px 0', fontSize: 12.5, color: 'var(--ink-dim)', lineHeight: 1.5 }}>
+            Preencha com um valor menor que o preço normal pra colocar o jogo em promoção: ele passa a ser vendido
+            por esse valor, o preço normal aparece riscado e o card ganha o selo &ldquo;PROMO&rdquo;. Apague o valor
+            pra tirar da promoção. Atenção: o link de crédito parcelado tem o valor definido lá no Mercado
+            Pago/PagSeguro — se o jogo tiver esse link, atualize o valor lá também.
+          </p>
         </div>
 
         <div style={{ marginBottom: 14 }}>

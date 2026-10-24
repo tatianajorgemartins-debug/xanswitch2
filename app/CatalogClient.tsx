@@ -28,6 +28,10 @@ export type Item = {
   price: number;
   priceLabel: string;
   originalPriceLabel: string | null;
+  // Em promoção (preço promocional do admin menor que o normal) — ver
+  // toItem em lib/catalogData.ts. salePercent é o desconto arredondado.
+  isOnSale: boolean;
+  salePercent: number | null;
   imageUrl: string | null;
   // Imagem separada pros banners largos (Destaque da semana / Mais
   // aguardados) — quando vazia, esses banners usam imageUrl (a capa
@@ -127,6 +131,7 @@ export default function CatalogClient({
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [priceMin, setPriceMin] = useState('');
   const [priceMax, setPriceMax] = useState('');
+  const [saleOnly, setSaleOnly] = useState(false);
   const [quickFilter, setQuickFilter] = useState<QuickFilter>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const gridAnchorRef = useRef<HTMLDivElement>(null);
@@ -356,11 +361,12 @@ export default function CatalogClient({
       if (typeFilter !== 'all' && it.gameType !== typeFilter) return false;
       if (min !== null && !Number.isNaN(min) && it.price < min) return false;
       if (max !== null && !Number.isNaN(max) && it.price > max) return false;
+      if (saleOnly && !it.isOnSale) return false;
       if (quickFilter === 'bestseller' && !it.isBestseller) return false;
       if (quickFilter === 'upcoming' && !it.isUpcoming) return false;
       return true;
     });
-  }, [items, query, franchiseFilter, platformFilter, typeFilter, priceMin, priceMax, quickFilter]);
+  }, [items, query, franchiseFilter, platformFilter, typeFilter, priceMin, priceMax, saleOnly, quickFilter]);
 
   const activeFilterCount =
     (franchiseFilter ? 1 : 0) +
@@ -368,6 +374,7 @@ export default function CatalogClient({
     (typeFilter !== 'all' ? 1 : 0) +
     (priceMin.trim() ? 1 : 0) +
     (priceMax.trim() ? 1 : 0) +
+    (saleOnly ? 1 : 0) +
     (quickFilter ? 1 : 0);
 
   // Verdadeiro sempre que a pessoa está filtrando ou buscando algo — usado
@@ -416,6 +423,7 @@ export default function CatalogClient({
     setTypeFilter('all');
     setPriceMin('');
     setPriceMax('');
+    setSaleOnly(false);
     setQuickFilter(null);
   }
 
@@ -697,6 +705,15 @@ export default function CatalogClient({
               onChange={(e) => setPriceMax(e.target.value)}
             />
           </div>
+          <label className="filter-sale-toggle" htmlFor="filter-sale-only">
+            <input
+              id="filter-sale-only"
+              type="checkbox"
+              checked={saleOnly}
+              onChange={(e) => setSaleOnly(e.target.checked)}
+            />
+            <span>Só jogos em promoção</span>
+          </label>
           {activeFilterCount > 0 && (
             <button type="button" className="btn ghost" onClick={clearFilters} style={{ alignSelf: 'end' }}>
               ✕ Limpar filtros
@@ -1027,6 +1044,12 @@ function GameCard({
           </div>
         )}
 
+        {item.isOnSale && (
+          <div className="game-card-sale" title={`Em promoção: ${item.salePercent}% de desconto`}>
+            PROMO -{item.salePercent}%
+          </div>
+        )}
+
         {item.hasBadge && (
           <div
             className="game-card-badge"
@@ -1113,6 +1136,7 @@ function ListRow({
           )}
           {!platformRedundant && <span className="tag tag-platform">{platformLabel}</span>}
           {typeLabel && <span className="tag tag-type">{typeLabel}</span>}
+          {item.isOnSale && <span className="tag tag-sale">PROMO -{item.salePercent}%</span>}
         </div>
       </div>
       <span style={{ flex: 'none', textAlign: 'right' }}>

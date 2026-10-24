@@ -85,6 +85,23 @@ function parseAmazonJpUrl(formData: FormData): { value: string | null; error: st
   return { value: raw, error: null };
 }
 
+// Preço promocional (opcional): vazio = sem promoção. Quando preenchido,
+// precisa ser maior que zero e menor que o preço normal — senão não seria
+// promoção.
+function parsePromoPrice(formData: FormData, price: number): { value: number | null; error: string | null } {
+  const raw = String(formData.get('promoPrice') || '').trim();
+  if (!raw) return { value: null, error: null };
+  const value = parseFloat(raw.replace(',', '.'));
+  if (Number.isNaN(value) || value <= 0) return { value: null, error: 'Preço promocional inválido.' };
+  if (!Number.isNaN(price) && value >= price) {
+    return {
+      value: null,
+      error: `O preço promocional precisa ser menor que o preço normal (R$ ${price.toFixed(2).replace('.', ',')}).`
+    };
+  }
+  return { value, error: null };
+}
+
 // Pontos do card colecionável desse jogo — um número inteiro de 1 a 5 (o
 // máximo de "gemas" que o card mostra, ver CollectibleCard.tsx). Qualquer
 // valor fora da faixa é limitado (clamp) pros extremos, em vez de dar erro
@@ -184,6 +201,7 @@ export async function createGameAction(
   const screenshots = parseScreenshots(formData);
   const { value: creditPaymentUrl, error: creditPaymentUrlError } = parseCreditPaymentUrl(formData);
   const { value: amazonJpUrl, error: amazonJpUrlError } = parseAmazonJpUrl(formData);
+  const { value: promoPrice, error: promoPriceError } = parsePromoPrice(formData, price);
   const cardPoints = parseCardPoints(formData);
   const discountEligible = formData.get('discountEligible') === 'on';
 
@@ -194,6 +212,7 @@ export async function createGameAction(
   }
   if (creditPaymentUrlError) return { error: creditPaymentUrlError };
   if (amazonJpUrlError) return { error: amazonJpUrlError };
+  if (promoPriceError) return { error: promoPriceError };
 
   const imageUrl = (await uploadImageIfPresent(formData)) ?? null;
   const bannerImageUrl = (await uploadBannerImageIfPresent(formData)) ?? null;
@@ -218,7 +237,8 @@ export async function createGameAction(
     credit_payment_url: creditPaymentUrl,
     card_points: cardPoints,
     discount_eligible: discountEligible,
-    amazon_jp_url: amazonJpUrl
+    amazon_jp_url: amazonJpUrl,
+    promo_price: promoPrice
   });
 
   revalidatePath('/admin');
@@ -254,6 +274,7 @@ export async function updateGameAction(
   const screenshots = parseScreenshots(formData);
   const { value: creditPaymentUrl, error: creditPaymentUrlError } = parseCreditPaymentUrl(formData);
   const { value: amazonJpUrl, error: amazonJpUrlError } = parseAmazonJpUrl(formData);
+  const { value: promoPrice, error: promoPriceError } = parsePromoPrice(formData, price);
   const cardPoints = parseCardPoints(formData);
   const discountEligible = formData.get('discountEligible') === 'on';
 
@@ -265,6 +286,7 @@ export async function updateGameAction(
   }
   if (creditPaymentUrlError) return { error: creditPaymentUrlError };
   if (amazonJpUrlError) return { error: amazonJpUrlError };
+  if (promoPriceError) return { error: promoPriceError };
 
   const existing = await getGameById(id);
   if (!existing) return { error: 'Jogo não encontrado.' };
@@ -324,7 +346,8 @@ export async function updateGameAction(
     credit_payment_url: creditPaymentUrl,
     card_points: cardPoints,
     discount_eligible: discountEligible,
-    amazon_jp_url: amazonJpUrl
+    amazon_jp_url: amazonJpUrl,
+    promo_price: promoPrice
   });
 
   revalidatePath('/admin');

@@ -473,6 +473,7 @@ function StepSummary({
         <div className="product-price-row">
           {item.originalPriceLabel && <span className="product-price-old">R$ {item.originalPriceLabel}</span>}
           <span className="product-price">R$ {priceLabel}</span>
+          {item.isOnSale && <span className="product-sale-badge">PROMO -{item.salePercent}%</span>}
         </div>
 
         {item.discountEligible && (

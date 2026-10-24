@@ -24,15 +24,27 @@ import { getWishlistCounts } from './supabaseAdmin';
 import type { Item, ReviewItem } from '@/app/CatalogClient';
 
 function toItem(g: Game): Item {
+  // Em promoção: o preço promocional vira O preço do jogo em todo o site
+  // (card, janela, Pix, pedido, desconto de fidelidade), e o preço normal
+  // aparece riscado. Fora de promoção, continua como sempre (o preço
+  // original opcional do admin é que aparece riscado).
+  const regularPrice = parseFloat(g.price);
+  const promoPrice = g.promo_price ? parseFloat(g.promo_price) : null;
+  const isOnSale = promoPrice !== null && promoPrice > 0 && promoPrice < regularPrice;
+  const price = isOnSale ? (promoPrice as number) : regularPrice;
+  const struckPrice = isOnSale
+    ? regularPrice
+    : g.original_price && parseFloat(g.original_price) > regularPrice
+      ? parseFloat(g.original_price)
+      : null;
   return {
     id: g.id,
     name: g.name,
-    price: parseFloat(g.price),
-    priceLabel: formatPriceBR(g.price),
-    originalPriceLabel:
-      g.original_price && parseFloat(g.original_price) > parseFloat(g.price)
-        ? formatPriceBR(g.original_price)
-        : null,
+    price,
+    priceLabel: formatPriceBR(price),
+    originalPriceLabel: struckPrice !== null ? formatPriceBR(struckPrice) : null,
+    isOnSale,
+    salePercent: isOnSale ? Math.round((1 - price / regularPrice) * 100) : null,
     imageUrl: g.image_url,
     bannerImageUrl: g.banner_image_url,
     hasBadge: g.has_badge,

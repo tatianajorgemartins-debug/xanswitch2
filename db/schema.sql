@@ -160,3 +160,6 @@ ALTER TABLE physical_products ADD COLUMN IF NOT EXISTS category TEXT;
 
 -- Link da Amazon Japão de cada jogo (ver db/migration-amazon-jp-url.sql).
 ALTER TABLE games ADD COLUMN IF NOT EXISTS amazon_jp_url TEXT;
+
+-- Preço promocional (ver db/migration-promo-price.sql).
+ALTER TABLE games ADD COLUMN IF NOT EXISTS promo_price NUMERIC(10, 2);
