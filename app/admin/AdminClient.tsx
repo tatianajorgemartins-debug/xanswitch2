@@ -1842,8 +1842,8 @@ function GameFormPanel({
           />
           <p style={{ margin: '6px 2px 0', fontSize: 12.5, color: 'var(--ink-dim)', lineHeight: 1.5 }}>
             Preencha com um valor menor que o preço normal pra colocar o jogo em promoção: ele passa a ser vendido
-            por esse valor, o preço normal aparece riscado e o card ganha o selo &ldquo;PROMO&rdquo;. Apague o valor
-            pra tirar da promoção. Atenção: o link de crédito parcelado tem o valor definido lá no Mercado
+            por esse valor, o preço da eShop (o &ldquo;preço original&rdquo; acima) continua riscado e o card ganha o
+            selo &ldquo;PROMO&rdquo;. Apague o valor pra tirar da promoção. Atenção: o link de crédito parcelado tem o valor definido lá no Mercado
             Pago/PagSeguro — se o jogo tiver esse link, atualize o valor lá também.
           </p>
         </div>
