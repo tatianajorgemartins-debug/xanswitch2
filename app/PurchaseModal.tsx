@@ -26,6 +26,7 @@ import { confirmOrderAction, confirmCreditOrderAction } from './orderActions';
 import { confirmWithTimeout } from '@/lib/confirmWithTimeout';
 import { XanLoader, useContentLoader } from './XanLoader';
 import { getGameDiscountOfferAction, redeemDiscountAction, type GameDiscountOffer } from './cardActions';
+import { fallbackToOriginal, IMAGE_SIZES, imageSrcSet } from '@/lib/imageVariants';
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -432,7 +433,13 @@ function StepSummary({
           )}
           {item.imageUrl && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={item.imageUrl} alt={item.name} />
+            <img
+              src={item.imageUrl}
+              srcSet={imageSrcSet(item.imageUrl)}
+              sizes={IMAGE_SIZES.modalCover}
+              onError={fallbackToOriginal}
+              alt={item.name}
+            />
           )}
         </div>
 

@@ -1961,6 +1961,12 @@ html:has(.legal-page) body {
     animation: motion-rise 0.7s var(--ease-out) 0.7s backwards;
   }
 
+  /* A barra de busca fica sempre por cima do brilho (que vaza um pouco pra
+     baixo do título): sem isso ela mudava de cor no fim da animação. */
+  .redesign .catalog-toolbar {
+    position: relative;
+    z-index: 2;
+  }
   /* Brilho roxo respirando atrás do título. */
   .redesign .catalog-intro {
     position: relative;

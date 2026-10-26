@@ -5,7 +5,9 @@
 // navegador. Pra upload direto do navegador (capturas de tela), veja
 // lib/supabaseBrowser.ts, que usa uma chave bem mais limitada.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import sharp from 'sharp';
 import { IMAGES_BUCKET } from './supabaseImagesConfig';
+import { IMAGE_VARIANT_WIDTHS, variantPath } from './imageVariants';
 
 // Criado só na primeira chamada (mesmo padrão do getSql() em lib/db.ts),
 // pra não quebrar em algum ambiente que importe este arquivo sem nunca usar
@@ -48,7 +50,29 @@ export async function uploadImageBuffer(
   if (error) {
     throw new Error(`Falha ao enviar imagem pro Supabase: ${error.message}`);
   }
+  await uploadImageVariants(path, body);
   return getPublicUrl(path);
+}
+
+// Sobe as versões menores da imagem (ver lib/imageVariants.ts), usadas nos
+// cards e banners. Se falhar, o site continua funcionando com a original —
+// por isso o erro só vira um log.
+export async function uploadImageVariants(path: string, body: Buffer, upsert = false): Promise<void> {
+  try {
+    // Gera todas as larguras mesmo se a original for menor (sem esticar),
+    // pra o srcset nunca apontar pra um arquivo que não existe.
+    await Promise.all(
+      IMAGE_VARIANT_WIDTHS.map(async (w) => {
+        const variant = await sharp(body).resize({ width: w, withoutEnlargement: true }).webp({ quality: 74 }).toBuffer();
+        const { error } = await getAdminClient()
+          .storage.from(IMAGES_BUCKET)
+          .upload(variantPath(path, w), variant, { contentType: 'image/webp', upsert });
+        if (error) throw new Error(error.message);
+      })
+    );
+  } catch (err) {
+    console.error('[images] Falha ao gerar versões menores de', path, err);
+  }
 }
 
 // Apaga uma imagem a partir da URL pública dela (é assim que a imagem fica
@@ -58,7 +82,9 @@ export async function uploadImageBuffer(
 export async function deleteImageByUrl(url: string): Promise<void> {
   const path = extractPathFromPublicUrl(url);
   if (!path) return;
-  await getAdminClient().storage.from(IMAGES_BUCKET).remove([path]);
+  await getAdminClient()
+    .storage.from(IMAGES_BUCKET)
+    .remove([path, ...IMAGE_VARIANT_WIDTHS.map((w) => variantPath(path, w))]);
 }
 
 function extractPathFromPublicUrl(url: string): string | null {

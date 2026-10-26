@@ -21,6 +21,7 @@ import AccountModal from './AccountModal';
 import BulkPurchaseModal from './BulkPurchaseModal';
 import { useDesignVariant } from './DesignVariant';
 import { scrollToResults } from './scrollToResults';
+import { fallbackToOriginal, IMAGE_SIZES, imageSrcSet } from '@/lib/imageVariants';
 
 export type Item = {
   id: number;
@@ -752,7 +753,13 @@ export default function CatalogClient({
       {reviewsBannerUrl && (
         <div className="reviews-banner">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={reviewsBannerUrl} alt="" />
+          <img
+            src={reviewsBannerUrl}
+            srcSet={imageSrcSet(reviewsBannerUrl, 1600)}
+            sizes="(max-width: 640px) 68vw, (max-width: 1240px) 100vw, 1200px"
+            onError={fallbackToOriginal}
+            alt=""
+          />
         </div>
       )}
 
@@ -1040,6 +1047,9 @@ function GameCard({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={item.imageUrl}
+            srcSet={imageSrcSet(item.imageUrl)}
+            sizes={IMAGE_SIZES.card}
+            onError={fallbackToOriginal}
             alt={item.name}
             loading="lazy"
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}

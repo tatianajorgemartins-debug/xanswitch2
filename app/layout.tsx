@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { preconnect } from 'react-dom';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -7,6 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // As capas vêm do Supabase Storage: abrir a conexão logo no começo
+  // economiza um vaivém de rede antes da primeira imagem.
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL) preconnect(process.env.NEXT_PUBLIC_SUPABASE_URL);
   return (
     // suppressHydrationWarning: o script do modo claro/escuro (ver Theme.tsx)
     // coloca data-theme no <html> antes do React carregar.

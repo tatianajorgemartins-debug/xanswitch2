@@ -1,5 +1,6 @@
 import { getContrastColor } from '@/lib/color';
 import type { Item } from './CatalogClient';
+import { fallbackToOriginal, IMAGE_SIZES, imageSrcSet } from '@/lib/imageVariants';
 
 export default function PromoBanner({
   item,
@@ -25,7 +26,15 @@ export default function PromoBanner({
     <button type="button" className={`promo-banner promo-banner-${size}`} onClick={onClick}>
       {bannerImage && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={bannerImage} alt={item.name} loading="lazy" className="promo-banner-image" />
+        <img
+          src={bannerImage}
+          srcSet={imageSrcSet(bannerImage, item.bannerImageUrl ? 1400 : 900)}
+          sizes={IMAGE_SIZES.banner}
+          onError={fallbackToOriginal}
+          alt={item.name}
+          loading="lazy"
+          className="promo-banner-image"
+        />
       )}
       <div className="promo-banner-overlay" />
       <div className="promo-banner-content">

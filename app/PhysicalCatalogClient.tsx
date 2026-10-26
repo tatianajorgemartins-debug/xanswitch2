@@ -12,6 +12,7 @@ import SiteHeader from './SiteHeader';
 import { useDesignVariant } from './DesignVariant';
 import { scrollToResults } from './scrollToResults';
 import type { PhysicalItem } from '@/lib/physicalCatalogData';
+import { fallbackToOriginal, IMAGE_SIZES, imageSrcSet } from '@/lib/imageVariants';
 
 export default function PhysicalCatalogClient({
   items,
@@ -121,7 +122,13 @@ export default function PhysicalCatalogClient({
         {isRedesign && <h1 className="visually-hidden">Colecionáveis e games físicos da Beedle Games</h1>}
         {bannerUrl && (
           <div className="physical-catalog-banner">
-            <img src={bannerUrl} alt="Loja parceira" />
+            <img
+              src={bannerUrl}
+              srcSet={imageSrcSet(bannerUrl, 1600)}
+              sizes="(max-width: 640px) 68vw, (max-width: 1240px) 100vw, 1200px"
+              onError={fallbackToOriginal}
+              alt="Loja parceira"
+            />
           </div>
         )}
 
@@ -285,6 +292,9 @@ function PhysicalProductCard({ item, onSelect }: { item: PhysicalItem; onSelect:
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={item.imageUrl}
+            srcSet={imageSrcSet(item.imageUrl)}
+            sizes={IMAGE_SIZES.card}
+            onError={fallbackToOriginal}
             alt={item.name}
             loading="lazy"
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
@@ -342,7 +352,7 @@ function PhysicalProductModal({ item, onClose }: { item: PhysicalItem; onClose: 
           <div className="cover-frame" style={{ marginBottom: 16 }}>
             {item.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={item.imageUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              <img src={item.imageUrl} srcSet={imageSrcSet(item.imageUrl)} sizes={IMAGE_SIZES.modalCover} onError={fallbackToOriginal} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
             ) : (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-dim)' }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" width="22%">

@@ -15,6 +15,7 @@ import { generatePixPayload, type PixPayload } from '@/lib/pix';
 import { confirmBulkOrderAction } from './orderActions';
 import { confirmWithTimeout } from '@/lib/confirmWithTimeout';
 import { formatPriceBR } from '@/lib/whatsapp';
+import { fallbackToOriginal, IMAGE_SIZES, imageSrcSet } from '@/lib/imageVariants';
 
 type Step = 1 | 2 | 3;
 
@@ -111,7 +112,7 @@ export default function BulkPurchaseModal({
                     <span className="wishlist-row-cover">
                       {item.imageUrl && (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={item.imageUrl} alt="" loading="lazy" />
+                        <img src={item.imageUrl} srcSet={imageSrcSet(item.imageUrl)} sizes={IMAGE_SIZES.thumb} onError={fallbackToOriginal} alt="" loading="lazy" />
                       )}
                     </span>
                     <span className="wishlist-row-info">
