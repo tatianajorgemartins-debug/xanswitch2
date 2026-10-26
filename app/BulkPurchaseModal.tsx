@@ -13,6 +13,7 @@ import { StepChecklistAndEmail, ReservationTimer, RegionTutorial, ReferralSource
 import { CollectibleCard, DownloadCardButton } from './CollectibleCard';
 import { generatePixPayload, type PixPayload } from '@/lib/pix';
 import { confirmBulkOrderAction } from './orderActions';
+import { confirmWithTimeout } from '@/lib/confirmWithTimeout';
 import { formatPriceBR } from '@/lib/whatsapp';
 
 type Step = 1 | 2 | 3;
@@ -199,11 +200,13 @@ function BulkStepPayment({
   async function handleConfirm() {
     setConfirming(true);
     setConfirmError(null);
-    const result = await confirmBulkOrderAction(
-      items.map((it) => ({ id: it.id, name: it.name, price: it.price })),
-      total,
-      email,
-      referralSource
+    const result = await confirmWithTimeout(() =>
+      confirmBulkOrderAction(
+        items.map((it) => ({ id: it.id, name: it.name, price: it.price })),
+        total,
+        email,
+        referralSource
+      )
     );
     if (result.ok) {
       onConfirmed();

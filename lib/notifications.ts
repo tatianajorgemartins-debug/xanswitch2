@@ -21,6 +21,10 @@ type OrderNotification = {
   customerEmail: string;
 };
 
+// Tempo máximo de espera por cada serviço de aviso — se um deles ficar
+// travado, desiste e segue pros outros em vez de esperar indefinidamente.
+const NOTIFY_TIMEOUT_MS = 8000;
+
 function formatPriceBR(price: number): string {
   return price.toFixed(2).replace('.', ',');
 }
@@ -57,6 +61,7 @@ async function sendOrderEmail(order: OrderNotification): Promise<void> {
   // pacote deles — é só uma requisição POST comum com a chave no header.
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
+    signal: AbortSignal.timeout(NOTIFY_TIMEOUT_MS),
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json'
@@ -93,7 +98,7 @@ async function sendOrderWhatsApp(order: OrderNotification): Promise<void> {
   )}\nE-mail: ${order.customerEmail}`;
 
   const url = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encodeURIComponent(text)}&apikey=${apiKey}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(NOTIFY_TIMEOUT_MS) });
   if (!res.ok) {
     throw new Error(`CallMeBot respondeu ${res.status}`);
   }
@@ -119,6 +124,7 @@ async function sendOrderTelegram(order: OrderNotification): Promise<void> {
 
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
+    signal: AbortSignal.timeout(NOTIFY_TIMEOUT_MS),
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chat_id: chatId, text })
   });

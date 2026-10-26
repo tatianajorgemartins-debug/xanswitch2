@@ -1,6 +1,13 @@
 'use server';
 
-import { createOrder, getGameById, getAvailableDiscountCredit, markDiscountCreditUsed } from '@/lib/db';
+import { after } from 'next/server';
+import {
+  createOrder,
+  findRecentDuplicateOrder,
+  getGameById,
+  getAvailableDiscountCredit,
+  markDiscountCreditUsed
+} from '@/lib/db';
 import { notifyNewOrder } from '@/lib/notifications';
 import { isValidEmail, isValidReferralSource } from '@/lib/validation';
 import { verifyAccessToken } from '@/lib/supabaseAuthServer';
@@ -61,6 +68,12 @@ export async function confirmOrderAction(
     return { ok: false, error: 'Digite um e-mail válido.' };
   }
 
+  // Cliente apertou "confirmar" de novo depois de uma falha de conexão em
+  // que o primeiro envio já tinha registrado o pedido: não duplica.
+  if (await findRecentDuplicateOrder(trimmedEmail, gameName, 'pix')) {
+    return { ok: true };
+  }
+
   const game = await snapshotGameForOrder(gameId);
 
   let finalPrice = price;
@@ -104,11 +117,11 @@ export async function confirmOrderAction(
   // (e-mail fora do ar, CallMeBot indisponível etc.), o pedido continua
   // valendo e visível em /admin > Pedidos, então não há por que travar a
   // tela do cliente esperando ou tratando erro aqui.
-  await notifyNewOrder({
+  after(() => notifyNewOrder({
     items: [{ gameName, price: finalPrice, amazonJpUrl: game.amazonJpUrl }],
     total: finalPrice,
     customerEmail: trimmedEmail
-  });
+  }));
 
   return { ok: true };
 }
@@ -132,10 +145,18 @@ export async function confirmBulkOrderAction(
   }
   const sanitizedReferralSource = sanitizeReferralSource(referralSource);
 
+  // Reenvio depois de uma falha de conexão: só registra os jogos que ainda
+  // não entraram; se todos já entraram, não faz nada (nem avisa de novo).
+  const alreadyRegistered = await Promise.all(
+    items.map((it) => findRecentDuplicateOrder(trimmedEmail, it.name, 'pix'))
+  );
+  const pendingItems = items.filter((_, index) => !alreadyRegistered[index]);
+  if (pendingItems.length === 0) return { ok: true };
+
   const amazonJpUrls: (string | null)[] = [];
   try {
     await Promise.all(
-      items.map(async (it, index) => {
+      pendingItems.map(async (it, index) => {
         const game = await snapshotGameForOrder(it.id);
         amazonJpUrls[index] = game.amazonJpUrl;
         return createOrder({
@@ -155,11 +176,11 @@ export async function confirmBulkOrderAction(
     return { ok: false, error: 'Não foi possível registrar seu pedido agora. Tente novamente em instantes.' };
   }
 
-  await notifyNewOrder({
-    items: items.map((it, index) => ({ gameName: it.name, price: it.price, amazonJpUrl: amazonJpUrls[index] ?? null })),
-    total,
+  after(() => notifyNewOrder({
+    items: pendingItems.map((it, index) => ({ gameName: it.name, price: it.price, amazonJpUrl: amazonJpUrls[index] ?? null })),
+    total: pendingItems.reduce((sum, it) => sum + it.price, 0),
     customerEmail: trimmedEmail
-  });
+  }));
 
   return { ok: true };
 }
@@ -185,6 +206,10 @@ export async function confirmCreditOrderAction(
     return { ok: false, error: 'Digite um e-mail válido.' };
   }
 
+  if (await findRecentDuplicateOrder(trimmedEmail, gameName, 'credito')) {
+    return { ok: true };
+  }
+
   const game = await snapshotGameForOrder(gameId);
 
   try {
@@ -206,11 +231,11 @@ export async function confirmCreditOrderAction(
     return { ok: false, error: 'Não foi possível registrar seu pedido agora. Tente novamente em instantes.' };
   }
 
-  await notifyNewOrder({
+  after(() => notifyNewOrder({
     items: [{ gameName, price, amazonJpUrl: game.amazonJpUrl }],
     total: price,
     customerEmail: trimmedEmail
-  });
+  }));
 
   return { ok: true };
 }

@@ -23,6 +23,7 @@ import { isValidEmail, REFERRAL_SOURCES } from '@/lib/validation';
 import { signUp, signIn, translateAuthError, getAccessToken } from '@/lib/wishlist';
 import { CollectibleCard, DownloadCardButton } from './CollectibleCard';
 import { confirmOrderAction, confirmCreditOrderAction } from './orderActions';
+import { confirmWithTimeout } from '@/lib/confirmWithTimeout';
 import { getGameDiscountOfferAction, redeemDiscountAction, type GameDiscountOffer } from './cardActions';
 
 type Step = 1 | 2 | 3 | 4;
@@ -997,8 +998,10 @@ function StepPayment({
   async function handleConfirm() {
     setConfirming(true);
     setConfirmError(null);
-    const accessToken = applyDiscount ? await getAccessToken() : null;
-    const result = await confirmOrderAction(gameId, gameName, price, email, referralSource, applyDiscount, accessToken);
+    const result = await confirmWithTimeout(async () => {
+      const accessToken = applyDiscount ? await getAccessToken() : null;
+      return confirmOrderAction(gameId, gameName, price, email, referralSource, applyDiscount, accessToken);
+    });
     if (result.ok) {
       onConfirmed();
     } else {
@@ -1116,7 +1119,9 @@ function StepCreditPayment({
 
     setConfirming(true);
     setConfirmError(null);
-    const result = await confirmCreditOrderAction(gameId, gameName, price, email, referralSource);
+    const result = await confirmWithTimeout(() =>
+      confirmCreditOrderAction(gameId, gameName, price, email, referralSource)
+    );
     if (result.ok) {
       onConfirmed();
     } else {

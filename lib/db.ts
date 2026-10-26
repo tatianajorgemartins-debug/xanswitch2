@@ -342,6 +342,28 @@ export async function createOrder(data: {
   return rows[0] as Order;
 }
 
+// Pedido igual (mesmo e-mail, jogo e forma de pagamento) feito nos últimos
+// minutos. Usado pra não registrar o mesmo pedido duas vezes quando o
+// cliente aperta "confirmar" de novo depois de uma falha de conexão em que
+// o primeiro envio, na verdade, já tinha dado certo.
+export async function findRecentDuplicateOrder(
+  email: string,
+  gameName: string,
+  paymentMethod: string,
+  minutes = 10
+): Promise<Order | null> {
+  const rows = await getSql()`
+    SELECT * FROM orders
+    WHERE lower(customer_email) = lower(${email})
+      AND game_name = ${gameName}
+      AND payment_method = ${paymentMethod}
+      AND created_at > now() - make_interval(mins => ${minutes})
+    ORDER BY created_at DESC
+    LIMIT 1
+  `;
+  return (rows[0] as Order) ?? null;
+}
+
 export async function getRecentOrders(limit = 100): Promise<Order[]> {
   const rows = await getSql()`
     SELECT * FROM orders ORDER BY created_at DESC LIMIT ${limit}
