@@ -16,6 +16,8 @@ import { useEffect, useLayoutEffect, useRef } from 'react';
 const REVEAL_SELECTOR = [
   '.catalog-grid > *',
   '.catalog-list > *',
+  '.reviews-banner',
+  '.physical-catalog-banner',
   '.most-wanted-heading',
   '.catalog-count-row',
   '.promo-section-main',
@@ -96,7 +98,10 @@ export default function SiteMotion() {
         .map((el) => ({ el, rect: el.getBoundingClientRect() }))
         .sort((a, b) => Math.round(a.rect.top - b.rect.top) || a.rect.left - b.rect.left);
       batch = [];
-      const hold = Math.max(0, INTRO_HOLD_MS - (performance.now() - startedAt));
+      // (Só nas páginas com o título animado — nas outras não tem o que esperar.)
+      const hold = root.querySelector('.catalog-intro .motion-word')
+        ? Math.max(0, INTRO_HOLD_MS - (performance.now() - startedAt))
+        : 0;
       const step = hold > 0 ? INTRO_STAGGER_MS : STAGGER_MS;
       items.forEach(({ el }, i) => reveal(el, hold + Math.min(i, MAX_STAGGER_STEPS) * step));
     };
