@@ -39,7 +39,7 @@ export default function SiteShell({
       {/* Sem JavaScript a tela de carregamento nunca sumiria — então nem aparece. */}
       <noscript dangerouslySetInnerHTML={{ __html: '<style>.xan-loader{display:none!important}</style>' }} />
       <PageLoader />
-      {testPreview && <SiteMotion />}
+      <SiteMotion />
       {children}
     </div>
   );

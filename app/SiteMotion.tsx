@@ -4,8 +4,8 @@ import { useEffect, useRef } from 'react';
 
 // Animações do site no estilo "motion dinâmico": entradas rápidas com
 // desaceleração longa, cards em cascata, título palavra por palavra, barra
-// fina de progresso de rolagem e número do contador subindo. Por enquanto
-// só ligado na página de teste (ver SiteShell, prop testPreview).
+// fina de progresso de rolagem e número do contador subindo. Ligado em
+// todas as páginas que usam o SiteShell.
 //
 // Como funciona: este componente marca o .redesign com "motion-on" (o CSS
 // esconde os elementos que vão entrar) e, assim que a tela de carregamento

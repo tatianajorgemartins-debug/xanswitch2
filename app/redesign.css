@@ -1882,18 +1882,17 @@ html:has(.legal-page) body {
 }
 
 /* ==========================================================================
-   Animações "motion dinâmico" — POR ENQUANTO SÓ NA PÁGINA DE TESTE
-   (.is-test-preview; controladas por SiteMotion.tsx). Entradas rápidas com
+   Animações "motion dinâmico" (controladas por SiteMotion.tsx). Entradas rápidas com
    desaceleração longa, cards em cascata, título palavra por palavra com as
    palavras-chave em lavanda, brilho no logo e barra fina de rolagem.
    Quem prefere menos movimento no sistema não vê nada disso.
    ========================================================================== */
 @media (prefers-reduced-motion: no-preference) {
-  .redesign.is-test-preview {
+  .redesign {
     --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
     --motion-glow: rgba(123, 77, 245, 0.55);
   }
-  :root[data-theme='light'] .redesign.theme-enabled.is-test-preview {
+  :root[data-theme='light'] .redesign.theme-enabled {
     --motion-glow: rgba(123, 47, 240, 0.28);
   }
 
@@ -1931,7 +1930,7 @@ html:has(.legal-page) body {
   .redesign.motion-live .catalog-intro .motion-word {
     animation: motion-word 0.7s var(--ease-out) calc(var(--i) * 95ms + 120ms) both;
   }
-  .redesign.is-test-preview .catalog-intro .motion-word.is-key {
+  .redesign .catalog-intro .motion-word.is-key {
     background-image: linear-gradient(100deg, #b9a5ff 0%, #a463ff 40%, #f2ede9 50%, #c56edf 60%, #a78bfa 100%);
     background-size: 250% 100%;
     background-position: 100% 0;
@@ -1943,7 +1942,7 @@ html:has(.legal-page) body {
     animation: motion-word 0.7s var(--ease-out) calc(var(--i) * 95ms + 120ms) both,
       motion-key-sheen 1.6s var(--ease-out) 1.05s both;
   }
-  :root[data-theme='light'] .redesign.theme-enabled.is-test-preview .catalog-intro .motion-word.is-key {
+  :root[data-theme='light'] .redesign.theme-enabled .catalog-intro .motion-word.is-key {
     background-image: linear-gradient(100deg, #7b2ff0 0%, #8c48f7 40%, #c56edf 50%, #8c48f7 60%, #6a2bd9 100%);
   }
 
@@ -1961,11 +1960,11 @@ html:has(.legal-page) body {
   }
 
   /* Brilho roxo respirando atrás do título. */
-  .redesign.is-test-preview .catalog-intro {
+  .redesign .catalog-intro {
     position: relative;
     isolation: isolate;
   }
-  .redesign.is-test-preview .catalog-intro::before {
+  .redesign .catalog-intro::before {
     content: '';
     position: absolute;
     z-index: -1;
@@ -1977,7 +1976,7 @@ html:has(.legal-page) body {
     pointer-events: none;
     animation: motion-ambient 14s ease-in-out infinite alternate;
   }
-  :root[data-theme='light'] .redesign.theme-enabled.is-test-preview .catalog-intro::before {
+  :root[data-theme='light'] .redesign.theme-enabled .catalog-intro::before {
     background: radial-gradient(closest-side, rgba(164, 99, 255, 0.18), rgba(164, 99, 255, 0) 70%);
   }
 
@@ -2016,13 +2015,13 @@ html:has(.legal-page) body {
   }
 
   /* ---------- Cards: passar o mouse ---------- */
-  .redesign.is-test-preview .game-card {
+  .redesign .game-card {
     transition: transform 0.45s var(--ease-out);
   }
-  .redesign.is-test-preview .game-card .cover-frame {
+  .redesign .game-card .cover-frame {
     transition: box-shadow 0.45s var(--ease-out);
   }
-  .redesign.is-test-preview .game-card .cover-frame::after {
+  .redesign .game-card .cover-frame::after {
     content: '';
     position: absolute;
     inset: 0;
@@ -2031,33 +2030,33 @@ html:has(.legal-page) body {
     pointer-events: none;
   }
   @media (hover: hover) {
-    .redesign.is-test-preview .game-card:hover {
+    .redesign .game-card:hover {
       transform: translateY(-6px);
     }
-    .redesign.is-test-preview .game-card:hover .cover-frame {
+    .redesign .game-card:hover .cover-frame {
       box-shadow: 0 22px 44px -16px var(--motion-glow), 0 0 0 1px rgba(164, 99, 255, 0.35);
     }
-    .redesign.is-test-preview .game-card:hover .cover-frame::after {
+    .redesign .game-card:hover .cover-frame::after {
       transform: translateX(120%);
       transition: transform 0.9s var(--ease-out);
     }
   }
 
   /* ---------- Botões ---------- */
-  .redesign.is-test-preview .btn,
-  .redesign.is-test-preview .catalog-search-submit {
+  .redesign .btn,
+  .redesign .catalog-search-submit {
     transition: transform 0.18s var(--ease-out), box-shadow 0.3s var(--ease-out), background-color 0.2s ease,
       color 0.2s ease;
   }
-  .redesign.is-test-preview .btn:active,
-  .redesign.is-test-preview .catalog-search-submit:active {
+  .redesign .btn:active,
+  .redesign .catalog-search-submit:active {
     transform: scale(0.96);
   }
-  .redesign.is-test-preview .featured-franchise-btn {
+  .redesign .featured-franchise-btn {
     position: relative;
     overflow: hidden;
   }
-  .redesign.is-test-preview .featured-franchise-btn::after {
+  .redesign .featured-franchise-btn::after {
     content: '';
     position: absolute;
     inset: 0;
@@ -2068,38 +2067,38 @@ html:has(.legal-page) body {
   }
 
   /* ---------- Janela do jogo ---------- */
-  .redesign.is-test-preview .purchase-modal-overlay {
+  .redesign .purchase-modal-overlay {
     animation: motion-fade 0.3s ease both;
   }
-  .redesign.is-test-preview .purchase-modal {
+  .redesign .purchase-modal {
     animation: motion-modal 0.6s var(--ease-out) backwards;
   }
-  .redesign.is-test-preview .product-media {
+  .redesign .product-media {
     animation: motion-media 0.8s var(--ease-out) 0.08s backwards;
   }
-  .redesign.is-test-preview .product-info > * {
+  .redesign .product-info > * {
     animation: motion-rise 0.6s var(--ease-out) 0.16s backwards;
   }
-  .redesign.is-test-preview .product-info > :nth-child(2) {
+  .redesign .product-info > :nth-child(2) {
     animation-delay: 0.22s;
   }
-  .redesign.is-test-preview .product-info > :nth-child(3) {
+  .redesign .product-info > :nth-child(3) {
     animation-delay: 0.28s;
   }
-  .redesign.is-test-preview .product-info > :nth-child(4) {
+  .redesign .product-info > :nth-child(4) {
     animation-delay: 0.34s;
   }
-  .redesign.is-test-preview .product-info > :nth-child(5) {
+  .redesign .product-info > :nth-child(5) {
     animation-delay: 0.4s;
   }
-  .redesign.is-test-preview .product-info > :nth-child(n + 6) {
+  .redesign .product-info > :nth-child(n + 6) {
     animation-delay: 0.46s;
   }
-  .redesign.is-test-preview .product-price {
+  .redesign .product-price {
     animation: motion-price-glow 1.4s var(--ease-out) 0.5s backwards;
   }
   /* Trocar de etapa (pagamento, Pix...) também entra deslizando. */
-  .redesign.is-test-preview .purchase-modal-body > :not(.product-layout) {
+  .redesign .purchase-modal-body > :not(.product-layout) {
     animation: motion-rise 0.5s var(--ease-out) backwards;
   }
 
