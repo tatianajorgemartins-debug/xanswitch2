@@ -33,6 +33,33 @@ const BulkPurchaseModal = dynamic(() => import('./BulkPurchaseModal'), { ssr: fa
 // aparece, em segundo plano. Deixa a página bem mais leve pra abrir.
 const INITIAL_CARDS = 12;
 
+// Os 5 jogos com mais favoritos (vitrine "Mais desejados"). Mesma conta
+// feita no servidor em lib/catalogData.ts.
+function topWanted(items: Item[], countOf: (id: number) => number): Item[] {
+  return items
+    .map((item) => ({ item, count: countOf(item.id) }))
+    .filter((entry) => entry.count > 0)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5)
+    .map((entry) => entry.item);
+}
+
+// Baixa a capa de um card (no mesmo tamanho que o card usa) e espera
+// terminar — no máximo 3 s, pra nunca travar nada.
+function preloadCardImage(url: string | null | undefined): Promise<void> {
+  if (!url) return Promise.resolve();
+  return new Promise((resolve) => {
+    const img = new Image();
+    const done = () => resolve();
+    img.onload = done;
+    img.onerror = done;
+    setTimeout(done, 3000);
+    img.sizes = IMAGE_SIZES.card;
+    img.srcset = imageSrcSet(url) ?? '';
+    img.src = url;
+  });
+}
+
 function preloadModals() {
   return afterPageLoad(() => {
     import('./PurchaseModal');
@@ -252,7 +279,16 @@ export default function CatalogClient({
   function refreshWishlistCounts() {
     fetch('/api/wishlist-counts', { cache: 'no-store' })
       .then((res) => res.json())
-      .then((data) => setWishlistCounts(data.counts ?? {}))
+      .then(async (data) => {
+        const counts: Record<number, number> = data.counts ?? {};
+        // Se a vitrine "Mais desejados" vai mudar (entrou outro jogo), baixa
+        // a capa dele antes de trocar — senão o card novo aparecia vazio e
+        // a capa só chegava um instante depois.
+        const shown = new Set(liveMostWantedRef.current.map((item) => item.id));
+        const incoming = topWanted(items, (id) => counts[id] ?? 0).filter((item) => !shown.has(item.id));
+        await Promise.all(incoming.map((item) => preloadCardImage(item.imageUrl)));
+        setWishlistCounts(counts);
+      })
       .catch(() => {});
   }
 
@@ -365,13 +401,10 @@ export default function CatalogClient({
   // vazia por um instante ao carregar a página.
   const liveMostWantedItems = useMemo(() => {
     if (!wishlistCounts) return mostWantedItems;
-    return items
-      .map((item) => ({ item, count: wishlistCounts[item.id] ?? 0 }))
-      .filter((entry) => entry.count > 0)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5)
-      .map((entry) => entry.item);
+    return topWanted(items, (id) => wishlistCounts[id] ?? 0);
   }, [items, wishlistCounts, mostWantedItems]);
+  const liveMostWantedRef = useRef(liveMostWantedItems);
+  liveMostWantedRef.current = liveMostWantedItems;
 
   // Texto do botão de conta no cabeçalho: prioriza o @ do Instagram, depois
   // a inicial do e-mail, e só mostra "Minha conta" pra quem não está logado.

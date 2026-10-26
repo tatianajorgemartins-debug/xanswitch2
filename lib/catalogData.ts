@@ -127,7 +127,9 @@ export const loadCatalogData = cache(async (): Promise<CatalogData> => {
     .map((item) => ({ item, count: wishlistCounts.get(item.id) ?? 0 }))
     .filter((entry) => entry.count > 0)
     .sort((a, b) => b.count - a.count)
-    .slice(0, 4)
+    // Mesma quantidade que a vitrine mostra (CatalogClient.tsx) — senão o
+    // último card só aparecia depois, quando a contagem atualizada chegava.
+    .slice(0, 5)
     .map((entry) => entry.item);
 
   return {

@@ -29,6 +29,11 @@ const REVEAL_SELECTOR = [
 
 const STAGGER_MS = 55;
 const MAX_STAGGER_STEPS = 8;
+// Na abertura, o que já está na tela abaixo do título (banner, "mais
+// desejados"...) espera o título, o texto e a busca entrarem, e só então
+// entra — um por vez, de cima pra baixo — em vez de tudo junto.
+const INTRO_HOLD_MS = 900;
+const INTRO_STAGGER_MS = 110;
 const FAILSAFE_MS = 12000;
 
 // A abertura (e a cascata dos cards) só acontece na primeira página que a
@@ -71,15 +76,16 @@ export default function SiteMotion() {
     let observer: IntersectionObserver | null = null;
     let batch: HTMLElement[] = [];
     let batchFrame = 0;
+    let startedAt = 0;
 
-    const reveal = (el: HTMLElement, index: number) => {
-      el.style.setProperty('--motion-delay', `${Math.min(index, MAX_STAGGER_STEPS) * STAGGER_MS}ms`);
+    const reveal = (el: HTMLElement, delay: number) => {
+      el.style.setProperty('--motion-delay', `${delay}ms`);
       el.dataset.motion = 'in';
       pending.delete(el);
       const counter = el.querySelector<HTMLElement>('.catalog-count-number');
       if (counter) countUp(counter);
       // Depois da entrada, tira o atraso pra não atrapalhar o hover.
-      window.setTimeout(() => el.style.removeProperty('--motion-delay'), 1400);
+      window.setTimeout(() => el.style.removeProperty('--motion-delay'), delay + 2000);
     };
 
     // Junta tudo que entrou na tela no mesmo quadro e solta em cascata, de
@@ -90,7 +96,9 @@ export default function SiteMotion() {
         .map((el) => ({ el, rect: el.getBoundingClientRect() }))
         .sort((a, b) => Math.round(a.rect.top - b.rect.top) || a.rect.left - b.rect.left);
       batch = [];
-      items.forEach(({ el }, i) => reveal(el, i));
+      const hold = Math.max(0, INTRO_HOLD_MS - (performance.now() - startedAt));
+      const step = hold > 0 ? INTRO_STAGGER_MS : STAGGER_MS;
+      items.forEach(({ el }, i) => reveal(el, hold + Math.min(i, MAX_STAGGER_STEPS) * step));
     };
 
     const register = (el: HTMLElement) => {
@@ -116,6 +124,7 @@ export default function SiteMotion() {
 
     const start = () => {
       introPlayed = true;
+      startedAt = performance.now();
       root.classList.add('motion-live');
       observer = new IntersectionObserver(
         (entries) => {
@@ -131,11 +140,12 @@ export default function SiteMotion() {
       pending.forEach((el) => observer?.observe(el));
     };
 
-    // Espera a tela de carregamento sair, pra abertura acontecer à vista.
+    // Espera a tela de carregamento sumir de vez (fim da animação de saída),
+    // pra abertura do site não acontecer junto com ela.
     let loaderWatch: MutationObserver | null = null;
     if (root.querySelector('.xan-loader.is-page')) {
       loaderWatch = new MutationObserver(() => {
-        if (!root.querySelector('.xan-loader.is-page:not(.is-leaving)')) {
+        if (!root.querySelector('.xan-loader.is-page')) {
           loaderWatch?.disconnect();
           loaderWatch = null;
           start();
