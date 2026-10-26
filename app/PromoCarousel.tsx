@@ -75,9 +75,10 @@ export default function PromoCarousel({
       onMouseLeave={() => setPaused(false)}
     >
       <div className="promo-carousel-track" style={{ transform: `translateX(-${index * 100}%)` }}>
-        {slides.map((slide) => (
+        {slides.map((slide, i) => (
           <div className="promo-carousel-slide" key={slide.item.id}>
             <PromoBanner
+              priority={i === 0 ? (size === 'large' ? 'high' : 'eager') : undefined}
               item={slide.item}
               category={slide.category}
               ctaLabel={slide.ctaLabel}

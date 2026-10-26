@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useState, type RefObject } from 'react';
+import { useEffect, useId, useLayoutEffect, useState, type RefObject } from 'react';
 import { XAN_LOGO_INK, XAN_LOGO_JOYCON } from '@/lib/xanLogoPaths';
 import { finishCatalogSwitch, isCatalogSwitchPending } from '@/lib/catalogSwitch';
 
@@ -83,7 +83,8 @@ export function XanLoader({
 export function useLoaderPhase(active: boolean, showDelay: number, startShown = false): Phase {
   const [phase, setPhase] = useState<Phase>(startShown && active ? 'shown' : 'hidden');
 
-  useEffect(() => {
+  // useLayoutEffect: a saída começa no mesmo quadro em que fica pronto.
+  useLayoutEffect(() => {
     if (active) {
       if (phase === 'shown') return;
       const timer = setTimeout(() => setPhase('shown'), phase === 'leaving' ? 0 : showDelay);
@@ -106,11 +107,14 @@ export function useLoaderPhase(active: boolean, showDelay: number, startShown = 
 // As de loading="lazy" fora da tela ficam de fora (só baixam ao rolar).
 function pendingImages(root: ParentNode, onlyInViewport: boolean): HTMLImageElement[] {
   const height = window.innerHeight;
+  const width = window.innerWidth;
   return Array.from(root.querySelectorAll('img')).filter((img) => {
     if (img.complete) return false;
     if (!onlyInViewport) return img.loading !== 'lazy';
+    // Inclui o eixo horizontal: os slides seguintes dos carrosséis ficam
+    // fora da tela, do lado, e não precisam estar prontos pra abrir.
     const rect = img.getBoundingClientRect();
-    return rect.bottom > 0 && rect.top < height && rect.width > 0;
+    return rect.bottom > 0 && rect.top < height && rect.right > 0 && rect.left < width && rect.width > 0;
   });
 }
 
@@ -134,10 +138,20 @@ function useTaskProgress(
   const [creep, setCreep] = useState(0);
   const [done, setDone] = useState(false);
 
-  useEffect(() => {
+  // useLayoutEffect: começa a medir logo depois que a página "liga", sem
+  // esperar os outros efeitos da página rodarem antes.
+  useLayoutEffect(() => {
     if (!collect) return;
     let cancelled = false;
+    const startedAt = performance.now();
     const tasks = collect();
+    // Já estava tudo pronto: termina aqui mesmo, antes do navegador pintar
+    // o próximo quadro — sem esperar o resto da página se organizar.
+    if (tasks.length === 0 && minVisibleMs <= startedAt) {
+      setReal(1);
+      setDone(true);
+      return;
+    }
     const total = tasks.length + 1;
     let finished = 1;
     setReal(finished / total);
@@ -146,8 +160,10 @@ function useTaskProgress(
       if (cancelled) return;
       setReal(1);
       // minVisibleMs conta desde que a página começou a abrir
-      // (performance.now() zera na navegação).
-      const wait = Math.max(160, minVisibleMs - performance.now());
+      // (performance.now() zera na navegação). A barra fica um instante em
+      // 100% antes de sumir.
+      const now = performance.now();
+      const wait = Math.max(tasks.length > 0 ? 160 : 0, minVisibleMs - now);
       setTimeout(() => !cancelled && setDone(true), wait);
     };
 
@@ -177,12 +193,12 @@ function useTaskProgress(
 // coisa); nas trocas de página dentro do site ela só aparece se demorar.
 let firstPageLoadDone = false;
 
+// Só o que aparece na tela: as imagens visíveis e as fontes. (Não espera o
+// "load" da página inteira — ele inclui coisas que baixam em segundo plano,
+// como os popups e o login, e atrasaria a abertura à toa.)
 function collectPageTasks(): Promise<void>[] {
   const tasks: Promise<void>[] = pendingImages(document, true).map(waitForImage);
-  if (document.fonts?.ready) tasks.push(document.fonts.ready.then(() => undefined));
-  if (document.readyState !== 'complete') {
-    tasks.push(new Promise((resolve) => window.addEventListener('load', () => resolve(), { once: true })));
-  }
+  if (document.fonts && document.fonts.status !== 'loaded') tasks.push(document.fonts.ready.then(() => undefined));
   return tasks;
 }
 
@@ -191,7 +207,7 @@ export function PageLoader() {
   // Troca de catálogo pelo seletor do cabeçalho: sem tela de carregamento —
   // a página anterior fica na tela até esta estar pronta (lib/catalogSwitch.ts).
   const [isCatalogSwitch] = useState(() => !isFirstLoad && isCatalogSwitchPending());
-  const { progress, done } = useTaskProgress(collectPageTasks, isCatalogSwitch ? 4500 : 8000, isFirstLoad ? 700 : 0);
+  const { progress, done } = useTaskProgress(collectPageTasks, isCatalogSwitch ? 4500 : 8000, isFirstLoad ? 350 : 0);
   const phase = useLoaderPhase(!done && !isCatalogSwitch, 200, isFirstLoad);
 
   useEffect(() => {

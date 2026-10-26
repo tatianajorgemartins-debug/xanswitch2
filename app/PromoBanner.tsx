@@ -8,7 +8,8 @@ export default function PromoBanner({
   ctaLabel,
   priceOverride,
   onClick,
-  size
+  size,
+  priority
 }: {
   item: Item;
   category: string;
@@ -16,6 +17,10 @@ export default function PromoBanner({
   priceOverride?: string;
   onClick: () => void;
   size: 'large' | 'small';
+  // Primeiro slide de cada carrossel: aparece logo na abertura do site, então
+  // começa a baixar junto com a página (em vez de esperar o navegador montar
+  // a tela, como as imagens "lazy"). 'high' = passa na frente das outras.
+  priority?: 'high' | 'eager';
 }) {
   // Usa a imagem própria do banner quando cadastrada no admin; sem ela,
   // cai de volta pra capa quadrada normal (esticada/cortada pra caber no
@@ -32,7 +37,8 @@ export default function PromoBanner({
           sizes={IMAGE_SIZES.banner}
           onError={fallbackToOriginal}
           alt={item.name}
-          loading="lazy"
+          loading={priority ? 'eager' : 'lazy'}
+          fetchPriority={priority === 'high' ? 'high' : undefined}
           className="promo-banner-image"
         />
       )}

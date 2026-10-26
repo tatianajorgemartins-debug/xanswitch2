@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import type { User } from '@supabase/supabase-js';
 import { getContrastColor } from '@/lib/color';
 import type { Platform, GameType } from '@/lib/db';
@@ -16,12 +17,29 @@ import SiteHeader from './SiteHeader';
 import PromoSection from './PromoSection';
 import ReviewsSection from './ReviewsSection';
 import ReviewForm from './ReviewForm';
-import PurchaseModal from './PurchaseModal';
-import AccountModal from './AccountModal';
-import BulkPurchaseModal from './BulkPurchaseModal';
 import { useDesignVariant } from './DesignVariant';
 import { scrollToResults } from './scrollToResults';
 import { fallbackToOriginal, IMAGE_SIZES, imageSrcSet } from '@/lib/imageVariants';
+import { afterPageLoad } from '@/lib/afterPageLoad';
+
+// Os popups só baixam depois que o catálogo já está na tela (logo em
+// seguida, em segundo plano — ver preloadModals): assim não atrasam a
+// primeira abertura do site, e quando a pessoa clica já estão prontos.
+const PurchaseModal = dynamic(() => import('./PurchaseModal'), { ssr: false });
+const AccountModal = dynamic(() => import('./AccountModal'), { ssr: false });
+const BulkPurchaseModal = dynamic(() => import('./BulkPurchaseModal'), { ssr: false });
+// Na abertura do site só os primeiros cards do catálogo vêm prontos (são os
+// únicos que dá pra ver sem rolar); o resto entra logo depois que a página
+// aparece, em segundo plano. Deixa a página bem mais leve pra abrir.
+const INITIAL_CARDS = 12;
+
+function preloadModals() {
+  return afterPageLoad(() => {
+    import('./PurchaseModal');
+    import('./AccountModal');
+    import('./BulkPurchaseModal');
+  });
+}
 
 export type Item = {
   id: number;
@@ -168,6 +186,13 @@ export default function CatalogClient({
     window.history.replaceState(null, '', '/');
   }
 
+  useEffect(preloadModals, []);
+
+  const [renderAllCards, setRenderAllCards] = useState(false);
+  useEffect(() => {
+    startTransition(() => setRenderAllCards(true));
+  }, []);
+
   // Quando a página é acessada pelo link direto de um jogo
   // (app/jogo/[id]/page.tsx), abre o modal dele sozinho ao carregar.
   useEffect(() => {
@@ -245,12 +270,21 @@ export default function CatalogClient({
 
   // Checa quem está logado assim que a página carrega, e continua escutando
   // pra qualquer mudança (login, logout, ou o clique no link mágico do
-  // e-mail confirmando o login em outra aba).
+  // e-mail confirmando o login em outra aba). Só depois que a página
+  // carregou (lib/afterPageLoad.ts): o login não precisa estar pronto pra
+  // pessoa ver o catálogo.
   useEffect(() => {
-    getCurrentUser()
-      .then(setUser)
-      .catch(() => {});
-    return onAuthChange(setUser);
+    let stopListening = () => {};
+    const cancel = afterPageLoad(() => {
+      getCurrentUser()
+        .then(setUser)
+        .catch(() => {});
+      stopListening = onAuthChange(setUser);
+    });
+    return () => {
+      cancel();
+      stopListening();
+    };
   }, []);
 
   // Sempre que alguém loga, busca a lista de desejos dela no Supabase. Ao
@@ -376,6 +410,7 @@ export default function CatalogClient({
       return true;
     });
   }, [items, query, franchiseFilter, platformFilter, typeFilter, priceMin, priceMax, saleOnly, quickFilter]);
+  const visibleItems = renderAllCards ? filtered : filtered.slice(0, INITIAL_CARDS);
 
   const activeFilterCount =
     (franchiseFilter ? 1 : 0) +
@@ -793,6 +828,7 @@ export default function CatalogClient({
                   wishlisted={wishlistIds.has(item.id)}
                   onToggleWishlist={() => toggleWishlist(item.id)}
                   rank={index < 3 ? index + 1 : undefined}
+                  eager={index < 4}
                 />
               </div>
             ))}
@@ -829,7 +865,7 @@ export default function CatalogClient({
         </div>
       ) : viewMode === 'grid' ? (
         <div className="catalog-grid">
-          {filtered.map((item) => (
+          {visibleItems.map((item) => (
             <GameCard
               key={item.id}
               item={item}
@@ -841,7 +877,7 @@ export default function CatalogClient({
         </div>
       ) : (
         <div className="catalog-list">
-          {filtered.map((item) => (
+          {visibleItems.map((item) => (
             <ListRow
               key={item.id}
               item={item}
@@ -981,7 +1017,8 @@ function GameCard({
   onSelect,
   wishlisted,
   onToggleWishlist,
-  rank
+  rank,
+  eager
 }: {
   item: Item;
   onSelect: () => void;
@@ -991,6 +1028,9 @@ function GameCard({
   // 3 primeiros cards da vitrine "Mais desejados", em nenhum outro lugar
   // do catálogo.
   rank?: number;
+  // Cards que já aparecem na abertura do site (os primeiros "mais
+  // desejados"): a capa começa a baixar junto com a página, sem esperar.
+  eager?: boolean;
 }) {
   const rankStyle = rank ? RANK_BADGE_STYLE[rank] : undefined;
   return (
@@ -1051,7 +1091,7 @@ function GameCard({
             sizes={IMAGE_SIZES.card}
             onError={fallbackToOriginal}
             alt={item.name}
-            loading="lazy"
+            loading={eager ? 'eager' : 'lazy'}
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
         ) : (
