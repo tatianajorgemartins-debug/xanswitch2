@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState, type RefObject } from 'react';
 import { XAN_LOGO_INK, XAN_LOGO_JOYCON } from '@/lib/xanLogoPaths';
+import { finishCatalogSwitch, isCatalogSwitchPending } from '@/lib/catalogSwitch';
 
 // Tela de carregamento do site: o ícone da XAN com uma linha neon verde
 // correndo em volta de cada contorno do desenho e uma barra "Carregando"
@@ -187,12 +188,17 @@ function collectPageTasks(): Promise<void>[] {
 
 export function PageLoader() {
   const [isFirstLoad] = useState(() => !firstPageLoadDone);
-  const { progress, done } = useTaskProgress(collectPageTasks, 8000, isFirstLoad ? 700 : 0);
-  const phase = useLoaderPhase(!done, 200, isFirstLoad);
+  // Troca de catálogo pelo seletor do cabeçalho: sem tela de carregamento —
+  // a página anterior fica na tela até esta estar pronta (lib/catalogSwitch.ts).
+  const [isCatalogSwitch] = useState(() => !isFirstLoad && isCatalogSwitchPending());
+  const { progress, done } = useTaskProgress(collectPageTasks, isCatalogSwitch ? 4500 : 8000, isFirstLoad ? 700 : 0);
+  const phase = useLoaderPhase(!done && !isCatalogSwitch, 200, isFirstLoad);
 
   useEffect(() => {
-    if (done) firstPageLoadDone = true;
-  }, [done]);
+    if (!done) return;
+    firstPageLoadDone = true;
+    if (isCatalogSwitch) finishCatalogSwitch();
+  }, [done, isCatalogSwitch]);
 
   return <XanLoader progress={progress} phase={phase} variant="page" />;
 }

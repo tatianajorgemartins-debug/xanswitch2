@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useLayoutEffect, useState } from 'react';
 import { useDesignVariant } from './DesignVariant';
 import { useThemeToggle } from './Theme';
+import { beginCatalogSwitch } from '@/lib/catalogSwitch';
 
 const SWITCHER_FROM_KEY = 'xan-catalog-switch-from';
 
@@ -116,11 +117,14 @@ export default function SiteHeader({
     };
   }, [activeCatalog]);
 
-  function rememberSwitchFrom(target: 'digital' | 'fisico') {
+  function rememberSwitchFrom(target: 'digital' | 'fisico', e: React.MouseEvent) {
     if (target === activeCatalog) return;
+    // Ctrl/Cmd+clique abre em outra aba: nada a fazer nesta.
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
     try {
       sessionStorage.setItem(SWITCHER_FROM_KEY, activeCatalog);
     } catch {}
+    if (isRedesign) beginCatalogSwitch();
   }
 
   const shownCatalog = isRedesign ? thumbAt : activeCatalog;
@@ -187,7 +191,7 @@ export default function SiteHeader({
           href="/"
           className={`catalog-switcher-option${shownCatalog === 'digital' ? ' active' : ''}`}
           aria-current={activeCatalog === 'digital'}
-          onClick={() => rememberSwitchFrom('digital')}
+          onClick={(e) => rememberSwitchFrom('digital', e)}
         >
           {isRedesign ? <GamepadIcon /> : <span aria-hidden="true">🎮</span>}
           <span className="catalog-switcher-label">Jogos digitais</span>
@@ -196,7 +200,7 @@ export default function SiteHeader({
           href="/produtos-fisicos"
           className={`catalog-switcher-option${shownCatalog === 'fisico' ? ' active' : ''}`}
           aria-current={activeCatalog === 'fisico'}
-          onClick={() => rememberSwitchFrom('fisico')}
+          onClick={(e) => rememberSwitchFrom('fisico', e)}
         >
           {isRedesign ? <BoxIcon /> : <span aria-hidden="true">📦</span>}
           <span className="catalog-switcher-label">Produtos físicos</span>

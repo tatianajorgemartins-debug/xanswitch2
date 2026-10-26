@@ -1912,11 +1912,13 @@ html:has(.legal-page) body {
   }
 
   /* ---------- Abertura (quando a tela de carregamento sai) ---------- */
+  /* Só desliza, sem mexer na opacidade: o cabeçalho tem fundo de vidro
+     (backdrop-filter), que pisca no celular se a opacidade animar. */
   .redesign.motion-on .site-header-bar {
-    opacity: 0;
+    transform: translateY(-100%);
   }
   .redesign.motion-live .site-header-bar {
-    opacity: 1;
+    transform: none;
     animation: motion-drop 0.6s var(--ease-out) backwards;
   }
   .redesign.motion-live .site-header-logo img {
@@ -2105,7 +2107,6 @@ html:has(.legal-page) body {
   /* ---------- Movimentos ---------- */
   @keyframes motion-drop {
     from {
-      opacity: 0;
       transform: translateY(-100%);
     }
   }
@@ -2229,4 +2230,79 @@ html:has(.legal-page) body {
       text-shadow: 0 0 0 rgba(78, 240, 95, 0);
     }
   }
+  /* Celular / telas de toque: as mesmas entradas, só que sem desfoque
+     (blur) e sem o zoom das capas. Animar desfoque em vários cards com
+     imagem ao mesmo tempo faz a tela do celular piscar enquanto anima. */
+  @media (hover: none), (max-width: 768px) {
+    .redesign.motion-on [data-motion='in'] .cover-frame img,
+    .redesign.motion-on [data-motion='in'] .promo-banner-image {
+      animation: none;
+    }
+    .redesign.motion-live .site-header-logo img {
+      animation: motion-fade 0.6s var(--ease-out) 0.2s backwards;
+    }
+    .redesign [data-motion] {
+      backface-visibility: hidden;
+    }
+    @keyframes motion-word {
+      from {
+        opacity: 0;
+        transform: translateY(0.35em);
+      }
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+    @keyframes motion-rise {
+      from {
+        opacity: 0;
+        transform: translateY(14px);
+      }
+    }
+    @keyframes motion-card {
+      from {
+        opacity: 0;
+        transform: translateY(22px) scale(0.95);
+      }
+    }
+    @keyframes motion-modal {
+      from {
+        opacity: 0;
+        transform: translateY(32px) scale(0.96);
+      }
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+    @keyframes motion-media {
+      from {
+        opacity: 0;
+        transform: scale(0.96);
+      }
+    }
+  }
+}
+
+/* ---------- Troca entre os catálogos (lib/catalogSwitch.ts) ----------
+   "Foto" da página anterior por cima do conteúdo (mas abaixo do cabeçalho)
+   enquanto o outro catálogo carrega; some num fade quando ele está pronto. */
+.catalog-switch-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  overflow: hidden;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 1, 1);
+}
+.catalog-switch-overlay.is-leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+.catalog-switch-overlay .redesign.is-switch-snapshot,
+.catalog-switch-overlay .redesign.is-switch-snapshot *,
+.catalog-switch-overlay .redesign.is-switch-snapshot *::before,
+.catalog-switch-overlay .redesign.is-switch-snapshot *::after {
+  animation: none !important;
+  transition: none !important;
 }

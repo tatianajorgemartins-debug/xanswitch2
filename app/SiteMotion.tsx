@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 
 // Animações do site no estilo "motion dinâmico": entradas rápidas com
 // desaceleração longa, cards em cascata, título palavra por palavra, barra
@@ -31,6 +31,11 @@ const STAGGER_MS = 55;
 const MAX_STAGGER_STEPS = 8;
 const FAILSAFE_MS = 12000;
 
+// A abertura (e a cascata dos cards) só acontece na primeira página que a
+// pessoa abre (ou ao recarregar). Trocar de catálogo depois disso mostra a
+// página direto, sem repetir as animações.
+let introPlayed = false;
+
 function countUp(el: HTMLElement) {
   const node = el.firstChild;
   if (!node || node.nodeType !== Node.TEXT_NODE) return;
@@ -53,10 +58,12 @@ function countUp(el: HTMLElement) {
 export default function SiteMotion() {
   const barRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  // useLayoutEffect: esconde o que vai entrar antes do navegador pintar,
+  // senão numa troca de página o conteúdo aparece, some e entra de novo.
+  useLayoutEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const root = barRef.current?.closest('.redesign') as HTMLElement | null;
-    if (!root) return;
+    if (!root || introPlayed) return;
 
     root.classList.add('motion-on');
     const pending = new Set<HTMLElement>();
@@ -108,6 +115,7 @@ export default function SiteMotion() {
     mutations.observe(root, { childList: true, subtree: true });
 
     const start = () => {
+      introPlayed = true;
       root.classList.add('motion-live');
       observer = new IntersectionObserver(
         (entries) => {
@@ -143,7 +151,19 @@ export default function SiteMotion() {
       pending.forEach((el) => reveal(el, 0));
     }, FAILSAFE_MS);
 
-    // Barra fina de progresso da rolagem.
+    return () => {
+      window.clearTimeout(failsafe);
+      cancelAnimationFrame(batchFrame);
+      mutations.disconnect();
+      loaderWatch?.disconnect();
+      observer?.disconnect();
+      pending.forEach((el) => delete el.dataset.motion);
+      root.classList.remove('motion-on', 'motion-live');
+    };
+  }, []);
+
+  // Barra fina de progresso da rolagem (essa vale sempre, não só na abertura).
+  useEffect(() => {
     let scrollFrame = 0;
     const updateBar = () => {
       scrollFrame = 0;
@@ -156,17 +176,9 @@ export default function SiteMotion() {
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     updateBar();
-
     return () => {
-      window.clearTimeout(failsafe);
       window.removeEventListener('scroll', onScroll);
       cancelAnimationFrame(scrollFrame);
-      cancelAnimationFrame(batchFrame);
-      mutations.disconnect();
-      loaderWatch?.disconnect();
-      observer?.disconnect();
-      pending.forEach((el) => delete el.dataset.motion);
-      root.classList.remove('motion-on', 'motion-live');
     };
   }, []);
 
