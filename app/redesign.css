@@ -1671,3 +1671,212 @@ html:has(.legal-page) body {
 .redesign .filter-sale-toggle input {
   accent-color: var(--accent-fill);
 }
+
+/* ---------- Tela de carregamento (XanLoader.tsx) ----------
+   Ícone da XAN com uma linha neon verde correndo em volta de cada contorno
+   e a barra "Carregando" embaixo. Entrada rápida com desaceleração longa;
+   saída mais rápida, com fade + desfoque. */
+.redesign .xan-loader {
+  --loader-neon: #4ef05f;
+  --loader-ink: #f2ede9;
+  --loader-joycon: #c56edf;
+  --loader-bg: var(--bg);
+  position: fixed;
+  inset: 0;
+  z-index: 400; /* acima do modal de compra (200) e do cabeçalho */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--loader-bg);
+  /* Rede de segurança: se o JavaScript nunca rodar (ou travar), a tela
+     some sozinha depois de alguns segundos em vez de prender a pessoa. */
+  animation: xan-loader-failsafe 0.3s ease 9s forwards;
+}
+.redesign .xan-loader.is-modal {
+  z-index: 250;
+  background: rgba(5, 3, 12, 0.92);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: xan-loader-fade-in 0.2s ease, xan-loader-failsafe 0.3s ease 9s forwards;
+}
+.redesign .xan-loader.is-leaving {
+  pointer-events: none;
+  animation: xan-loader-exit 0.28s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+.redesign .xan-loader-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  animation: xan-loader-enter 0.56s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.redesign .xan-loader.is-leaving .xan-loader-stack {
+  animation: xan-loader-stack-exit 0.28s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+.redesign .xan-loader-logo {
+  width: clamp(112px, 30vw, 148px);
+  height: auto;
+  overflow: visible;
+}
+.redesign .xan-loader-ink {
+  fill: var(--loader-ink);
+}
+.redesign .xan-loader-joycon {
+  fill: var(--loader-joycon);
+}
+.redesign .xan-loader-track path,
+.redesign .xan-loader-trace path {
+  fill: none;
+  stroke: var(--loader-neon);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* O contorno inteiro, bem fraquinho, por onde a linha passa. */
+.redesign .xan-loader-track path {
+  stroke-width: 0.7;
+  opacity: 0.18;
+}
+/* O pedaço de linha neon que corre em volta do desenho. */
+.redesign .xan-loader-trace path {
+  stroke-width: 2;
+  stroke-dasharray: 26 74;
+  animation: xan-loader-trace 1.7s linear infinite;
+}
+
+.redesign .xan-loader-meter {
+  width: 176px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: xan-loader-enter-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
+}
+.redesign .xan-loader-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.redesign .xan-loader-percent {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+  color: var(--loader-neon);
+}
+.redesign .xan-loader-bar {
+  position: relative;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(244, 241, 251, 0.12);
+  overflow: hidden;
+}
+.redesign .xan-loader-bar-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--loader-neon);
+  box-shadow: 0 0 10px rgba(78, 240, 95, 0.7);
+  transform-origin: left center;
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* Brilho deslizando pela barra. */
+.redesign .xan-loader-bar-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+  transform: translateX(-100%);
+  animation: xan-loader-sheen 1.3s ease-in-out infinite;
+}
+
+:root[data-theme='light'] .redesign.theme-enabled .xan-loader {
+  --loader-neon: #16b72e;
+  --loader-ink: #1d1530;
+}
+:root[data-theme='light'] .redesign.theme-enabled .xan-loader.is-modal {
+  background: rgba(246, 243, 252, 0.94);
+}
+:root[data-theme='light'] .redesign.theme-enabled .xan-loader-bar {
+  background: rgba(29, 21, 48, 0.1);
+}
+:root[data-theme='light'] .redesign.theme-enabled .xan-loader-bar-fill {
+  box-shadow: 0 0 8px rgba(22, 183, 46, 0.45);
+}
+
+@keyframes xan-loader-trace {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes xan-loader-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+    filter: blur(8px);
+  }
+}
+@keyframes xan-loader-enter-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes xan-loader-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes xan-loader-exit {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+@keyframes xan-loader-stack-exit {
+  to {
+    opacity: 0;
+    transform: scale(1.04);
+    filter: blur(6px);
+  }
+}
+@keyframes xan-loader-sheen {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes xan-loader-failsafe {
+  to {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
+
+/* Página do jogo esperando os dados: a janela fica escondida até tudo
+   chegar, e entra com a animação normal quando aparece. */
+.redesign .purchase-modal-overlay.is-content-loading {
+  background: transparent;
+}
+.redesign .purchase-modal-overlay.is-content-loading > .purchase-modal {
+  visibility: hidden;
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .redesign .xan-loader-stack,
+  .redesign .xan-loader-meter,
+  .redesign .xan-loader.is-leaving .xan-loader-stack {
+    animation: none;
+  }
+  .redesign .xan-loader-trace path {
+    animation-duration: 4s;
+  }
+  .redesign .xan-loader-bar-fill::after {
+    animation: none;
+  }
+}

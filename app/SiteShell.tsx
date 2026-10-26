@@ -1,6 +1,7 @@
 import { Archivo } from 'next/font/google';
 import { DesignVariantProvider, type DesignVariant } from './DesignVariant';
 import { ThemeProvider, THEME_INIT_SCRIPT } from './Theme';
+import { PageLoader } from './XanLoader';
 import './redesign.css';
 
 const archivo = Archivo({
@@ -15,7 +16,8 @@ const archivo = Archivo({
 // variant="current" devolve o visual antigo — usado só pela página de
 // teste (app/admin/teste), pra comparar. themeToggle liga o botão de modo
 // claro/escuro. testPreview marca a página de teste (.is-test-preview), pra
-// experimentar mudanças de CSS só lá antes de levar pro site.
+// experimentar mudanças de CSS só lá antes de levar pro site. A tela de
+// carregamento (PageLoader) cobre a página até ela terminar de carregar.
 export default function SiteShell({
   variant = 'redesign',
   themeToggle = true,
@@ -33,6 +35,9 @@ export default function SiteShell({
 
   const shell = (
     <div className={`redesign ${archivo.variable}${themeToggle ? ' theme-enabled' : ''}${testPreview ? ' is-test-preview' : ''}`}>
+      {/* Sem JavaScript a tela de carregamento nunca sumiria — então nem aparece. */}
+      <noscript dangerouslySetInnerHTML={{ __html: '<style>.xan-loader{display:none!important}</style>' }} />
+      <PageLoader />
       {children}
     </div>
   );

@@ -24,6 +24,7 @@ import { signUp, signIn, translateAuthError, getAccessToken } from '@/lib/wishli
 import { CollectibleCard, DownloadCardButton } from './CollectibleCard';
 import { confirmOrderAction, confirmCreditOrderAction } from './orderActions';
 import { confirmWithTimeout } from '@/lib/confirmWithTimeout';
+import { XanLoader, useContentLoader } from './XanLoader';
 import { getGameDiscountOfferAction, redeemDiscountAction, type GameDiscountOffer } from './cardActions';
 
 type Step = 1 | 2 | 3 | 4;
@@ -96,6 +97,11 @@ export default function PurchaseModal({
   // propósito em StrictMode, só pra achar bugs — refs não são resetadas
   // nesse processo, então essa trava funciona certinho).
   const startedRef = useRef(false);
+
+  // A página do jogo só aparece quando os pontos/desconto e a capa já
+  // chegaram — até lá fica a tela de carregamento (no máximo uns segundos).
+  const modalRef = useRef<HTMLDivElement>(null);
+  const content = useContentLoader(modalRef, discountResolved);
 
   // Fecha o modal com a tecla Esc, como qualquer modal "de verdade" do
   // navegador — mas se a lightbox de capturas de tela estiver aberta, o
@@ -216,8 +222,10 @@ export default function PurchaseModal({
     // Clicar no fundo escurecido fecha o modal; clicar dentro da caixa não
     // (por isso o stopPropagation lá dentro) — é o comportamento padrão que
     // qualquer usuário já espera de um modal.
-    <div className="purchase-modal-overlay" onClick={onClose}>
+    <div className={`purchase-modal-overlay${content.ready ? '' : ' is-content-loading'}`} onClick={onClose}>
+      <XanLoader progress={content.progress} phase={content.phase} variant="modal" />
       <div
+        ref={modalRef}
         className={`purchase-modal${step === 1 ? ' is-product-step' : ''}`}
         role="dialog"
         aria-modal="true"
