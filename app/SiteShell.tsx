@@ -2,6 +2,7 @@ import { Archivo } from 'next/font/google';
 import { DesignVariantProvider, type DesignVariant } from './DesignVariant';
 import { ThemeProvider, THEME_INIT_SCRIPT } from './Theme';
 import { PageLoader } from './XanLoader';
+import SiteMotion from './SiteMotion';
 import './redesign.css';
 
 const archivo = Archivo({
@@ -38,6 +39,7 @@ export default function SiteShell({
       {/* Sem JavaScript a tela de carregamento nunca sumiria — então nem aparece. */}
       <noscript dangerouslySetInnerHTML={{ __html: '<style>.xan-loader{display:none!important}</style>' }} />
       <PageLoader />
+      {testPreview && <SiteMotion />}
       {children}
     </div>
   );

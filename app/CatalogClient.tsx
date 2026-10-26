@@ -73,6 +73,14 @@ type PlatformFilter = 'all' | 'switch1' | 'switch2';
 type TypeFilter = 'all' | GameType;
 type QuickFilter = 'bestseller' | 'upcoming' | null;
 
+const INTRO_TITLE_WORDS = [
+  { text: 'Jogos' },
+  { text: 'digitais' },
+  { text: 'de' },
+  { text: 'Nintendo', key: true },
+  { text: 'Switch', key: true }
+];
+
 export default function CatalogClient({
   items,
   featuredItems,
@@ -479,7 +487,18 @@ export default function CatalogClient({
       <div className="page-content" style={{ maxWidth: 1240, margin: '0 auto', paddingLeft: 20, paddingRight: 20, paddingBottom: 80 }}>
         {isRedesign && (
           <section className="catalog-intro">
-            <h1 className="catalog-intro-title">Jogos digitais de Nintendo Switch</h1>
+            {/* Uma palavra por <span> pra animação de entrada palavra por
+                palavra (ver SiteMotion.tsx); sem animação, fica igual. */}
+            <h1 className="catalog-intro-title">
+              {INTRO_TITLE_WORDS.map((word, i) => (
+                <span key={i}>
+                  {i > 0 && ' '}
+                  <span className={`motion-word${word.key ? ' is-key' : ''}`} style={{ '--i': i } as React.CSSProperties}>
+                    {word.text}
+                  </span>
+                </span>
+              ))}
+            </h1>
             <p className="catalog-intro-lead">
               Pague no Pix e receba o código do jogo. Cada compra vale um card colecionável e pontos pra trocar por
               desconto.
