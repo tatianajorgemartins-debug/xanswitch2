@@ -63,7 +63,7 @@ export async function getAllPhysicalProducts(): Promise<PhysicalProduct[]> {
   return rows as PhysicalProduct[];
 }
 
-// Só os publicados — usado no catálogo público (/produtos-fisicos).
+// Só os publicados — usado no catálogo público (/beedle-games).
 export async function getPublishedPhysicalProducts(): Promise<PhysicalProduct[]> {
   const rows = await getSql()`
     SELECT * FROM physical_products WHERE published = TRUE ORDER BY sort_name ASC

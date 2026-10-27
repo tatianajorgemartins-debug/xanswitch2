@@ -18,7 +18,7 @@
 }
 
 /* Transição entre o catálogo digital (/) e o de produtos físicos
-   (/produtos-fisicos), ao trocar pelo seletor no cabeçalho (ver
+   (/beedle-games), ao trocar pelo seletor no cabeçalho (ver
    catalog-switcher em SiteHeader.tsx e <ViewTransition> em cada
    page.tsx). Um crossfade simples — a página antiga esmaece enquanto a
    nova aparece, com um leve zoom de 1% só pra dar uma sensação de

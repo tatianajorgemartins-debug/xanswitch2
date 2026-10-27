@@ -103,7 +103,7 @@ export async function createPhysicalProductAction(
   });
 
   revalidatePath('/admin/produtos-fisicos');
-  revalidatePath('/produtos-fisicos');
+  revalidatePath('/beedle-games');
   return { error: null };
 }
 
@@ -145,7 +145,7 @@ export async function updatePhysicalProductAction(
   });
 
   revalidatePath('/admin/produtos-fisicos');
-  revalidatePath('/produtos-fisicos');
+  revalidatePath('/beedle-games');
   return { error: null };
 }
 
@@ -157,14 +157,14 @@ export async function deletePhysicalProductAction(id: number): Promise<void> {
   }
   await deletePhysicalProduct(id);
   revalidatePath('/admin/produtos-fisicos');
-  revalidatePath('/produtos-fisicos');
+  revalidatePath('/beedle-games');
 }
 
 export async function setPhysicalProductPublishedAction(id: number, published: boolean): Promise<void> {
   await requireAuth();
   await setPhysicalProductPublished(id, published);
   revalidatePath('/admin/produtos-fisicos');
-  revalidatePath('/produtos-fisicos');
+  revalidatePath('/beedle-games');
 }
 
 // Banner da loja parceira (ex: Beedle Games), mostrado no topo do catálogo
@@ -189,7 +189,7 @@ export async function updatePhysicalBannerAction(formData: FormData): Promise<{ 
   }
 
   revalidatePath('/admin/produtos-fisicos');
-  revalidatePath('/produtos-fisicos');
+  revalidatePath('/beedle-games');
   return { error: null };
 }
 
@@ -201,5 +201,5 @@ export async function removePhysicalBannerAction(): Promise<void> {
     await deleteImageByUrl(previousUrl).catch(() => {});
   }
   revalidatePath('/admin/produtos-fisicos');
-  revalidatePath('/produtos-fisicos');
+  revalidatePath('/beedle-games');
 }

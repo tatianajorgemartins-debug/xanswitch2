@@ -197,7 +197,7 @@ export default function SiteHeader({
           <span className="catalog-switcher-label">Jogos digitais</span>
         </Link>
         <Link
-          href="/produtos-fisicos"
+          href="/beedle-games"
           className={`catalog-switcher-option${shownCatalog === 'fisico' ? ' active' : ''}`}
           aria-current={activeCatalog === 'fisico'}
           onClick={(e) => rememberSwitchFrom('fisico', e)}

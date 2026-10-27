@@ -1,8 +1,8 @@
 // Busca os dados do catálogo PÚBLICO de produtos físicos — equivalente a
 // lib/catalogData.ts, só que pro segundo catálogo. Fica num arquivo à
 // parte pelo mesmo motivo: o link direto de um produto
-// (app/produtos-fisicos/[id]/page.tsx) e a página principal desse catálogo
-// (app/produtos-fisicos/page.tsx) precisam dos mesmos dados, e o cache()
+// (app/beedle-games/[id]/page.tsx) e a página principal desse catálogo
+// (app/beedle-games/page.tsx) precisam dos mesmos dados, e o cache()
 // do React garante que o banco só é consultado uma vez por requisição.
 import { cache } from 'react';
 import { getPublishedPhysicalProducts, getPhysicalCatalogBanner, type PhysicalProduct } from './physicalProducts';

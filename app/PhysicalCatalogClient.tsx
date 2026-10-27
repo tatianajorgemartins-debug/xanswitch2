@@ -26,7 +26,7 @@ export default function PhysicalCatalogClient({
   bannerUrl: string | null;
   whatsappContactUrl: string | null;
   // Só vem preenchido quando a página é acessada pelo link direto de um
-  // produto (app/produtos-fisicos/[id]/page.tsx) — abre o popup de
+  // produto (app/beedle-games/[id]/page.tsx) — abre o popup de
   // detalhes desse produto assim que a página carrega.
   initialProductId?: number;
 }) {
@@ -69,11 +69,11 @@ export default function PhysicalCatalogClient({
 
   function openProduct(item: PhysicalItem) {
     setSelectedItem(item);
-    window.history.replaceState(null, '', `/produtos-fisicos/${item.id}`);
+    window.history.replaceState(null, '', `/beedle-games/${item.id}`);
   }
   function closeProduct() {
     setSelectedItem(null);
-    window.history.replaceState(null, '', '/produtos-fisicos');
+    window.history.replaceState(null, '', '/beedle-games');
   }
 
   useEffect(() => {

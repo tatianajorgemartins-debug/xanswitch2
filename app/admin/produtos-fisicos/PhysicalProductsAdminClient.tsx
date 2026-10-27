@@ -87,7 +87,7 @@ export default function PhysicalProductsAdminClient({
         <a href="/admin" className="btn ghost">
           🎮 Jogos digitais
         </a>
-        <a href="/produtos-fisicos" target="_blank" rel="noreferrer" className="btn ghost">
+        <a href="/beedle-games" target="_blank" rel="noreferrer" className="btn ghost">
           🔗 Ver catálogo público
         </a>
         <a href="/admin/teste" className="btn ghost">
