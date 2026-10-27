@@ -2920,8 +2920,13 @@ html:has(.legal-page) body {
   background: linear-gradient(135deg, #e2d8ff, #9068f2);
   box-shadow: 0 0 8px rgba(144, 104, 242, 0.85);
 }
+/* O octógono é um desenho (SVG) e não um recorte (clip-path): durante as
+   animações do card o navegador às vezes não aplicava o recorte e o selo
+   aparecia quadrado até passar o mouse por cima. */
 .redesign .collectible-card-seal {
-  background: linear-gradient(135deg, #a07cff, #7b2ff0);
+  clip-path: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23a07cff'/%3E%3Cstop offset='1' stop-color='%237b2ff0'/%3E%3C/linearGradient%3E%3Cpolygon points='30,0 70,0 100,30 100,70 70,100 30,100 0,70 0,30' fill='url(%23g)'/%3E%3C/svg%3E")
+    center / 100% 100% no-repeat;
   box-shadow: none;
 }
 .redesign .collectible-card-seal-number {
