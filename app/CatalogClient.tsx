@@ -1,6 +1,6 @@
 'use client';
 
-import { startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { User } from '@supabase/supabase-js';
 import { getContrastColor } from '@/lib/color';
@@ -233,9 +233,14 @@ export default function CatalogClient({
 
   useEffect(preloadModals, []);
 
+  // Segunda etapa dos cards: atualização comum, de propósito, e não
+  // startTransition — dentro do <ViewTransition> de app/page.tsx toda
+  // transition vira um crossfade da página inteira, e esse rodava logo
+  // depois da troca vinda dos produtos físicos (a tela piscava de novo).
   const [renderAllCards, setRenderAllCards] = useState(false);
   useEffect(() => {
-    startTransition(() => setRenderAllCards(true));
+    const timer = setTimeout(() => setRenderAllCards(true), 0);
+    return () => clearTimeout(timer);
   }, []);
 
   // Quando a página é acessada pelo link direto de um jogo
