@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "br.com.xanswitch.app",
+      "sha256_cert_fingerprints": [
+        "66:E0:D3:09:56:91:01:F5:62:C4:34:A2:99:C4:2D:0E:AB:41:2D:19:6B:DD:81:57:69:4C:78:B0:85:6B:2A:CE"
+      ]
+    }
+  }
+]

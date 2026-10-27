@@ -1,10 +1,15 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { preconnect } from 'react-dom';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: 'XAN Switch — Catálogo',
   description: 'Catálogo de jogos digitais para Nintendo Switch — XAN Switch'
+};
+
+// Cor da barra de status do celular (e do app instalado) — o fundo escuro do site.
+export const viewport: Viewport = {
+  themeColor: '#0a0716'
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
