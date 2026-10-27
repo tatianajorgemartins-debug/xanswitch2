@@ -1160,7 +1160,6 @@
    pra ler); o dourado continua nos botões e selos com fundo próprio. */
 :root[data-theme='light'] .redesign.theme-enabled .purchase-card-teaser strong,
 :root[data-theme='light'] .redesign.theme-enabled .purchase-discount-banner strong,
-:root[data-theme='light'] .redesign.theme-enabled .account-points-value,
 :root[data-theme='light'] .redesign.theme-enabled .account-collection-toggle-chevron {
   color: var(--accent);
 }
@@ -2412,4 +2411,623 @@ html:has(.legal-page) body {
 .catalog-switch-overlay .redesign.is-switch-snapshot *::after {
   animation: none !important;
   transition: none !important;
+}
+
+/* ---------- Minha conta (AccountModal.tsx) ----------
+   Mesma linguagem do resto do site: superfícies planas, pílulas, rótulos
+   pequenos em caixa alta espaçada e roxo só no que é ação ou destaque. */
+.redesign .account-modal {
+  background: var(--surface);
+  border: 0;
+  border-radius: 12px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+}
+.redesign .account-modal,
+.redesign .account-cards-row {
+  scrollbar-color: var(--surface-3) transparent;
+}
+.redesign .account-modal::-webkit-scrollbar-track,
+.redesign .account-cards-row::-webkit-scrollbar-track {
+  background: transparent;
+}
+.redesign .account-modal::-webkit-scrollbar-thumb,
+.redesign .account-cards-row::-webkit-scrollbar-thumb,
+.redesign .account-modal::-webkit-scrollbar-thumb:hover,
+.redesign .account-cards-row::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-3);
+  border-color: var(--surface);
+}
+
+.redesign .account-section-label,
+.redesign .account-profile-sub,
+.redesign .account-points-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.redesign .account-section-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.redesign .account-section-label span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 12px;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+.redesign .account-section-label em {
+  font-style: normal;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 0.75;
+}
+.redesign .account-section-header {
+  margin-bottom: 10px;
+}
+
+/* Perfil */
+.redesign .account-profile-header {
+  gap: 14px;
+  padding-bottom: 0;
+  margin-bottom: 20px;
+  border-bottom: 0;
+}
+.redesign .account-avatar {
+  width: 50px;
+  height: 50px;
+  background: var(--accent-fill);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  box-shadow: 0 0 0 4px rgba(123, 47, 240, 0.2), 0 0 28px rgba(123, 77, 245, 0.45);
+}
+.redesign .account-profile-sub {
+  margin-bottom: 4px;
+}
+.redesign .account-profile-email {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* Botão da coleção */
+.redesign .account-collection-toggle {
+  gap: 14px;
+  padding: 12px 16px 12px 12px;
+  margin-bottom: 14px;
+  background: var(--surface-2);
+  border: 0;
+  border-radius: 12px;
+  box-shadow: none;
+}
+.redesign .account-collection-toggle:hover {
+  background: var(--surface-3);
+  box-shadow: none;
+  transform: none;
+}
+.redesign .account-collection-toggle.is-open {
+  box-shadow: none;
+}
+.redesign .account-collection-toggle-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: var(--accent-fill);
+  color: #ffffff;
+  box-shadow: 0 0 26px rgba(123, 77, 245, 0.5);
+}
+.redesign .account-collection-toggle-text strong {
+  font-size: 15px;
+  font-weight: 700;
+}
+.redesign .account-collection-toggle-text span {
+  font-size: 13px;
+  color: var(--muted);
+}
+.redesign .account-collection-toggle-chevron {
+  color: var(--muted);
+}
+.redesign .account-collection {
+  margin-bottom: 22px;
+}
+
+/* Pontos: número grande + barra até o próximo desconto */
+.redesign .account-points-summary {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 14px 12px;
+  padding: 18px;
+  margin-bottom: 20px;
+  border: 0;
+  border-radius: 12px;
+  background: radial-gradient(90% 140% at 0% 0%, rgba(123, 77, 245, 0.24), transparent 60%), var(--bg);
+}
+.redesign .account-points-label {
+  margin-bottom: 6px;
+  text-align: left;
+}
+.redesign .account-points-value {
+  margin: 0;
+  text-align: left;
+  font-size: 44px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ink);
+  text-shadow: none;
+  font-variant-numeric: tabular-nums;
+}
+.redesign .account-points-value span {
+  margin-left: 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.redesign .account-points-pending {
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.redesign .account-points-progress {
+  grid-column: 1 / -1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.redesign .account-points-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7b2ff0, #a463ff);
+  box-shadow: 0 0 14px rgba(164, 99, 255, 0.7);
+  transform-origin: left center;
+}
+.redesign .account-points-goal {
+  grid-column: 1 / -1;
+  margin: -4px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.redesign .account-points-goal strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* Fileira de cards */
+.redesign .account-cards-row {
+  gap: 14px;
+  padding: 14px 2px;
+  margin: 0 -2px;
+  scroll-snap-type: x mandatory;
+}
+.redesign .account-card-item {
+  flex: none;
+  width: 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scroll-snap-align: start;
+}
+.redesign .account-cards-row .collectible-card {
+  width: 100%;
+}
+.redesign .account-card-skeleton {
+  flex: none;
+  width: 150px;
+  aspect-ratio: 3 / 5;
+  border-radius: 16px;
+  background: linear-gradient(100deg, var(--surface-2) 30%, var(--surface-3) 50%, var(--surface-2) 70%) 0 0 / 300% 100%;
+  animation: account-skeleton 1.4s linear infinite;
+}
+@keyframes account-skeleton {
+  to {
+    background-position: -150% 0;
+  }
+}
+.redesign .btn.card-download-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.redesign .btn.card-download-btn.is-compact {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 12px;
+  font-size: 13px;
+  background: var(--surface-2);
+}
+.redesign .btn.card-download-btn.is-compact:hover {
+  background: var(--surface-3);
+}
+
+/* Instagram */
+.redesign .account-instagram-field {
+  margin-bottom: 26px;
+}
+.redesign .account-instagram-field > label {
+  margin-bottom: 10px;
+}
+.redesign .account-instagram-row {
+  gap: 10px;
+  padding: 0 4px 0 16px;
+  background: var(--bg);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1.5px transparent;
+  transition: box-shadow 0.2s ease;
+}
+.redesign .account-instagram-row:focus-within {
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+.redesign .account-instagram-prefix {
+  color: var(--muted);
+}
+.redesign .account-instagram-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 16px;
+  color: var(--ink);
+  outline: none;
+}
+.redesign .account-instagram-row .btn {
+  min-height: 40px;
+  background: var(--surface-2);
+}
+.redesign .account-instagram-row .btn:hover {
+  background: var(--surface-3);
+}
+
+/* Lista de desejos */
+.redesign .account-select-all,
+.redesign .account-show-all-wishlist {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.redesign .account-select-all:hover,
+.redesign .account-show-all-wishlist:hover {
+  color: var(--ink);
+}
+.redesign .account-wishlist-hint {
+  margin: -2px 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.redesign .account-wishlist-empty {
+  background: var(--bg);
+  border: 0;
+  border-radius: 12px;
+  padding: 22px 18px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.redesign .wishlist-list {
+  gap: 4px;
+}
+.redesign .wishlist-row-main {
+  padding: 8px;
+  border-radius: 10px;
+}
+.redesign .wishlist-row-main:hover,
+.redesign .wishlist-row.is-selected .wishlist-row-main:hover {
+  background: var(--surface-2);
+}
+.redesign .wishlist-row.is-selected .wishlist-row-main {
+  background: transparent;
+}
+.redesign .wishlist-row-checkbox {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent-fill);
+}
+.redesign .wishlist-row-cover {
+  width: 48px;
+  height: 48px;
+  background: var(--surface-2);
+}
+.redesign .wishlist-row-name {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+.redesign .wishlist-row-price {
+  font-size: 13px;
+  color: var(--price);
+  font-variant-numeric: tabular-nums;
+}
+.redesign .account-bulk-bar {
+  padding: 6px 6px 6px 18px;
+  background: var(--bg);
+  border: 0;
+  border-radius: 999px;
+}
+.redesign .account-bulk-total {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.redesign .account-bulk-bar .btn {
+  min-height: 42px;
+}
+@media (max-width: 400px) {
+  .redesign .account-bulk-bar {
+    padding: 12px;
+    border-radius: 16px;
+  }
+}
+@media (max-width: 480px) {
+  .redesign .account-card-item,
+  .redesign .account-card-skeleton {
+    width: 138px;
+  }
+}
+
+/* ---------- Card colecionável (CollectibleCard.tsx) ----------
+   Roxo e lavanda com brilho, na paleta do site (o dourado fica só pra
+   promoção). Cores fixas: o card é um "objeto" e fica escuro igual no
+   modo claro. O PNG de download (lib/cardCanvas.ts) segue o mesmo visual. */
+.redesign .collectible-card-frame {
+  gap: 8px;
+  padding: 16px 14px 14px;
+  border: 0;
+  border-radius: 20px;
+  background: radial-gradient(120% 55% at 50% 0%, rgba(144, 104, 242, 0.3), transparent 62%),
+    linear-gradient(165deg, #1f1540 0%, #120c26 55%, #0c0819 100%);
+  box-shadow: inset 0 0 0 1.5px rgba(185, 165, 255, 0.55), 0 0 40px rgba(123, 77, 245, 0.35),
+    0 18px 40px rgba(0, 0, 0, 0.45);
+}
+.redesign .is-compact .collectible-card-frame {
+  gap: 6px;
+  padding: 10px 9px 9px;
+  border-radius: 16px;
+  box-shadow: inset 0 0 0 1.5px rgba(185, 165, 255, 0.5), 0 0 26px rgba(123, 77, 245, 0.3),
+    0 10px 24px rgba(0, 0, 0, 0.4);
+}
+.redesign .collectible-card-frame::after {
+  inset: 7px;
+  border-radius: 14px;
+  border: 1px solid rgba(185, 165, 255, 0.16);
+  box-shadow: none;
+}
+.redesign .is-compact .collectible-card-frame::after {
+  inset: 5px;
+  border-radius: 11px;
+}
+.redesign .collectible-card-corner {
+  display: none;
+}
+/* Reflexo que atravessa o card ao passar o mouse. */
+.redesign .collectible-card-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.16) 50%, transparent 65%);
+  transform: translateX(-120%);
+}
+@media (hover: hover) {
+  .redesign .collectible-card-frame::before {
+    transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .redesign .collectible-card:hover .collectible-card-frame::before {
+    transform: translateX(120%);
+  }
+}
+.redesign .collectible-card-logo {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: #ffffff;
+}
+.redesign .collectible-card-logo span {
+  color: #b9a5ff;
+  text-shadow: none;
+}
+.redesign .is-compact .collectible-card-logo {
+  font-size: 7px;
+}
+.redesign .collectible-card-top-gem {
+  background: #9068f2;
+  box-shadow: 0 0 10px rgba(144, 104, 242, 0.9);
+}
+.redesign .collectible-card-banner {
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #7b4df5, #9068f2);
+  box-shadow: 0 0 22px rgba(123, 77, 245, 0.45);
+}
+.redesign .collectible-card-banner span {
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #ffffff;
+}
+/* Sempre com altura de duas linhas: nomes curtos e longos deixam os cards
+   da coleção do mesmo tamanho, lado a lado. */
+.redesign .is-compact .collectible-card-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 5px 6px;
+  border-radius: 7px;
+}
+.redesign .is-compact .collectible-card-banner span {
+  font-size: 7.5px;
+}
+.redesign .collectible-card-image {
+  border: 0;
+  border-radius: 12px;
+  background: #0c0819;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.redesign .is-compact .collectible-card-image {
+  border-radius: 9px;
+}
+.redesign .collectible-card-image-fallback {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: #8e86b0;
+}
+.redesign .collectible-card-footer-left p,
+.redesign .collectible-card-base {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  line-height: 1.35;
+  color: #8e86b0;
+}
+.redesign .is-compact .collectible-card-footer-left p,
+.redesign .is-compact .collectible-card-base {
+  font-size: 6px;
+}
+.redesign .collectible-gem {
+  background: rgba(185, 165, 255, 0.16);
+}
+.redesign .collectible-gem.is-filled {
+  background: linear-gradient(135deg, #e2d8ff, #9068f2);
+  box-shadow: 0 0 8px rgba(144, 104, 242, 0.85);
+}
+.redesign .collectible-card-seal {
+  background: linear-gradient(135deg, #a07cff, #7b2ff0);
+  box-shadow: none;
+}
+.redesign .collectible-card-seal-number {
+  font-size: 22px;
+  font-weight: 800;
+  color: #ffffff;
+}
+.redesign .collectible-card-seal-label {
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.85);
+}
+.redesign .is-compact .collectible-card-seal-number {
+  font-size: 13px;
+}
+.redesign .is-compact .collectible-card-seal-label {
+  font-size: 4.5px;
+}
+/* "Pendente": pílula em cima da borda do card, no lugar da fita torta. */
+.redesign .collectible-card-pending-ribbon {
+  top: -10px;
+  right: auto;
+  left: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #1c1338;
+  box-shadow: inset 0 0 0 1px rgba(185, 165, 255, 0.45), 0 4px 12px rgba(0, 0, 0, 0.4);
+  color: #e2d8ff;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+.redesign .collectible-card.is-pending .collectible-card-frame {
+  filter: saturate(0.7) brightness(0.92);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .redesign .account-modal {
+    animation: account-modal-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+  /* Cada bloco entra logo depois do anterior, de cima pra baixo. */
+  .redesign .account-modal .purchase-modal-body > * {
+    animation: account-rise 0.55s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+  .redesign .account-modal .purchase-modal-body > :nth-child(2) {
+    animation-delay: 0.07s;
+  }
+  .redesign .account-modal .purchase-modal-body > :nth-child(3) {
+    animation-delay: 0.14s;
+  }
+  .redesign .account-modal .purchase-modal-body > :nth-child(4) {
+    animation-delay: 0.21s;
+  }
+  .redesign .account-modal .purchase-modal-body > :nth-child(n + 5) {
+    animation-delay: 0.28s;
+  }
+  .redesign .account-collection-toggle-chevron {
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .redesign .account-collection > * {
+    animation: account-rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+  .redesign .account-points-progress span {
+    animation: account-fill 1.1s cubic-bezier(0.16, 1, 0.3, 1) 0.25s backwards;
+  }
+  .redesign .account-card-item {
+    animation: account-card 0.6s cubic-bezier(0.16, 1, 0.3, 1) calc(var(--i, 0) * 90ms + 120ms) backwards;
+  }
+  /* Revelação do card na compra: sobe e encaixa, sem o quique antigo. */
+  .redesign .collectible-card:not(.is-compact) .collectible-card-frame {
+    animation: account-card-reveal 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes account-modal-in {
+    from {
+      opacity: 0;
+      transform: translateY(28px) scale(0.96);
+    }
+  }
+  @keyframes account-rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+  }
+  @keyframes account-fill {
+    from {
+      transform: scaleX(0);
+    }
+  }
+  @keyframes account-card {
+    from {
+      opacity: 0;
+      transform: translateY(22px) scale(0.92);
+    }
+  }
+  @keyframes account-card-reveal {
+    from {
+      opacity: 0;
+      transform: perspective(900px) translateY(40px) rotateX(16deg) scale(0.9);
+    }
+  }
 }

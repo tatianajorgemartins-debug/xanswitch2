@@ -36,11 +36,19 @@ export function CollectibleCard({
   pending?: boolean;
 }) {
   return (
-    <div className={`collectible-card${compact ? ' is-compact' : ''}`}>
+    <div className={`collectible-card${compact ? ' is-compact' : ''}${pending ? ' is-pending' : ''}`}>
       {/* Fica FORA do frame de propósito: o frame usa overflow:hidden (pra
           cortar a imagem do jogo certinho nas bordas arredondadas), o que
           cortaria essa fitinha também se ela estivesse lá dentro. */}
-      {pending && <span className="collectible-card-pending-ribbon">⏳ Pendente</span>}
+      {pending && (
+        <span className="collectible-card-pending-ribbon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" width={10} height={10} aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7v5l3 2" strokeLinecap="round" />
+          </svg>
+          Pendente
+        </span>
+      )}
       <div className="collectible-card-frame">
         <span className="collectible-card-corner tl" aria-hidden="true" />
         <span className="collectible-card-corner tr" aria-hidden="true" />
@@ -105,11 +113,14 @@ export function CollectibleCard({
 export function DownloadCardButton({
   gameName,
   imageUrl,
-  points
+  points,
+  compact
 }: {
   gameName: string;
   imageUrl: string | null;
   points: number;
+  // Botão pequeno, embaixo de cada card da coleção (AccountModal.tsx).
+  compact?: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [status, setStatus] = useState<'idle' | 'working' | 'error'>('idle');
@@ -141,8 +152,16 @@ export function DownloadCardButton({
           download, com a mesma técnica de <canvas> escondido usada em
           qualquer geração de imagem client-side. */}
       <canvas ref={canvasRef} style={{ display: 'none' }} aria-hidden="true" />
-      <button type="button" className="btn credit" onClick={handleDownload} disabled={status === 'working'}>
-        {status === 'working' ? 'Gerando imagem...' : '⬇️ Salvar card (PNG)'}
+      <button
+        type="button"
+        className={`btn card-download-btn ${compact ? 'ghost is-compact' : 'credit'}`}
+        onClick={handleDownload}
+        disabled={status === 'working'}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={16} height={16} aria-hidden="true">
+          <path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19.5h14" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        {status === 'working' ? (compact ? 'Gerando...' : 'Gerando imagem...') : compact ? 'Salvar PNG' : 'Salvar card (PNG)'}
       </button>
       {status === 'error' && (
         <p style={{ color: '#ff8a8a', fontSize: 12.5, fontWeight: 600, textAlign: 'center', margin: '8px 0 0' }}>

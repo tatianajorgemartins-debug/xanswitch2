@@ -400,6 +400,11 @@ function LoggedInView({
   const initials = user.email ? user.email.slice(0, 2).toUpperCase() : '?';
   const visibleWishlistItems = showAllWishlist ? wishlistItems : wishlistItems.slice(0, WISHLIST_PREVIEW_LIMIT);
   const hiddenWishlistCount = wishlistItems.length - visibleWishlistItems.length;
+  const discountLabel = discountAmount.toFixed(2).replace('.', ',');
+  // Barra até o próximo desconto: cheia quando já dá pra resgatar.
+  const discountReady = availableDiscountCount > 0 || confirmedPoints >= pointsPerDiscount;
+  const progressPoints = discountReady ? pointsPerDiscount : confirmedPoints;
+  const missingPoints = pointsPerDiscount - confirmedPoints;
 
   return (
     <>
@@ -408,16 +413,27 @@ function LoggedInView({
           {initials}
         </div>
         <div style={{ minWidth: 0 }}>
-          <p className="account-profile-email">{user.email}</p>
           <p className="account-profile-sub">Cliente XAN Switch</p>
+          <p className="account-profile-email">{user.email}</p>
         </div>
       </div>
 
-      <button type="button" className={`account-collection-toggle${collectionOpen ? ' is-open' : ''}`} onClick={handleToggleCollection}>
-        <span className="account-collection-toggle-icon" aria-hidden="true">🎴</span>
+      <button
+        type="button"
+        className={`account-collection-toggle${collectionOpen ? ' is-open' : ''}`}
+        onClick={handleToggleCollection}
+        aria-expanded={collectionOpen}
+      >
+        <span className="account-collection-toggle-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={20} height={20}>
+            <rect x="8" y="3" width="12" height="16" rx="2.2" />
+            <path d="M5 6.5v12A2.5 2.5 0 007.5 21H15" strokeLinecap="round" />
+            <path d="M14 8.5l1 2 2 .3-1.5 1.4.4 2-1.9-1-1.9 1 .4-2L11 10.8l2-.3z" strokeLinejoin="round" />
+          </svg>
+        </span>
         <span className="account-collection-toggle-text">
-          <strong>{collectionOpen ? 'Esconder coleção' : 'Ver coleção de cards'}</strong>
-          {!collectionOpen && <span>seus cards e pontos de fidelidade</span>}
+          <strong>Coleção de cards</strong>
+          <span>{collectionOpen ? 'toque pra esconder' : 'seus cards e pontos de fidelidade'}</span>
         </span>
         <svg
           className="account-collection-toggle-chevron"
@@ -432,64 +448,97 @@ function LoggedInView({
         </svg>
       </button>
 
-      {collectionOpen &&
-        (loadingCards ? (
-          <p style={{ fontSize: 13, color: 'var(--ink-dim)', padding: '4px 2px' }}>Carregando seus cards...</p>
-        ) : cardsError ? (
-          <p style={{ color: '#ff8a8a', fontSize: 12.5, fontWeight: 600, padding: '4px 2px' }}>{cardsError}</p>
-        ) : cards.length === 0 ? (
-          <div className="account-wishlist-empty">
-            <p style={{ fontSize: 30, margin: '0 0 6px' }}>🎴</p>
-            <p style={{ margin: 0 }}>Sua primeira compra confirmada já vem com um card de presente.</p>
-          </div>
-        ) : (
-          <>
-            <div className="account-points-summary">
-              <div>
-                <p className="account-points-value">{confirmedPoints}</p>
-                <p className="account-points-label">pontos confirmados</p>
-              </div>
-              {pendingPoints > 0 && (
-                <div>
-                  <p className="account-points-value is-pending">{pendingPoints}</p>
-                  <p className="account-points-label">pendente{pendingPoints > 1 ? 's' : ''}</p>
-                </div>
-              )}
-            </div>
-
-            {availableDiscountCount > 0 ? (
-              <p className="account-discount-available">
-                🎟️ Você tem R$ {discountAmount.toFixed(2).replace('.', ',')} de desconto pronto pra usar! Abra a
-                página de um jogo com desconto disponível pra aplicar na compra.
-              </p>
-            ) : (
-              confirmedPoints >= pointsPerDiscount && (
-                <p className="account-discount-available">
-                  🎟️ Você já tem pontos suficientes pra um desconto! Abra a página de um jogo com desconto
-                  disponível — a opção de resgatar aparece por lá.
-                </p>
-              )
-            )}
-
-            <div className="account-cards-row">
-              {cards.map((card) => (
-                <div key={card.orderId} className="account-card-item">
-                  <CollectibleCard
-                    gameName={card.gameName}
-                    imageUrl={card.imageUrl}
-                    points={card.points}
-                    pending={!card.confirmed}
-                    compact
-                  />
-                  <DownloadCardButton gameName={card.gameName} imageUrl={card.imageUrl} points={card.points} />
-                </div>
+      {collectionOpen && (
+        <div className="account-collection">
+          {loadingCards ? (
+            <div className="account-cards-row is-loading" aria-label="Carregando seus cards">
+              {[0, 1, 2].map((i) => (
+                <span key={i} className="account-card-skeleton" />
               ))}
             </div>
-          </>
-        ))}
+          ) : cardsError ? (
+            <p style={{ color: '#ff8a8a', fontSize: 12.5, fontWeight: 600, padding: '4px 2px' }}>{cardsError}</p>
+          ) : cards.length === 0 ? (
+            <div className="account-wishlist-empty">
+              <p style={{ margin: 0 }}>Sua primeira compra confirmada já vem com um card de presente.</p>
+            </div>
+          ) : (
+            <>
+              <div className="account-points-summary">
+                <div className="account-points-main">
+                  <p className="account-points-label">Pontos confirmados</p>
+                  <p className="account-points-value">
+                    {confirmedPoints}
+                    <span>pts</span>
+                  </p>
+                </div>
+                {pendingPoints > 0 && (
+                  <p className="account-points-pending">
+                    +{pendingPoints} pendente{pendingPoints > 1 ? 's' : ''}
+                  </p>
+                )}
+                <div
+                  className={`account-points-progress${discountReady ? ' is-ready' : ''}`}
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={pointsPerDiscount}
+                  aria-valuenow={progressPoints}
+                  aria-label="Pontos até o próximo desconto"
+                >
+                  <span style={{ transform: `scaleX(${progressPoints / pointsPerDiscount})` }} />
+                </div>
+                <p className="account-points-goal">
+                  {availableDiscountCount > 0 ? (
+                    <>
+                      <strong>R$ {discountLabel} de desconto pronto pra usar.</strong> Abra um jogo com desconto
+                      disponível pra aplicar na compra.
+                    </>
+                  ) : discountReady ? (
+                    <>
+                      <strong>Desconto de R$ {discountLabel} liberado.</strong> Abra um jogo com desconto disponível
+                      — a opção de resgatar aparece por lá.
+                    </>
+                  ) : (
+                    <>
+                      Faltam <strong>{missingPoints} ponto{missingPoints > 1 ? 's' : ''}</strong> pro desconto de R${' '}
+                      {discountLabel}.
+                    </>
+                  )}
+                </p>
+              </div>
+
+              <div className="account-section-header">
+                <p className="account-section-label">
+                  Seus cards <span>{cards.length}</span>
+                </p>
+              </div>
+              <div className="account-cards-row">
+                {cards.map((card, i) => (
+                  <div
+                    key={card.orderId}
+                    className="account-card-item"
+                    style={{ '--i': Math.min(i, 6) } as React.CSSProperties}
+                  >
+                    <CollectibleCard
+                      gameName={card.gameName}
+                      imageUrl={card.imageUrl}
+                      points={card.points}
+                      pending={!card.confirmed}
+                      compact
+                    />
+                    <DownloadCardButton gameName={card.gameName} imageUrl={card.imageUrl} points={card.points} compact />
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       <form onSubmit={handleSaveInstagram} className="account-instagram-field">
-        <label htmlFor="account-instagram">Seu Instagram (opcional)</label>
+        <label htmlFor="account-instagram" className="account-section-label">
+          Seu Instagram <em>opcional</em>
+        </label>
         <div className="account-instagram-row">
           <span className="account-instagram-prefix">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={15} height={15}>
@@ -517,8 +566,8 @@ function LoggedInView({
       </form>
 
       <div className="account-section-header">
-        <p className="purchase-description-label" style={{ margin: 0 }}>
-          ❤️ Lista de desejos {wishlistItems.length > 0 ? `(${wishlistItems.length})` : ''}
+        <p className="account-section-label">
+          Lista de desejos {wishlistItems.length > 0 && <span>{wishlistItems.length}</span>}
         </p>
         {wishlistItems.length > 1 && (
           <button type="button" className="account-select-all" onClick={toggleSelectAll}>
@@ -530,14 +579,13 @@ function LoggedInView({
       {wishlistItems.length > 0 && (
         <p className="account-wishlist-hint">
           A caixinha é só pra escolher o que comprar agora — pra tirar um jogo da lista de desejos,
-          clica no coração ❤️.
+          clica no coração.
         </p>
       )}
 
       {wishlistItems.length === 0 ? (
         <div className="account-wishlist-empty">
-          <p style={{ fontSize: 30, margin: '0 0 6px' }}>🤍</p>
-          <p style={{ margin: 0 }}>Ainda vazia — clica no ♡ de qualquer jogo do catálogo pra favoritar.</p>
+          <p style={{ margin: 0 }}>Ainda vazia — clica no coração de qualquer jogo do catálogo pra favoritar.</p>
         </div>
       ) : (
         <>

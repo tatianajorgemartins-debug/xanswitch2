@@ -19,17 +19,19 @@ const CANVAS_WIDTH = 750;
 // baixa, então agora ela sempre tem a mesma largura e altura.
 const CANVAS_HEIGHT = 1060;
 
-// Cores do design system do site (ver :root em app/globals.css) — repetidas
-// aqui porque um <canvas> não lê variáveis CSS, só valores concretos.
-const COLOR_BG_DARK = '#0a0716';
-const COLOR_PANEL = '#170f2e';
-const COLOR_PURPLE = '#a463ff';
-const COLOR_PURPLE_2 = '#7b2ff0';
-const COLOR_GREEN = '#4ef05f';
-const COLOR_GOLD = '#ffd24e';
-const COLOR_GOLD_2 = '#f0a93f';
-const COLOR_INK = '#f4f1fb';
-const COLOR_INK_DIM = '#b7aed4';
+// Mesmas cores do card na tela (ver "Card colecionável" em
+// app/redesign.css) — repetidas aqui porque um <canvas> não lê CSS.
+const COLOR_BG_TOP = '#1f1540';
+const COLOR_BG_MID = '#120c26';
+const COLOR_BG_BOTTOM = '#0c0819';
+const COLOR_VIOLET = '#7b4df5';
+const COLOR_VIOLET_2 = '#9068f2';
+const COLOR_SEAL_LIGHT = '#a07cff';
+const COLOR_SEAL_DARK = '#7b2ff0';
+const COLOR_LAVENDER = '#b9a5ff';
+const COLOR_LAVENDER_LIGHT = '#e2d8ff';
+const COLOR_LABEL = '#8e86b0';
+const COLOR_GLOW = 'rgba(123, 77, 245, 0.75)';
 
 function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
   ctx.beginPath();
@@ -41,12 +43,22 @@ function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w:
   ctx.closePath();
 }
 
-// Losango decorativo (um quadrado girado 45°) — usado nos 4 cantos da
-// moldura e como ícone de "gema" no rodapé.
-function drawDiamond(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number, fill: string): void {
+// Losango (um quadrado girado 45°) — a gema do topo e as do rodapé.
+function drawDiamond(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  size: number,
+  fill: string | CanvasGradient,
+  glow = false
+): void {
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(Math.PI / 4);
+  if (glow) {
+    ctx.shadowColor = COLOR_GLOW;
+    ctx.shadowBlur = 14;
+  }
   ctx.fillStyle = fill;
   ctx.fillRect(-size / 2, -size / 2, size, size);
   ctx.restore();
@@ -80,16 +92,29 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
-// Garante que a fonte pixelada dos títulos já está pronta antes de escrever
-// texto com ela — sem isso, o canvas às vezes desenha com a fonte de
-// respaldo (fallback) na primeira vez que a página carrega.
-async function ensureTitleFontLoaded(): Promise<void> {
+// A fonte do site (Archivo, carregada pelo next/font em SiteShell.tsx) tem
+// um nome gerado na hora do build — lê o nome de verdade da variável CSS
+// que o SiteShell coloca no .redesign. Fora dele, cai numa sans comum.
+function siteFontFamily(): string {
+  const root = document.querySelector('.redesign');
+  const family = root ? getComputedStyle(root).getPropertyValue('--font-redesign').trim() : '';
+  return `${family ? `${family}, ` : ''}'Helvetica Neue', Arial, sans-serif`;
+}
+
+// Garante que a fonte já está pronta antes de escrever texto com ela — sem
+// isso, o canvas às vezes desenha com a fonte de respaldo na primeira vez.
+async function ensureFontLoaded(family: string): Promise<void> {
   try {
-    await document.fonts.load('700 32px "Press Start 2P"');
+    await document.fonts.load(`800 32px ${family}`);
   } catch {
-    // Sem problema — o canvas usa a fonte de respaldo (fallback) do
-    // font-family, só fica menos "gamer" que o normal.
+    // Sem problema — o canvas usa a fonte de respaldo do font-family.
   }
+}
+
+// Espaçamento entre letras (rótulos em caixa alta) — só nos navegadores
+// que suportam; nos outros o texto sai sem o espaçamento extra.
+function setLetterSpacing(ctx: CanvasRenderingContext2D, value: string): void {
+  if ('letterSpacing' in ctx) (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing = value;
 }
 
 export async function renderCollectibleCard(canvas: HTMLCanvasElement, data: CardData): Promise<void> {
@@ -98,87 +123,85 @@ export async function renderCollectibleCard(canvas: HTMLCanvasElement, data: Car
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Este navegador não suporta desenhar o card.');
 
-  await ensureTitleFontLoaded();
-  const titleFont = '700 30px "Press Start 2P", cursive';
-  const labelFont = '700 16px "Press Start 2P", cursive';
-  const bodyFont = '700 15px Rajdhani, sans-serif';
+  const family = siteFontFamily();
+  await ensureFontLoaded(family);
+  const font = (size: number) => `800 ${size}px ${family}`;
 
   const w = CANVAS_WIDTH;
   const h = CANVAS_HEIGHT;
 
-  // --- Fundo do card ---
-  const bgGradient = ctx.createLinearGradient(0, 0, w, h);
-  bgGradient.addColorStop(0, COLOR_PANEL);
-  bgGradient.addColorStop(1, COLOR_BG_DARK);
-  roundedRectPath(ctx, 0, 0, w, h, 28);
+  // --- Fundo do card, com um brilho roxo no topo ---
+  const bgGradient = ctx.createLinearGradient(0, 0, w * 0.4, h);
+  bgGradient.addColorStop(0, COLOR_BG_TOP);
+  bgGradient.addColorStop(0.55, COLOR_BG_MID);
+  bgGradient.addColorStop(1, COLOR_BG_BOTTOM);
+  roundedRectPath(ctx, 0, 0, w, h, 40);
   ctx.fillStyle = bgGradient;
   ctx.fill();
+  ctx.save();
+  ctx.clip();
+  const topGlow = ctx.createRadialGradient(w / 2, 0, 0, w / 2, 0, w * 0.75);
+  topGlow.addColorStop(0, 'rgba(144, 104, 242, 0.35)');
+  topGlow.addColorStop(1, 'rgba(144, 104, 242, 0)');
+  ctx.fillStyle = topGlow;
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
 
-  // --- Moldura dupla: contorno metálico externo + traço fino luminoso interno ---
-  const outerGradient = ctx.createLinearGradient(0, 0, w, h);
-  outerGradient.addColorStop(0, COLOR_GOLD);
-  outerGradient.addColorStop(0.5, '#e8c98a');
-  outerGradient.addColorStop(1, COLOR_GOLD_2);
-  roundedRectPath(ctx, 10, 10, w - 20, h - 20, 24);
-  ctx.lineWidth = 6;
-  ctx.strokeStyle = outerGradient;
-  ctx.stroke();
-
-  roundedRectPath(ctx, 24, 24, w - 48, h - 48, 18);
-  ctx.lineWidth = 1.5;
-  ctx.strokeStyle = 'rgba(164, 99, 255, 0.6)';
-  ctx.shadowColor = COLOR_PURPLE;
-  ctx.shadowBlur = 8;
+  // --- Moldura: contorno lavanda com brilho + traço fino interno ---
+  roundedRectPath(ctx, 3, 3, w - 6, h - 6, 38);
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(185, 165, 255, 0.6)';
+  ctx.shadowColor = COLOR_GLOW;
+  ctx.shadowBlur = 18;
   ctx.stroke();
   ctx.shadowBlur = 0;
 
-  // --- Losangos decorativos nos 4 cantos ---
-  const cornerInset = 40;
-  drawDiamond(ctx, cornerInset, cornerInset, 14, COLOR_GOLD);
-  drawDiamond(ctx, w - cornerInset, cornerInset, 14, COLOR_GOLD);
-  drawDiamond(ctx, cornerInset, h - cornerInset, 14, COLOR_GOLD);
-  drawDiamond(ctx, w - cornerInset, h - cornerInset, 14, COLOR_GOLD);
-
-  // --- Topo: logo XAN SWITCH + gema decorativa ---
-  ctx.textBaseline = 'middle';
-  ctx.textAlign = 'left';
-  ctx.font = labelFont;
-  ctx.fillStyle = COLOR_INK;
-  ctx.fillText('XAN', 70, 78);
-  const xanWidth = ctx.measureText('XAN').width;
-  ctx.fillStyle = COLOR_GREEN;
-  ctx.fillText('SWITCH', 70 + xanWidth + 8, 78);
-  drawDiamond(ctx, w - 75, 78, 16, COLOR_PURPLE);
-
-  // --- Faixa/selo do título ---
-  const bannerY = 112;
-  const bannerHeight = 56;
-  const bannerGradient = ctx.createLinearGradient(60, 0, w - 60, 0);
-  bannerGradient.addColorStop(0, COLOR_PURPLE_2);
-  bannerGradient.addColorStop(1, COLOR_PURPLE);
-  roundedRectPath(ctx, 60, bannerY, w - 120, bannerHeight, 12);
-  ctx.fillStyle = bannerGradient;
-  ctx.fill();
+  roundedRectPath(ctx, 18, 18, w - 36, h - 36, 28);
   ctx.lineWidth = 1.5;
-  ctx.strokeStyle = COLOR_GOLD;
+  ctx.strokeStyle = 'rgba(185, 165, 255, 0.16)';
   ctx.stroke();
 
-  ctx.font = titleFont;
+  // --- Topo: logo XAN SWITCH + gema ---
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  ctx.font = font(20);
+  setLetterSpacing(ctx, '4px');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('XAN', 64, 72);
+  const xanWidth = ctx.measureText('XAN').width;
+  ctx.fillStyle = COLOR_LAVENDER;
+  ctx.fillText('SWITCH', 64 + xanWidth + 4, 72);
+  setLetterSpacing(ctx, '0px');
+  drawDiamond(ctx, w - 72, 72, 16, COLOR_VIOLET_2, true);
+
+  // --- Faixa do título ---
+  const bannerY = 108;
+  const bannerHeight = 76;
+  const bannerGradient = ctx.createLinearGradient(56, 0, w - 56, 0);
+  bannerGradient.addColorStop(0, COLOR_VIOLET);
+  bannerGradient.addColorStop(1, COLOR_VIOLET_2);
+  roundedRectPath(ctx, 56, bannerY, w - 112, bannerHeight, 18);
+  ctx.fillStyle = bannerGradient;
+  ctx.shadowColor = 'rgba(123, 77, 245, 0.55)';
+  ctx.shadowBlur = 30;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'center';
-  fitTextInBox(ctx, data.gameName.toUpperCase(), w / 2, bannerY + bannerHeight / 2, w - 160, 26);
+  fitTextInBox(ctx, data.gameName.toUpperCase(), w / 2, bannerY + bannerHeight / 2, w - 160, 34, family);
 
   // --- Área central: a capa do jogo — SEMPRE quadrada (mesma largura e
   // altura), pra nenhuma logo de jogo ficar cortada como acontecia com a
   // caixa retangular antiga.
-  const imageBoxX = 70;
-  const imageBoxY = bannerY + bannerHeight + 28;
-  const imageBoxW = w - 140;
+  const imageBoxX = 56;
+  const imageBoxY = bannerY + bannerHeight + 20;
+  const imageBoxW = w - 112;
   const imageBoxH = imageBoxW;
-  roundedRectPath(ctx, imageBoxX, imageBoxY, imageBoxW, imageBoxH, 16);
+  roundedRectPath(ctx, imageBoxX, imageBoxY, imageBoxW, imageBoxH, 22);
   ctx.save();
   ctx.clip();
-  ctx.fillStyle = COLOR_BG_DARK;
+  ctx.fillStyle = COLOR_BG_BOTTOM;
   ctx.fillRect(imageBoxX, imageBoxY, imageBoxW, imageBoxH);
 
   if (data.imageUrl) {
@@ -193,72 +216,94 @@ export async function renderCollectibleCard(canvas: HTMLCanvasElement, data: Car
       const drawY = imageBoxY + (imageBoxH - drawH) / 2;
       ctx.drawImage(img, drawX, drawY, drawW, drawH);
     } catch {
-      drawImageFallback(ctx, imageBoxX, imageBoxY, imageBoxW, imageBoxH);
+      drawImageFallback(ctx, imageBoxX, imageBoxY, imageBoxW, imageBoxH, family);
     }
   } else {
-    drawImageFallback(ctx, imageBoxX, imageBoxY, imageBoxW, imageBoxH);
+    drawImageFallback(ctx, imageBoxX, imageBoxY, imageBoxW, imageBoxH, family);
   }
   ctx.restore();
   ctx.lineWidth = 2;
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
   ctx.stroke();
 
   // --- Rodapé esquerdo: "CARD DE COLEÇÃO" + gemas ---
-  const footerY = imageBoxY + imageBoxH + 50;
+  const footerY = imageBoxY + imageBoxH + 52;
   ctx.textAlign = 'left';
-  ctx.font = '700 13px "Press Start 2P", cursive';
-  ctx.fillStyle = COLOR_INK_DIM;
-  ctx.fillText('CARD DE', 70, footerY);
-  ctx.fillText('COLEÇÃO', 70, footerY + 22);
+  ctx.font = font(17);
+  setLetterSpacing(ctx, '4px');
+  ctx.fillStyle = COLOR_LABEL;
+  ctx.fillText('CARD DE', 64, footerY);
+  ctx.fillText('COLEÇÃO', 64, footerY + 26);
+  setLetterSpacing(ctx, '0px');
 
   const gemSize = 20;
-  const gemGap = 14;
-  const gemsStartX = 70 + gemSize / 2;
-  const gemsY = footerY + 54;
+  const gemGap = 16;
+  const gemsStartX = 64 + gemSize / 2 + 4;
+  const gemsY = footerY + 66;
   for (let i = 0; i < MAX_GEMS; i++) {
-    const filled = i < data.points;
-    drawDiamond(ctx, gemsStartX + i * (gemSize + gemGap), gemsY, gemSize, filled ? COLOR_GOLD : 'rgba(255,255,255,0.12)');
+    const cx = gemsStartX + i * (gemSize + gemGap);
+    if (i < data.points) {
+      const gemGradient = ctx.createLinearGradient(cx - gemSize, gemsY - gemSize, cx + gemSize, gemsY + gemSize);
+      gemGradient.addColorStop(0, COLOR_LAVENDER_LIGHT);
+      gemGradient.addColorStop(1, COLOR_VIOLET_2);
+      drawDiamond(ctx, cx, gemsY, gemSize, gemGradient, true);
+    } else {
+      drawDiamond(ctx, cx, gemsY, gemSize, 'rgba(185, 165, 255, 0.16)');
+    }
   }
 
   // --- Rodapé direito: selo octogonal com os pontos ---
-  const sealCx = w - 130;
-  const sealCy = footerY + 20;
-  const sealR = 62;
-  const sealGradient = ctx.createRadialGradient(sealCx, sealCy, 4, sealCx, sealCy, sealR);
-  sealGradient.addColorStop(0, COLOR_GOLD);
-  sealGradient.addColorStop(1, COLOR_GOLD_2);
+  const sealCx = w - 126;
+  const sealCy = footerY + 30;
+  const sealR = 66;
+  const sealGradient = ctx.createLinearGradient(sealCx - sealR, sealCy - sealR, sealCx + sealR, sealCy + sealR);
+  sealGradient.addColorStop(0, COLOR_SEAL_LIGHT);
+  sealGradient.addColorStop(1, COLOR_SEAL_DARK);
   octagonPath(ctx, sealCx, sealCy, sealR);
   ctx.fillStyle = sealGradient;
+  ctx.shadowColor = COLOR_GLOW;
+  ctx.shadowBlur = 24;
   ctx.fill();
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = COLOR_BG_DARK;
-  ctx.stroke();
+  ctx.shadowBlur = 0;
 
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#2b1a00';
-  ctx.font = '700 40px "Press Start 2P", cursive';
-  ctx.fillText(String(data.points), sealCx, sealCy - 8);
-  ctx.font = '700 12px "Press Start 2P", cursive';
-  ctx.fillText('PONTOS', sealCx, sealCy + 26);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = font(56);
+  ctx.fillText(String(data.points), sealCx, sealCy - 10);
+  ctx.font = font(14);
+  setLetterSpacing(ctx, '3px');
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.fillText('PONTOS', sealCx + 1.5, sealCy + 30);
+  setLetterSpacing(ctx, '0px');
 
   // --- Base do card: "XAN SWITCH" / "SÉRIE 01" ---
-  const baseY = h - 46;
+  const baseY = h - 50;
+  ctx.font = font(17);
+  setLetterSpacing(ctx, '4px');
+  ctx.fillStyle = COLOR_LABEL;
   ctx.textAlign = 'left';
-  ctx.font = bodyFont;
-  ctx.fillStyle = COLOR_INK_DIM;
-  ctx.fillText('XAN SWITCH', 70, baseY);
+  ctx.fillText('XAN SWITCH', 64, baseY);
   ctx.textAlign = 'right';
-  ctx.fillText('SÉRIE 01', w - 70, baseY);
+  ctx.fillText('SÉRIE 01', w - 60, baseY);
+  setLetterSpacing(ctx, '0px');
 }
 
-function drawImageFallback(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
-  ctx.fillStyle = COLOR_PANEL;
+function drawImageFallback(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  family: string
+): void {
+  ctx.fillStyle = COLOR_BG_MID;
   ctx.fillRect(x, y, w, h);
   ctx.textAlign = 'center';
-  ctx.fillStyle = COLOR_INK_DIM;
-  ctx.font = '700 16px "Press Start 2P", cursive';
-  ctx.fillText('XAN', x + w / 2, y + h / 2 - 12);
-  ctx.fillText('SWITCH', x + w / 2, y + h / 2 + 16);
+  ctx.fillStyle = COLOR_LABEL;
+  ctx.font = `800 26px ${family}`;
+  setLetterSpacing(ctx, '6px');
+  ctx.fillText('XAN SWITCH', x + w / 2 + 3, y + h / 2);
+  setLetterSpacing(ctx, '0px');
 }
 
 // Escreve um texto centralizado, diminuindo o tamanho da fonte até caber na
@@ -270,11 +315,12 @@ function fitTextInBox(
   cx: number,
   cy: number,
   maxWidth: number,
-  startSize: number
+  startSize: number,
+  family: string
 ): void {
   let size = startSize;
-  while (size > 12) {
-    ctx.font = `700 ${size}px "Press Start 2P", cursive`;
+  while (size > 16) {
+    ctx.font = `800 ${size}px ${family}`;
     if (ctx.measureText(text).width <= maxWidth) break;
     size -= 2;
   }
