@@ -20,6 +20,7 @@ const REVEAL_SELECTOR = [
   '.physical-catalog-banner',
   '.most-wanted-heading',
   '.catalog-count-row',
+  '.catalog-shortcuts',
   '.promo-section-main',
   '.promo-section-side',
   '.promo-section-side-compact > *',

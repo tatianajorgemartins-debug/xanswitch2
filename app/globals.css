@@ -67,6 +67,20 @@
 ::view-transition {
   pointer-events: none;
 }
+
+/* Fundo do próprio documento na cor do site. Durante a troca de catálogo
+   as duas páginas ficam meio transparentes ao mesmo tempo, e alguns
+   navegadores (Safari do iPhone, principalmente) mostravam o fundo padrão
+   branco por trás — a tela piscava em branco. color-scheme avisa o
+   navegador que o site é escuro (barras e fundos padrão também escuros). */
+html {
+  background-color: #0a0716;
+  color-scheme: dark;
+}
+html[data-theme='light'] {
+  background-color: #f7f5fc;
+  color-scheme: light;
+}
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(root),
   ::view-transition-new(root) {

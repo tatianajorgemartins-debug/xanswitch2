@@ -1314,6 +1314,107 @@
 .redesign .catalog-count-row .catalog-count {
   margin: 0;
 }
+
+/* Ordenar (Relevância / Menor preço / Maior preço), à direita do título. */
+.redesign .catalog-sort {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--surface);
+}
+.redesign .catalog-sort button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.redesign .catalog-sort button:hover {
+  color: var(--ink);
+}
+.redesign .catalog-sort button.active {
+  background: var(--accent-fill);
+  color: var(--accent-ink);
+}
+
+/* Atalhos de filtro (Todos, Switch 2, franquias, Outros). No celular a
+   fileira desliza pro lado em vez de quebrar em várias linhas. */
+.redesign .catalog-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -8px 0 28px;
+}
+.redesign .catalog-shortcut {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--surface-3);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.18s ease;
+}
+.redesign .catalog-shortcut:hover {
+  border-color: var(--accent);
+}
+.redesign .catalog-shortcut:active {
+  transform: scale(0.96);
+}
+.redesign .catalog-shortcut-count {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.redesign .catalog-shortcut.active {
+  border-color: var(--accent-fill);
+  background: var(--accent-fill);
+  color: var(--accent-ink);
+}
+.redesign .catalog-shortcut.active .catalog-shortcut-count {
+  color: inherit;
+  opacity: 0.8;
+}
+@media (max-width: 640px) {
+  .redesign .catalog-sort {
+    width: 100%;
+    margin-left: 0;
+  }
+  .redesign .catalog-sort button {
+    flex: 1;
+    padding: 0 8px;
+  }
+  .redesign .catalog-shortcuts {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin: -8px -16px 24px;
+    padding: 0 16px 4px;
+    scrollbar-width: none;
+  }
+  .redesign .catalog-shortcuts::-webkit-scrollbar {
+    display: none;
+  }
+  .redesign .catalog-shortcut {
+    flex: none;
+  }
+}
 .redesign .btn.catalog-clear-filter {
   min-height: 40px;
   padding: 0 16px;

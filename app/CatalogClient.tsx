@@ -1,6 +1,6 @@
 'use client';
 
-import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
+import { startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { User } from '@supabase/supabase-js';
 import { getContrastColor } from '@/lib/color';
@@ -118,6 +118,21 @@ type ViewMode = 'grid' | 'list';
 type PlatformFilter = 'all' | 'switch1' | 'switch2';
 type TypeFilter = 'all' | GameType;
 type QuickFilter = 'bestseller' | 'upcoming' | null;
+type SortMode = 'relevance' | 'price-asc' | 'price-desc';
+type Shortcut = { kind: 'all' } | { kind: 'switch2' } | { kind: 'franchise'; name: string } | { kind: 'others' };
+
+// Atalhos acima do catálogo ("Todos", "Switch 2", as franquias com mais
+// jogos e "Outros"). Só franquias com pelo menos 2 jogos viram atalho.
+const SHORTCUT_FRANCHISES = 6;
+const SORT_OPTIONS: { value: SortMode; label: string }[] = [
+  { value: 'relevance', label: 'Relevância' },
+  { value: 'price-asc', label: 'Menor preço' },
+  { value: 'price-desc', label: 'Maior preço' }
+];
+
+function shortcutKey(shortcut: Shortcut): string {
+  return shortcut.kind === 'franchise' ? `franchise:${shortcut.name}` : shortcut.kind;
+}
 
 const INTRO_TITLE_WORDS = [
   { text: 'Jogos' },
@@ -187,6 +202,9 @@ export default function CatalogClient({
   const [priceMax, setPriceMax] = useState('');
   const [saleOnly, setSaleOnly] = useState(false);
   const [quickFilter, setQuickFilter] = useState<QuickFilter>(null);
+  // "Outros" dos atalhos: jogos de franquias que não têm atalho próprio.
+  const [otherFranchises, setOtherFranchises] = useState(false);
+  const [sortMode, setSortMode] = useState<SortMode>('relevance');
   const [showBackToTop, setShowBackToTop] = useState(false);
   const gridAnchorRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -424,13 +442,38 @@ export default function CatalogClient({
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
   }, [items]);
 
+  const shortcutFranchises = useMemo(() => {
+    const counts = new Map<string, number>();
+    items.forEach((it) => {
+      if (it.franchise) counts.set(it.franchise, (counts.get(it.franchise) ?? 0) + 1);
+    });
+    return Array.from(counts)
+      .filter(([, count]) => count >= 2)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt-BR'))
+      .slice(0, SHORTCUT_FRANCHISES)
+      .map(([name, count]) => ({ name, count }));
+  }, [items]);
+  const shortcutNames = useMemo(() => new Set(shortcutFranchises.map((f) => f.name)), [shortcutFranchises]);
+  const shortcuts = useMemo(() => {
+    const switch2 = items.filter((it) => it.platform === 'switch2' || it.platform === 'both').length;
+    const others = items.filter((it) => !it.franchise || !shortcutNames.has(it.franchise)).length;
+    const list: { label: string; count: number; shortcut: Shortcut }[] = [
+      { label: 'Todos', count: items.length, shortcut: { kind: 'all' } }
+    ];
+    if (switch2 > 0) list.push({ label: 'Switch 2', count: switch2, shortcut: { kind: 'switch2' } });
+    shortcutFranchises.forEach((f) => list.push({ label: f.name, count: f.count, shortcut: { kind: 'franchise', name: f.name } }));
+    if (others > 0) list.push({ label: 'Outros', count: others, shortcut: { kind: 'others' } });
+    return list;
+  }, [items, shortcutFranchises, shortcutNames]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const min = priceMin.trim() ? parseFloat(priceMin.replace(',', '.')) : null;
     const max = priceMax.trim() ? parseFloat(priceMax.replace(',', '.')) : null;
-    return items.filter((it) => {
+    const result = items.filter((it) => {
       if (q && !it.name.toLowerCase().includes(q)) return false;
       if (franchiseFilter && it.franchise !== franchiseFilter) return false;
+      if (otherFranchises && it.franchise && shortcutNames.has(it.franchise)) return false;
       if (platformFilter !== 'all' && it.platform !== platformFilter && it.platform !== 'both') {
         return false;
       }
@@ -442,7 +485,23 @@ export default function CatalogClient({
       if (quickFilter === 'upcoming' && !it.isUpcoming) return false;
       return true;
     });
-  }, [items, query, franchiseFilter, platformFilter, typeFilter, priceMin, priceMax, saleOnly, quickFilter]);
+    if (sortMode === 'relevance') return result;
+    const direction = sortMode === 'price-asc' ? 1 : -1;
+    return [...result].sort((a, b) => (a.price - b.price) * direction);
+  }, [
+    items,
+    query,
+    franchiseFilter,
+    otherFranchises,
+    shortcutNames,
+    platformFilter,
+    typeFilter,
+    priceMin,
+    priceMax,
+    saleOnly,
+    quickFilter,
+    sortMode
+  ]);
   const visibleItems = renderAllCards ? filtered : filtered.slice(0, INITIAL_CARDS);
 
   const activeFilterCount =
@@ -452,6 +511,7 @@ export default function CatalogClient({
     (priceMin.trim() ? 1 : 0) +
     (priceMax.trim() ? 1 : 0) +
     (saleOnly ? 1 : 0) +
+    (otherFranchises ? 1 : 0) +
     (quickFilter ? 1 : 0);
 
   // Verdadeiro sempre que a pessoa está filtrando ou buscando algo — usado
@@ -501,8 +561,37 @@ export default function CatalogClient({
     setPriceMin('');
     setPriceMax('');
     setSaleOnly(false);
+    setOtherFranchises(false);
     setQuickFilter(null);
   }
+
+  // Atalho clicado: troca só a franquia/plataforma (busca e outros filtros
+  // continuam). Clicar no atalho que já está ativo volta pra "Todos". Como a
+  // vitrine "Mais desejados" (acima) some/volta ao filtrar, segura a linha
+  // dos atalhos no mesmo lugar da tela, sem a página pular.
+  const activeShortcut = otherFranchises
+    ? 'others'
+    : franchiseFilter
+      ? `franchise:${franchiseFilter}`
+      : platformFilter === 'switch2'
+        ? 'switch2'
+        : 'all';
+  const shortcutAnchor = useRef<number | null>(null);
+  function selectShortcut(shortcut: Shortcut) {
+    const next: Shortcut = shortcutKey(shortcut) === activeShortcut ? { kind: 'all' } : shortcut;
+    shortcutAnchor.current = resultsRef.current?.getBoundingClientRect().top ?? null;
+    setFranchiseFilter(next.kind === 'franchise' ? next.name : '');
+    setPlatformFilter(next.kind === 'switch2' ? 'switch2' : 'all');
+    setOtherFranchises(next.kind === 'others');
+    setQuickFilter(null);
+  }
+  useLayoutEffect(() => {
+    const before = shortcutAnchor.current;
+    shortcutAnchor.current = null;
+    if (before === null || !resultsRef.current) return;
+    const shift = resultsRef.current.getBoundingClientRect().top - before;
+    if (Math.abs(shift) > 1) window.scrollBy(0, shift);
+  });
 
   // Limpa filtros E a busca de uma vez — o botão "Limpar filtros" de dentro
   // do painel só limpava os filtros, deixando a busca de fora; esse aqui
@@ -886,7 +975,42 @@ export default function CatalogClient({
             Limpar filtro
           </button>
         )}
+        {isRedesign && (
+          <div className="catalog-sort" role="group" aria-label="Ordenar">
+            {SORT_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={sortMode === option.value ? 'active' : undefined}
+                aria-pressed={sortMode === option.value}
+                onClick={() => setSortMode(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+
+      {isRedesign && items.length > 0 && (
+        <div className="catalog-shortcuts" role="group" aria-label="Atalhos de filtro">
+          {shortcuts.map(({ label, count, shortcut }) => {
+            const active = shortcutKey(shortcut) === activeShortcut;
+            return (
+              <button
+                key={shortcutKey(shortcut)}
+                type="button"
+                className={`catalog-shortcut${active ? ' active' : ''}`}
+                aria-pressed={active}
+                onClick={() => selectShortcut(shortcut)}
+              >
+                {label}
+                <span className="catalog-shortcut-count">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--ink-dim)' }}>
