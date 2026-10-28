@@ -70,6 +70,7 @@ export default function AdminClient({
   const [showClientsPanel, setShowClientsPanel] = useState(false);
   const [showBannerPanel, setShowBannerPanel] = useState(false);
   const [showFranchisePanel, setShowFranchisePanel] = useState(false);
+  const [showFeesPanel, setShowFeesPanel] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingGame, setEditingGame] = useState<Game | null>(null);
 
@@ -333,6 +334,9 @@ export default function AdminClient({
         <button className="btn ghost" onClick={() => setShowFranchisePanel((s) => !s)}>
           🔥 Franquia em destaque{featuredFranchiseEnabled ? ` (${featuredFranchiseName})` : ''}
         </button>
+        <button className="btn ghost" onClick={() => setShowFeesPanel((s) => !s)}>
+          💳 Taxas de pagamento (cartão {formatPriceBR(paymentFees.card)}%)
+        </button>
       </div>
 
       {showReviewsPanel && (
@@ -344,7 +348,22 @@ export default function AdminClient({
         />
       )}
 
-      {showOrdersPanel && <OrdersPanel orders={orders} onDelete={handleDeleteOrder} paymentFees={paymentFees} />}
+      {showOrdersPanel && <OrdersPanel orders={orders} onDelete={handleDeleteOrder} />}
+
+      {showFeesPanel && (
+        <div
+          className="admin-panel"
+          style={{
+            background: 'var(--panel)',
+            border: '1px solid rgba(164,99,255,.25)',
+            borderRadius: 14,
+            padding: 16,
+            marginBottom: 20
+          }}
+        >
+          <PaymentFeesForm initial={paymentFees} />
+        </div>
+      )}
 
       {showWishlistPanel && <WishlistPanel entries={mostWantedGames} />}
 
@@ -790,12 +809,10 @@ function PaymentFeesForm({ initial }: { initial: { card: number; pix: number } }
 // continua sendo feita manualmente, vendo o Pix cair na sua conta.
 function OrdersPanel({
   orders,
-  onDelete,
-  paymentFees
+  onDelete
 }: {
   orders: Order[];
   onDelete: (id: number) => void;
-  paymentFees: { card: number; pix: number };
 }) {
   return (
     <div
@@ -808,8 +825,6 @@ function OrdersPanel({
         marginBottom: 20
       }}
     >
-      <PaymentFeesForm initial={paymentFees} />
-
       <h4 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--ink-dim)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
         Pedidos gerados (mais recentes primeiro)
       </h4>
