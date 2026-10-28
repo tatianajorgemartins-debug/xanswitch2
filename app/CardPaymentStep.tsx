@@ -57,7 +57,7 @@ type MercadoPagoInstance = {
     amount: string;
     bin: string;
     paymentTypeId?: string;
-  }) => Promise<{ payer_costs: { installments: number; recommended_message: string }[] }[]>;
+  }) => Promise<{ payer_costs: { installments: number; recommended_message: string; total_amount: number }[] }[]>;
 };
 type MercadoPagoSdk = new (publicKey: string, options: { locale: string }) => MercadoPagoInstance;
 
@@ -140,7 +140,9 @@ export function CardPaymentStep({
   const pendingStatus = usePixPaymentStatus(pendingPaymentId, referralSource, onConfirmed);
 
   // Pagamento com cartão salvo: parcelas disponíveis e envio em andamento.
-  const [installmentOptions, setInstallmentOptions] = useState<{ installments: number; label: string }[]>([]);
+  // total: quanto o cliente paga no fim nessa opção (com os juros das
+  // parcelas, que ficam com ele) — é o valor mostrado no botão de pagar.
+  const [installmentOptions, setInstallmentOptions] = useState<{ installments: number; label: string; total: number }[]>([]);
   const [installments, setInstallments] = useState(1);
   const [paying, setPaying] = useState(false);
 
@@ -293,8 +295,10 @@ export function CardPaymentStep({
         const costs = options[0]?.payer_costs ?? [];
         setInstallmentOptions(
           costs.length > 0
-            ? costs.filter((c) => c.installments <= 12).map((c) => ({ installments: c.installments, label: c.recommended_message }))
-            : [{ installments: 1, label: `1x de R$ ${formatPriceBR(charge.amount)}` }]
+            ? costs
+                .filter((c) => c.installments <= 12)
+                .map((c) => ({ installments: c.installments, label: c.recommended_message, total: c.total_amount }))
+            : [{ installments: 1, label: `1x de R$ ${formatPriceBR(charge.amount)}`, total: charge.amount }]
         );
         setReady(true);
       })
@@ -465,7 +469,11 @@ export function CardPaymentStep({
           </select>
 
           <button type="button" className="btn primary product-cta" onClick={handlePayWithSavedCard} disabled={!ready || paying}>
-            {paying ? 'Processando...' : charge ? `Pagar R$ ${formatPriceBR(charge.amount)}` : 'Pagar'}
+            {paying
+              ? 'Processando...'
+              : charge
+                ? `Pagar R$ ${formatPriceBR(installmentOptions.find((o) => o.installments === installments)?.total ?? charge.amount)}`
+                : 'Pagar'}
           </button>
         </div>
       ) : (
