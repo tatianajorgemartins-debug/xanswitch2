@@ -50,7 +50,7 @@ type MercadoPagoInstance = {
     create: (brick: 'cardPayment', containerId: string, settings: unknown) => Promise<BrickController>;
   };
   fields: {
-    create: (field: 'securityCode', options: { placeholder: string }) => FieldInstance;
+    create: (field: 'securityCode', options: { placeholder: string; style?: Record<string, string> }) => FieldInstance;
     createCardToken: (options: { cardId: string }) => Promise<{ id: string }>;
   };
   getInstallments: (options: {
@@ -280,7 +280,12 @@ export function CardPaymentStep({
     loadMercadoPago(publicKey)
       .then(async (mp) => {
         if (cancelled) return;
-        field = mp.fields.create('securityCode', { placeholder: 'CVV' }).mount(CVV_CONTAINER_ID);
+        // O campo é um quadro seguro do Mercado Pago (o CSS do site não
+        // alcança lá dentro) — a cor do texto vai aqui, branca como os
+        // outros campos da janela.
+        field = mp.fields
+          .create('securityCode', { placeholder: 'CVV', style: { color: '#ffffff', fontSize: '16px' } })
+          .mount(CVV_CONTAINER_ID);
         const options = await mp
           .getInstallments({ amount: charge.amount.toFixed(2), bin: selectedCard.firstSix, paymentTypeId: selectedCard.paymentTypeId })
           .catch(() => []);

@@ -2453,6 +2453,11 @@ label {
 .card-payment-brick {
   margin-bottom: 16px;
 }
+/* Botão "Pagar" do formulário do Mercado Pago: em pílula, como todos os
+   botões do site (o Mercado Pago desenha ele quadradinho). */
+.card-payment-brick button[type='submit'] {
+  border-radius: 999px !important;
+}
 /* Aviso da taxa repassada (lib/paymentFees.ts) — logo abaixo do valor,
    discreto mas legível, como pede a lei de preço por forma de pagamento. */
 .card-payment-fee-note {
