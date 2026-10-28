@@ -28,7 +28,7 @@ import type { CardInput, SavedCard } from '@/lib/mercadoPago';
 import { formatPriceBR } from '@/lib/whatsapp';
 import { getAccessToken } from '@/lib/wishlist';
 import { usePixPaymentStatus, PixAutoStatus } from './PixAutoConfirm';
-import { ReferralSourcePicker } from './PurchaseModal';
+import { PaymentLayout, ReferralSourcePicker } from './PurchaseModal';
 
 const SDK_URL = 'https://sdk.mercadopago.com/js/v2';
 const BRICK_CONTAINER_ID = 'mp-card-payment-brick';
@@ -100,6 +100,7 @@ export function CardPaymentStep({
   gameId,
   email,
   loggedIn,
+  onReadyChange,
   referralSource,
   setReferralSource,
   onBack,
@@ -109,6 +110,10 @@ export function CardPaymentStep({
   email: string;
   // Cartões salvos (e a caixinha de salvar) só existem pra quem tem conta.
   loggedIn: boolean;
+  // Avisa a janela de compra quando a tela pode aparecer (formulário
+  // carregado, ou um erro pra mostrar) — até lá fica a tela de
+  // carregamento do site (useStepLoader em PurchaseModal.tsx).
+  onReadyChange: (ready: boolean) => void;
   referralSource: string | null;
   setReferralSource: (v: string | null) => void;
   onBack: () => void;
@@ -179,6 +184,12 @@ export function CardPaymentStep({
     };
   }, [loggedIn]);
 
+  const showable = ready || loadError || pendingPaymentId !== null;
+  useEffect(() => {
+    onReadyChange(showable);
+  }, [showable, onReadyChange]);
+  useEffect(() => () => onReadyChange(false), [onReadyChange]);
+
   function handleResult(result: CardPaymentResult) {
     if (result.status === 'approved') {
       onConfirmed();
@@ -204,7 +215,9 @@ export function CardPaymentStep({
           initialization: { amount: charge.amount, payer: { email } },
           customization: {
             paymentMethods: { maxInstallments: 12, types: { excluded: ['debit_card', 'prepaid-card'] } },
-            visual: { style: { theme: 'dark', customVariables: { baseColor: '#7b4df5' } } }
+            // Sem o título "Cartão de crédito ou débito": economiza altura
+            // pra tela de pagamento caber sem rolar no computador.
+            visual: { hideFormTitle: true, style: { theme: 'dark', customVariables: { baseColor: '#7b4df5' } } }
           },
           callbacks: {
             onReady: () => {
@@ -345,7 +358,16 @@ export function CardPaymentStep({
   }
 
   return (
-    <>
+    <PaymentLayout
+      side={
+        <>
+          <ReferralSourcePicker value={referralSource} onChange={setReferralSource} />
+          <div className="purchase-urgency-box">
+            <p>Pagamento processado pelo Mercado Pago. Aprovou, seu código chega por e-mail ainda hoje 🎮</p>
+          </div>
+        </>
+      }
+    >
       {charge && (
         <>
           <p className="purchase-pix-amount">R$ {formatPriceBR(charge.amount)}</p>
@@ -454,17 +476,11 @@ export function CardPaymentStep({
         </>
       )}
 
-      <ReferralSourcePicker value={referralSource} onChange={setReferralSource} />
-
-      <div className="purchase-urgency-box">
-        <p>Pagamento processado pelo Mercado Pago. Aprovou, seu código chega por e-mail ainda hoje 🎮</p>
-      </div>
-
       <div className="purchase-modal-actions">
         <button type="button" className="purchase-step-back" onClick={onBack}>
           ← Voltar
         </button>
       </div>
-    </>
+    </PaymentLayout>
   );
 }

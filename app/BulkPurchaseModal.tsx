@@ -9,7 +9,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import type { Item } from './CatalogClient';
-import { StepChecklistAndEmail, ReservationTimer, RegionTutorial, ReferralSourcePicker } from './PurchaseModal';
+import { StepChecklistAndEmail, ReservationTimer, RegionTutorial, ReferralSourcePicker, PaymentLayout } from './PurchaseModal';
+import { XanLoader, useStepLoader } from './XanLoader';
 import { CollectibleCard, DownloadCardButton } from './CollectibleCard';
 import { generatePixPayload, type PixPayload } from '@/lib/pix';
 import { confirmBulkOrderAction } from './orderActions';
@@ -101,6 +102,11 @@ export default function BulkPurchaseModal({
     setStep(1);
   }
 
+  // A tela do Pix só aparece com o QR Code pronto — até lá, a tela de
+  // carregamento do site (igual ao PurchaseModal.tsx).
+  const modalRef = useRef<HTMLDivElement>(null);
+  const payment = useStepLoader(modalRef, step === 2, pix !== null || pixError !== null);
+
   function handleCopy() {
     if (!pix) return;
     navigator.clipboard
@@ -116,9 +122,11 @@ export default function BulkPurchaseModal({
   }
 
   return (
-    <div className="purchase-modal-overlay" onClick={onClose}>
+    <div className={`purchase-modal-overlay${payment.ready ? '' : ' is-content-loading'}`} onClick={onClose}>
+      <XanLoader progress={payment.progress} phase={payment.phase} variant="modal" />
       <div
-        className="purchase-modal"
+        ref={modalRef}
+        className={`purchase-modal${step === 2 ? ' is-payment-step' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-label={`Comprar ${items.length} jogos da lista de desejos`}
@@ -275,7 +283,16 @@ function BulkStepPayment({
   }
 
   return (
-    <>
+    <PaymentLayout
+      side={
+        <>
+          <ReferralSourcePicker value={referralSource} onChange={setReferralSource} />
+          <div className="purchase-urgency-box">
+            <p>Após o pagamento, seus códigos chegam por e-mail ainda hoje 🎮</p>
+          </div>
+        </>
+      }
+    >
       <p className="purchase-pix-amount">R$ {totalLabel}</p>
       {pixFeePercent > 0 && (
         <p className="card-payment-fee-note">
@@ -306,12 +323,6 @@ function BulkStepPayment({
         </p>
       )}
 
-      <ReferralSourcePicker value={referralSource} onChange={setReferralSource} />
-
-      <div className="purchase-urgency-box">
-        <p>Após o pagamento, seus códigos chegam por e-mail ainda hoje 🎮</p>
-      </div>
-
       {mpPaymentId ? (
         <PixAutoStatus status={autoStatus} onBack={autoStatus === 'failed' ? onExpiredBack : onBack} />
       ) : (
@@ -332,7 +343,7 @@ function BulkStepPayment({
           </div>
         </>
       )}
-    </>
+    </PaymentLayout>
   );
 }
 

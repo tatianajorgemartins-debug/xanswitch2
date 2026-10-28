@@ -13,7 +13,7 @@
 // pronta pra resgatar o código — e o envio do código em si — continua 100%
 // manual, feita por você.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { User } from '@supabase/supabase-js';
 import type { Item } from './CatalogClient';
 import type { Platform, GameType } from '@/lib/db';
@@ -27,7 +27,7 @@ import { startPixPaymentAction } from './mercadoPagoActions';
 import { usePixPaymentStatus, PixAutoStatus } from './PixAutoConfirm';
 import { CardPaymentStep } from './CardPaymentStep';
 import { confirmWithTimeout } from '@/lib/confirmWithTimeout';
-import { XanLoader, useContentLoader } from './XanLoader';
+import { XanLoader, useContentLoader, useStepLoader } from './XanLoader';
 import { getGameDiscountOfferAction, redeemDiscountAction, type GameDiscountOffer } from './cardActions';
 import { fallbackToOriginal, IMAGE_SIZES, imageSrcSet } from '@/lib/imageVariants';
 
@@ -117,6 +117,16 @@ export default function PurchaseModal({
   // chegaram — até lá fica a tela de carregamento (no máximo uns segundos).
   const modalRef = useRef<HTMLDivElement>(null);
   const content = useContentLoader(modalRef, discountResolved);
+
+  // O pagamento também só aparece pronto: no Pix, com o QR Code gerado; no
+  // cartão, com o formulário do Mercado Pago carregado (CardPaymentStep
+  // avisa por onReadyChange). Cada vez que a pessoa entra no pagamento, a
+  // tela de carregamento do site cobre até lá.
+  const [cardStepReady, setCardStepReady] = useState(false);
+  const paymentDataReady =
+    paymentMethod === 'pix' ? pix !== null || pixError !== null : MP_CARD_ENABLED ? cardStepReady : true;
+  const payment = useStepLoader(modalRef, step === 3, paymentDataReady);
+  const loader = content.phase !== 'hidden' ? content : payment;
 
   // Fecha o modal com a tecla Esc, como qualquer modal "de verdade" do
   // navegador — mas se a lightbox de capturas de tela estiver aberta, o
@@ -260,11 +270,14 @@ export default function PurchaseModal({
     // Clicar no fundo escurecido fecha o modal; clicar dentro da caixa não
     // (por isso o stopPropagation lá dentro) — é o comportamento padrão que
     // qualquer usuário já espera de um modal.
-    <div className={`purchase-modal-overlay${content.ready ? '' : ' is-content-loading'}`} onClick={onClose}>
-      <XanLoader progress={content.progress} phase={content.phase} variant="modal" />
+    <div
+      className={`purchase-modal-overlay${content.ready && payment.ready ? '' : ' is-content-loading'}`}
+      onClick={onClose}
+    >
+      <XanLoader progress={loader.progress} phase={loader.phase} variant="modal" />
       <div
         ref={modalRef}
-        className={`purchase-modal${step === 1 ? ' is-product-step' : ''}`}
+        className={`purchase-modal${step === 1 ? ' is-product-step' : ''}${step === 3 ? ' is-payment-step' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-label={`Comprar ${item.name}`}
@@ -340,6 +353,7 @@ export default function PurchaseModal({
               gameId={item.id}
               email={user?.email ?? email}
               loggedIn={Boolean(user)}
+              onReadyChange={setCardStepReady}
               referralSource={referralSource}
               setReferralSource={setReferralSource}
               onBack={() => setStep(2)}
@@ -1104,7 +1118,16 @@ function StepPayment({
   }
 
   return (
-    <>
+    <PaymentLayout
+      side={
+        <>
+          <ReferralSourcePicker value={referralSource} onChange={setReferralSource} />
+          <div className="purchase-urgency-box">
+            <p>Após o pagamento, seu código chega por e-mail ainda hoje 🎮</p>
+          </div>
+        </>
+      }
+    >
       <p className="purchase-pix-amount">R$ {priceLabel}</p>
       {pixFeePercent > 0 && (
         <p className="card-payment-fee-note">
@@ -1135,12 +1158,6 @@ function StepPayment({
         </p>
       )}
 
-      <ReferralSourcePicker value={referralSource} onChange={setReferralSource} />
-
-      <div className="purchase-urgency-box">
-        <p>Após o pagamento, seu código chega por e-mail ainda hoje 🎮</p>
-      </div>
-
       {mpPaymentId ? (
         <PixAutoStatus status={autoStatus} onBack={autoStatus === 'failed' ? onExpiredBack : onBack} />
       ) : (
@@ -1161,7 +1178,20 @@ function StepPayment({
           </div>
         </>
       )}
-    </>
+    </PaymentLayout>
+  );
+}
+
+// Tela de pagamento em duas colunas no computador (pagamento | "como você
+// conheceu a XAN Switch?" + aviso do e-mail), pra caber sem rolar; no
+// celular, uma embaixo da outra. Usada pelo Pix, pelo cartão
+// (CardPaymentStep.tsx) e pela compra em lote (BulkPurchaseModal.tsx).
+export function PaymentLayout({ children, side }: { children: ReactNode; side: ReactNode }) {
+  return (
+    <div className="payment-layout">
+      <div className="payment-main">{children}</div>
+      <aside className="payment-side">{side}</aside>
+    </div>
   );
 }
 

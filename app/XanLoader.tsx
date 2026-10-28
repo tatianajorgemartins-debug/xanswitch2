@@ -143,6 +143,10 @@ function useTaskProgress(
   useLayoutEffect(() => {
     if (!collect) return;
     let cancelled = false;
+    // Um novo `collect` é um novo carregamento (ex: cada vez que a pessoa
+    // entra no pagamento — ver useStepLoader): começa do zero.
+    setDone(false);
+    setCreep(0);
     const startedAt = performance.now();
     const tasks = collect();
     // Já estava tudo pronto: termina aqui mesmo, antes do navegador pintar
@@ -244,6 +248,41 @@ export function useContentLoader(rootRef: RefObject<HTMLElement | null>, dataRea
 
   const { progress, done } = useTaskProgress(collect, maxWaitMs);
   const ready = done || (dataReady && collect !== null && progress >= 1);
+  const phase = useLoaderPhase(!ready, 150);
+  return { ready, progress, phase };
+}
+
+// Igual ao useContentLoader, mas pra uma etapa que pode abrir várias vezes
+// na mesma janela (o pagamento: a pessoa pode voltar e entrar de novo).
+// Cada vez que `active` liga, começa um carregamento novo, que espera
+// `dataReady` (o QR Code do Pix ou o formulário do cartão prontos). Com
+// `active` desligado, não segura nada (ready = true).
+export function useStepLoader(rootRef: RefObject<HTMLElement | null>, active: boolean, dataReady: boolean, maxWaitMs = 12000) {
+  const [cycle, setCycle] = useState<{ collect: () => Promise<void>[]; resolve: () => void } | null>(null);
+
+  useEffect(() => {
+    if (!active) {
+      setCycle(null);
+      return;
+    }
+    let resolve: () => void = () => {};
+    const promise = new Promise<void>((r) => (resolve = r));
+    setCycle({
+      resolve,
+      collect: () => {
+        const root = rootRef.current;
+        const images = root ? pendingImages(root, false).map(waitForImage) : [];
+        return [...images, promise];
+      }
+    });
+  }, [active, rootRef]);
+
+  useEffect(() => {
+    if (active && dataReady) cycle?.resolve();
+  }, [active, dataReady, cycle]);
+
+  const { progress, done } = useTaskProgress(cycle?.collect ?? null, maxWaitMs);
+  const ready = !active || (cycle !== null && (done || (dataReady && progress >= 1)));
   const phase = useLoaderPhase(!ready, 150);
   return { ready, progress, phase };
 }

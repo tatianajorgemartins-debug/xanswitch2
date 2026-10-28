@@ -1806,6 +1806,43 @@ label {
   }
 }
 
+/* Pagamento (Pix, cartão e compra em lote — PaymentLayout em
+   PurchaseModal.tsx): no computador, a janela alarga e vira duas colunas,
+   pagamento | "como você conheceu a XAN Switch?", pra caber tudo sem
+   rolar. No celular, continua uma coisa embaixo da outra. */
+.payment-side {
+  margin-top: 22px;
+}
+@media (min-width: 760px) {
+  .purchase-modal.is-payment-step {
+    max-width: 860px;
+  }
+  .payment-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 28px;
+    align-items: start;
+  }
+  .payment-side {
+    position: sticky;
+    top: 0;
+    margin-top: 0;
+    padding-top: 6px;
+  }
+  .payment-side .purchase-referral {
+    margin-bottom: 14px;
+  }
+  .payment-side .purchase-urgency-box {
+    margin-bottom: 0;
+  }
+  .payment-main .card-payment-brick {
+    margin-bottom: 0;
+  }
+  .payment-main .purchase-pix-amount + .card-payment-fee-note {
+    margin-bottom: 10px;
+  }
+}
+
 /* Popup de avaliações (CatalogClient.tsx): mais largo que o modal padrão —
    o grid de 4 colunas (.reviews-grid) fica espremido demais na largura de
    480px usada pelas outras etapas do modal de compra. */
