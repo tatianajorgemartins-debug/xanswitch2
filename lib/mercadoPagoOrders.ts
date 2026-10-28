@@ -63,6 +63,7 @@ async function createOrdersForApprovedPayment(paymentId: string): Promise<void> 
           price: it.price,
           customer_email: record.customer_email,
           referral_source: record.referral_source,
+          payment_method: record.payment_method,
           card_points_earned: it.cardPoints,
           card_image_url: it.cardImageUrl,
           discount_applied: it.discountApplied,

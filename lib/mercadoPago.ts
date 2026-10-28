@@ -42,6 +42,18 @@ export type MpOrderState = {
   amount: number;
 };
 
+// Erro da API do Mercado Pago, com o status e o corpo da resposta — o
+// cartão recusado, por exemplo, volta como 402 trazendo a cobrança
+// recusada no corpo (ver createCardPayment).
+export class MercadoPagoError extends Error {
+  constructor(
+    readonly status: number,
+    readonly body: string
+  ) {
+    super(`Mercado Pago ${status}: ${body.slice(0, 300)}`);
+  }
+}
+
 async function mpFetch<T>(path: string, init: RequestInit & { idempotencyKey?: string } = {}): Promise<T> {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}`,
@@ -50,8 +62,7 @@ async function mpFetch<T>(path: string, init: RequestInit & { idempotencyKey?: s
   if (init.idempotencyKey) headers['X-Idempotency-Key'] = init.idempotencyKey;
   const res = await fetch(`${API}${path}`, { ...init, headers, cache: 'no-store' });
   if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(`Mercado Pago ${res.status}: ${body.slice(0, 300)}`);
+    throw new MercadoPagoError(res.status, await res.text().catch(() => ''));
   }
   return (await res.json()) as T;
 }
@@ -93,8 +104,7 @@ export async function createPixPayment(data: {
 
 const FAILED_STATUSES = new Set(['failed', 'canceled', 'expired', 'refunded', 'charged_back']);
 
-export async function getPixPaymentState(id: string): Promise<MpOrderState> {
-  const order = await mpFetch<MpOrder>(`/v1/orders/${encodeURIComponent(id)}`);
+function orderState(order: MpOrder): MpOrderState {
   const status =
     order.status === 'processed' && order.status_detail === 'accredited'
       ? 'approved'
@@ -102,6 +112,84 @@ export async function getPixPaymentState(id: string): Promise<MpOrderState> {
         ? 'failed'
         : 'pending';
   return { status, rawStatus: order.status, amount: parseFloat(order.total_amount) };
+}
+
+export async function getPixPaymentState(id: string): Promise<MpOrderState> {
+  return orderState(await mpFetch<MpOrder>(`/v1/orders/${encodeURIComponent(id)}`));
+}
+
+// O que o formulário de cartão do Mercado Pago (Card Payment Brick — ver
+// app/CardPaymentStep.tsx) devolve no navegador: o "token" é o cartão
+// já trancado pelo Mercado Pago (o número do cartão nunca passa pelo site).
+export type CardInput = {
+  token: string;
+  paymentMethodId: string; // bandeira: master, visa, elo...
+  paymentTypeId: string; // credit_card ou debit_card
+  installments: number;
+  issuerId: string | null;
+  identification: { type: string; number: string } | null;
+};
+
+// Cobra no cartão. Diferente do Pix, a resposta já vem decidida na hora:
+// aprovado, recusado, ou (raro) em análise pelo antifraude do Mercado Pago.
+// statusDetail ajuda a explicar a recusa pro cliente (ver
+// app/mercadoPagoActions.ts).
+export async function createCardPayment(data: {
+  amount: number;
+  payerEmail: string;
+  externalReference: string;
+  card: CardInput;
+}): Promise<{ id: string | null; state: MpOrderState; statusDetail: string }> {
+  const amount = (Math.round(data.amount * 100) / 100).toFixed(2);
+  let order: MpOrder;
+  try {
+    order = await mpFetch<MpOrder>('/v1/orders', {
+      method: 'POST',
+      idempotencyKey: data.externalReference,
+      body: JSON.stringify({
+        type: 'online',
+        processing_mode: 'automatic',
+        total_amount: amount,
+        external_reference: data.externalReference,
+        payer: {
+          email: data.payerEmail,
+          ...(data.card.identification ? { identification: data.card.identification } : {})
+        },
+        transactions: {
+          payments: [
+            {
+              amount,
+              payment_method: {
+                id: data.card.paymentMethodId,
+                type: data.card.paymentTypeId === 'debit_card' ? 'debit_card' : 'credit_card',
+                token: data.card.token,
+                installments: data.card.installments
+              }
+            }
+          ]
+        }
+      })
+    });
+  } catch (err) {
+    // Cartão recusado: a cobrança recusada vem no corpo do erro 402 (às
+    // vezes dentro de "data").
+    if (err instanceof MercadoPagoError && err.status === 402) {
+      let parsed: { data?: Partial<MpOrder> } & Partial<MpOrder> = {};
+      try {
+        parsed = JSON.parse(err.body);
+      } catch {
+        // corpo vazio ou fora do formato — segue como recusa genérica
+      }
+      const failed = parsed.data ?? parsed;
+      return {
+        id: failed.id ?? null,
+        state: { status: 'failed', rawStatus: failed.status ?? 'failed', amount: parseFloat(amount) },
+        statusDetail: failed.status_detail ?? ''
+      };
+    }
+    throw err;
+  }
+  return { id: order.id, state: orderState(order), statusDetail: order.status_detail };
 }
 
 // Confere se o aviso (webhook) veio mesmo do Mercado Pago: ele assina cada

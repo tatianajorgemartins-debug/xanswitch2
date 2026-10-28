@@ -348,12 +348,15 @@ export async function createOrder(data: {
 // Pedido pago pelo Mercado Pago (ver lib/mercadoPagoOrders.ts): o
 // pagamento já foi confirmado pelo próprio Mercado Pago, então os pontos
 // do card entram confirmados direto, sem esperar você em "🎖️ Clientes".
+// payment_method: 'pix' ou 'cartao' (cartão pelo Mercado Pago — diferente
+// de 'credito', o link de pagamento externo configurado por jogo).
 export async function createPaidMercadoPagoOrder(data: {
   game_id: number | null;
   game_name: string;
   price: number;
   customer_email: string;
   referral_source: string | null;
+  payment_method: MpPaymentMethod;
   card_points_earned: number;
   card_image_url: string | null;
   discount_applied: number;
@@ -361,13 +364,16 @@ export async function createPaidMercadoPagoOrder(data: {
 }): Promise<Order> {
   const rows = await getSql()`
     INSERT INTO orders (game_id, game_name, price, customer_email, referral_source, payment_method, card_points_earned, card_image_url, discount_applied, card_points_confirmed, mp_payment_id)
-    VALUES (${data.game_id}, ${data.game_name}, ${data.price}, ${data.customer_email}, ${data.referral_source}, 'pix', ${data.card_points_earned}, ${data.card_image_url}, ${data.discount_applied}, true, ${data.mp_payment_id})
+    VALUES (${data.game_id}, ${data.game_name}, ${data.price}, ${data.customer_email}, ${data.referral_source}, ${data.payment_method}, ${data.card_points_earned}, ${data.card_image_url}, ${data.discount_applied}, true, ${data.mp_payment_id})
     RETURNING *
   `;
   return rows[0] as Order;
 }
 
-// --- Pix pelo Mercado Pago (ver db/migration-mercadopago.sql) ---
+// --- Pix e cartão pelo Mercado Pago (ver db/migration-mercadopago.sql e
+// db/migration-mercadopago-cartao.sql) ---
+
+export type MpPaymentMethod = 'pix' | 'cartao';
 
 export type MpPaymentItem = {
   gameId: number | null;
@@ -387,6 +393,7 @@ export type MpPaymentRecord = {
   referral_source: string | null;
   discount_credit_id: number | null;
   items: MpPaymentItem[];
+  payment_method: MpPaymentMethod;
   processed_at: Date | null;
   created_at: Date;
 };
@@ -397,10 +404,12 @@ export async function createMpPaymentRecord(data: {
   customer_email: string;
   discount_credit_id: number | null;
   items: MpPaymentItem[];
+  payment_method: MpPaymentMethod;
+  referral_source?: string | null;
 }): Promise<void> {
   await getSql()`
-    INSERT INTO mp_payments (id, total, customer_email, discount_credit_id, items)
-    VALUES (${data.id}, ${data.total}, ${data.customer_email}, ${data.discount_credit_id}, ${JSON.stringify(data.items)}::jsonb)
+    INSERT INTO mp_payments (id, total, customer_email, discount_credit_id, items, payment_method, referral_source)
+    VALUES (${data.id}, ${data.total}, ${data.customer_email}, ${data.discount_credit_id}, ${JSON.stringify(data.items)}::jsonb, ${data.payment_method}, ${data.referral_source ?? null})
     ON CONFLICT (id) DO NOTHING
   `;
 }

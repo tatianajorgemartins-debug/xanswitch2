@@ -62,12 +62,23 @@ export function usePixPaymentStatus(
   return status;
 }
 
-export function PixAutoStatus({ status, onBack }: { status: 'pending' | 'failed'; onBack: () => void }) {
+export function PixAutoStatus({
+  status,
+  onBack,
+  pendingText = 'Aguardando o pagamento — essa tela avança sozinha assim que o Pix cair.',
+  failedText = 'Esse Pix expirou ou foi cancelado. Volte e gere um novo — se você chegou a pagar, fala com a gente no WhatsApp.'
+}: {
+  status: 'pending' | 'failed';
+  onBack: () => void;
+  // O cartão em análise (CardPaymentStep.tsx) usa a mesma espera, com outro texto.
+  pendingText?: string;
+  failedText?: string;
+}) {
   if (status === 'failed') {
     return (
       <div className="purchase-modal-actions">
         <p className="pix-auto-status is-failed" role="alert">
-          Esse Pix expirou ou foi cancelado. Volte e gere um novo — se você chegou a pagar, fala com a gente no WhatsApp.
+          {failedText}
         </p>
         <button type="button" className="purchase-step-back" onClick={onBack}>
           ← Voltar
@@ -79,7 +90,7 @@ export function PixAutoStatus({ status, onBack }: { status: 'pending' | 'failed'
     <div className="purchase-modal-actions">
       <p className="pix-auto-status" role="status">
         <span className="pix-auto-status-dot" aria-hidden="true" />
-        Aguardando o pagamento — essa tela avança sozinha assim que o Pix cair.
+        {pendingText}
       </p>
       <button type="button" className="purchase-step-back" onClick={onBack}>
         ← Voltar

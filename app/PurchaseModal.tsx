@@ -25,12 +25,18 @@ import { CollectibleCard, DownloadCardButton } from './CollectibleCard';
 import { confirmOrderAction, confirmCreditOrderAction } from './orderActions';
 import { startPixPaymentAction } from './mercadoPagoActions';
 import { usePixPaymentStatus, PixAutoStatus } from './PixAutoConfirm';
+import { CardPaymentStep } from './CardPaymentStep';
 import { confirmWithTimeout } from '@/lib/confirmWithTimeout';
 import { XanLoader, useContentLoader } from './XanLoader';
 import { getGameDiscountOfferAction, redeemDiscountAction, type GameDiscountOffer } from './cardActions';
 import { fallbackToOriginal, IMAGE_SIZES, imageSrcSet } from '@/lib/imageVariants';
 
 type Step = 1 | 2 | 3 | 4;
+
+// Cartão pelo Mercado Pago, dentro do site (CardPaymentStep.tsx): com a
+// chave pública configurada, todo jogo oferece "Crédito parcelado" e o link
+// externo por jogo (creditPaymentUrl) deixa de ser usado.
+const MP_CARD_ENABLED = Boolean(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY);
 
 export default function PurchaseModal({
   item,
@@ -323,7 +329,20 @@ export default function PurchaseModal({
             />
           )}
 
-          {step === 3 && paymentMethod === 'credito' && (
+          {step === 3 && paymentMethod === 'credito' && MP_CARD_ENABLED && (
+            <CardPaymentStep
+              gameId={item.id}
+              price={item.price}
+              priceLabel={priceLabel}
+              email={user?.email ?? email}
+              referralSource={referralSource}
+              setReferralSource={setReferralSource}
+              onBack={() => setStep(2)}
+              onConfirmed={() => setStep(4)}
+            />
+          )}
+
+          {step === 3 && paymentMethod === 'credito' && !MP_CARD_ENABLED && (
             <StepCreditPayment
               gameId={item.id}
               gameName={item.name}
@@ -344,7 +363,7 @@ export default function PurchaseModal({
               imageUrl={item.imageUrl}
               points={item.cardPoints}
               paymentMethod={paymentMethod}
-              pointsConfirmed={mpPaymentId !== null}
+              paidOnline={mpPaymentId !== null || (paymentMethod === 'credito' && MP_CARD_ENABLED)}
               onViewCollection={onViewCollection}
               onClose={onClose}
             />
@@ -573,7 +592,7 @@ function StepSummary({
         </div>
 
         <div className="purchase-modal-actions">
-          {item.creditPaymentUrl ? (
+          {item.creditPaymentUrl || MP_CARD_ENABLED ? (
             <>
               <p className="purchase-payment-choice-label">Como você quer pagar?</p>
               <div className="purchase-payment-choice">
@@ -1231,7 +1250,7 @@ function StepCardReveal({
   imageUrl,
   points,
   paymentMethod,
-  pointsConfirmed,
+  paidOnline,
   onViewCollection,
   onClose
 }: {
@@ -1239,15 +1258,16 @@ function StepCardReveal({
   imageUrl: string | null;
   points: number;
   paymentMethod: 'pix' | 'credito';
-  // Pago pelo Mercado Pago: os pontos já entraram confirmados.
-  pointsConfirmed: boolean;
+  // Pago pelo Mercado Pago (Pix ou cartão): o pagamento já foi aprovado e
+  // os pontos já entraram confirmados.
+  paidOnline: boolean;
   onViewCollection: () => void;
   onClose: () => void;
 }) {
   return (
     <>
       <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 15, color: 'var(--ink)', marginBottom: 4 }}>
-        {paymentMethod === 'pix'
+        {paymentMethod === 'pix' || paidOnline
           ? 'Pagamento confirmado! Seu código chega no seu e-mail ainda hoje 🎮'
           : 'Pedido registrado! Conclua o pagamento na aba que abrimos — seu código chega por e-mail assim que confirmarmos 🎮'}
       </p>
@@ -1262,7 +1282,7 @@ function StepCardReveal({
       <CollectibleCard gameName={gameName} imageUrl={imageUrl} points={points} />
 
       <p className="purchase-card-pending-note">
-        {pointsConfirmed
+        {paidOnline
           ? 'Seus pontos já estão valendo na sua conta.'
           : 'Seus pontos entram pra valer na sua conta depois que a gente confirmar seu pagamento.'}
       </p>

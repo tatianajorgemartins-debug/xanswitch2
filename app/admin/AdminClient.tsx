@@ -782,7 +782,15 @@ function OrdersPanel({
                         padding: '2px 8px'
                       }}
                     >
-                      ✓ Pix pago (Mercado Pago)
+                      {o.payment_method === 'cartao' ? '✓ Cartão pago (Mercado Pago)' : '✓ Pix pago (Mercado Pago)'}
+                    </span>
+                  )}
+                  {o.payment_method === 'cartao' && (
+                    // Jogo digital no cartão é alvo de compra com cartão
+                    // roubado (o dono contesta semanas depois): vale olhar
+                    // o pedido com calma antes de mandar o código.
+                    <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--gold)' }}>
+                      ⚠ Confira antes de enviar o código
                     </span>
                   )}
                   {o.customer_email && (
