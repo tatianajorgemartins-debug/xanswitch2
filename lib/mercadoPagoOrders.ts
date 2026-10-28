@@ -16,29 +16,27 @@ import {
   setMpPaymentStatus
 } from './db';
 import { after } from 'next/server';
-import { getPayment } from './mercadoPago';
+import { getPixPaymentState } from './mercadoPago';
 import { notifyNewOrder } from './notifications';
 
 // O que a tela do cliente precisa saber: pagou, ainda não, ou não vai mais
-// rolar (Pix expirou, foi recusado ou devolvido) e precisa gerar outro.
+// rolar (Pix expirou, foi cancelado ou devolvido) e precisa gerar outro.
 export type PixCheckStatus = 'approved' | 'pending' | 'failed';
-
-const FAILED_STATUSES = new Set(['rejected', 'cancelled', 'refunded', 'charged_back']);
 
 export async function syncMercadoPagoPayment(paymentId: string): Promise<PixCheckStatus> {
   const record = await getMpPaymentRecord(paymentId);
-  // Pagamento que não foi criado pelo site (ex: uma venda sua por outro
+  // Cobrança que não foi criada pelo site (ex: uma venda sua por outro
   // canal do Mercado Pago que também gera aviso): não é da nossa conta.
   if (!record) return 'failed';
   if (record.processed_at) return 'approved';
 
-  const payment = await getPayment(paymentId);
+  const state = await getPixPaymentState(paymentId);
 
-  if (payment.status === 'approved') {
+  if (state.status === 'approved') {
     // Confere que o valor pago é o valor cobrado — evita aprovar um pedido
     // por uma cobrança diferente que, por algum motivo, tenha o mesmo id.
-    if (payment.transaction_amount + 0.009 < parseFloat(record.total)) {
-      console.error(`[mercadopago] Pagamento ${paymentId} aprovado com valor menor que o pedido.`);
+    if (state.amount + 0.009 < parseFloat(record.total)) {
+      console.error(`[mercadopago] Cobrança ${paymentId} aprovada com valor menor que o pedido.`);
       await setMpPaymentStatus(paymentId, 'amount_mismatch');
       return 'failed';
     }
@@ -46,10 +44,10 @@ export async function syncMercadoPagoPayment(paymentId: string): Promise<PixChec
     return 'approved';
   }
 
-  if (payment.status !== record.status) {
-    await setMpPaymentStatus(paymentId, payment.status);
+  if (state.rawStatus !== record.status) {
+    await setMpPaymentStatus(paymentId, state.rawStatus);
   }
-  return FAILED_STATUSES.has(payment.status) ? 'failed' : 'pending';
+  return state.status;
 }
 
 async function createOrdersForApprovedPayment(paymentId: string): Promise<void> {

@@ -55,8 +55,7 @@ function gameToPaymentItem(game: Game): MpPaymentItem {
 async function createCharge(
   items: MpPaymentItem[],
   email: string,
-  discountCreditId: number | null,
-  description: string
+  discountCreditId: number | null
 ): Promise<StartPixResult> {
   const total = Math.round(items.reduce((sum, it) => sum + it.price, 0) * 100) / 100;
   // Desconto cobrindo o jogo inteiro (ou valor quebrado demais pra cobrar):
@@ -66,7 +65,6 @@ async function createCharge(
   try {
     const charge = await createPixPayment({
       amount: total,
-      description,
       payerEmail: email,
       externalReference: randomUUID()
     });
@@ -119,7 +117,7 @@ export async function startPixPaymentAction(
     }
   }
 
-  return createCharge([item], trimmedEmail, discountCreditId, item.gameName);
+  return createCharge([item], trimmedEmail, discountCreditId);
 }
 
 // Vários jogos da lista de desejos num Pix só (BulkPurchaseModal.tsx). Sem
@@ -135,13 +133,14 @@ export async function startBulkPixPaymentAction(gameIds: number[], email: string
   }
   const items = (games as Game[]).map(gameToPaymentItem);
 
-  return createCharge(items, trimmedEmail, null, `${items.length} jogos - XAN Switch`);
+  return createCharge(items, trimmedEmail, null);
 }
 
 // referralSource vai junto porque o "como você conheceu a loja?" é marcado
 // na própria tela do Pix, depois que a cobrança já existe.
 export async function checkPixPaymentAction(paymentId: string, referralSource: string | null): Promise<PixCheckStatus> {
-  if (!/^\d+$/.test(paymentId)) return 'failed';
+  // Ids das cobranças do Mercado Pago são letras e números ("ORD01...").
+  if (!/^[A-Za-z0-9]+$/.test(paymentId)) return 'failed';
   try {
     await setMpPaymentReferralSource(paymentId, referralSource && isValidReferralSource(referralSource) ? referralSource : null);
     return await syncMercadoPagoPayment(paymentId);
