@@ -23,6 +23,8 @@ import { isValidEmail, REFERRAL_SOURCES } from '@/lib/validation';
 import { signUp, signIn, translateAuthError, getAccessToken } from '@/lib/wishlist';
 import { CollectibleCard, DownloadCardButton } from './CollectibleCard';
 import { confirmOrderAction, confirmCreditOrderAction } from './orderActions';
+import { startPixPaymentAction } from './mercadoPagoActions';
+import { usePixPaymentStatus, PixAutoStatus } from './PixAutoConfirm';
 import { confirmWithTimeout } from '@/lib/confirmWithTimeout';
 import { XanLoader, useContentLoader } from './XanLoader';
 import { getGameDiscountOfferAction, redeemDiscountAction, type GameDiscountOffer } from './cardActions';
@@ -64,6 +66,9 @@ export default function PurchaseModal({
 
   const [pix, setPix] = useState<PixPayload | null>(null);
   const [pixError, setPixError] = useState<string | null>(null);
+  // Id da cobrança no Mercado Pago quando o Pix é automático (ver
+  // app/mercadoPagoActions.ts) — null no Pix de sempre, com "Já paguei".
+  const [mpPaymentId, setMpPaymentId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
 
@@ -188,16 +193,37 @@ export default function PurchaseModal({
   const effectivePrice = discountApplied ? Math.max(0, item.price - appliedDiscountAmount) : item.price;
 
   // Ao entrar na etapa 3 (pagamento), já com o valor final decidido, gera o
-  // Pix. Tudo roda no navegador — não existe gateway de pagamento nem
-  // chamada de API paga envolvida em gerar o QR Code.
+  // Pix: pelo Mercado Pago quando ele está configurado (o servidor calcula
+  // o valor e a confirmação é automática), senão o Pix de sempre, gerado
+  // aqui no navegador (lib/pix.ts), com o "Já paguei".
   useEffect(() => {
     if (step !== 3 || paymentMethod !== 'pix' || !discountResolved || startedRef.current) return;
     startedRef.current = true;
 
-    generatePixPayload(effectivePrice, item.name)
-      .then(setPix)
-      .catch((err: Error) => setPixError(err.message));
+    (async () => {
+      const accessToken = discountApplied ? await getAccessToken() : null;
+      const result = await startPixPaymentAction(item.id, user?.email ?? email, discountApplied, accessToken);
+      if (result.mode === 'mercadopago') {
+        setMpPaymentId(result.paymentId);
+        setPix({ brCode: result.brCode, qrCodeImage: result.qrCodeImage });
+      } else if (result.mode === 'error') {
+        setPixError(result.error);
+      } else {
+        setPix(await generatePixPayload(effectivePrice, item.name));
+      }
+    })().catch((err: Error) => setPixError(err.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, paymentMethod, discountResolved, effectivePrice, item]);
+
+  // Pix do Mercado Pago expirou: volta pra etapa anterior e deixa gerar um
+  // novo na próxima vez que a pessoa entrar no pagamento.
+  function handlePixExpiredBack() {
+    startedRef.current = false;
+    setPix(null);
+    setPixError(null);
+    setMpPaymentId(null);
+    setStep(2);
+  }
 
   function handleCopy() {
     if (!pix) return;
@@ -285,6 +311,8 @@ export default function PurchaseModal({
               referralSource={referralSource}
               setReferralSource={setReferralSource}
               applyDiscount={discountApplied}
+              mpPaymentId={mpPaymentId}
+              onExpiredBack={handlePixExpiredBack}
               pix={pix}
               pixError={pixError}
               copied={copied}
@@ -316,6 +344,7 @@ export default function PurchaseModal({
               imageUrl={item.imageUrl}
               points={item.cardPoints}
               paymentMethod={paymentMethod}
+              pointsConfirmed={mpPaymentId !== null}
               onViewCollection={onViewCollection}
               onClose={onClose}
             />
@@ -983,6 +1012,8 @@ function StepPayment({
   referralSource,
   setReferralSource,
   applyDiscount,
+  mpPaymentId,
+  onExpiredBack,
   pix,
   pixError,
   copied,
@@ -999,6 +1030,8 @@ function StepPayment({
   referralSource: string | null;
   setReferralSource: (v: string | null) => void;
   applyDiscount: boolean;
+  mpPaymentId: string | null;
+  onExpiredBack: () => void;
   pix: PixPayload | null;
   pixError: string | null;
   copied: boolean;
@@ -1009,6 +1042,7 @@ function StepPayment({
 }) {
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  const autoStatus = usePixPaymentStatus(mpPaymentId, referralSource, onConfirmed);
 
   async function handleConfirm() {
     setConfirming(true);
@@ -1075,20 +1109,26 @@ function StepPayment({
         <p>Após o pagamento, seu código chega por e-mail ainda hoje 🎮</p>
       </div>
 
-      {confirmError && (
-        <p style={{ color: '#ff8a8a', fontSize: 13, fontWeight: 600, textAlign: 'center', marginBottom: 12 }}>
-          {confirmError}
-        </p>
-      )}
+      {mpPaymentId ? (
+        <PixAutoStatus status={autoStatus} onBack={autoStatus === 'failed' ? onExpiredBack : onBack} />
+      ) : (
+        <>
+          {confirmError && (
+            <p style={{ color: '#ff8a8a', fontSize: 13, fontWeight: 600, textAlign: 'center', marginBottom: 12 }}>
+              {confirmError}
+            </p>
+          )}
 
-      <div className="purchase-modal-actions">
-        <button type="button" className="btn green" onClick={handleConfirm} disabled={confirming}>
-          {confirming ? 'Confirmando...' : 'Já paguei — confirmar pedido'}
-        </button>
-        <button type="button" className="purchase-step-back" onClick={onBack} disabled={confirming}>
-          ← Voltar
-        </button>
-      </div>
+          <div className="purchase-modal-actions">
+            <button type="button" className="btn green" onClick={handleConfirm} disabled={confirming}>
+              {confirming ? 'Confirmando...' : 'Já paguei — confirmar pedido'}
+            </button>
+            <button type="button" className="purchase-step-back" onClick={onBack} disabled={confirming}>
+              ← Voltar
+            </button>
+          </div>
+        </>
+      )}
     </>
   );
 }
@@ -1191,6 +1231,7 @@ function StepCardReveal({
   imageUrl,
   points,
   paymentMethod,
+  pointsConfirmed,
   onViewCollection,
   onClose
 }: {
@@ -1198,6 +1239,8 @@ function StepCardReveal({
   imageUrl: string | null;
   points: number;
   paymentMethod: 'pix' | 'credito';
+  // Pago pelo Mercado Pago: os pontos já entraram confirmados.
+  pointsConfirmed: boolean;
   onViewCollection: () => void;
   onClose: () => void;
 }) {
@@ -1219,7 +1262,9 @@ function StepCardReveal({
       <CollectibleCard gameName={gameName} imageUrl={imageUrl} points={points} />
 
       <p className="purchase-card-pending-note">
-        Seus pontos entram pra valer na sua conta depois que a gente confirmar seu pagamento.
+        {pointsConfirmed
+          ? 'Seus pontos já estão valendo na sua conta.'
+          : 'Seus pontos entram pra valer na sua conta depois que a gente confirmar seu pagamento.'}
       </p>
 
       <div className="purchase-modal-actions" style={{ marginTop: 18 }}>

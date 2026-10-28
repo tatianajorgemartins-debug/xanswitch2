@@ -13,6 +13,8 @@ import { StepChecklistAndEmail, ReservationTimer, RegionTutorial, ReferralSource
 import { CollectibleCard, DownloadCardButton } from './CollectibleCard';
 import { generatePixPayload, type PixPayload } from '@/lib/pix';
 import { confirmBulkOrderAction } from './orderActions';
+import { startBulkPixPaymentAction } from './mercadoPagoActions';
+import { usePixPaymentStatus, PixAutoStatus } from './PixAutoConfirm';
 import { confirmWithTimeout } from '@/lib/confirmWithTimeout';
 import { formatPriceBR } from '@/lib/whatsapp';
 import { fallbackToOriginal, IMAGE_SIZES, imageSrcSet } from '@/lib/imageVariants';
@@ -39,6 +41,9 @@ export default function BulkPurchaseModal({
   const [pixError, setPixError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
+  // Id da cobrança no Mercado Pago quando o Pix é automático — mesma ideia
+  // do PurchaseModal.tsx.
+  const [mpPaymentId, setMpPaymentId] = useState<string | null>(null);
   const startedRef = useRef(false);
 
   const total = items.reduce((sum, it) => sum + it.price, 0);
@@ -60,16 +65,37 @@ export default function BulkPurchaseModal({
     };
   }, []);
 
-  // Ao entrar na etapa 2 (pagamento), gera um único Pix pro valor total.
+  // Ao entrar na etapa 2 (pagamento), gera um único Pix pro valor total —
+  // pelo Mercado Pago quando configurado, senão o Pix de sempre.
   useEffect(() => {
     if (step !== 2 || startedRef.current) return;
     startedRef.current = true;
 
-    generatePixPayload(total, `${items.length} jogos`)
-      .then(setPix)
-      .catch((err: Error) => setPixError(err.message));
+    (async () => {
+      const result = await startBulkPixPaymentAction(
+        items.map((it) => it.id),
+        user?.email ?? email
+      );
+      if (result.mode === 'mercadopago') {
+        setMpPaymentId(result.paymentId);
+        setPix({ brCode: result.brCode, qrCodeImage: result.qrCodeImage });
+      } else if (result.mode === 'error') {
+        setPixError(result.error);
+      } else {
+        setPix(await generatePixPayload(total, `${items.length} jogos`));
+      }
+    })().catch((err: Error) => setPixError(err.message));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
+
+  // Pix do Mercado Pago expirou: volta e gera um novo na próxima vez.
+  function handlePixExpiredBack() {
+    startedRef.current = false;
+    setPix(null);
+    setPixError(null);
+    setMpPaymentId(null);
+    setStep(1);
+  }
 
   function handleCopy() {
     if (!pix) return;
@@ -147,6 +173,8 @@ export default function BulkPurchaseModal({
               email={user?.email ?? email}
               referralSource={referralSource}
               setReferralSource={setReferralSource}
+              mpPaymentId={mpPaymentId}
+              onExpiredBack={handlePixExpiredBack}
               pix={pix}
               pixError={pixError}
               copied={copied}
@@ -158,7 +186,7 @@ export default function BulkPurchaseModal({
           )}
 
           {step === 3 && (
-            <BulkStepConfirm items={items} onViewCollection={onViewCollection} onClose={onClose} />
+            <BulkStepConfirm items={items} pointsConfirmed={mpPaymentId !== null} onViewCollection={onViewCollection} onClose={onClose} />
           )}
         </div>
       </div>
@@ -173,6 +201,8 @@ function BulkStepPayment({
   email,
   referralSource,
   setReferralSource,
+  mpPaymentId,
+  onExpiredBack,
   pix,
   pixError,
   copied,
@@ -187,6 +217,8 @@ function BulkStepPayment({
   email: string;
   referralSource: string | null;
   setReferralSource: (v: string | null) => void;
+  mpPaymentId: string | null;
+  onExpiredBack: () => void;
   pix: PixPayload | null;
   pixError: string | null;
   copied: boolean;
@@ -197,6 +229,7 @@ function BulkStepPayment({
 }) {
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  const autoStatus = usePixPaymentStatus(mpPaymentId, referralSource, onConfirmed);
 
   async function handleConfirm() {
     setConfirming(true);
@@ -267,20 +300,26 @@ function BulkStepPayment({
         <p>Após o pagamento, seus códigos chegam por e-mail ainda hoje 🎮</p>
       </div>
 
-      {confirmError && (
-        <p style={{ color: '#ff8a8a', fontSize: 13, fontWeight: 600, textAlign: 'center', marginBottom: 12 }}>
-          {confirmError}
-        </p>
-      )}
+      {mpPaymentId ? (
+        <PixAutoStatus status={autoStatus} onBack={autoStatus === 'failed' ? onExpiredBack : onBack} />
+      ) : (
+        <>
+          {confirmError && (
+            <p style={{ color: '#ff8a8a', fontSize: 13, fontWeight: 600, textAlign: 'center', marginBottom: 12 }}>
+              {confirmError}
+            </p>
+          )}
 
-      <div className="purchase-modal-actions">
-        <button type="button" className="btn green" onClick={handleConfirm} disabled={confirming}>
-          {confirming ? 'Confirmando...' : 'Já paguei — confirmar pedido'}
-        </button>
-        <button type="button" className="purchase-step-back" onClick={onBack} disabled={confirming}>
-          ← Voltar
-        </button>
-      </div>
+          <div className="purchase-modal-actions">
+            <button type="button" className="btn green" onClick={handleConfirm} disabled={confirming}>
+              {confirming ? 'Confirmando...' : 'Já paguei — confirmar pedido'}
+            </button>
+            <button type="button" className="purchase-step-back" onClick={onBack} disabled={confirming}>
+              ← Voltar
+            </button>
+          </div>
+        </>
+      )}
     </>
   );
 }
@@ -291,10 +330,13 @@ function BulkStepPayment({
 // cards de uma vez.
 function BulkStepConfirm({
   items,
+  pointsConfirmed,
   onViewCollection,
   onClose
 }: {
   items: Item[];
+  // Pago pelo Mercado Pago: os pontos já entraram confirmados.
+  pointsConfirmed: boolean;
   onViewCollection: () => void;
   onClose: () => void;
 }) {
@@ -323,7 +365,9 @@ function BulkStepConfirm({
       </div>
 
       <p className="purchase-card-pending-note">
-        Seus pontos entram pra valer na sua conta depois que a gente confirmar seu pagamento.
+        {pointsConfirmed
+          ? 'Seus pontos já estão valendo na sua conta.'
+          : 'Seus pontos entram pra valer na sua conta depois que a gente confirmar seu pagamento.'}
       </p>
 
       <div className="purchase-modal-actions" style={{ marginTop: 18 }}>

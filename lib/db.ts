@@ -320,6 +320,9 @@ export type Order = {
   // ver a seção "Troca de pontos por desconto" do README. Zero quando
   // nenhum desconto foi aplicado.
   discount_applied: string; // numeric comes back as string from postgres
+  // Id do pagamento no Mercado Pago quando o Pix foi automático (ver
+  // lib/mercadoPagoOrders.ts) — null nos pedidos do Pix de sempre.
+  mp_payment_id: string | null;
   created_at: Date;
 };
 
@@ -340,6 +343,103 @@ export async function createOrder(data: {
     RETURNING *
   `;
   return rows[0] as Order;
+}
+
+// Pedido pago pelo Mercado Pago (ver lib/mercadoPagoOrders.ts): o
+// pagamento já foi confirmado pelo próprio Mercado Pago, então os pontos
+// do card entram confirmados direto, sem esperar você em "🎖️ Clientes".
+export async function createPaidMercadoPagoOrder(data: {
+  game_id: number | null;
+  game_name: string;
+  price: number;
+  customer_email: string;
+  referral_source: string | null;
+  card_points_earned: number;
+  card_image_url: string | null;
+  discount_applied: number;
+  mp_payment_id: string;
+}): Promise<Order> {
+  const rows = await getSql()`
+    INSERT INTO orders (game_id, game_name, price, customer_email, referral_source, payment_method, card_points_earned, card_image_url, discount_applied, card_points_confirmed, mp_payment_id)
+    VALUES (${data.game_id}, ${data.game_name}, ${data.price}, ${data.customer_email}, ${data.referral_source}, 'pix', ${data.card_points_earned}, ${data.card_image_url}, ${data.discount_applied}, true, ${data.mp_payment_id})
+    RETURNING *
+  `;
+  return rows[0] as Order;
+}
+
+// --- Pix pelo Mercado Pago (ver db/migration-mercadopago.sql) ---
+
+export type MpPaymentItem = {
+  gameId: number | null;
+  gameName: string;
+  price: number;
+  discountApplied: number;
+  cardPoints: number;
+  cardImageUrl: string | null;
+  amazonJpUrl: string | null;
+};
+
+export type MpPaymentRecord = {
+  id: string;
+  status: string;
+  total: string; // numeric comes back as string from postgres
+  customer_email: string;
+  referral_source: string | null;
+  discount_credit_id: number | null;
+  items: MpPaymentItem[];
+  processed_at: Date | null;
+  created_at: Date;
+};
+
+export async function createMpPaymentRecord(data: {
+  id: string;
+  total: number;
+  customer_email: string;
+  discount_credit_id: number | null;
+  items: MpPaymentItem[];
+}): Promise<void> {
+  await getSql()`
+    INSERT INTO mp_payments (id, total, customer_email, discount_credit_id, items)
+    VALUES (${data.id}, ${data.total}, ${data.customer_email}, ${data.discount_credit_id}, ${JSON.stringify(data.items)}::jsonb)
+    ON CONFLICT (id) DO NOTHING
+  `;
+}
+
+export async function getMpPaymentRecord(id: string): Promise<MpPaymentRecord | null> {
+  const rows = await getSql()`SELECT * FROM mp_payments WHERE id = ${id}`;
+  return (rows[0] as MpPaymentRecord) ?? null;
+}
+
+// "Como você conheceu a loja?" é marcado na tela do Pix, depois que a
+// cobrança já foi criada — a tela manda a resposta junto de cada consulta
+// de status, até o pagamento ser processado.
+export async function setMpPaymentReferralSource(id: string, referralSource: string | null): Promise<void> {
+  await getSql()`
+    UPDATE mp_payments SET referral_source = ${referralSource}
+    WHERE id = ${id} AND processed_at IS NULL
+  `;
+}
+
+export async function setMpPaymentStatus(id: string, status: string): Promise<void> {
+  await getSql()`UPDATE mp_payments SET status = ${status} WHERE id = ${id}`;
+}
+
+// "Reserva" o processamento de um pagamento aprovado: só uma chamada
+// consegue (o aviso do Mercado Pago e a tela do cliente podem chegar quase
+// juntos) — as outras recebem null e não criam pedido em dobro.
+export async function claimApprovedMpPayment(id: string): Promise<MpPaymentRecord | null> {
+  const rows = await getSql()`
+    UPDATE mp_payments SET status = 'approved', processed_at = now()
+    WHERE id = ${id} AND processed_at IS NULL
+    RETURNING *
+  `;
+  return (rows[0] as MpPaymentRecord) ?? null;
+}
+
+// Desfaz a reserva acima se a criação dos pedidos falhar no meio, pra uma
+// próxima tentativa (novo aviso ou nova consulta da tela) refazer.
+export async function releaseMpPaymentClaim(id: string): Promise<void> {
+  await getSql()`UPDATE mp_payments SET processed_at = NULL WHERE id = ${id}`;
 }
 
 // Pedido igual (mesmo e-mail, jogo e forma de pagamento) feito nos últimos

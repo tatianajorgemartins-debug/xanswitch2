@@ -20,6 +20,7 @@ import {
   type Game
 } from './db';
 import { buildWhatsAppContactLink, formatPriceBR } from './whatsapp';
+import { gamePrice } from './gamePrice';
 import { getWishlistCounts } from './supabaseAdmin';
 import type { Item, ReviewItem } from '@/app/CatalogClient';
 
@@ -31,10 +32,7 @@ function toItem(g: Game): Item {
   // preço normal do site aparece riscado no lugar, pra promoção não ficar
   // sem referência. O selo "-X%" é calculado sobre o preço riscado, pra
   // bater com o que o cliente vê.
-  const regularPrice = parseFloat(g.price);
-  const promoPrice = g.promo_price ? parseFloat(g.promo_price) : null;
-  const isOnSale = promoPrice !== null && promoPrice > 0 && promoPrice < regularPrice;
-  const price = isOnSale ? (promoPrice as number) : regularPrice;
+  const { regularPrice, isOnSale, price } = gamePrice(g);
   const eshopPrice = g.original_price ? parseFloat(g.original_price) : null;
   const struckPrice =
     eshopPrice !== null && eshopPrice > price ? eshopPrice : isOnSale ? regularPrice : null;

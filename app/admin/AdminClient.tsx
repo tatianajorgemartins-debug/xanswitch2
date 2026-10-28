@@ -770,6 +770,21 @@ function OrdersPanel({
                       💳 Crédito parcelado
                     </span>
                   )}
+                  {o.mp_payment_id && (
+                    <span
+                      title={`Pagamento ${o.mp_payment_id} no Mercado Pago`}
+                      style={{
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        color: '#04210a',
+                        background: 'var(--green)',
+                        borderRadius: 6,
+                        padding: '2px 8px'
+                      }}
+                    >
+                      ✓ Pix pago (Mercado Pago)
+                    </span>
+                  )}
                   {o.customer_email && (
                     <span style={{ color: 'var(--ink-dim)', fontSize: 12.5 }}>✉ {o.customer_email}</span>
                   )}
