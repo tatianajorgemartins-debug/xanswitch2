@@ -44,6 +44,8 @@ export default function BulkPurchaseModal({
   // Id da cobrança no Mercado Pago quando o Pix é automático — mesma ideia
   // do PurchaseModal.tsx.
   const [mpPaymentId, setMpPaymentId] = useState<string | null>(null);
+  // Valor cobrado de fato (com a taxa do Pix repassada, se configurada).
+  const [mpPixCharge, setMpPixCharge] = useState<{ amount: number; feePercent: number } | null>(null);
   const startedRef = useRef(false);
 
   const total = items.reduce((sum, it) => sum + it.price, 0);
@@ -78,6 +80,7 @@ export default function BulkPurchaseModal({
       );
       if (result.mode === 'mercadopago') {
         setMpPaymentId(result.paymentId);
+        setMpPixCharge({ amount: result.amount, feePercent: result.feePercent });
         setPix({ brCode: result.brCode, qrCodeImage: result.qrCodeImage });
       } else if (result.mode === 'error') {
         setPixError(result.error);
@@ -94,6 +97,7 @@ export default function BulkPurchaseModal({
     setPix(null);
     setPixError(null);
     setMpPaymentId(null);
+    setMpPixCharge(null);
     setStep(1);
   }
 
@@ -169,7 +173,8 @@ export default function BulkPurchaseModal({
             <BulkStepPayment
               items={items}
               total={total}
-              totalLabel={totalLabel}
+              totalLabel={mpPixCharge ? mpPixCharge.amount.toFixed(2).replace('.', ',') : totalLabel}
+              pixFeePercent={mpPixCharge?.feePercent ?? 0}
               email={user?.email ?? email}
               referralSource={referralSource}
               setReferralSource={setReferralSource}
@@ -198,6 +203,7 @@ function BulkStepPayment({
   items,
   total,
   totalLabel,
+  pixFeePercent,
   email,
   referralSource,
   setReferralSource,
@@ -214,6 +220,7 @@ function BulkStepPayment({
   items: Item[];
   total: number;
   totalLabel: string;
+  pixFeePercent: number;
   email: string;
   referralSource: string | null;
   setReferralSource: (v: string | null) => void;
@@ -270,6 +277,11 @@ function BulkStepPayment({
   return (
     <>
       <p className="purchase-pix-amount">R$ {totalLabel}</p>
+      {pixFeePercent > 0 && (
+        <p className="card-payment-fee-note">
+          Valor inclui a taxa de processamento do Pix ({pixFeePercent.toFixed(2).replace('.', ',')}%).
+        </p>
+      )}
 
       <ReservationTimer />
 

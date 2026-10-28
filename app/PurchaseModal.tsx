@@ -75,6 +75,9 @@ export default function PurchaseModal({
   // Id da cobrança no Mercado Pago quando o Pix é automático (ver
   // app/mercadoPagoActions.ts) — null no Pix de sempre, com "Já paguei".
   const [mpPaymentId, setMpPaymentId] = useState<string | null>(null);
+  // Valor cobrado de fato no Pix do Mercado Pago (com a taxa repassada, se
+  // configurada no admin — ver lib/paymentFees.ts) e a taxa, pro aviso.
+  const [mpPixCharge, setMpPixCharge] = useState<{ amount: number; feePercent: number } | null>(null);
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
 
@@ -211,6 +214,7 @@ export default function PurchaseModal({
       const result = await startPixPaymentAction(item.id, user?.email ?? email, discountApplied, accessToken);
       if (result.mode === 'mercadopago') {
         setMpPaymentId(result.paymentId);
+        setMpPixCharge({ amount: result.amount, feePercent: result.feePercent });
         setPix({ brCode: result.brCode, qrCodeImage: result.qrCodeImage });
       } else if (result.mode === 'error') {
         setPixError(result.error);
@@ -228,6 +232,7 @@ export default function PurchaseModal({
     setPix(null);
     setPixError(null);
     setMpPaymentId(null);
+    setMpPixCharge(null);
     setStep(2);
   }
 
@@ -312,7 +317,8 @@ export default function PurchaseModal({
               gameId={item.id}
               gameName={item.name}
               price={item.price}
-              priceLabel={effectivePrice.toFixed(2).replace('.', ',')}
+              priceLabel={(mpPixCharge?.amount ?? effectivePrice).toFixed(2).replace('.', ',')}
+              pixFeePercent={mpPixCharge?.feePercent ?? 0}
               email={user?.email ?? email}
               referralSource={referralSource}
               setReferralSource={setReferralSource}
@@ -332,8 +338,6 @@ export default function PurchaseModal({
           {step === 3 && paymentMethod === 'credito' && MP_CARD_ENABLED && (
             <CardPaymentStep
               gameId={item.id}
-              price={item.price}
-              priceLabel={priceLabel}
               email={user?.email ?? email}
               referralSource={referralSource}
               setReferralSource={setReferralSource}
@@ -1027,6 +1031,7 @@ function StepPayment({
   gameName,
   price,
   priceLabel,
+  pixFeePercent,
   email,
   referralSource,
   setReferralSource,
@@ -1045,6 +1050,8 @@ function StepPayment({
   gameName: string;
   price: number;
   priceLabel: string;
+  // Taxa do Pix repassada ao cliente (Mercado Pago) — 0 quando não há.
+  pixFeePercent: number;
   email: string;
   referralSource: string | null;
   setReferralSource: (v: string | null) => void;
@@ -1098,6 +1105,11 @@ function StepPayment({
   return (
     <>
       <p className="purchase-pix-amount">R$ {priceLabel}</p>
+      {pixFeePercent > 0 && (
+        <p className="card-payment-fee-note">
+          Valor inclui a taxa de processamento do Pix ({pixFeePercent.toFixed(2).replace('.', ',')}%).
+        </p>
+      )}
 
       <ReservationTimer />
 

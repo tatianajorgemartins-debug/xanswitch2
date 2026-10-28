@@ -10,7 +10,8 @@
 // Só aparece quando NEXT_PUBLIC_MP_PUBLIC_KEY está configurada (ver
 // PurchaseModal.tsx); sem ela, o crédito continua no link externo por jogo.
 import { useEffect, useRef, useState } from 'react';
-import { payWithCardAction } from './mercadoPagoActions';
+import { getCardChargeAction, payWithCardAction } from './mercadoPagoActions';
+import { formatPriceBR } from '@/lib/whatsapp';
 import { usePixPaymentStatus, PixAutoStatus } from './PixAutoConfirm';
 import { ReferralSourcePicker } from './PurchaseModal';
 
@@ -64,8 +65,6 @@ function loadSdk(): Promise<MercadoPagoSdk> {
 
 export function CardPaymentStep({
   gameId,
-  price,
-  priceLabel,
   email,
   referralSource,
   setReferralSource,
@@ -73,8 +72,6 @@ export function CardPaymentStep({
   onConfirmed
 }: {
   gameId: number;
-  price: number;
-  priceLabel: string;
   email: string;
   referralSource: string | null;
   setReferralSource: (v: string | null) => void;
@@ -83,6 +80,26 @@ export function CardPaymentStep({
 }) {
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  // Valor no cartão (com a taxa repassada) e no Pix, calculados no servidor
+  // (getCardChargeAction) antes de o formulário abrir — as parcelas são
+  // calculadas em cima desse valor.
+  const [charge, setCharge] = useState<{ amount: number; feePercent: number; pixAmount: number } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getCardChargeAction(gameId)
+      .then((result) => {
+        if (cancelled) return;
+        if (result) setCharge(result);
+        else setLoadError(true);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [gameId]);
   const [error, setError] = useState<string | null>(null);
   // Cada recusa recria o formulário do zero (o token do cartão só vale
   // uma tentativa) — mudar esse número remonta o Brick.
@@ -97,7 +114,7 @@ export function CardPaymentStep({
   referralAtSubmit.current = referralSource;
 
   useEffect(() => {
-    if (pendingPaymentId) return;
+    if (pendingPaymentId || !charge) return;
     const publicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY;
     if (!publicKey) return;
     let cancelled = false;
@@ -109,7 +126,7 @@ export function CardPaymentStep({
         if (cancelled) return null;
         const mp = new MercadoPago(publicKey, { locale: 'pt-BR' });
         return mp.bricks().create('cardPayment', CONTAINER_ID, {
-          initialization: { amount: price, payer: { email } },
+          initialization: { amount: charge.amount, payer: { email } },
           customization: {
             paymentMethods: { maxInstallments: 12, types: { excluded: ['debit_card', 'prepaid-card'] } },
             visual: { style: { theme: 'dark', customVariables: { baseColor: '#7b4df5' } } }
@@ -167,7 +184,7 @@ export function CardPaymentStep({
       controller?.unmount();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attempt, pendingPaymentId]);
+  }, [attempt, pendingPaymentId, charge]);
 
   if (pendingPaymentId) {
     return (
@@ -182,7 +199,19 @@ export function CardPaymentStep({
 
   return (
     <>
-      <p className="purchase-pix-amount">R$ {priceLabel}</p>
+      {charge && (
+        <>
+          <p className="purchase-pix-amount">R$ {formatPriceBR(charge.amount)}</p>
+          {charge.feePercent > 0 && (
+            // Aviso exigido pra cobrar diferente por forma de pagamento (Lei
+            // 13.455/2017): o cliente vê o valor e o porquê antes de pagar.
+            <p className="card-payment-fee-note">
+              No cartão, o valor inclui a taxa de processamento de {formatPriceBR(charge.feePercent)}%. No Pix sai por
+              R$ {formatPriceBR(charge.pixAmount)}.
+            </p>
+          )}
+        </>
+      )}
 
       {error && (
         <p className="card-payment-error" role="alert">

@@ -14,6 +14,7 @@ import {
   FEATURED_FRANCHISE_LABEL_KEY
 } from '@/lib/db';
 import { isAuthenticated } from '@/lib/auth';
+import { getPaymentFees } from '@/lib/paymentFees';
 import { getWishlistCounts } from '@/lib/supabaseAdmin';
 import AdminClient from './AdminClient';
 
@@ -44,6 +45,7 @@ export default async function AdminPage() {
   const featuredFranchiseEnabled = (await getSiteSetting(FEATURED_FRANCHISE_ENABLED_KEY)) === 'true';
   const featuredFranchiseName = (await getSiteSetting(FEATURED_FRANCHISE_KEY)) ?? '';
   const featuredFranchiseLabel = (await getSiteSetting(FEATURED_FRANCHISE_LABEL_KEY)) ?? '';
+  const paymentFees = await getPaymentFees();
   return (
     <AdminClient
       initialGames={games}
@@ -58,6 +60,7 @@ export default async function AdminPage() {
       featuredFranchiseEnabled={featuredFranchiseEnabled}
       featuredFranchiseName={featuredFranchiseName}
       featuredFranchiseLabel={featuredFranchiseLabel}
+      paymentFees={paymentFees}
     />
   );
 }

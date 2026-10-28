@@ -12,3 +12,13 @@ export function gamePrice(g: Game): { regularPrice: number; isOnSale: boolean; p
   const price = isOnSale ? (promoPrice as number) : regularPrice;
   return { regularPrice, isOnSale, price };
 }
+
+// Valor a cobrar pra receber `price` inteiro depois da taxa do Mercado
+// Pago (ver lib/paymentFees.ts): ele tira a porcentagem do valor COBRADO,
+// então a conta é price ÷ (1 − taxa) — não price + taxa. Arredonda pra
+// cima nos centavos, pra nunca sobrar menos que o preço. Fica aqui (e não
+// em paymentFees.ts, que lê o banco) pra o admin poder usar no navegador.
+export function priceWithFee(price: number, feePercent: number): number {
+  if (feePercent <= 0) return Math.round(price * 100) / 100;
+  return Math.ceil((price / (1 - feePercent / 100)) * 100 - 1e-9) / 100;
+}

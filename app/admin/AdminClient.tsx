@@ -7,6 +7,7 @@ import { uploadToSignedTicket } from '@/lib/supabaseBrowser';
 import type { Game, Review, Order } from '@/lib/db';
 import { getContrastColor } from '@/lib/color';
 import { formatPriceBR } from '@/lib/whatsapp';
+import { priceWithFee } from '@/lib/gamePrice';
 import { compressImageFile } from '@/lib/imageCompression';
 import {
   createGameAction,
@@ -23,6 +24,7 @@ import {
   updateReviewsBannerAction,
   removeReviewsBannerAction,
   updateLoyaltyDiscountAmountAction,
+  updatePaymentFeesAction,
   createManualDiscountCreditAction,
   updateFeaturedFranchiseAction,
   type GameFormState
@@ -42,7 +44,8 @@ export default function AdminClient({
   discountAmount,
   featuredFranchiseEnabled,
   featuredFranchiseName,
-  featuredFranchiseLabel
+  featuredFranchiseLabel,
+  paymentFees
 }: {
   initialGames: Game[];
   visitCount: number;
@@ -56,6 +59,7 @@ export default function AdminClient({
   featuredFranchiseEnabled: boolean;
   featuredFranchiseName: string;
   featuredFranchiseLabel: string;
+  paymentFees: { card: number; pix: number };
 }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -340,7 +344,7 @@ export default function AdminClient({
         />
       )}
 
-      {showOrdersPanel && <OrdersPanel orders={orders} onDelete={handleDeleteOrder} />}
+      {showOrdersPanel && <OrdersPanel orders={orders} onDelete={handleDeleteOrder} paymentFees={paymentFees} />}
 
       {showWishlistPanel && <WishlistPanel entries={mostWantedGames} />}
 
@@ -698,6 +702,87 @@ function FeaturedToggleButton({
   );
 }
 
+// Taxas do Mercado Pago repassadas ao cliente (ver lib/paymentFees.ts): o
+// site cobra preço ÷ (1 − taxa) no cartão/Pix, pra sobrar o preço inteiro
+// do jogo depois que o Mercado Pago desconta a parte dele.
+function PaymentFeesForm({ initial }: { initial: { card: number; pix: number } }) {
+  const router = useRouter();
+  const [cardInput, setCardInput] = useState(formatPriceBR(initial.card));
+  const [pixInput, setPixInput] = useState(formatPriceBR(initial.pix));
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    const result = await updatePaymentFeesAction(Number(cardInput.replace(',', '.')), Number(pixInput.replace(',', '.')));
+    setSaving(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    setSaved(true);
+    router.refresh();
+  }
+
+  const examplePrice = 230;
+  const exampleCard = Number(cardInput.replace(',', '.'));
+  const exampleCharge =
+    Number.isFinite(exampleCard) && exampleCard >= 0 && exampleCard < 50 ? priceWithFee(examplePrice, exampleCard) : null;
+
+  return (
+    <>
+      <h4 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--ink-dim)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+        Taxas do Mercado Pago (repassadas ao cliente)
+      </h4>
+      <p style={{ margin: '0 0 10px', fontSize: 12.5, color: 'var(--ink-dim)', lineHeight: 1.5 }}>
+        Coloque a taxa que o Mercado Pago cobra de você (app do Mercado Pago &gt; Taxas e parcelas &gt; Checkout). O site
+        cobra um pouco a mais do cliente pra você receber o preço inteiro do jogo — e avisa o cliente antes de pagar. Use 0
+        pra não repassar.
+        {exampleCharge !== null && exampleCard > 0 && (
+          <>
+            {' '}
+            Ex.: jogo de R$ {formatPriceBR(examplePrice)} sai por R$ {formatPriceBR(exampleCharge)} no cartão.
+          </>
+        )}
+      </p>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
+        <span style={{ fontSize: 13, color: 'var(--ink-dim)' }}>Cartão</span>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={cardInput}
+          onChange={(e) => {
+            setCardInput(e.target.value);
+            setSaved(false);
+          }}
+          style={{ width: 70 }}
+        />
+        <span style={{ fontSize: 13, color: 'var(--ink-dim)', marginRight: 8 }}>%</span>
+        <span style={{ fontSize: 13, color: 'var(--ink-dim)' }}>Pix</span>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={pixInput}
+          onChange={(e) => {
+            setPixInput(e.target.value);
+            setSaved(false);
+          }}
+          style={{ width: 70 }}
+        />
+        <span style={{ fontSize: 13, color: 'var(--ink-dim)' }}>%</span>
+        <button type="button" className="btn primary" style={{ padding: '6px 14px', fontSize: 12.5 }} disabled={saving} onClick={handleSave}>
+          {saving ? 'Salvando...' : 'Salvar'}
+        </button>
+        {saved && <span style={{ fontSize: 12.5, color: 'var(--green)', fontWeight: 700 }}>✓ Salvo!</span>}
+        {error && <span style={{ fontSize: 12.5, color: '#ff8a8a', fontWeight: 700 }}>{error}</span>}
+      </div>
+    </>
+  );
+}
+
 // Histórico de "intenção de compra": uma linha aparece aqui toda vez que
 // alguém gera um QR Code Pix no modal de compra do catálogo. NÃO é uma
 // confirmação de pagamento — serve pra você não perder o rastro se alguém
@@ -705,10 +790,12 @@ function FeaturedToggleButton({
 // continua sendo feita manualmente, vendo o Pix cair na sua conta.
 function OrdersPanel({
   orders,
-  onDelete
+  onDelete,
+  paymentFees
 }: {
   orders: Order[];
   onDelete: (id: number) => void;
+  paymentFees: { card: number; pix: number };
 }) {
   return (
     <div
@@ -721,6 +808,8 @@ function OrdersPanel({
         marginBottom: 20
       }}
     >
+      <PaymentFeesForm initial={paymentFees} />
+
       <h4 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--ink-dim)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
         Pedidos gerados (mais recentes primeiro)
       </h4>

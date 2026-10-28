@@ -26,13 +26,16 @@ import {
 } from '@/lib/db';
 import { createCardPayment, createPixPayment, isMercadoPagoEnabled, type CardInput } from '@/lib/mercadoPago';
 import { syncMercadoPagoPayment, type PixCheckStatus } from '@/lib/mercadoPagoOrders';
-import { gamePrice } from '@/lib/gamePrice';
+import { gamePrice, priceWithFee } from '@/lib/gamePrice';
+import { getPaymentFees } from '@/lib/paymentFees';
 import { isValidEmail, isValidReferralSource } from '@/lib/validation';
 import { verifyAccessToken } from '@/lib/supabaseAuthServer';
 
 export type StartPixResult =
   | { mode: 'static' }
-  | { mode: 'mercadopago'; paymentId: string; brCode: string; qrCodeImage: string }
+  // amount: o valor cobrado de fato (com a taxa do Pix repassada, se houver
+  // — ver lib/paymentFees.ts); feePercent > 0 faz a tela avisar o cliente.
+  | { mode: 'mercadopago'; paymentId: string; brCode: string; qrCodeImage: string; amount: number; feePercent: number }
   | { mode: 'error'; error: string };
 
 const GENERIC_ERROR = 'Não foi possível gerar o Pix agora. Tente de novo em instantes.';
@@ -59,12 +62,16 @@ async function createCharge(
   email: string,
   discountCreditId: number | null
 ): Promise<StartPixResult> {
-  const total = Math.round(items.reduce((sum, it) => sum + it.price, 0) * 100) / 100;
+  const subtotal = Math.round(items.reduce((sum, it) => sum + it.price, 0) * 100) / 100;
   // Desconto cobrindo o jogo inteiro (ou valor quebrado demais pra cobrar):
   // não tem o que cobrar no Mercado Pago, segue o caminho de sempre.
-  if (total < 1) return { mode: 'static' };
+  if (subtotal < 1) return { mode: 'static' };
 
   try {
+    // Os pedidos guardam o preço do jogo (o que você recebe); a cobrança
+    // leva a taxa do Pix repassada, se configurada no admin.
+    const { pix: feePercent } = await getPaymentFees();
+    const total = priceWithFee(subtotal, feePercent);
     const charge = await createPixPayment({
       amount: total,
       payerEmail: email,
@@ -82,7 +89,9 @@ async function createCharge(
       mode: 'mercadopago',
       paymentId: charge.id,
       brCode: charge.qrCode,
-      qrCodeImage: `data:image/png;base64,${charge.qrCodeBase64}`
+      qrCodeImage: `data:image/png;base64,${charge.qrCodeBase64}`,
+      amount: total,
+      feePercent
     };
   } catch (err) {
     console.error('[mercadopago] Falha ao criar Pix:', err);
@@ -175,9 +184,24 @@ function cardRejectionMessage(statusDetail: string): string {
   return 'O cartão foi recusado. Confira os dados, tente outro cartão ou pague com Pix.';
 }
 
+// Quanto o jogo sai no cartão (com a taxa repassada — ver
+// lib/paymentFees.ts) e no Pix, pra tela mostrar antes de o cliente
+// digitar o cartão. O formulário do Mercado Pago calcula as parcelas em
+// cima desse valor.
+export async function getCardChargeAction(
+  gameId: number
+): Promise<{ amount: number; feePercent: number; pixAmount: number } | null> {
+  const game = await loadGame(gameId);
+  if (!game) return null;
+  const price = gamePrice(game).price;
+  const fees = await getPaymentFees();
+  return { amount: priceWithFee(price, fees.card), feePercent: fees.card, pixAmount: priceWithFee(price, fees.pix) };
+}
+
 // Cobra um jogo no cartão. O valor vem do banco (sem desconto de
-// fidelidade — o desconto continua valendo só no Pix). Aprovado, o pedido
-// é criado na hora, com os pontos já confirmados, igual ao Pix.
+// fidelidade — o desconto continua valendo só no Pix), com a taxa do
+// cartão repassada. Aprovado, o pedido é criado na hora, com os pontos já
+// confirmados, igual ao Pix.
 export async function payWithCardAction(
   gameId: number,
   email: string,
@@ -193,8 +217,11 @@ export async function payWithCardAction(
   const item = gameToPaymentItem(game);
 
   try {
+    // Pedido guarda o preço do jogo (o que você recebe); a cobrança leva a
+    // taxa do cartão repassada.
+    const total = priceWithFee(item.price, (await getPaymentFees()).card);
     const charge = await createCardPayment({
-      amount: item.price,
+      amount: total,
       payerEmail: trimmedEmail,
       externalReference: randomUUID(),
       card
@@ -205,7 +232,7 @@ export async function payWithCardAction(
 
     await createMpPaymentRecord({
       id: charge.id,
-      total: item.price,
+      total,
       customer_email: trimmedEmail,
       discount_credit_id: null,
       items: [item],

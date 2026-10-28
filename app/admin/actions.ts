@@ -34,6 +34,7 @@ import {
   type Platform,
   type GameType
 } from '@/lib/db';
+import { MP_CARD_FEE_KEY, MP_PIX_FEE_KEY } from '@/lib/paymentFees';
 
 const PLATFORMS: Platform[] = ['switch1', 'switch2', 'both'];
 const GAME_TYPES: GameType[] = ['base', 'dlc', 'update'];
@@ -452,6 +453,22 @@ export async function updateLoyaltyDiscountAmountAction(amount: number): Promise
   await updateAvailableDiscountCreditsAmount(amount);
   revalidatePath('/admin');
   revalidatePath('/');
+  return { error: null };
+}
+
+// Taxas do Mercado Pago repassadas ao cliente (ver lib/paymentFees.ts):
+// a porcentagem que o Mercado Pago cobra de você no cartão e no Pix, pro
+// site cobrar o suficiente pra você receber o preço inteiro. 0 = sem
+// repasse. Vale pras próximas cobranças; as já feitas não mudam.
+export async function updatePaymentFeesAction(card: number, pix: number): Promise<{ error: string | null }> {
+  await requireAuth();
+  const valid = (n: number) => Number.isFinite(n) && n >= 0 && n < 50;
+  if (!valid(card) || !valid(pix)) {
+    return { error: 'Digite porcentagens entre 0 e 50 (ex: 4,98).' };
+  }
+  await setSiteSetting(MP_CARD_FEE_KEY, card.toFixed(2));
+  await setSiteSetting(MP_PIX_FEE_KEY, pix.toFixed(2));
+  revalidatePath('/admin');
   return { error: null };
 }
 
