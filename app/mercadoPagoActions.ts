@@ -24,7 +24,18 @@ import {
   type Game,
   type MpPaymentItem
 } from '@/lib/db';
-import { createCardPayment, createPixPayment, isMercadoPagoEnabled, type CardInput } from '@/lib/mercadoPago';
+import {
+  createCardPayment,
+  createPixPayment,
+  deleteCustomerCard,
+  findCustomerId,
+  findOrCreateCustomerId,
+  isMercadoPagoEnabled,
+  listCustomerCards,
+  saveCustomerCard,
+  type CardInput,
+  type SavedCard
+} from '@/lib/mercadoPago';
 import { syncMercadoPagoPayment, type PixCheckStatus } from '@/lib/mercadoPagoOrders';
 import { gamePrice, priceWithFee } from '@/lib/gamePrice';
 import { getPaymentFees } from '@/lib/paymentFees';
@@ -165,7 +176,8 @@ export async function checkPixPaymentAction(paymentId: string, referralSource: s
 }
 
 export type CardPaymentResult =
-  | { status: 'approved' }
+  // cardSaved: a caixinha "Salvar cartão" estava marcada e deu certo.
+  | { status: 'approved'; cardSaved: boolean }
   // Em análise pelo antifraude do Mercado Pago: a tela fica esperando
   // (mesma consulta do Pix — checkPixPaymentAction) até sair a decisão.
   | { status: 'pending'; paymentId: string }
@@ -198,15 +210,61 @@ export async function getCardChargeAction(
   return { amount: priceWithFee(price, fees.card), feePercent: fees.card, pixAmount: priceWithFee(price, fees.pix) };
 }
 
+// --- Cartões salvos (ver "Cartões salvos" em lib/mercadoPago.ts) ---
+// Tudo aqui exige o token de login da conta XAN Switch (Supabase), conferido
+// no servidor: os cartões de uma pessoa só aparecem pra ela mesma — nunca
+// pra quem só souber o e-mail.
+
+export async function getSavedCardsAction(accessToken: string | null): Promise<SavedCard[]> {
+  if (!isMercadoPagoEnabled()) return [];
+  const email = await verifyAccessToken(accessToken);
+  if (!email) return [];
+  try {
+    const customerId = await findCustomerId(email);
+    return customerId ? await listCustomerCards(customerId) : [];
+  } catch (err) {
+    console.error('[mercadopago] Falha ao listar cartões salvos:', err);
+    return [];
+  }
+}
+
+export async function deleteSavedCardAction(accessToken: string | null, cardId: string): Promise<{ ok: boolean }> {
+  const email = await verifyAccessToken(accessToken);
+  if (!email || !/^[A-Za-z0-9]+$/.test(cardId)) return { ok: false };
+  try {
+    const customerId = await findCustomerId(email);
+    if (!customerId) return { ok: false };
+    // Só apaga se o cartão for mesmo dessa pessoa.
+    const cards = await listCustomerCards(customerId);
+    if (!cards.some((c) => c.id === cardId)) return { ok: false };
+    await deleteCustomerCard(customerId, cardId);
+    return { ok: true };
+  } catch (err) {
+    console.error('[mercadopago] Falha ao remover cartão salvo:', err);
+    return { ok: false };
+  }
+}
+
 // Cobra um jogo no cartão. O valor vem do banco (sem desconto de
 // fidelidade — o desconto continua valendo só no Pix), com a taxa do
 // cartão repassada. Aprovado, o pedido é criado na hora, com os pontos já
 // confirmados, igual ao Pix.
+//
+// options (só pra quem está logado — o accessToken é conferido aqui):
+// - savedCardId: pagando com um cartão salvo (o token veio do cartão
+//   salvo + CVV). A Orders API exige o customer_id junto.
+// - saveCard: cartão novo + caixinha "Salvar cartão" marcada — depois de
+//   aprovado, guarda o cartão no Mercado Pago com o mesmo token.
 export async function payWithCardAction(
   gameId: number,
   email: string,
   card: CardInput,
-  referralSource: string | null
+  referralSource: string | null,
+  options: { accessToken: string | null; savedCardId: string | null; saveCard: boolean } = {
+    accessToken: null,
+    savedCardId: null,
+    saveCard: false
+  }
 ): Promise<CardPaymentResult> {
   if (!isMercadoPagoEnabled()) return { status: 'rejected', error: 'Pagamento com cartão indisponível no momento.' };
   const trimmedEmail = email.trim();
@@ -216,15 +274,30 @@ export async function payWithCardAction(
   if (!game) return { status: 'rejected', error: 'Esse jogo não está mais disponível.' };
   const item = gameToPaymentItem(game);
 
+  const accountEmail =
+    options.savedCardId || options.saveCard ? await verifyAccessToken(options.accessToken) : null;
+
   try {
+    let customerId: string | undefined;
+    if (options.savedCardId) {
+      if (!accountEmail) return { status: 'rejected', error: 'Entre na sua conta de novo pra usar o cartão salvo.' };
+      const found = await findCustomerId(accountEmail);
+      const cards = found ? await listCustomerCards(found) : [];
+      if (!found || !cards.some((c) => c.id === options.savedCardId)) {
+        return { status: 'rejected', error: 'Esse cartão salvo não está mais disponível. Use outro cartão.' };
+      }
+      customerId = found;
+    }
+
     // Pedido guarda o preço do jogo (o que você recebe); a cobrança leva a
     // taxa do cartão repassada.
     const total = priceWithFee(item.price, (await getPaymentFees()).card);
     const charge = await createCardPayment({
       amount: total,
-      payerEmail: trimmedEmail,
+      payerEmail: accountEmail ?? trimmedEmail,
       externalReference: randomUUID(),
-      card
+      card,
+      customerId
     });
     if (charge.state.status === 'failed' || !charge.id) {
       return { status: 'rejected', error: cardRejectionMessage(charge.statusDetail) };
@@ -244,7 +317,19 @@ export async function payWithCardAction(
       // Cria o pedido agora (o aviso do Mercado Pago pode chegar depois;
       // se chegar, encontra tudo já feito e não duplica).
       const synced = await syncMercadoPagoPayment(charge.id).catch(() => 'approved' as const);
-      if (synced === 'approved') return { status: 'approved' };
+      if (synced === 'approved') {
+        // Guardar o cartão é um extra: se falhar, a compra continua valendo.
+        let cardSaved = false;
+        if (options.saveCard && !options.savedCardId && accountEmail) {
+          try {
+            await saveCustomerCard(await findOrCreateCustomerId(accountEmail), card.token);
+            cardSaved = true;
+          } catch (err) {
+            console.error('[mercadopago] Falha ao salvar o cartão:', err);
+          }
+        }
+        return { status: 'approved', cardSaved };
+      }
     }
     return { status: 'pending', paymentId: charge.id };
   } catch (err) {

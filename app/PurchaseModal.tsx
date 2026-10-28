@@ -339,6 +339,7 @@ export default function PurchaseModal({
             <CardPaymentStep
               gameId={item.id}
               email={user?.email ?? email}
+              loggedIn={Boolean(user)}
               referralSource={referralSource}
               setReferralSource={setReferralSource}
               onBack={() => setStep(2)}

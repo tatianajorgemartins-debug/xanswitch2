@@ -130,15 +130,93 @@ export type CardInput = {
   identification: { type: string; number: string } | null;
 };
 
+// --- Cartões salvos ---
+// Cada cliente logado vira um "customer" no Mercado Pago (achado pelo
+// e-mail da conta XAN Switch), e os cartões ficam guardados LÁ — o site
+// não guarda nada do cartão, nem o id do cliente (é buscado pelo e-mail).
+
+export type SavedCard = {
+  id: string;
+  lastFour: string;
+  firstSix: string;
+  brand: string; // payment_method.id: master, visa...
+  brandName: string;
+  paymentTypeId: string;
+  issuerId: string | null;
+  expMonth: number;
+  expYear: number;
+};
+
+type MpCustomerCard = {
+  id: string;
+  last_four_digits: string;
+  first_six_digits: string;
+  expiration_month: number;
+  expiration_year: number;
+  payment_method?: { id?: string; name?: string; payment_type_id?: string };
+  issuer?: { id?: number | string };
+};
+
+export async function findCustomerId(email: string): Promise<string | null> {
+  const found = await mpFetch<{ results?: { id: string }[] }>(
+    `/v1/customers/search?email=${encodeURIComponent(email.toLowerCase())}`
+  );
+  return found.results?.[0]?.id ?? null;
+}
+
+export async function findOrCreateCustomerId(email: string): Promise<string> {
+  const existing = await findCustomerId(email);
+  if (existing) return existing;
+  const created = await mpFetch<{ id: string }>('/v1/customers', {
+    method: 'POST',
+    body: JSON.stringify({ email: email.toLowerCase() })
+  });
+  return created.id;
+}
+
+export async function listCustomerCards(customerId: string): Promise<SavedCard[]> {
+  const cards = await mpFetch<MpCustomerCard[]>(`/v1/customers/${encodeURIComponent(customerId)}/cards`);
+  const now = new Date();
+  return cards
+    .filter((c) => c.expiration_year > now.getFullYear() || (c.expiration_year === now.getFullYear() && c.expiration_month >= now.getMonth() + 1))
+    .map((c) => ({
+      id: String(c.id),
+      lastFour: c.last_four_digits,
+      firstSix: c.first_six_digits,
+      brand: c.payment_method?.id ?? '',
+      brandName: c.payment_method?.name ?? c.payment_method?.id ?? 'Cartão',
+      paymentTypeId: c.payment_method?.payment_type_id ?? 'credit_card',
+      issuerId: c.issuer?.id != null ? String(c.issuer.id) : null,
+      expMonth: c.expiration_month,
+      expYear: c.expiration_year
+    }));
+}
+
+export async function saveCustomerCard(customerId: string, token: string): Promise<void> {
+  await mpFetch(`/v1/customers/${encodeURIComponent(customerId)}/cards`, {
+    method: 'POST',
+    body: JSON.stringify({ token })
+  });
+}
+
+export async function deleteCustomerCard(customerId: string, cardId: string): Promise<void> {
+  await mpFetch(`/v1/customers/${encodeURIComponent(customerId)}/cards/${encodeURIComponent(cardId)}`, {
+    method: 'DELETE'
+  });
+}
+
 // Cobra no cartão. Diferente do Pix, a resposta já vem decidida na hora:
 // aprovado, recusado, ou (raro) em análise pelo antifraude do Mercado Pago.
 // statusDetail ajuda a explicar a recusa pro cliente (ver
 // app/mercadoPagoActions.ts).
+// customerId: só ao pagar com um cartão SALVO — a Orders API exige saber de
+// qual cliente é o cartão (payer.customer_id), senão recusa.
 export async function createCardPayment(data: {
   amount: number;
   payerEmail: string;
   externalReference: string;
   card: CardInput;
+  customerId?: string;
 }): Promise<{ id: string | null; state: MpOrderState; statusDetail: string }> {
   const amount = (Math.round(data.amount * 100) / 100).toFixed(2);
   let order: MpOrder;
@@ -153,6 +231,7 @@ export async function createCardPayment(data: {
         external_reference: data.externalReference,
         payer: {
           email: data.payerEmail,
+          ...(data.customerId ? { customer_id: data.customerId } : {}),
           ...(data.card.identification ? { identification: data.card.identification } : {})
         },
         transactions: {

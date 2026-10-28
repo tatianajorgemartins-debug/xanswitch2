@@ -1,24 +1,42 @@
 'use client';
 
-// Etapa 3 (variante cartão pelo Mercado Pago) — o formulário de cartão
-// aparece aqui mesmo, dentro da janela de compra. Quem desenha o formulário
-// é o próprio Mercado Pago (o "Card Payment Brick", carregado do site
-// dele): o número do cartão vai direto pra lá e volta só um "token", que o
-// servidor usa pra cobrar (payWithCardAction em mercadoPagoActions.ts).
-// Assim o número do cartão nunca passa pelo site nem pelo banco de dados.
+// Etapa 3 (variante cartão pelo Mercado Pago) — o pagamento no cartão
+// acontece aqui mesmo, dentro da janela de compra, de dois jeitos:
+//
+// - Cartão novo: o formulário é desenhado pelo próprio Mercado Pago (o
+//   "Card Payment Brick", carregado do site dele). O número do cartão vai
+//   direto pra lá e volta só um "token", que o servidor usa pra cobrar
+//   (payWithCardAction em mercadoPagoActions.ts). Quem está logado pode
+//   marcar "Salvar cartão para próximas compras".
+// - Cartão salvo (só pra quem está logado): lista os cartões guardados no
+//   Mercado Pago e pede só o CVV, num campo seguro do Mercado Pago — o CVV
+//   nunca fica guardado em lugar nenhum, por regra das bandeiras.
+//
+// Em nenhum dos dois o número do cartão passa pelo site ou pelo banco.
 //
 // Só aparece quando NEXT_PUBLIC_MP_PUBLIC_KEY está configurada (ver
 // PurchaseModal.tsx); sem ela, o crédito continua no link externo por jogo.
 import { useEffect, useRef, useState } from 'react';
-import { getCardChargeAction, payWithCardAction } from './mercadoPagoActions';
+import {
+  deleteSavedCardAction,
+  getCardChargeAction,
+  getSavedCardsAction,
+  payWithCardAction,
+  type CardPaymentResult
+} from './mercadoPagoActions';
+import type { CardInput, SavedCard } from '@/lib/mercadoPago';
 import { formatPriceBR } from '@/lib/whatsapp';
+import { getAccessToken } from '@/lib/wishlist';
 import { usePixPaymentStatus, PixAutoStatus } from './PixAutoConfirm';
 import { ReferralSourcePicker } from './PurchaseModal';
 
 const SDK_URL = 'https://sdk.mercadopago.com/js/v2';
-const CONTAINER_ID = 'mp-card-payment-brick';
+const BRICK_CONTAINER_ID = 'mp-card-payment-brick';
+const CVV_CONTAINER_ID = 'mp-saved-card-cvv';
+const NEW_CARD = 'new';
 
 type BrickController = { unmount: () => void };
+type FieldInstance = { mount: (containerId: string) => FieldInstance; unmount: () => void };
 type CardData = {
   token: string;
   issuer_id?: string | null;
@@ -27,14 +45,21 @@ type CardData = {
   payer?: { email?: string; identification?: { type?: string; number?: string } };
 };
 type AdditionalData = { paymentTypeId?: string } | undefined;
-type MercadoPagoSdk = new (
-  publicKey: string,
-  options: { locale: string }
-) => {
+type MercadoPagoInstance = {
   bricks: () => {
     create: (brick: 'cardPayment', containerId: string, settings: unknown) => Promise<BrickController>;
   };
+  fields: {
+    create: (field: 'securityCode', options: { placeholder: string }) => FieldInstance;
+    createCardToken: (options: { cardId: string }) => Promise<{ id: string }>;
+  };
+  getInstallments: (options: {
+    amount: string;
+    bin: string;
+    paymentTypeId?: string;
+  }) => Promise<{ payer_costs: { installments: number; recommended_message: string }[] }[]>;
 };
+type MercadoPagoSdk = new (publicKey: string, options: { locale: string }) => MercadoPagoInstance;
 
 declare global {
   interface Window {
@@ -43,29 +68,38 @@ declare global {
 }
 
 // Carrega o script do Mercado Pago uma vez só, na primeira vez que alguém
-// abre o pagamento no cartão (não pesa no carregamento do catálogo).
-let sdkPromise: Promise<MercadoPagoSdk> | null = null;
-function loadSdk(): Promise<MercadoPagoSdk> {
-  if (window.MercadoPago) return Promise.resolve(window.MercadoPago);
-  if (!sdkPromise) {
-    sdkPromise = new Promise((resolve, reject) => {
+// abre o pagamento no cartão (não pesa no carregamento do catálogo), e usa
+// uma instância só pra página inteira.
+let mpPromise: Promise<MercadoPagoInstance> | null = null;
+function loadMercadoPago(publicKey: string): Promise<MercadoPagoInstance> {
+  if (!mpPromise) {
+    mpPromise = new Promise<MercadoPagoSdk>((resolve, reject) => {
+      if (window.MercadoPago) return resolve(window.MercadoPago);
       const script = document.createElement('script');
       script.src = SDK_URL;
       script.async = true;
       script.onload = () => (window.MercadoPago ? resolve(window.MercadoPago) : reject(new Error('sdk')));
-      script.onerror = () => {
-        sdkPromise = null;
-        reject(new Error('sdk'));
-      };
+      script.onerror = () => reject(new Error('sdk'));
       document.head.appendChild(script);
-    });
+    })
+      .then((MercadoPago) => new MercadoPago(publicKey, { locale: 'pt-BR' }))
+      .catch((err) => {
+        mpPromise = null;
+        throw err;
+      });
   }
-  return sdkPromise;
+  return mpPromise;
 }
+
+const CONNECTION_ERROR: CardPaymentResult = {
+  status: 'rejected',
+  error: 'A conexão falhou. Confira se o pagamento não caiu antes de tentar de novo.'
+};
 
 export function CardPaymentStep({
   gameId,
   email,
+  loggedIn,
   referralSource,
   setReferralSource,
   onBack,
@@ -73,17 +107,43 @@ export function CardPaymentStep({
 }: {
   gameId: number;
   email: string;
+  // Cartões salvos (e a caixinha de salvar) só existem pra quem tem conta.
+  loggedIn: boolean;
   referralSource: string | null;
   setReferralSource: (v: string | null) => void;
   onBack: () => void;
   onConfirmed: () => void;
 }) {
+  const publicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY ?? '';
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   // Valor no cartão (com a taxa repassada) e no Pix, calculados no servidor
   // (getCardChargeAction) antes de o formulário abrir — as parcelas são
   // calculadas em cima desse valor.
   const [charge, setCharge] = useState<{ amount: number; feePercent: number; pixAmount: number } | null>(null);
+  // null = ainda carregando (ou buscando os cartões salvos).
+  const [savedCards, setSavedCards] = useState<SavedCard[] | null>(loggedIn ? null : []);
+  // Cartão escolhido: o id de um cartão salvo, ou NEW_CARD.
+  const [selected, setSelected] = useState(NEW_CARD);
+  const [saveCard, setSaveCard] = useState(true);
+  // Cada recusa recria o formulário do zero (o token do cartão só vale
+  // uma tentativa) — mudar esse número remonta o Brick.
+  const [attempt, setAttempt] = useState(0);
+  // Compra em análise pelo antifraude: espera a decisão, igual ao Pix.
+  const [pendingPaymentId, setPendingPaymentId] = useState<string | null>(null);
+  const pendingStatus = usePixPaymentStatus(pendingPaymentId, referralSource, onConfirmed);
+
+  // Pagamento com cartão salvo: parcelas disponíveis e envio em andamento.
+  const [installmentOptions, setInstallmentOptions] = useState<{ installments: number; label: string }[]>([]);
+  const [installments, setInstallments] = useState(1);
+  const [paying, setPaying] = useState(false);
+
+  // Lidos na hora do envio pelo onSubmit do Brick, que é criado antes.
+  const referralAtSubmit = useRef(referralSource);
+  referralAtSubmit.current = referralSource;
+  const saveCardAtSubmit = useRef(saveCard);
+  saveCardAtSubmit.current = saveCard;
 
   useEffect(() => {
     let cancelled = false;
@@ -100,32 +160,47 @@ export function CardPaymentStep({
       cancelled = true;
     };
   }, [gameId]);
-  const [error, setError] = useState<string | null>(null);
-  // Cada recusa recria o formulário do zero (o token do cartão só vale
-  // uma tentativa) — mudar esse número remonta o Brick.
-  const [attempt, setAttempt] = useState(0);
-  // Compra em análise pelo antifraude: espera a decisão, igual ao Pix.
-  const [pendingPaymentId, setPendingPaymentId] = useState<string | null>(null);
-  const pendingStatus = usePixPaymentStatus(pendingPaymentId, referralSource, onConfirmed);
-
-  // O "como você conheceu a loja?" é lido na hora do envio, não na criação
-  // do formulário — por isso fica numa variável que o onSubmit enxerga.
-  const referralAtSubmit = useRef(referralSource);
-  referralAtSubmit.current = referralSource;
 
   useEffect(() => {
-    if (pendingPaymentId || !charge) return;
-    const publicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY;
-    if (!publicKey) return;
+    if (!loggedIn) return;
+    let cancelled = false;
+    getAccessToken()
+      .then((token) => getSavedCardsAction(token))
+      .then((cards) => {
+        if (cancelled) return;
+        setSavedCards(cards);
+        if (cards.length > 0) setSelected(cards[0].id);
+      })
+      .catch(() => {
+        if (!cancelled) setSavedCards([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [loggedIn]);
+
+  function handleResult(result: CardPaymentResult) {
+    if (result.status === 'approved') {
+      onConfirmed();
+    } else if (result.status === 'pending') {
+      setPendingPaymentId(result.paymentId);
+    } else {
+      setError(result.error);
+      setAttempt((n) => n + 1);
+    }
+  }
+
+  // Cartão novo: o formulário do Mercado Pago.
+  useEffect(() => {
+    if (pendingPaymentId || !charge || savedCards === null || selected !== NEW_CARD || !publicKey) return;
     let cancelled = false;
     let controller: BrickController | null = null;
     setReady(false);
 
-    loadSdk()
-      .then((MercadoPago) => {
+    loadMercadoPago(publicKey)
+      .then((mp) => {
         if (cancelled) return null;
-        const mp = new MercadoPago(publicKey, { locale: 'pt-BR' });
-        return mp.bricks().create('cardPayment', CONTAINER_ID, {
+        return mp.bricks().create('cardPayment', BRICK_CONTAINER_ID, {
           initialization: { amount: charge.amount, payer: { email } },
           customization: {
             paymentMethods: { maxInstallments: 12, types: { excluded: ['debit_card', 'prepaid-card'] } },
@@ -139,33 +214,24 @@ export function CardPaymentStep({
             onSubmit: async (cardData: CardData, additionalData: AdditionalData) => {
               setError(null);
               const identification = cardData.payer?.identification;
-              const result = await payWithCardAction(
-                gameId,
-                email,
-                {
-                  token: cardData.token,
-                  paymentMethodId: cardData.payment_method_id,
-                  paymentTypeId: additionalData?.paymentTypeId ?? 'credit_card',
-                  installments: cardData.installments,
-                  issuerId: cardData.issuer_id ?? null,
-                  identification:
-                    identification?.type && identification.number
-                      ? { type: identification.type, number: identification.number }
-                      : null
-                },
-                referralAtSubmit.current
-              ).catch(() => ({
-                status: 'rejected' as const,
-                error: 'A conexão falhou. Confira se o pagamento não caiu antes de tentar de novo.'
-              }));
-              if (result.status === 'approved') {
-                onConfirmed();
-              } else if (result.status === 'pending') {
-                setPendingPaymentId(result.paymentId);
-              } else {
-                setError(result.error);
-                setAttempt((n) => n + 1);
-              }
+              const wantsToSave = loggedIn && saveCardAtSubmit.current;
+              const card: CardInput = {
+                token: cardData.token,
+                paymentMethodId: cardData.payment_method_id,
+                paymentTypeId: additionalData?.paymentTypeId ?? 'credit_card',
+                installments: cardData.installments,
+                issuerId: cardData.issuer_id ?? null,
+                identification:
+                  identification?.type && identification.number
+                    ? { type: identification.type, number: identification.number }
+                    : null
+              };
+              const result = await payWithCardAction(gameId, email, card, referralAtSubmit.current, {
+                accessToken: wantsToSave ? await getAccessToken() : null,
+                savedCardId: null,
+                saveCard: wantsToSave
+              }).catch(() => CONNECTION_ERROR);
+              handleResult(result);
             }
           }
         });
@@ -184,7 +250,88 @@ export function CardPaymentStep({
       controller?.unmount();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attempt, pendingPaymentId, charge]);
+  }, [attempt, pendingPaymentId, charge, savedCards, selected]);
+
+  const selectedCard = savedCards?.find((c) => c.id === selected) ?? null;
+
+  // Cartão salvo: campo seguro do CVV (do Mercado Pago) + parcelas pra esse
+  // cartão e esse valor.
+  useEffect(() => {
+    if (pendingPaymentId || !charge || !selectedCard || !publicKey) return;
+    let cancelled = false;
+    let field: FieldInstance | null = null;
+    setReady(false);
+    setInstallmentOptions([]);
+    setInstallments(1);
+
+    loadMercadoPago(publicKey)
+      .then(async (mp) => {
+        if (cancelled) return;
+        field = mp.fields.create('securityCode', { placeholder: 'CVV' }).mount(CVV_CONTAINER_ID);
+        const options = await mp
+          .getInstallments({ amount: charge.amount.toFixed(2), bin: selectedCard.firstSix, paymentTypeId: selectedCard.paymentTypeId })
+          .catch(() => []);
+        if (cancelled) return;
+        const costs = options[0]?.payer_costs ?? [];
+        setInstallmentOptions(
+          costs.length > 0
+            ? costs.filter((c) => c.installments <= 12).map((c) => ({ installments: c.installments, label: c.recommended_message }))
+            : [{ installments: 1, label: `1x de R$ ${formatPriceBR(charge.amount)}` }]
+        );
+        setReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      });
+
+    return () => {
+      cancelled = true;
+      field?.unmount();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attempt, pendingPaymentId, charge, selectedCard?.id]);
+
+  async function handlePayWithSavedCard() {
+    if (!selectedCard || !publicKey) return;
+    setPaying(true);
+    setError(null);
+    try {
+      const mp = await loadMercadoPago(publicKey);
+      // O token sai do cartão salvo + o CVV digitado no campo seguro.
+      const token = await mp.fields.createCardToken({ cardId: selectedCard.id });
+      const result = await payWithCardAction(
+        gameId,
+        email,
+        {
+          token: token.id,
+          paymentMethodId: selectedCard.brand,
+          paymentTypeId: selectedCard.paymentTypeId,
+          installments,
+          issuerId: selectedCard.issuerId,
+          identification: null
+        },
+        referralSource,
+        { accessToken: await getAccessToken(), savedCardId: selectedCard.id, saveCard: false }
+      ).catch(() => CONNECTION_ERROR);
+      handleResult(result);
+    } catch {
+      setError('Confira o código de segurança (CVV) do cartão e tente de novo.');
+    } finally {
+      setPaying(false);
+    }
+  }
+
+  async function handleRemoveCard(card: SavedCard) {
+    if (!window.confirm(`Remover o cartão ${card.brandName} final ${card.lastFour}?`)) return;
+    const result = await deleteSavedCardAction(await getAccessToken(), card.id).catch(() => ({ ok: false }));
+    if (!result.ok) {
+      setError('Não foi possível remover o cartão agora. Tente de novo.');
+      return;
+    }
+    const remaining = (savedCards ?? []).filter((c) => c.id !== card.id);
+    setSavedCards(remaining);
+    if (selected === card.id) setSelected(remaining[0]?.id ?? NEW_CARD);
+  }
 
   if (pendingPaymentId) {
     return (
@@ -219,14 +366,91 @@ export function CardPaymentStep({
         </p>
       )}
 
+      {savedCards && savedCards.length > 0 && (
+        <div className="saved-cards" role="radiogroup" aria-label="Escolha o cartão">
+          {savedCards.map((card) => (
+            <div key={card.id} className={`saved-card${selected === card.id ? ' is-selected' : ''}`}>
+              <label className="saved-card-option">
+                <input
+                  type="radio"
+                  name="saved-card"
+                  checked={selected === card.id}
+                  onChange={() => {
+                    setSelected(card.id);
+                    setError(null);
+                  }}
+                />
+                <span className="saved-card-name">
+                  {card.brandName} <span aria-hidden="true">••••</span> {card.lastFour}
+                </span>
+                <span className="saved-card-exp">
+                  vence {String(card.expMonth).padStart(2, '0')}/{String(card.expYear).slice(-2)}
+                </span>
+              </label>
+              <button type="button" className="saved-card-remove" onClick={() => handleRemoveCard(card)}>
+                Remover
+              </button>
+            </div>
+          ))}
+          <div className={`saved-card${selected === NEW_CARD ? ' is-selected' : ''}`}>
+            <label className="saved-card-option">
+              <input
+                type="radio"
+                name="saved-card"
+                checked={selected === NEW_CARD}
+                onChange={() => {
+                  setSelected(NEW_CARD);
+                  setError(null);
+                }}
+              />
+              <span className="saved-card-name">Usar outro cartão</span>
+            </label>
+          </div>
+        </div>
+      )}
+
       {loadError ? (
         <p className="card-payment-error" role="alert">
           Não foi possível carregar o pagamento com cartão agora. Recarregue a página ou pague com Pix.
         </p>
+      ) : selectedCard ? (
+        <div className="saved-card-pay">
+          <label className="purchase-email-label" htmlFor={CVV_CONTAINER_ID}>
+            Código de segurança (CVV) do cartão final {selectedCard.lastFour}
+          </label>
+          <div id={CVV_CONTAINER_ID} className="saved-card-cvv" />
+
+          <label className="purchase-email-label" htmlFor="saved-card-installments">
+            Parcelas
+          </label>
+          <select
+            id="saved-card-installments"
+            className="saved-card-installments"
+            value={installments}
+            onChange={(e) => setInstallments(Number(e.target.value))}
+            disabled={!ready || paying}
+          >
+            {installmentOptions.map((o) => (
+              <option key={o.installments} value={o.installments}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+
+          <button type="button" className="btn primary product-cta" onClick={handlePayWithSavedCard} disabled={!ready || paying}>
+            {paying ? 'Processando...' : charge ? `Pagar R$ ${formatPriceBR(charge.amount)}` : 'Pagar'}
+          </button>
+        </div>
       ) : (
         <>
+          {loggedIn && savedCards !== null && (
+            <label className="saved-card-save">
+              <input type="checkbox" checked={saveCard} onChange={(e) => setSaveCard(e.target.checked)} />
+              Salvar cartão para próximas compras
+            </label>
+          )}
           {!ready && <p className="card-payment-loading">Carregando o pagamento seguro do Mercado Pago...</p>}
-          <div id={CONTAINER_ID} className="card-payment-brick" />
+          <div id={BRICK_CONTAINER_ID} className="card-payment-brick" />
         </>
       )}
 
