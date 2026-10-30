@@ -36,6 +36,19 @@ export async function signIn(email: string, password: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+// Entrar (ou criar conta) com a conta Google: leva a pessoa pra tela do
+// Google e, depois que ela escolhe a conta, volta pra mesma página já
+// logada — o Supabase lê a sessão que vem no endereço de volta sozinho.
+// Precisa do provedor Google ligado no Supabase (Authentication → Sign In
+// / Providers → Google) e deste site na lista de "Redirect URLs".
+export async function signInWithGoogle(): Promise<void> {
+  const { error } = await (await getSupabaseBrowser()).auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin + window.location.pathname }
+  });
+  if (error) throw new Error(error.message);
+}
+
 export async function signOut(): Promise<void> {
   await (await getSupabaseBrowser()).auth.signOut();
 }
@@ -49,7 +62,8 @@ export function translateAuthError(message: string): string {
     'Invalid login credentials': 'E-mail ou senha incorretos.',
     'User already registered': 'Esse e-mail já tem uma conta — tenta entrar em vez de criar uma nova.',
     'Password should be at least 6 characters': 'A senha precisa ter pelo menos 6 caracteres.',
-    'Email not confirmed': 'Esse e-mail ainda não foi confirmado — verifica sua caixa de entrada.'
+    'Email not confirmed': 'Esse e-mail ainda não foi confirmado — verifica sua caixa de entrada.',
+    'Unsupported provider: provider is not enabled': 'O login com Google ainda não está ligado no site.'
   };
   return known[message] ?? message;
 }
