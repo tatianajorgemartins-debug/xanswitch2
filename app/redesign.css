@@ -3568,3 +3568,36 @@ html:has(.legal-page) {
 .redesign .badge[title] {
   cursor: help;
 }
+
+/* ---------- Legibilidade (item 14) ----------
+   - Carrossel: além do degradê da esquerda, um de baixo pra cima, pra o
+     nome e o preço terem fundo escuro mesmo quando o texto cai sobre uma
+     parte clara da arte (no celular o texto fica embaixo).
+   - Preço riscado ("de"): mais contraste, ainda abaixo do preço "por".
+   - Cards: sem a linha reservada embaixo do nome quando ele cabe numa
+     linha só — o preço sobe e cola no nome. */
+.redesign .promo-banner-overlay {
+  background:
+    linear-gradient(0deg, rgba(6, 4, 14, 0.88) 0%, rgba(6, 4, 14, 0.35) 45%, rgba(6, 4, 14, 0) 70%),
+    linear-gradient(90deg, rgba(6, 4, 14, 0.92) 0%, rgba(6, 4, 14, 0.62) 45%, rgba(6, 4, 14, 0.05) 100%);
+}
+.redesign .promo-banner-name,
+.redesign .promo-banner-price,
+.redesign .promo-banner-category {
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.55);
+}
+.redesign .promo-banner-price-old {
+  color: rgba(255, 255, 255, 0.82);
+  font-weight: 600;
+}
+.redesign .game-card-old-price,
+.redesign .list-row-old-price,
+.redesign .product-price-old {
+  color: var(--ink);
+  opacity: 0.72;
+  font-weight: 600;
+}
+.redesign .game-card-name {
+  min-height: 0;
+  margin-bottom: 4px;
+}
