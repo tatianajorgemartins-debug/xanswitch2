@@ -16,6 +16,7 @@ import {
 import SiteHeader from './SiteHeader';
 import PromoSection from './PromoSection';
 import ReviewsSection, { HomeReviews } from './ReviewsSection';
+import HowItWorks from './HowItWorks';
 import ReviewForm from './ReviewForm';
 import { useDesignVariant } from './DesignVariant';
 import { scrollToResults } from './scrollToResults';
@@ -668,6 +669,7 @@ export default function CatalogClient({
             </p>
           </section>
         )}
+        {isRedesign && <HowItWorks gameCount={items.length} />}
         <div className="catalog-toolbar">
         <div className="catalog-toolbar-search">
           <svg className="catalog-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={16} height={16} style={{ color: 'var(--ink-dim)', flex: 'none' }} aria-hidden="true">
