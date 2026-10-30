@@ -3261,7 +3261,7 @@ html:has(.legal-page) body {
 }
 @media (max-width: 639px) {
   .redesign .floating-whatsapp.is-over-modal {
-    bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(215px + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -3420,6 +3420,11 @@ html:has(.legal-page) body {
   margin-bottom: 0;
 }
 @media (min-width: 640px) {
+  /* A última linha leva a sobra de altura (a foto é alta), pra não abrir
+     vão entre o preço e os botões. */
+  .redesign .purchase-modal.is-product-step .product-layout {
+    grid-template-rows: auto auto 1fr;
+  }
   .redesign .purchase-modal.is-product-step .product-media {
     grid-row: 1 / span 3;
   }
@@ -3428,6 +3433,9 @@ html:has(.legal-page) body {
   }
 }
 @media (min-width: 1000px) {
+  .redesign .purchase-modal.is-product-step .product-layout {
+    grid-template-rows: auto 1fr;
+  }
   .redesign .purchase-modal.is-product-step .product-buy {
     grid-column: 3;
     grid-row: 1 / span 2;
@@ -3462,4 +3470,11 @@ html:has(.legal-page) body {
     font-size: 15px;
     font-variant-numeric: tabular-nums;
   }
+}
+/* Aviso de erro legível também no tema claro. */
+:root[data-theme='light'] .redesign.theme-enabled .purchase-field-error {
+  color: #c62828;
+}
+:root[data-theme='light'] .redesign.theme-enabled input[aria-invalid='true'] {
+  border-color: #c62828;
 }
