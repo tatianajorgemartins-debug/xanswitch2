@@ -18,6 +18,7 @@ import ReviewsSection, { HomeReviews } from './ReviewsSection';
 import HowItWorks from './HowItWorks';
 import FloatingWhatsApp from './FloatingWhatsApp';
 import Badge, { adminBadgeKind, badgeHint } from './Badge';
+import FeaturedPromoButton from './FeaturedPromoButton';
 import { installmentsLabel } from '@/lib/installments';
 import { displayFranchise, matchesSearch } from '@/lib/search';
 import ReviewForm from './ReviewForm';
@@ -183,7 +184,7 @@ export default function CatalogClient({
   // admin — null quando desativado. Aparece do lado de "Ver avaliações" e,
   // ao clicar, filtra o catálogo pra essa franquia (ver
   // FeaturedFranchisePanel em AdminClient.tsx).
-  featuredFranchise: { franchise: string; label: string } | null;
+  featuredFranchise: { franchise: string; label: string; saleOnly: boolean; endsAt: string | null } | null;
   // Só vem preenchido quando a página é acessada pelo link direto de um
   // jogo (app/jogo/[id]/page.tsx) — abre o modal de compra desse jogo
   // assim que a página carrega, sem precisar clicar em nada.
@@ -583,7 +584,8 @@ export default function CatalogClient({
   // Botão de franquia em destaque (ver render mais abaixo) — mesma lógica
   // de handleFilterFlag, só que filtrando por franquia em vez de "mais
   // vendido"/"mais aguardado".
-  function handleFranchiseHighlight(franchise: string) {
+  // saleOnly: o botão da promoção mostra só os jogos com desconto ativo.
+  function handleFranchiseHighlight(franchise: string, saleOnly = false) {
     setQuery('');
     setPlatformFilter('all');
     setTypeFilter('all');
@@ -591,6 +593,7 @@ export default function CatalogClient({
     setPriceMax('');
     setQuickFilter(null);
     setFranchiseFilter(franchise);
+    setSaleOnly(saleOnly);
     scrollToGrid();
   }
 
@@ -792,13 +795,11 @@ export default function CatalogClient({
         </button>
 
         {featuredFranchise && (
-          <button
-            type="button"
-            className="btn featured-franchise-btn"
-            onClick={() => handleFranchiseHighlight(featuredFranchise.franchise)}
-          >
-            {featuredFranchise.label}
-          </button>
+          <FeaturedPromoButton
+            promo={featuredFranchise}
+            items={items}
+            onClick={() => handleFranchiseHighlight(featuredFranchise.franchise, featuredFranchise.saleOnly)}
+          />
         )}
 
         <div className={`catalog-toolbar-extra${mobileMenuOpen ? ' is-open' : ''}`}>

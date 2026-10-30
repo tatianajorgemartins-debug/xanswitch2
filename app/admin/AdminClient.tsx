@@ -45,6 +45,8 @@ export default function AdminClient({
   featuredFranchiseEnabled,
   featuredFranchiseName,
   featuredFranchiseLabel,
+  featuredFranchiseSaleOnly,
+  featuredFranchiseEndsAt,
   paymentFees
 }: {
   initialGames: Game[];
@@ -59,6 +61,8 @@ export default function AdminClient({
   featuredFranchiseEnabled: boolean;
   featuredFranchiseName: string;
   featuredFranchiseLabel: string;
+  featuredFranchiseSaleOnly: boolean;
+  featuredFranchiseEndsAt: string;
   paymentFees: { card: number; pix: number };
 }) {
   const router = useRouter();
@@ -384,6 +388,8 @@ export default function AdminClient({
           enabled={featuredFranchiseEnabled}
           franchise={featuredFranchiseName}
           label={featuredFranchiseLabel}
+          saleOnly={featuredFranchiseSaleOnly}
+          endsAt={featuredFranchiseEndsAt}
         />
       )}
 
@@ -1453,17 +1459,23 @@ function FeaturedFranchisePanel({
   allFranchises,
   enabled: initialEnabled,
   franchise: initialFranchise,
-  label: initialLabel
+  label: initialLabel,
+  saleOnly: initialSaleOnly,
+  endsAt: initialEndsAt
 }: {
   allFranchises: string[];
   enabled: boolean;
   franchise: string;
   label: string;
+  saleOnly: boolean;
+  endsAt: string;
 }) {
   const router = useRouter();
   const [enabled, setEnabled] = useState(initialEnabled);
   const [franchise, setFranchise] = useState(initialFranchise || allFranchises[0] || '');
   const [label, setLabel] = useState(initialLabel);
+  const [saleOnly, setSaleOnly] = useState(initialSaleOnly);
+  const [endsAt, setEndsAt] = useState(initialEndsAt);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -1473,7 +1485,7 @@ function FeaturedFranchisePanel({
     setSaving(true);
     setError(null);
     setSaved(false);
-    const result = await updateFeaturedFranchiseAction(enabled, franchise, label);
+    const result = await updateFeaturedFranchiseAction(enabled, franchise, label, saleOnly, endsAt);
     setSaving(false);
     if (result.error) {
       setError(result.error);
@@ -1561,6 +1573,38 @@ function FeaturedFranchisePanel({
             value={label}
             onChange={(e) => {
               setLabel(e.target.value);
+              setSaved(false);
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Promoção de verdade: só os jogos com desconto + data de fim
+          opcional (com contagem regressiva no botão; passou, o botão some). */}
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 260px' }}>
+          <input
+            id="franchise-sale-only"
+            type="checkbox"
+            checked={saleOnly}
+            onChange={(e) => {
+              setSaleOnly(e.target.checked);
+              setSaved(false);
+            }}
+            style={{ width: 18, height: 18, accentColor: 'var(--green)' }}
+          />
+          <label htmlFor="franchise-sale-only" style={{ fontSize: 14, color: 'var(--ink)', fontWeight: 600 }}>
+            Mostrar só os jogos com desconto (e "até X% OFF" no botão)
+          </label>
+        </div>
+        <div style={{ flex: '0 1 200px' }}>
+          <label htmlFor="franchise-ends-at">Termina em (opcional)</label>
+          <input
+            id="franchise-ends-at"
+            type="date"
+            value={endsAt}
+            onChange={(e) => {
+              setEndsAt(e.target.value);
               setSaved(false);
             }}
           />

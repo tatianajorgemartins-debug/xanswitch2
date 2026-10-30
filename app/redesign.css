@@ -3601,3 +3601,23 @@ html:has(.legal-page) {
   min-height: 0;
   margin-bottom: 4px;
 }
+
+/* ---------- Botão da promoção (FeaturedPromoButton.tsx) ---------- */
+.redesign .featured-franchise-btn {
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.redesign .featured-promo-off {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--promo-ink);
+  color: var(--promo);
+  font-size: 12px;
+  font-weight: 800;
+}
+.redesign .featured-promo-timer {
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.8;
+}

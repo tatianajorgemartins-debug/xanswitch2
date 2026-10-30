@@ -31,6 +31,8 @@ import {
   FEATURED_FRANCHISE_ENABLED_KEY,
   FEATURED_FRANCHISE_KEY,
   FEATURED_FRANCHISE_LABEL_KEY,
+  FEATURED_FRANCHISE_SALE_ONLY_KEY,
+  FEATURED_FRANCHISE_ENDS_AT_KEY,
   type Platform,
   type GameType
 } from '@/lib/db';
@@ -514,7 +516,9 @@ export async function createManualDiscountCreditAction(email: string, amount: nu
 export async function updateFeaturedFranchiseAction(
   enabled: boolean,
   franchise: string,
-  label: string
+  label: string,
+  saleOnly: boolean,
+  endsAt: string
 ): Promise<{ error: string | null }> {
   await requireAuth();
   if (enabled && !franchise.trim()) {
@@ -523,6 +527,8 @@ export async function updateFeaturedFranchiseAction(
   await setSiteSetting(FEATURED_FRANCHISE_ENABLED_KEY, enabled ? 'true' : 'false');
   await setSiteSetting(FEATURED_FRANCHISE_KEY, franchise.trim() || null);
   await setSiteSetting(FEATURED_FRANCHISE_LABEL_KEY, label.trim() || null);
+  await setSiteSetting(FEATURED_FRANCHISE_SALE_ONLY_KEY, saleOnly ? 'true' : 'false');
+  await setSiteSetting(FEATURED_FRANCHISE_ENDS_AT_KEY, /^\d{4}-\d{2}-\d{2}$/.test(endsAt) ? endsAt : null);
   revalidatePath('/admin');
   revalidatePath('/');
   return { error: null };
