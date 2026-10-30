@@ -26,6 +26,7 @@ import { confirmOrderAction, confirmCreditOrderAction } from './orderActions';
 import { startPixPaymentAction } from './mercadoPagoActions';
 import { usePixPaymentStatus, PixAutoStatus } from './PixAutoConfirm';
 import { CardPaymentStep } from './CardPaymentStep';
+import { MAX_INSTALLMENTS } from '@/lib/installments';
 import { confirmWithTimeout } from '@/lib/confirmWithTimeout';
 import { XanLoader, useContentLoader, useStepLoader } from './XanLoader';
 import { getGameDiscountOfferAction, redeemDiscountAction, type GameDiscountOffer } from './cardActions';
@@ -284,7 +285,15 @@ export default function PurchaseModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="purchase-modal-header">
-          <span className="purchase-modal-title">{item.name}</span>
+          <span className="purchase-modal-title">
+            {step === 1
+              ? item.name
+              : step === 4
+                ? 'Pedido confirmado'
+                : paymentMethod === 'pix'
+                  ? 'Pagamento via Pix'
+                  : 'Pagamento no cartão'}
+          </span>
           <button type="button" className="purchase-modal-close" onClick={onClose} aria-label="Fechar">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={18} height={18}>
               <path d="M5 5l14 14M19 5L5 19" strokeLinecap="round" />
@@ -310,6 +319,14 @@ export default function PurchaseModal({
                 setStep(2);
               }}
               onOpenScreenshot={setLightboxIndex}
+            />
+          )}
+
+          {(step === 2 || step === 3) && (
+            <OrderSummary
+              item={item}
+              paymentMethod={paymentMethod}
+              pixPriceLabel={(mpPixCharge?.amount ?? effectivePrice).toFixed(2).replace('.', ',')}
             />
           )}
 
@@ -383,6 +400,7 @@ export default function PurchaseModal({
               points={item.cardPoints}
               paymentMethod={paymentMethod}
               paidOnline={mpPaymentId !== null || (paymentMethod === 'credito' && MP_CARD_ENABLED)}
+              accountEmail={user ? null : email}
               onViewCollection={onViewCollection}
               onClose={onClose}
             />
@@ -728,6 +746,43 @@ function Lightbox({
 // etapa, uma única vez pra todos os jogos selecionados, em vez de repetir
 // por jogo — nesse caso `user` nunca vem nulo, porque só dá pra chegar
 // nessa tela já logado (a lista de desejos exige login antes).
+// Resumo do pedido no topo das etapas de e-mail e pagamento: capa pequena,
+// nome, forma de pagamento e valor — pra pessoa nunca perder de vista o
+// que está comprando. No cartão o valor final (com a taxa) só sai na
+// etapa de pagamento, então aqui mostra as parcelas.
+function OrderSummary({
+  item,
+  paymentMethod,
+  pixPriceLabel
+}: {
+  item: Item;
+  paymentMethod: 'pix' | 'credito';
+  pixPriceLabel: string;
+}) {
+  return (
+    <div className="order-summary">
+      {item.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          className="order-summary-cover"
+          src={item.imageUrl}
+          srcSet={imageSrcSet(item.imageUrl)}
+          sizes={IMAGE_SIZES.thumb}
+          onError={fallbackToOriginal}
+          alt={`Capa do jogo ${item.name}`}
+        />
+      )}
+      <div className="order-summary-info">
+        <span className="order-summary-name">{item.name}</span>
+        <span className="order-summary-method">{paymentMethod === 'pix' ? 'Pix à vista' : 'Cartão de crédito'}</span>
+      </div>
+      <span className="order-summary-price">
+        {paymentMethod === 'pix' ? `R$ ${pixPriceLabel}` : `em até ${MAX_INSTALLMENTS}x`}
+      </span>
+    </div>
+  );
+}
+
 export function StepChecklistAndEmail({
   checked,
   onChangeChecked,
@@ -745,55 +800,16 @@ export function StepChecklistAndEmail({
   onBack: () => void;
   onNext: () => void;
 }) {
-  const [password, setPassword] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
+  // Só o e-mail antes de pagar: a senha (pra guardar card e pontos numa
+  // conta) é oferecida depois, na tela do pedido confirmado (ver
+  // CreateAccountOffer). Os pedidos ficam ligados ao e-mail, então quem
+  // cria a conta depois com o mesmo e-mail encontra tudo lá.
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [showBalanceHelp, setShowBalanceHelp] = useState(false);
 
   const emailValid = user ? true : isValidEmail(email);
-  const passwordValid = user ? true : password.length >= 6;
-  const canContinue = checked && emailValid && passwordValid && !submitting;
-
-  // Se já está logado, não precisa criar conta nenhuma — só segue. Se não,
-  // tenta criar a conta com o e-mail e senha que acabou de digitar; se esse
-  // e-mail já tiver conta (erro "User already registered"), tenta entrar
-  // com a mesma senha em vez de criar de novo — assim a pessoa não precisa
-  // saber de antemão se já tem conta ou não, só usa sempre o mesmo campo.
-  async function handleContinue() {
-    if (user) {
-      onNext();
-      return;
-    }
-    setSubmitting(true);
-    setAuthError(null);
-    const trimmedEmail = email.trim();
-    try {
-      const { confirmedImmediately } = await signUp(trimmedEmail, password);
-      if (!confirmedImmediately) {
-        // Só acontece se "Confirm email" ainda estiver ligado no Supabase
-        // (veja o README) — deixa a compra seguir mesmo assim; o card só
-        // não aparece em "Minha coleção" até a pessoa confirmar o e-mail e
-        // entrar por conta própria depois.
-        onNext();
-        return;
-      }
-      onNext();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : '';
-      if (message === 'User already registered') {
-        try {
-          await signIn(trimmedEmail, password);
-          onNext();
-          return;
-        } catch {
-          setAuthError('Esse e-mail já tem conta — digite a senha certa dela pra continuar.');
-          setSubmitting(false);
-          return;
-        }
-      }
-      setAuthError(translateAuthError(message || 'Não foi possível continuar.'));
-      setSubmitting(false);
-    }
-  }
+  const showEmailError = !user && emailTouched && email.trim() !== '' && !emailValid;
+  const canContinue = checked && emailValid;
 
   return (
     <>
@@ -801,7 +817,27 @@ export function StepChecklistAndEmail({
         <label className="purchase-checklist-item">
           <input type="checkbox" checked={checked} onChange={(e) => onChangeChecked(e.target.checked)} />
           <span>Minha conta Nintendo está com saldo zerado (Brasil e Japão)</span>
+          <button
+            type="button"
+            className="purchase-help-toggle"
+            aria-expanded={showBalanceHelp}
+            aria-controls="purchase-balance-help"
+            aria-label="Por que o saldo precisa estar zerado?"
+            onClick={(e) => {
+              e.preventDefault();
+              setShowBalanceHelp((v) => !v);
+            }}
+          >
+            ?
+          </button>
         </label>
+        {showBalanceHelp && (
+          <p id="purchase-balance-help" className="purchase-help-text">
+            Os códigos são da eShop japonesa: pra resgatar, sua conta muda a região pra Japão por um momento (a gente
+            manda o passo a passo). A Nintendo só deixa trocar a região com o saldo da eShop zerado — por isso confira
+            antes de comprar.
+          </p>
+        )}
       </div>
 
       <p className="purchase-email-intro">
@@ -825,42 +861,101 @@ export function StepChecklistAndEmail({
             placeholder="seuemail@exemplo.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            disabled={submitting}
-            style={{ marginBottom: 14 }}
+            onBlur={() => setEmailTouched(true)}
+            aria-invalid={showEmailError}
+            aria-describedby={showEmailError ? 'purchase-email-error' : undefined}
           />
-
-          <p className="purchase-email-intro">
-            Crie uma senha pra guardar seu card colecionável e seus pontos numa conta XAN Switch.
-          </p>
-          <label className="purchase-email-label" htmlFor="purchase-password-input">
-            Senha (pelo menos 6 caracteres)
-          </label>
-          <input
-            id="purchase-password-input"
-            type="password"
-            autoComplete="new-password"
-            minLength={6}
-            placeholder="Pelo menos 6 caracteres"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={submitting}
-          />
+          {showEmailError && (
+            <p id="purchase-email-error" className="purchase-field-error" role="alert">
+              Confira o e-mail — parece que falta alguma parte (ex.: nome@gmail.com).
+            </p>
+          )}
         </>
       )}
 
-      {authError && (
-        <p style={{ color: '#ff8a8a', fontSize: 13, fontWeight: 600, margin: '10px 0 0' }}>{authError}</p>
-      )}
-
       <div className="purchase-modal-actions" style={{ marginTop: 20 }}>
-        <button type="button" className="btn primary" disabled={!canContinue} onClick={handleContinue}>
-          {submitting ? 'Só um instante...' : 'Continuar para o pagamento'}
+        <button type="button" className="btn primary" disabled={!canContinue} onClick={onNext}>
+          Continuar para o pagamento
         </button>
-        <button type="button" className="purchase-step-back" onClick={onBack} disabled={submitting}>
+        <button type="button" className="purchase-step-back" onClick={onBack}>
           ← Voltar
         </button>
       </div>
     </>
+  );
+}
+
+// Na tela do pedido confirmado, pra quem comprou sem estar logado: cria a
+// conta com o e-mail do pedido + uma senha, pra guardar o card e os pontos.
+// Se o e-mail já tiver conta, entra nela com a senha digitada.
+export function CreateAccountOffer({ email, points }: { email: string; points: number }) {
+  const [password, setPassword] = useState('');
+  const [status, setStatus] = useState<'idle' | 'saving' | 'done' | 'confirm-email'>('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleCreate() {
+    setStatus('saving');
+    setError(null);
+    try {
+      const { confirmedImmediately } = await signUp(email.trim(), password);
+      setStatus(confirmedImmediately ? 'done' : 'confirm-email');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '';
+      if (message === 'User already registered') {
+        try {
+          await signIn(email.trim(), password);
+          setStatus('done');
+          return;
+        } catch {
+          setError('Esse e-mail já tem conta — digite a senha dela pra entrar.');
+          setStatus('idle');
+          return;
+        }
+      }
+      setError(translateAuthError(message || 'Não foi possível criar a conta agora.'));
+      setStatus('idle');
+    }
+  }
+
+  if (status === 'done') {
+    return <p className="create-account-done">✓ Pronto! Seu card e seus pontos estão guardados na sua conta.</p>;
+  }
+  if (status === 'confirm-email') {
+    return (
+      <p className="create-account-done">
+        Quase lá: confirme a conta pelo link que mandamos pro seu e-mail — seu card e seus pontos já estão guardados.
+      </p>
+    );
+  }
+
+  return (
+    <div className="create-account-offer">
+      <p className="create-account-title">
+        Crie uma senha pra guardar seu card colecionável e seus {points} {points === 1 ? 'ponto' : 'pontos'}
+      </p>
+      <p className="create-account-email">Conta: {email}</p>
+      <div className="create-account-row">
+        <input
+          type="password"
+          autoComplete="new-password"
+          minLength={6}
+          placeholder="Senha (pelo menos 6 caracteres)"
+          aria-label="Senha (pelo menos 6 caracteres)"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          disabled={status === 'saving'}
+        />
+        <button
+          type="button"
+          className="btn primary"
+          disabled={password.length < 6 || status === 'saving'}
+          onClick={handleCreate}
+        >
+          {status === 'saving' ? 'Criando...' : 'Criar conta'}
+        </button>
+      </div>
+      {error && <p className="purchase-field-error">{error}</p>}
+    </div>
   );
 }
 
@@ -1294,6 +1389,7 @@ function StepCardReveal({
   points,
   paymentMethod,
   paidOnline,
+  accountEmail,
   onViewCollection,
   onClose
 }: {
@@ -1304,6 +1400,8 @@ function StepCardReveal({
   // Pago pelo Mercado Pago (Pix ou cartão): o pagamento já foi aprovado e
   // os pontos já entraram confirmados.
   paidOnline: boolean;
+  // Comprou sem estar logado: e-mail do pedido, pra oferecer criar a conta.
+  accountEmail: string | null;
   onViewCollection: () => void;
   onClose: () => void;
 }) {
@@ -1329,6 +1427,8 @@ function StepCardReveal({
           ? 'Seus pontos já estão valendo na sua conta.'
           : 'Seus pontos entram pra valer na sua conta depois que a gente confirmar seu pagamento.'}
       </p>
+
+      {accountEmail && <CreateAccountOffer email={accountEmail} points={points} />}
 
       <div className="purchase-modal-actions" style={{ marginTop: 18 }}>
         <DownloadCardButton gameName={gameName} imageUrl={imageUrl} points={points} />

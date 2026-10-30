@@ -9,7 +9,14 @@
 import { useEffect, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import type { Item } from './CatalogClient';
-import { StepChecklistAndEmail, ReservationTimer, RegionTutorial, ReferralSourcePicker, PaymentLayout } from './PurchaseModal';
+import {
+  StepChecklistAndEmail,
+  ReservationTimer,
+  RegionTutorial,
+  ReferralSourcePicker,
+  PaymentLayout,
+  CreateAccountOffer
+} from './PurchaseModal';
 import { XanLoader, useStepLoader } from './XanLoader';
 import { CollectibleCard, DownloadCardButton } from './CollectibleCard';
 import { generatePixPayload, type PixPayload } from '@/lib/pix';
@@ -199,7 +206,7 @@ export default function BulkPurchaseModal({
           )}
 
           {step === 3 && (
-            <BulkStepConfirm items={items} pointsConfirmed={mpPaymentId !== null} onViewCollection={onViewCollection} onClose={onClose} />
+            <BulkStepConfirm items={items} pointsConfirmed={mpPaymentId !== null} accountEmail={user ? null : email} onViewCollection={onViewCollection} onClose={onClose} />
           )}
         </div>
       </div>
@@ -354,12 +361,15 @@ function BulkStepPayment({
 function BulkStepConfirm({
   items,
   pointsConfirmed,
+  accountEmail,
   onViewCollection,
   onClose
 }: {
   items: Item[];
   // Pago pelo Mercado Pago: os pontos já entraram confirmados.
   pointsConfirmed: boolean;
+  // Comprou sem estar logado: e-mail do pedido, pra oferecer criar a conta.
+  accountEmail: string | null;
   onViewCollection: () => void;
   onClose: () => void;
 }) {
@@ -392,6 +402,8 @@ function BulkStepConfirm({
           ? 'Seus pontos já estão valendo na sua conta.'
           : 'Seus pontos entram pra valer na sua conta depois que a gente confirmar seu pagamento.'}
       </p>
+
+      {accountEmail && <CreateAccountOffer email={accountEmail} points={totalPoints} />}
 
       <div className="purchase-modal-actions" style={{ marginTop: 18 }}>
         <button type="button" className="btn primary" onClick={onViewCollection}>
