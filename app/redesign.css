@@ -3478,3 +3478,218 @@ html:has(.legal-page) body {
 :root[data-theme='light'] .redesign.theme-enabled input[aria-invalid='true'] {
   border-color: #c62828;
 }
+
+/* ==========================================================================
+   Cabeçalho estilo Afterflix (teste):
+   - fundo transparente no topo; rolando, um degradê escuro que some pra
+     baixo (.is-scrolled, ligado no SiteHeader.tsx);
+   - seletor de catálogo numa cápsula de vidro, no centro, com a pílula
+     cinza que segue o mouse e volta pro catálogo atual (mola de 0,35s);
+   - ícones em círculos de vidro com borda fina; "Minha conta" é o único
+     botão preenchido (roxo do site), mais claro no hover.
+   ========================================================================== */
+.redesign {
+  --hdr-glass: rgba(20, 20, 23, 0.78);
+  --hdr-capsule: rgba(24, 24, 28, 0.32);
+  --hdr-border: rgba(255, 255, 255, 0.14);
+  --hdr-border-soft: rgba(255, 255, 255, 0.1);
+  --hdr-pill: rgba(255, 255, 255, 0.13);
+  --hdr-text: #a1a1a6;
+  --hdr-text-on: #ffffff;
+  --hdr-fade: rgb(10, 7, 22);
+}
+.redesign .site-header-bar {
+  background: transparent;
+  transition: background 0.3s ease;
+}
+.redesign .site-header-bar.is-scrolled {
+  background: linear-gradient(180deg, var(--hdr-fade) 0%, var(--hdr-fade) 55%, rgba(10, 7, 22, 0) 100%);
+}
+
+/* Cápsula do seletor */
+.redesign .catalog-switcher,
+.redesign .catalog-switcher.has-thumb {
+  padding: 5px;
+  background: var(--hdr-capsule);
+  box-shadow: inset 0 0 0 1px var(--hdr-border);
+}
+.redesign .catalog-switcher-thumb {
+  top: 5px;
+  bottom: 5px;
+  left: 5px;
+  width: calc(50% - 5px);
+  background: var(--hdr-pill);
+  transition: transform 0.35s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.redesign .catalog-switcher-option,
+.redesign .catalog-switcher.has-thumb .catalog-switcher-option {
+  padding: 9px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--hdr-text);
+  transition: color 0.25s;
+}
+.redesign .catalog-switcher-option.active,
+.redesign .catalog-switcher.has-thumb .catalog-switcher-option.active,
+.redesign .catalog-switcher.has-thumb .catalog-switcher-option:hover,
+.redesign .catalog-switcher-option:not(.active):hover {
+  color: var(--hdr-text-on);
+  background: transparent;
+}
+/* Sem a pílula animada (visual antigo), o ativo ganha o fundo cinza. */
+.redesign .catalog-switcher:not(.has-thumb) .catalog-switcher-option.active {
+  background: var(--hdr-pill);
+}
+
+/* Ícones e tema: círculos de vidro */
+.redesign .social-icon {
+  width: 40px;
+  height: 40px;
+  background: var(--hdr-glass);
+  box-shadow: inset 0 0 0 1px var(--hdr-border-soft);
+  color: var(--hdr-text-on);
+  transition: opacity 0.2s;
+}
+.redesign .social-icon:hover {
+  background: var(--hdr-glass);
+  color: var(--hdr-text-on);
+  opacity: 0.8;
+}
+.redesign .theme-switch {
+  background: var(--hdr-glass);
+  box-shadow: inset 0 0 0 1px var(--hdr-border-soft);
+}
+.redesign .theme-switch-thumb {
+  background: var(--hdr-pill);
+}
+
+/* "Minha conta": o botão de destaque (papel do "Assinar") */
+.redesign .account-button {
+  height: 36px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  transition: filter 0.2s;
+}
+.redesign .account-button:hover {
+  background: var(--accent-fill);
+  filter: brightness(1.12);
+}
+
+/* Computador: logo | cápsula no centro | ícones + conta na direita */
+@media (min-width: 1024px) {
+  .redesign .site-header {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+  }
+  .redesign .site-header-logo {
+    justify-self: start;
+    margin-right: 0;
+  }
+  .redesign .catalog-switcher {
+    justify-self: center;
+  }
+  .redesign .site-header-icons {
+    justify-self: end;
+  }
+  .redesign .site-header-icons .account-button {
+    order: 9;
+    margin-left: 4px;
+  }
+}
+
+/* Tema claro: mesmo desenho, vidro claro e bordas escuras suaves. */
+:root[data-theme='light'] .redesign.theme-enabled {
+  --hdr-glass: rgba(255, 255, 255, 0.78);
+  --hdr-capsule: rgba(255, 255, 255, 0.55);
+  --hdr-border: rgba(20, 12, 40, 0.12);
+  --hdr-border-soft: rgba(20, 12, 40, 0.1);
+  --hdr-pill: rgba(20, 12, 40, 0.08);
+  --hdr-text: #6b6580;
+  --hdr-text-on: #15102a;
+  --hdr-fade: rgb(247, 245, 252);
+}
+:root[data-theme='light'] .redesign.theme-enabled .site-header-bar.is-scrolled {
+  background: linear-gradient(180deg, var(--hdr-fade) 0%, var(--hdr-fade) 55%, rgba(247, 245, 252, 0) 100%);
+}
+/* Ajustes do cabeçalho estilo Afterflix:
+   - rolando: fundo sólido na altura do cabeçalho + degradê saindo por
+     baixo (::after), pra o conteúdo não aparecer atrás da logo;
+   - tema claro: texto/ícone ativo escuro sobre a pílula cinza (as regras
+     antigas deixavam branco, que era o certo sobre a pílula roxa);
+   - celular: "Minha conta" continua compacto (o tamanho novo é do
+     computador). */
+.redesign .site-header-bar.is-scrolled {
+  background: var(--hdr-fade);
+}
+.redesign .site-header-bar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 28px;
+  background: linear-gradient(180deg, var(--hdr-fade), rgba(10, 7, 22, 0));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.redesign .site-header-bar.is-scrolled::after {
+  opacity: 1;
+}
+:root[data-theme='light'] .redesign.theme-enabled .site-header-bar.is-scrolled {
+  background: var(--hdr-fade);
+}
+:root[data-theme='light'] .redesign.theme-enabled .site-header-bar::after {
+  background: linear-gradient(180deg, var(--hdr-fade), rgba(247, 245, 252, 0));
+}
+.redesign .theme-switch-option.is-dark,
+:root[data-theme='light'] .redesign.theme-enabled .theme-switch-option.is-light,
+:root[data-theme='light'] .redesign.theme-enabled .catalog-switcher-option.active {
+  color: var(--hdr-text-on);
+}
+:root[data-theme='light'] .redesign.theme-enabled .theme-switch-option.is-dark {
+  color: var(--hdr-text);
+}
+@media (max-width: 440px) {
+  .redesign .account-button {
+    height: 30px;
+    padding: 0 10px 0 8px;
+    font-size: 11px;
+  }
+  .redesign .social-icon {
+    width: 30px;
+    height: 30px;
+  }
+}
+/* Cabeçalho estilo Afterflix abaixo de 1024px: a cápsula vai pra uma
+   segunda linha inteira (como já era no celular) — numa linha só, os
+   ícones da direita saíam da tela entre ~700 e ~1000px. */
+@media (min-width: 641px) and (max-width: 1023px) {
+  .redesign .site-header {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+  .redesign .catalog-switcher {
+    order: 3;
+    flex: 1 1 100%;
+  }
+  .redesign .catalog-switcher-option {
+    flex: 1;
+    justify-content: center;
+  }
+  .redesign .page-content {
+    padding-top: 136px;
+  }
+  .redesign .grid-anchor {
+    scroll-margin-top: 140px;
+  }
+}
+@media (max-width: 640px) {
+  .redesign .catalog-switcher-option,
+  .redesign .catalog-switcher.has-thumb .catalog-switcher-option {
+    padding: 9px 10px;
+  }
+}

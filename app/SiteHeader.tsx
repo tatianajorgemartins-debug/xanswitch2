@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useLayoutEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useDesignVariant } from './DesignVariant';
 import { useThemeToggle } from './Theme';
 import { beginCatalogSwitch } from '@/lib/catalogSwitch';
@@ -129,6 +129,23 @@ export default function SiteHeader({
 
   const shownCatalog = isRedesign ? thumbAt : activeCatalog;
 
+  // Pílula que segue o mouse (estilo Afterflix): passando o mouse numa
+  // opção, ela desliza até lá; tirando o mouse do seletor, volta pro
+  // catálogo atual. O texto da opção ativa continua marcado pelo .active.
+  const [hoverCatalog, setHoverCatalog] = useState<'digital' | 'fisico' | null>(null);
+
+  // Cabeçalho transparente no topo; rolando, ganha um fundo em degradê pra
+  // logo e ícones não ficarem por cima dos cards (.site-header-bar.is-scrolled).
+  const headerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const bar = headerRef.current?.closest('.site-header-bar');
+    if (!bar) return;
+    const update = () => bar.classList.toggle('is-scrolled', window.scrollY > 8);
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    return () => window.removeEventListener('scroll', update);
+  }, []);
+
   const accountContent = (
     <>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -141,7 +158,7 @@ export default function SiteHeader({
   );
 
   return (
-    <div className="site-header">
+    <div className="site-header" ref={headerRef}>
       {/* Com o modo claro ligado, as duas versões de cada logo vão pra página
           e o CSS mostra a do tema atual (letras brancas no escuro, escuras no
           claro) — ver .logo-for-light / .logo-for-dark em redesign.css. */}
@@ -180,9 +197,10 @@ export default function SiteHeader({
           página inteira na hora. */}
       <div
         className={`catalog-switcher${isRedesign ? ' has-thumb' : ''}`}
-        data-active={shownCatalog}
+        data-active={hoverCatalog ?? shownCatalog}
         role="group"
         aria-label="Escolher catálogo"
+        onMouseLeave={() => setHoverCatalog(null)}
       >
         {isRedesign && (
           <span className={`catalog-switcher-thumb${thumbInstant ? ' is-instant' : ''}`} aria-hidden="true" />
@@ -192,6 +210,7 @@ export default function SiteHeader({
           className={`catalog-switcher-option${shownCatalog === 'digital' ? ' active' : ''}`}
           aria-current={activeCatalog === 'digital'}
           onClick={(e) => rememberSwitchFrom('digital', e)}
+          onMouseEnter={() => setHoverCatalog('digital')}
         >
           {isRedesign ? <GamepadIcon /> : <span aria-hidden="true">🎮</span>}
           <span className="catalog-switcher-label">Jogos digitais</span>
@@ -201,6 +220,7 @@ export default function SiteHeader({
           className={`catalog-switcher-option${shownCatalog === 'fisico' ? ' active' : ''}`}
           aria-current={activeCatalog === 'fisico'}
           onClick={(e) => rememberSwitchFrom('fisico', e)}
+          onMouseEnter={() => setHoverCatalog('fisico')}
         >
           {isRedesign ? <BoxIcon /> : <span aria-hidden="true">📦</span>}
           <span className="catalog-switcher-label">Produtos físicos</span>
