@@ -74,18 +74,6 @@ function parseCreditPaymentUrl(formData: FormData): { value: string | null; erro
   return { value: raw, error: null };
 }
 
-// Ficha técnica opcional (idioma, tamanho, jogadores) — campos livres; vazio
-// vira null e some da janela do jogo.
-function parseGameExtraInfo(formData: FormData): { language: string | null; size_gb: number | null; players: string | null } {
-  const text = (name: string) => String(formData.get(name) || '').trim().slice(0, 60) || null;
-  const size = parseFloat(String(formData.get('sizeGb') || '').replace(',', '.'));
-  return {
-    language: text('language'),
-    size_gb: Number.isFinite(size) && size > 0 ? Math.round(size * 100) / 100 : null,
-    players: text('players')
-  };
-}
-
 // Link do jogo na Amazon Japão (opcional): vai no aviso de venda do
 // Telegram. Mesma regra do link de crédito: se preenchido, tem que ser um
 // link de verdade.
@@ -251,8 +239,7 @@ export async function createGameAction(
     card_points: cardPoints,
     discount_eligible: discountEligible,
     amazon_jp_url: amazonJpUrl,
-    promo_price: promoPrice,
-    ...parseGameExtraInfo(formData)
+    promo_price: promoPrice
   });
 
   revalidatePath('/admin');
@@ -361,8 +348,7 @@ export async function updateGameAction(
     card_points: cardPoints,
     discount_eligible: discountEligible,
     amazon_jp_url: amazonJpUrl,
-    promo_price: promoPrice,
-    ...parseGameExtraInfo(formData)
+    promo_price: promoPrice
   });
 
   revalidatePath('/admin');

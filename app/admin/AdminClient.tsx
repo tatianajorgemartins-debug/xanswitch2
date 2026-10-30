@@ -2006,22 +2006,6 @@ function GameFormPanel({
           </p>
         </div>
 
-        {/* Ficha técnica opcional da janela do jogo — vazio não aparece. */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 14 }}>
-          <div>
-            <label htmlFor="language">Idioma (opcional)</label>
-            <input id="language" name="language" defaultValue={game?.language || ''} placeholder="Ex: Português" />
-          </div>
-          <div>
-            <label htmlFor="sizeGb">Tamanho em GB (opcional)</label>
-            <input id="sizeGb" name="sizeGb" inputMode="decimal" defaultValue={game?.size_gb ? String(parseFloat(game.size_gb)).replace('.', ',') : ''} placeholder="Ex: 14,4" />
-          </div>
-          <div>
-            <label htmlFor="players">Jogadores (opcional)</label>
-            <input id="players" name="players" defaultValue={game?.players || ''} placeholder="Ex: 1 a 4" />
-          </div>
-        </div>
-
         <div style={{ marginBottom: 14 }}>
           <label htmlFor="cardPoints">Pontos do card colecionável (1 a 5)</label>
           <input

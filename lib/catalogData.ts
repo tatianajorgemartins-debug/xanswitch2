@@ -56,9 +56,6 @@ function toItem(g: Game): Item {
     isUpcoming: g.is_upcoming,
     description: g.description,
     screenshots: g.screenshots,
-    language: g.language ?? null,
-    sizeGb: g.size_gb ? parseFloat(g.size_gb) : null,
-    players: g.players ?? null,
     creditPaymentUrl: g.credit_payment_url,
     cardPoints: g.card_points,
     discountEligible: g.discount_eligible

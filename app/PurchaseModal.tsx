@@ -666,24 +666,6 @@ function StepSummary({
             <p className="product-meta-chip-label">Formato</p>
             <p className="product-meta-chip-value">Código digital</p>
           </div>
-          {item.language && (
-            <div className="product-meta-chip">
-              <p className="product-meta-chip-label">Idioma</p>
-              <p className="product-meta-chip-value">{item.language}</p>
-            </div>
-          )}
-          {item.sizeGb && (
-            <div className="product-meta-chip">
-              <p className="product-meta-chip-label">Tamanho</p>
-              <p className="product-meta-chip-value">{item.sizeGb.toString().replace('.', ',')} GB</p>
-            </div>
-          )}
-          {item.players && (
-            <div className="product-meta-chip">
-              <p className="product-meta-chip-label">Jogadores</p>
-              <p className="product-meta-chip-value">{item.players}</p>
-            </div>
-          )}
         </div>
 
         {item.description && <GameDescription text={item.description} />}

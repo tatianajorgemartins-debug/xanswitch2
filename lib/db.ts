@@ -47,10 +47,6 @@ export type Game = {
   // esse é o valor cobrado (ver toItem em lib/catalogData.ts). Vem do
   // driver como string, igual a price.
   promo_price: string | null;
-  // Ficha técnica opcional da janela do jogo (db/migration-game-extra-info.sql).
-  language: string | null;
-  size_gb: string | null; // numeric comes back as string from postgres
-  players: string | null;
   created_at: Date; // timestamptz comes back as a real Date, not a string
   updated_at: Date;
 };
@@ -107,13 +103,10 @@ export async function createGame(data: {
   discount_eligible: boolean;
   amazon_jp_url: string | null;
   promo_price: number | null;
-  language: string | null;
-  size_gb: number | null;
-  players: string | null;
 }): Promise<Game> {
   const rows = await getSql()`
-    INSERT INTO games (name, price, original_price, image_url, banner_image_url, has_badge, badge_text, badge_color, franchise, platform, game_type, is_featured, is_bestseller, is_upcoming, description, screenshots, credit_payment_url, card_points, discount_eligible, amazon_jp_url, promo_price, language, size_gb, players)
-    VALUES (${data.name}, ${data.price}, ${data.original_price}, ${data.image_url}, ${data.banner_image_url}, ${data.has_badge}, ${data.badge_text}, ${data.badge_color}, ${data.franchise}, ${data.platform}, ${data.game_type}, ${data.is_featured}, ${data.is_bestseller}, ${data.is_upcoming}, ${data.description}, ${JSON.stringify(data.screenshots)}::jsonb, ${data.credit_payment_url}, ${data.card_points}, ${data.discount_eligible}, ${data.amazon_jp_url}, ${data.promo_price}, ${data.language}, ${data.size_gb}, ${data.players})
+    INSERT INTO games (name, price, original_price, image_url, banner_image_url, has_badge, badge_text, badge_color, franchise, platform, game_type, is_featured, is_bestseller, is_upcoming, description, screenshots, credit_payment_url, card_points, discount_eligible, amazon_jp_url, promo_price)
+    VALUES (${data.name}, ${data.price}, ${data.original_price}, ${data.image_url}, ${data.banner_image_url}, ${data.has_badge}, ${data.badge_text}, ${data.badge_color}, ${data.franchise}, ${data.platform}, ${data.game_type}, ${data.is_featured}, ${data.is_bestseller}, ${data.is_upcoming}, ${data.description}, ${JSON.stringify(data.screenshots)}::jsonb, ${data.credit_payment_url}, ${data.card_points}, ${data.discount_eligible}, ${data.amazon_jp_url}, ${data.promo_price})
     RETURNING *
   `;
   return rows[0] as Game;
@@ -143,9 +136,6 @@ export async function updateGame(
     discount_eligible: boolean;
     amazon_jp_url: string | null;
     promo_price: number | null;
-    language: string | null;
-    size_gb: number | null;
-    players: string | null;
   }
 ): Promise<Game> {
   const rows = await getSql()`
@@ -171,9 +161,6 @@ export async function updateGame(
       discount_eligible = ${data.discount_eligible},
       amazon_jp_url = ${data.amazon_jp_url},
       promo_price = ${data.promo_price},
-      language = ${data.language},
-      size_gb = ${data.size_gb},
-      players = ${data.players},
       updated_at = now()
     WHERE id = ${id}
     RETURNING *
