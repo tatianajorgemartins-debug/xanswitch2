@@ -92,6 +92,71 @@ export default function ReviewsSection({ reviews }: { reviews: ReviewItem[] }) {
   );
 }
 
+// Seção "O que os clientes dizem" na própria home (CatalogClient.tsx), pra
+// prova social não ficar escondida atrás do botão "Ver avaliações": resumo
+// (média e total) + 3 avaliações — as em destaque primeiro, depois as de
+// nota mais alta. No celular vira um carrossel de arrastar com bolinhas;
+// no computador, uma grade de 3. "Ver todas" abre o popup que já existia.
+export function HomeReviews({ reviews, onSeeAll }: { reviews: ReviewItem[]; onSeeAll: () => void }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(0);
+
+  const picked = useMemo(
+    () =>
+      [...reviews]
+        .sort((a, b) => Number(b.isFeatured) - Number(a.isFeatured) || b.rating - a.rating)
+        .slice(0, 3),
+    [reviews]
+  );
+  const average = reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0;
+
+  if (reviews.length === 0) return null;
+
+  function handleScroll() {
+    const el = trackRef.current;
+    if (!el || !el.firstElementChild) return;
+    const step = (el.firstElementChild as HTMLElement).offsetWidth;
+    setActive(Math.round(el.scrollLeft / Math.max(1, step)));
+  }
+
+  return (
+    <section className="home-reviews" aria-labelledby="home-reviews-title">
+      <div className="home-reviews-head">
+        <h2 id="home-reviews-title" className="home-reviews-title">
+          O que os clientes dizem
+        </h2>
+        <p className="home-reviews-summary">
+          <span className="home-reviews-stars" aria-hidden="true">
+            ★
+          </span>
+          <strong>{average.toFixed(1).replace('.', ',')}</strong> de 5 · {reviews.length}{' '}
+          {reviews.length === 1 ? 'avaliação' : 'avaliações'}
+        </p>
+      </div>
+
+      <div ref={trackRef} className="home-reviews-track" onScroll={handleScroll}>
+        {picked.map((r) => (
+          <ReviewCard key={r.id} review={r} />
+        ))}
+      </div>
+
+      {picked.length > 1 && (
+        <div className="home-reviews-dots" aria-hidden="true">
+          {picked.map((r, i) => (
+            <span key={r.id} className={`reviews-dot${i === active ? ' active' : ''}`} />
+          ))}
+        </div>
+      )}
+
+      <div className="home-reviews-actions">
+        <button type="button" className="btn ghost" onClick={onSeeAll}>
+          Ver todas as avaliações
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function ReviewCard({ review }: { review: ReviewItem }) {
   const [expanded, setExpanded] = useState(false);
   const [overflowing, setOverflowing] = useState(false);

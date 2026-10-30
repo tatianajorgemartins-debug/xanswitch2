@@ -15,7 +15,7 @@ import {
 } from '@/lib/wishlist';
 import SiteHeader from './SiteHeader';
 import PromoSection from './PromoSection';
-import ReviewsSection from './ReviewsSection';
+import ReviewsSection, { HomeReviews } from './ReviewsSection';
 import ReviewForm from './ReviewForm';
 import { useDesignVariant } from './DesignVariant';
 import { scrollToResults } from './scrollToResults';
@@ -911,6 +911,8 @@ export default function CatalogClient({
         onViewGame={handleViewGame}
         onFilterFlag={handleFilterFlag}
       />
+
+      {!isFiltering && <HomeReviews reviews={reviews} onSeeAll={() => setReviewsModalOpen(true)} />}
 
       {reviewsBannerUrl && (
         <div className="reviews-banner">

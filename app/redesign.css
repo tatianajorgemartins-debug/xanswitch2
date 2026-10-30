@@ -3036,3 +3036,86 @@ html:has(.legal-page) body {
     }
   }
 }
+
+/* ---------- Avaliações na home (HomeReviews em ReviewsSection.tsx) ----------
+   Prova social logo depois dos destaques: média + total no topo, 3 cards.
+   Celular: carrossel de arrastar com bolinhas; computador: grade de 3. */
+.redesign .home-reviews {
+  margin: 8px 0 48px;
+}
+.redesign .home-reviews-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.redesign .home-reviews-title {
+  margin: 0;
+  font-size: var(--step-head);
+  font-weight: 800;
+  font-stretch: 108%;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+.redesign .home-reviews-summary {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--step-small);
+  font-weight: 600;
+}
+.redesign .home-reviews-summary strong {
+  color: var(--ink);
+  font-size: 1rem;
+}
+.redesign .home-reviews-stars {
+  color: var(--promo);
+  margin-right: 4px;
+}
+.redesign .home-reviews-track {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  margin: 0 -20px;
+  padding: 0 20px 4px;
+}
+.redesign .home-reviews-track::-webkit-scrollbar {
+  display: none;
+}
+.redesign .home-reviews-track .review-card {
+  flex: 0 0 82%;
+  scroll-snap-align: center;
+  margin: 0;
+  background: var(--surface);
+  border: 0;
+  border-radius: 12px;
+}
+.redesign .home-reviews-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 14px;
+}
+.redesign .home-reviews-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+@media (min-width: 760px) {
+  .redesign .home-reviews-track {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: visible;
+    margin: 0;
+    padding: 0;
+  }
+  .redesign .home-reviews-dots {
+    display: none;
+  }
+  .redesign .home-reviews-actions {
+    justify-content: flex-start;
+  }
+}
