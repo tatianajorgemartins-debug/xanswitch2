@@ -1701,12 +1701,6 @@ html:has(.legal-page) {
     scroll-behavior: auto;
   }
 }
-/* overflow-x: hidden no html/body (globals.css) impede o índice de ficar
-   grudado na tela; nesta página "clip" faz o mesmo papel sem esse efeito. */
-html:has(.legal-page),
-html:has(.legal-page) body {
-  overflow-x: clip;
-}
 
 /* ==========================================================================
    Computador: os prints do jogo ficam numa grade de 2 por linha embaixo da
@@ -3494,6 +3488,11 @@ html:has(.legal-page) body {
   margin-right: -20px;
   padding: 10px 20px;
   background: var(--bg);
+}
+/* Presa no topo, a barra fica só com a busca e os filtros — sem o botão
+   da promoção, que ocuparia uma linha inteira no celular. */
+.redesign .catalog-toolbar.is-searching .featured-franchise-btn {
+  display: none;
 }
 .redesign .catalog-search-term {
   color: var(--accent);

@@ -100,8 +100,12 @@ body {
      mais) da largura da tela — em alguns celulares (iPhone principalmente)
      isso criava uma rolagem horizontal minúscula que cortava a margem
      direita do site. Sem esconder nada visualmente relevante, porque o
-     layout inteiro já é pensado pra caber na largura da tela. */
+     layout inteiro já é pensado pra caber na largura da tela.
+     "clip" corta igual, mas sem impedir elementos de ficarem presos ao
+     rolar (position: sticky — a busca e o índice da política de
+     privacidade); navegadores antigos ficam no "hidden" da linha de cima. */
   overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {

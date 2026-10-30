@@ -11,7 +11,11 @@ export function scrollToResults(target: HTMLElement | null, input: HTMLInputElem
 
   const go = () => {
     const header = document.querySelector('.site-header-bar');
-    const offset = (header?.getBoundingClientRect().bottom ?? 0) + 16;
+    // Com uma busca ativa, a barra de busca fica presa logo abaixo do
+    // cabeçalho (.catalog-toolbar.is-searching) — desconta ela também, pra
+    // não cobrir o "Resultados para...".
+    const stickySearch = document.querySelector<HTMLElement>('.catalog-toolbar.is-searching');
+    const offset = (header?.getBoundingClientRect().bottom ?? 0) + (stickySearch?.offsetHeight ?? 0) + 16;
     const top = target.getBoundingClientRect().top + window.scrollY - offset;
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     window.scrollTo({ top: Math.max(0, top), behavior: reduceMotion ? 'auto' : 'smooth' });
