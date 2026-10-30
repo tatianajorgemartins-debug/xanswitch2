@@ -3732,3 +3732,12 @@ html:has(.legal-page) body {
   color: var(--accent);
   opacity: 1;
 }
+
+/* Foto de perfil no botão "Minha conta" (celular: botão mais baixo). */
+@media (max-width: 440px) {
+  .redesign .account-button-avatar {
+    width: 22px;
+    height: 22px;
+    margin-left: -4px;
+  }
+}

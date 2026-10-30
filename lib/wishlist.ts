@@ -8,7 +8,8 @@
 'use client';
 
 import type { User } from '@supabase/supabase-js';
-import { getSupabaseBrowser } from './supabaseBrowser';
+import { getSupabaseBrowser, uploadToSignedTicket } from './supabaseBrowser';
+import { compressImageFile } from './imageCompression';
 
 // Cria a conta com e-mail e senha, direto no site — sem link nenhum pra
 // clicar. (Antes era um "link mágico" por e-mail, mas isso dava problema
@@ -135,6 +136,39 @@ export function onAuthChange(callback: (user: User | null) => void): () => void 
     stopped = true;
     unsubscribe?.();
   };
+}
+
+// --- Foto de perfil ---
+
+// A foto que aparece no botão "Minha conta" e no popup: a que a pessoa
+// enviou (photo_url) ou, se ela entrou com o Google, a foto da conta Google
+// (avatar_url / picture). Fica nos metadados da própria conta do Supabase,
+// sem tabela nova. A enviada tem nome próprio (photo_url) porque o Google
+// reescreve avatar_url a cada login.
+export function getAvatarUrl(user: User | null): string | null {
+  const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
+  const url = meta.photo_url ?? meta.avatar_url ?? meta.picture;
+  return typeof url === 'string' && url ? url : null;
+}
+
+// Reduz a foto no navegador (quadradinho de no máximo 400px), pede um
+// ticket de upload pro servidor (app/api/avatar-upload/route.ts), envia
+// direto pro Supabase Storage e grava o endereço na conta. O
+// onAuthStateChange avisa o site todo, então o cabeçalho já troca a foto.
+export async function uploadAvatar(file: File): Promise<string> {
+  const token = await getAccessToken();
+  if (!token) throw new Error('Entre na sua conta primeiro.');
+  const compressed = await compressImageFile(file, 400, 82);
+  const res = await fetch('/api/avatar-upload', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const ticket = await res.json();
+  if (!res.ok) throw new Error(ticket.error || 'Não foi possível enviar a foto.');
+  await uploadToSignedTicket(ticket.path, ticket.token, compressed);
+  const { error } = await (await getSupabaseBrowser()).auth.updateUser({ data: { photo_url: ticket.publicUrl } });
+  if (error) throw new Error(error.message);
+  return ticket.publicUrl as string;
 }
 
 // --- Lista de desejos ---

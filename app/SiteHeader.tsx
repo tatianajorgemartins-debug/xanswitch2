@@ -56,6 +56,7 @@ export default function SiteHeader({
   accountLabel,
   onOpenAccount,
   accountHref,
+  accountAvatar,
   activeCatalog
 }: {
   whatsappContactUrl: string | null;
@@ -70,6 +71,9 @@ export default function SiteHeader({
   // isso pra levar ao catálogo digital já com o popup de conta aberto, que
   // é onde ficam login, pontos e lista de desejos.
   accountHref?: string;
+  // Foto de perfil de quem está logado (enviada ou do Google) — aparece
+  // no lugar do bonequinho, dentro do botão "Minha conta".
+  accountAvatar?: string | null;
   // Em qual dos dois catálogos esse header está sendo mostrado — controla
   // qual lado do seletor fica "aceso" (ver .catalog-switcher em
   // globals.css). 'digital' = jogos (app/CatalogClient.tsx), 'fisico' =
@@ -152,10 +156,15 @@ export default function SiteHeader({
 
   const accountContent = (
     <>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <circle cx="12" cy="8" r="3.4" />
-        <path d="M4.5 20c1.4-3.8 4.4-6 7.5-6s6.1 2.2 7.5 6" strokeLinecap="round" />
-      </svg>
+      {accountAvatar ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={accountAvatar} alt="" className="account-button-avatar" referrerPolicy="no-referrer" />
+      ) : (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="8" r="3.4" />
+          <path d="M4.5 20c1.4-3.8 4.4-6 7.5-6s6.1 2.2 7.5 6" strokeLinecap="round" />
+        </svg>
+      )}
       <span className="account-button-label">{accountLabel}</span>
       {!!wishlistCount && wishlistCount > 0 && <span className="account-button-badge">{wishlistCount}</span>}
     </>

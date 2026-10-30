@@ -11,7 +11,8 @@ import {
   getWishlistGameIds,
   addToWishlist,
   removeFromWishlist,
-  getInstagramHandle
+  getInstagramHandle,
+  getAvatarUrl
 } from '@/lib/wishlist';
 import SiteHeader from './SiteHeader';
 import PromoSection from './PromoSection';
@@ -637,6 +638,7 @@ export default function CatalogClient({
             whatsappContactUrl={whatsappContactUrl}
             wishlistCount={wishlistIds.size}
             accountLabel={accountLabel}
+            accountAvatar={getAvatarUrl(user)}
             onOpenAccount={() => setAccountModalOpen(true)}
             activeCatalog="digital"
           />

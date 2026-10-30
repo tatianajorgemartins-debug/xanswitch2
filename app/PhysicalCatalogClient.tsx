@@ -14,6 +14,8 @@ import { scrollToResults } from './scrollToResults';
 import type { PhysicalItem } from '@/lib/physicalCatalogData';
 import { fallbackToOriginal, IMAGE_SIZES, imageSrcSet } from '@/lib/imageVariants';
 import FloatingWhatsApp from './FloatingWhatsApp';
+import { getCurrentUser, getAvatarUrl } from '@/lib/wishlist';
+import { afterPageLoad } from '@/lib/afterPageLoad';
 
 export default function PhysicalCatalogClient({
   items,
@@ -33,6 +35,18 @@ export default function PhysicalCatalogClient({
 }) {
   const isRedesign = useDesignVariant() === 'redesign';
   const [selectedItem, setSelectedItem] = useState<PhysicalItem | null>(null);
+  // Só a foto de perfil de quem já entrou, pro botão "Minha conta" (o login
+  // em si fica no catálogo digital). Depois da página carregar, igual lá.
+  const [accountAvatar, setAccountAvatar] = useState<string | null>(null);
+  useEffect(
+    () =>
+      afterPageLoad(() => {
+        getCurrentUser()
+          .then((u) => setAccountAvatar(getAvatarUrl(u)))
+          .catch(() => {});
+      }),
+    []
+  );
   const [query, setQuery] = useState('');
   const [categoryFilterOpen, setCategoryFilterOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -111,6 +125,7 @@ export default function PhysicalCatalogClient({
             activeCatalog="fisico"
             accountLabel="Minha conta"
             accountHref="/?conta=1"
+            accountAvatar={accountAvatar}
           />
         </div>
       </header>

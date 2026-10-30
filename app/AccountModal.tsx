@@ -4,7 +4,7 @@
 // Instagram, e a lista de desejos de quem está logado. Reaproveita o
 // mesmo "esqueleto" de modal do PurchaseModal.tsx (fundo escurecido,
 // fecha com Esc ou clicando fora, trava o scroll da página).
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import type { Item } from './CatalogClient';
 import {
@@ -16,7 +16,9 @@ import {
   saveInstagramHandle,
   translateAuthError,
   getAccessToken,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  getAvatarUrl,
+  uploadAvatar
 } from '@/lib/wishlist';
 import { getMyCardsAction, type CardSummary } from './cardActions';
 import { CollectibleCard, DownloadCardButton } from './CollectibleCard';
@@ -197,8 +199,8 @@ function LoginForm() {
     <form onSubmit={handleSubmit}>
       <p style={{ fontSize: 13.5, color: 'var(--ink-dim)', lineHeight: 1.5, marginBottom: 16 }}>
         {mode === 'signup'
-          ? 'Cria sua conta com e-mail e senha pra salvar jogos na sua lista de desejos.'
-          : 'Entre com seu e-mail e senha pra ver sua lista de desejos.'}
+          ? 'Cria sua conta pra salvar jogos na sua lista de desejos.'
+          : 'Entre pra ver sua lista de desejos e seus cards.'}
       </p>
       <button type="button" className="account-google-btn" onClick={handleGoogle} disabled={status === 'submitting'}>
         <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
@@ -287,6 +289,61 @@ function LoginForm() {
 // Instagram (opcional — só ajuda você a reconhecer o cliente depois) e a
 // lista de desejos dele, com caixinhas de seleção pra comprar vários jogos
 // de uma vez (ver BulkPurchaseModal.tsx).
+// Foto de perfil no topo da conta: mostra a foto (ou as iniciais) e, ao
+// tocar, abre a galeria/câmera pra trocar. A foto nova aparece na hora
+// aqui e, assim que o Supabase confirma, no botão "Minha conta" também.
+function AvatarPicker({ avatarUrl, initials }: { avatarUrl: string | null; initials: string }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setError('');
+    setPreview(URL.createObjectURL(file));
+    setUploading(true);
+    try {
+      await uploadAvatar(file);
+    } catch (err) {
+      setPreview(null);
+      setError(err instanceof Error ? err.message : 'Não foi possível enviar a foto.');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const shown = preview ?? avatarUrl;
+  return (
+    <div className="account-avatar-picker">
+      <button
+        type="button"
+        className={`account-avatar${uploading ? ' is-uploading' : ''}`}
+        onClick={() => inputRef.current?.click()}
+        disabled={uploading}
+        aria-label={shown ? 'Trocar foto de perfil' : 'Adicionar foto de perfil'}
+      >
+        {shown ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={shown} alt="" referrerPolicy="no-referrer" />
+        ) : (
+          initials
+        )}
+        <span className="account-avatar-edit" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
+            <circle cx="12" cy="13" r="3.5" />
+          </svg>
+        </span>
+      </button>
+      <input ref={inputRef} type="file" accept="image/*" hidden onChange={handleFile} />
+      {error && <p className="account-avatar-error">{error}</p>}
+    </div>
+  );
+}
+
 function LoggedInView({
   user,
   wishlistItems,
@@ -433,9 +490,7 @@ function LoggedInView({
   return (
     <>
       <div className="account-profile-header">
-        <div className="account-avatar" aria-hidden="true">
-          {initials}
-        </div>
+        <AvatarPicker avatarUrl={getAvatarUrl(user)} initials={initials} />
         <div style={{ minWidth: 0 }}>
           <p className="account-profile-sub">Cliente XAN Switch</p>
           <p className="account-profile-email">{user.email}</p>
