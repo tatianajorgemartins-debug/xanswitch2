@@ -17,6 +17,7 @@ import SiteHeader from './SiteHeader';
 import PromoSection from './PromoSection';
 import ReviewsSection, { HomeReviews } from './ReviewsSection';
 import HowItWorks from './HowItWorks';
+import { installmentsLabel } from '@/lib/installments';
 import ReviewForm from './ReviewForm';
 import { useDesignVariant } from './DesignVariant';
 import { scrollToResults } from './scrollToResults';
@@ -1298,6 +1299,7 @@ function GameCard({
         <p className="game-card-name">{item.name}</p>
         {item.originalPriceLabel && <p className="game-card-old-price">R$ {item.originalPriceLabel}</p>}
         <p className="game-card-price">R$ {item.priceLabel}</p>
+        <p className="game-card-installments">{installmentsLabel(item.price)}</p>
       </div>
     </div>
   );

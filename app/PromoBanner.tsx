@@ -1,6 +1,7 @@
 import { getContrastColor } from '@/lib/color';
 import type { Item } from './CatalogClient';
 import { fallbackToOriginal, IMAGE_SIZES, imageSrcSet } from '@/lib/imageVariants';
+import { installmentsLabel } from '@/lib/installments';
 
 export default function PromoBanner({
   item,
@@ -60,6 +61,7 @@ export default function PromoBanner({
               <span className="promo-banner-price-old">R$ {item.originalPriceLabel}</span>
             )}
             <span className="promo-banner-price">{priceOverride ?? `R$ ${item.priceLabel}`}</span>
+            {!priceOverride && <span className="promo-banner-installments">{installmentsLabel(item.price)}</span>}
           </span>
         </div>
         {ctaLabel && <span className="promo-banner-cta">{ctaLabel}</span>}

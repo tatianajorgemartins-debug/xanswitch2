@@ -3214,3 +3214,20 @@ html:has(.legal-page) body {
     overflow: visible;
   }
 }
+
+/* ---------- Parcelamento embaixo do preço (lib/installments.ts) ----------
+   Texto menor, abaixo da linha do preço, nos cards e nos destaques. */
+.redesign .game-card-installments {
+  order: 3;
+  flex-basis: 100%;
+  margin: 2px 0 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.redesign .promo-banner-installments {
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.82);
+}
