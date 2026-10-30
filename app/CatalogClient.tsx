@@ -3,7 +3,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { User } from '@supabase/supabase-js';
-import { getContrastColor } from '@/lib/color';
 import type { Platform, GameType } from '@/lib/db';
 import {
   getCurrentUser,
@@ -18,6 +17,7 @@ import PromoSection from './PromoSection';
 import ReviewsSection, { HomeReviews } from './ReviewsSection';
 import HowItWorks from './HowItWorks';
 import FloatingWhatsApp from './FloatingWhatsApp';
+import Badge, { adminBadgeKind, badgeHint } from './Badge';
 import { installmentsLabel } from '@/lib/installments';
 import { displayFranchise, matchesSearch } from '@/lib/search';
 import ReviewForm from './ReviewForm';
@@ -1250,17 +1250,6 @@ export default function CatalogClient({
   );
 }
 
-// Cores do 1º, 2º e 3º lugar da vitrine de mais desejados — em vez de
-// ouro/prata/bronze "de verdade" (que destoava do resto do site), usa as
-// mesmas cores que o site já usa pra "destaque" (verde), marca (roxo) e
-// desejo (rosa), com o mesmo tipo de brilho que já aparece em outros
-// lugares (preço, capa em hover).
-const RANK_BADGE_STYLE: Record<number, { background: string; color: string; glow: string }> = {
-  1: { background: 'var(--green)', color: '#07230c', glow: 'var(--green-glow)' },
-  2: { background: 'var(--purple)', color: '#fff', glow: 'var(--purple-glow)' },
-  3: { background: 'var(--wishlist-pink)', color: '#fff', glow: 'var(--wishlist-pink-glow)' }
-};
-
 function GameCard({
   item,
   onSelect,
@@ -1281,7 +1270,11 @@ function GameCard({
   // desejados"): a capa começa a baixar junto com a página, sem esperar.
   eager?: boolean;
 }) {
-  const rankStyle = rank ? RANK_BADGE_STYLE[rank] : undefined;
+  // No máximo 2 etiquetas por card, nessa ordem de prioridade: ranking,
+  // oferta, etiqueta do admin (ver Badge.tsx).
+  const shown = [rank ? 'rank' : null, item.isOnSale ? 'offer' : null, item.hasBadge ? 'admin' : null]
+    .filter(Boolean)
+    .slice(0, 2);
   return (
     // Esse card precisa conter DOIS elementos clicáveis (o card inteiro, que
     // abre o modal de compra, e o coração de favoritar) — HTML não permite
@@ -1316,20 +1309,10 @@ function GameCard({
           </svg>
         </button>
 
-        {rankStyle && (
-          <div
-            className="game-card-rank"
-            style={
-              {
-                background: rankStyle.background,
-                color: rankStyle.color,
-                '--rank-glow': rankStyle.glow
-              } as React.CSSProperties
-            }
-            title={`${rank}º lugar entre os mais desejados`}
-          >
+        {shown.includes('rank') && (
+          <Badge kind="rank" className="game-card-rank" title={`${rank}º lugar entre os mais desejados`}>
             {rank}º
-          </div>
+          </Badge>
         )}
 
         {item.imageUrl ? (
@@ -1362,19 +1345,16 @@ function GameCard({
           </div>
         )}
 
-        {item.isOnSale && (
-          <div className="game-card-sale" title={`Em promoção: ${item.salePercent}% de desconto`}>
-            PROMO -{item.salePercent}%
-          </div>
+        {shown.includes('offer') && (
+          <Badge kind="offer" className="game-card-sale" title={`Em promoção: ${item.salePercent}% de desconto`}>
+            -{item.salePercent}%
+          </Badge>
         )}
 
-        {item.hasBadge && (
-          <div
-            className="game-card-badge"
-            style={{ background: item.badgeColor, color: getContrastColor(item.badgeColor) }}
-          >
+        {shown.includes('admin') && (
+          <Badge kind={adminBadgeKind(item.badgeText)} className="game-card-badge" title={badgeHint(item.badgeText)}>
             {item.badgeText}
-          </div>
+          </Badge>
         )}
       </div>
       <div className="game-card-info">
@@ -1449,13 +1429,17 @@ function ListRow({
         <span className="list-row-name">{item.name}</span>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {item.hasBadge && (
-            <span className="tag" style={{ background: item.badgeColor, color: getContrastColor(item.badgeColor) }}>
+            <Badge kind={adminBadgeKind(item.badgeText)} className="tag" title={badgeHint(item.badgeText)}>
               {item.badgeText}
-            </span>
+            </Badge>
           )}
           {!platformRedundant && <span className="tag tag-platform">{platformLabel}</span>}
           {typeLabel && <span className="tag tag-type">{typeLabel}</span>}
-          {item.isOnSale && <span className="tag tag-sale">PROMO -{item.salePercent}%</span>}
+          {item.isOnSale && (
+            <Badge kind="offer" className="tag">
+              -{item.salePercent}%
+            </Badge>
+          )}
         </div>
       </div>
       <span style={{ flex: 'none', textAlign: 'right' }}>

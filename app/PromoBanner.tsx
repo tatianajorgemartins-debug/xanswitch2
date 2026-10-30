@@ -1,7 +1,7 @@
-import { getContrastColor } from '@/lib/color';
 import type { Item } from './CatalogClient';
 import { fallbackToOriginal, IMAGE_SIZES, imageSrcSet } from '@/lib/imageVariants';
 import { installmentsLabel } from '@/lib/installments';
+import Badge, { adminBadgeKind, badgeHint } from './Badge';
 
 export default function PromoBanner({
   item,
@@ -49,12 +49,9 @@ export default function PromoBanner({
         <span className="promo-banner-name">{item.name}</span>
         <div className="promo-banner-meta">
           {item.hasBadge && (
-            <span
-              className="tag"
-              style={{ background: item.badgeColor, color: getContrastColor(item.badgeColor) }}
-            >
+            <Badge kind={adminBadgeKind(item.badgeText)} className="tag" title={badgeHint(item.badgeText)}>
               {item.badgeText}
-            </span>
+            </Badge>
           )}
           <span className="promo-banner-price-block">
             {!priceOverride && item.originalPriceLabel && (

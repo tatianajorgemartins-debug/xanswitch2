@@ -17,7 +17,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { User } from '@supabase/supabase-js';
 import type { Item } from './CatalogClient';
 import type { Platform, GameType } from '@/lib/db';
-import { getContrastColor } from '@/lib/color';
+import Badge, { adminBadgeKind, badgeHint } from './Badge';
 import { generatePixPayload, type PixPayload } from '@/lib/pix';
 import { isValidEmail, REFERRAL_SOURCES } from '@/lib/validation';
 import { signUp, signIn, translateAuthError, getAccessToken } from '@/lib/wishlist';
@@ -509,12 +509,9 @@ function StepSummary({
       <div className="product-media">
         <div className="product-hero-cover">
           {item.hasBadge && (
-            <div
-              className="product-hero-ribbon"
-              style={{ background: item.badgeColor, color: getContrastColor(item.badgeColor) }}
-            >
+            <Badge kind={adminBadgeKind(item.badgeText)} className="product-hero-ribbon" title={badgeHint(item.badgeText)}>
               {item.badgeText}
-            </div>
+            </Badge>
           )}
           {item.imageUrl && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -580,7 +577,11 @@ function StepSummary({
         <div className="product-price-row">
           {item.originalPriceLabel && <span className="product-price-old">R$ {item.originalPriceLabel}</span>}
           <span className="product-price">R$ {priceLabel}</span>
-          {item.isOnSale && <span className="product-sale-badge">PROMO -{item.salePercent}%</span>}
+          {item.isOnSale && (
+            <Badge kind="offer" className="product-sale-badge">
+              -{item.salePercent}%
+            </Badge>
+          )}
         </div>
         <p className="product-installments">ou {installmentsLabel(item.price)}</p>
 
