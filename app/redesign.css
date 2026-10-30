@@ -3480,3 +3480,59 @@ html:has(.legal-page) body {
 :root[data-theme='light'] .redesign.theme-enabled input[aria-invalid='true'] {
   border-color: #c62828;
 }
+
+/* ---------- Busca (CatalogClient.tsx + lib/search.ts) ----------
+   Com uma busca ativa, a barra de busca fica presa logo abaixo do
+   cabeçalho (--header-h, medido no CatalogClient), pra refinar sem rolar
+   de volta. "Resultados para..." no lugar da contagem, e um estado vazio
+   que leva pro WhatsApp. */
+.redesign .catalog-toolbar.is-searching {
+  position: sticky;
+  top: var(--header-h, 72px);
+  z-index: 60;
+  margin-left: -20px;
+  margin-right: -20px;
+  padding: 10px 20px;
+  background: var(--bg);
+}
+.redesign .catalog-search-term {
+  color: var(--accent);
+}
+.redesign .catalog-search-total {
+  color: var(--muted);
+  font-size: 0.55em;
+  font-weight: 600;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.redesign .catalog-empty-search {
+  padding: 24px 0 8px;
+  text-align: center;
+}
+.redesign .catalog-empty-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+.redesign .catalog-empty-text {
+  margin: 4px 0 16px;
+  color: var(--muted);
+}
+.redesign .catalog-empty-whatsapp {
+  display: inline-flex;
+}
+.redesign .catalog-empty-suggest {
+  margin: 36px 0 16px;
+  text-align: left;
+  font-weight: 700;
+  color: var(--ink);
+}
+@media (max-width: 480px) {
+  .redesign .catalog-toolbar.is-searching {
+    margin-left: -16px;
+    margin-right: -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}

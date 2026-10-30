@@ -19,6 +19,7 @@ import ReviewsSection, { HomeReviews } from './ReviewsSection';
 import HowItWorks from './HowItWorks';
 import FloatingWhatsApp from './FloatingWhatsApp';
 import { installmentsLabel } from '@/lib/installments';
+import { displayFranchise, matchesSearch } from '@/lib/search';
 import ReviewForm from './ReviewForm';
 import { useDesignVariant } from './DesignVariant';
 import { scrollToResults } from './scrollToResults';
@@ -194,6 +195,25 @@ export default function CatalogClient({
 }) {
   const isRedesign = useDesignVariant() === 'redesign';
   const [query, setQuery] = useState('');
+  // A lista filtra enquanto a pessoa digita, mas espera ela dar uma pausa
+  // (250ms) — sem isso a grade toda pisca a cada letra.
+  const [searchTerm, setSearchTerm] = useState('');
+  // Altura do cabeçalho fixo (muda com a largura da tela) numa variável de
+  // CSS — a barra de busca usa pra ficar presa logo abaixo dele enquanto
+  // há uma busca ativa (.catalog-toolbar.is-searching).
+  useEffect(() => {
+    const header = document.querySelector<HTMLElement>('.site-header-bar');
+    if (!header || typeof ResizeObserver === 'undefined') return;
+    const update = () => document.documentElement.style.setProperty('--header-h', `${header.offsetHeight}px`);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchTerm(query.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [query]);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [filtersOpen, setFiltersOpen] = useState(false);
   // Só importa no celular (≤700px, ver .catalog-toolbar-extra em
@@ -473,17 +493,24 @@ export default function CatalogClient({
       { label: 'Todos', count: items.length, shortcut: { kind: 'all' } }
     ];
     if (switch2 > 0) list.push({ label: 'Switch 2', count: switch2, shortcut: { kind: 'switch2' } });
-    shortcutFranchises.forEach((f) => list.push({ label: f.name, count: f.count, shortcut: { kind: 'franchise', name: f.name } }));
+    shortcutFranchises.forEach((f) =>
+      list.push({ label: displayFranchise(f.name), count: f.count, shortcut: { kind: 'franchise', name: f.name } })
+    );
     if (others > 0) list.push({ label: 'Outros', count: others, shortcut: { kind: 'others' } });
     return list;
   }, [items, shortcutFranchises, shortcutNames]);
 
+  // Busca tolerante (lib/search.ts): primeiro só o que bate certinho; se
+  // nada bater, aceita erros de digitação ("zeldaa" -> Zelda).
+  const fuzzySearch = useMemo(
+    () => searchTerm !== '' && !items.some((it) => matchesSearch(it.name, searchTerm, false)),
+    [items, searchTerm]
+  );
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
     const min = priceMin.trim() ? parseFloat(priceMin.replace(',', '.')) : null;
     const max = priceMax.trim() ? parseFloat(priceMax.replace(',', '.')) : null;
     const result = items.filter((it) => {
-      if (q && !it.name.toLowerCase().includes(q)) return false;
+      if (searchTerm && !matchesSearch(it.name, searchTerm, fuzzySearch)) return false;
       if (franchiseFilter && it.franchise !== franchiseFilter) return false;
       if (otherFranchises && it.franchise && shortcutNames.has(it.franchise)) return false;
       if (platformFilter !== 'all' && it.platform !== platformFilter && it.platform !== 'both') {
@@ -502,7 +529,8 @@ export default function CatalogClient({
     return [...result].sort((a, b) => (a.price - b.price) * direction);
   }, [
     items,
-    query,
+    searchTerm,
+    fuzzySearch,
     franchiseFilter,
     otherFranchises,
     shortcutNames,
@@ -676,7 +704,7 @@ export default function CatalogClient({
           </section>
         )}
         {isRedesign && <HowItWorks gameCount={items.length} />}
-        <div className="catalog-toolbar">
+        <div className={`catalog-toolbar${query.trim() ? ' is-searching' : ''}`}>
         <div className="catalog-toolbar-search">
           <svg className="catalog-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={16} height={16} style={{ color: 'var(--ink-dim)', flex: 'none' }} aria-hidden="true">
             <circle cx="11" cy="11" r="7" />
@@ -744,12 +772,12 @@ export default function CatalogClient({
           type="button"
           className="btn ghost catalog-toolbar-menu-btn"
           onClick={() => setMobileMenuOpen((v) => !v)}
-          aria-label={mobileMenuOpen ? 'Fechar mais opções' : 'Mais opções'}
+          aria-label={mobileMenuOpen ? 'Fechar filtros e opções' : 'Filtros e opções'}
           aria-expanded={mobileMenuOpen}
         >
           {isRedesign && (
             <span className="catalog-toolbar-menu-label" aria-hidden="true">
-              MENU
+              Filtros e opções
             </span>
           )}
           {mobileMenuOpen ? (
@@ -843,7 +871,7 @@ export default function CatalogClient({
               <option value="">Todas</option>
               {franchises.map((f) => (
                 <option key={f} value={f}>
-                  {f}
+                  {displayFranchise(f)}
                 </option>
               ))}
             </select>
@@ -978,10 +1006,19 @@ export default function CatalogClient({
           resultados, sobra página pra rolar o título até o topo. */}
       <div ref={resultsRef} className="catalog-results">
       <div className="catalog-count-row">
-        <p className="catalog-count">
-          <span className="catalog-count-number">{filtered.length}</span>{' '}
-          {filtered.length === 1 ? 'jogo disponível' : 'jogos disponíveis'}
-        </p>
+        {searchTerm ? (
+          <h2 className="catalog-count">
+            Resultados para <span className="catalog-search-term">“{searchTerm}”</span>{' '}
+            <span className="catalog-search-total">
+              ({filtered.length} {filtered.length === 1 ? 'jogo' : 'jogos'})
+            </span>
+          </h2>
+        ) : (
+          <h2 className="catalog-count">
+            <span className="catalog-count-number">{filtered.length}</span>{' '}
+            {filtered.length === 1 ? 'jogo disponível' : 'jogos disponíveis'}
+          </h2>
+        )}
         {isFiltering && (
           <button type="button" className="btn ghost catalog-clear-filter" onClick={clearAndScrollTop}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={13} height={13} aria-hidden="true">
@@ -1010,7 +1047,9 @@ export default function CatalogClient({
       {isRedesign && items.length > 0 && (
         <div className="catalog-shortcuts" role="group" aria-label="Atalhos de filtro">
           {shortcuts.map(({ label, count, shortcut }) => {
-            const active = shortcutKey(shortcut) === activeShortcut;
+            // Buscando, o "Todos" não fica marcado — senão parece que nada
+            // está filtrado (o título já diz "Resultados para...").
+            const active = shortcutKey(shortcut) === activeShortcut && !(searchTerm && shortcut.kind === 'all');
             return (
               <button
                 key={shortcutKey(shortcut)}
@@ -1027,7 +1066,43 @@ export default function CatalogClient({
         </div>
       )}
 
-      {filtered.length === 0 ? (
+      {filtered.length === 0 && searchTerm && items.length > 0 ? (
+        // Busca sem resultado: em vez de um beco sem saída, oferece pedir o
+        // jogo no WhatsApp (mensagem já com o que foi buscado) e mostra os
+        // mais desejados como sugestão.
+        <div className="catalog-empty-search">
+          <p className="catalog-empty-title">Não encontramos “{searchTerm}”.</p>
+          <p className="catalog-empty-text">Quer que a gente consiga pra você?</p>
+          {whatsappContactUrl && (
+            <a
+              className="btn primary catalog-empty-whatsapp"
+              href={`${whatsappContactUrl}?text=${encodeURIComponent(
+                `Olá! Procurei "${searchTerm}" no site da XAN Switch e não achei. Vocês conseguem pra mim?`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Pedir no WhatsApp
+            </a>
+          )}
+          {liveMostWantedItems.length > 0 && (
+            <>
+              <p className="catalog-empty-suggest">Enquanto isso, os mais procurados:</p>
+              <div className="catalog-grid">
+                {liveMostWantedItems.slice(0, 4).map((item) => (
+                  <GameCard
+                    key={item.id}
+                    item={item}
+                    onSelect={() => openGame(item)}
+                    wishlisted={wishlistIds.has(item.id)}
+                    onToggleWishlist={() => toggleWishlist(item.id)}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--ink-dim)' }}>
           <p style={{ fontSize: 15, fontWeight: 600 }}>
             {items.length === 0
