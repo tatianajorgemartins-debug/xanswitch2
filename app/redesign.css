@@ -3078,6 +3078,7 @@ html:has(.legal-page) body {
   gap: 14px;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
+  scroll-padding-inline: 20px;
   scrollbar-width: none;
   margin: 0 -20px;
   padding: 0 20px 4px;
@@ -3142,6 +3143,7 @@ html:has(.legal-page) body {
   list-style: none;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
+  scroll-padding-inline: 20px;
   scrollbar-width: none;
 }
 .redesign .how-it-works-steps::-webkit-scrollbar {
