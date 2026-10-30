@@ -44,6 +44,25 @@ const FAILSAFE_MS = 12000;
 // página direto, sem repetir as animações.
 let introPlayed = false;
 
+function countUp(el: HTMLElement) {
+  const node = el.firstChild;
+  if (!node || node.nodeType !== Node.TEXT_NODE) return;
+  const target = Number(node.nodeValue);
+  if (!Number.isFinite(target) || target < 2) return;
+  const start = performance.now();
+  const duration = 900;
+  const tick = (now: number) => {
+    const t = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - t, 4);
+    // Mexe só no texto do nó (não troca o nó), pro React continuar
+    // conseguindo atualizar o número depois.
+    if (node.nodeValue !== null && node.isConnected) node.nodeValue = String(Math.round(target * eased));
+    if (t < 1) requestAnimationFrame(tick);
+    else node.nodeValue = String(target);
+  };
+  requestAnimationFrame(tick);
+}
+
 export default function SiteMotion() {
   const barRef = useRef<HTMLDivElement>(null);
 
@@ -66,6 +85,8 @@ export default function SiteMotion() {
       el.style.setProperty('--motion-delay', `${delay}ms`);
       el.dataset.motion = 'in';
       pending.delete(el);
+      const counter = el.querySelector<HTMLElement>('.catalog-count-number');
+      if (counter) countUp(counter);
       // Depois da entrada, tira o atraso pra não atrapalhar o hover.
       window.setTimeout(() => el.style.removeProperty('--motion-delay'), delay + 2000);
     };

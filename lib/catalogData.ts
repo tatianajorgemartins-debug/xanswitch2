@@ -17,13 +17,10 @@ import {
   FEATURED_FRANCHISE_ENABLED_KEY,
   FEATURED_FRANCHISE_KEY,
   FEATURED_FRANCHISE_LABEL_KEY,
-  FEATURED_FRANCHISE_SALE_ONLY_KEY,
-  FEATURED_FRANCHISE_ENDS_AT_KEY,
   type Game
 } from './db';
 import { buildWhatsAppContactLink, formatPriceBR } from './whatsapp';
 import { gamePrice } from './gamePrice';
-import { promoEndTime } from './promo';
 import { getWishlistCounts } from './supabaseAdmin';
 import type { Item, ReviewItem } from '@/app/CatalogClient';
 
@@ -102,9 +99,7 @@ export type CatalogData = {
   // Botão de franquia em destaque, do lado de "Ver avaliações" — null
   // quando desativado no admin. Ver FeaturedFranchisePanel em
   // AdminClient.tsx e o botão em CatalogClient.tsx.
-  // saleOnly: o botão mostra só os jogos com desconto; endsAt: fim da
-  // promoção (AAAA-MM-DD) — já passado, featuredFranchise vem null.
-  featuredFranchise: { franchise: string; label: string; saleOnly: boolean; endsAt: string | null } | null;
+  featuredFranchise: { franchise: string; label: string } | null;
 };
 
 export const loadCatalogData = cache(async (): Promise<CatalogData> => {
@@ -115,17 +110,9 @@ export const loadCatalogData = cache(async (): Promise<CatalogData> => {
   const featuredFranchiseEnabled = (await getSiteSetting(FEATURED_FRANCHISE_ENABLED_KEY)) === 'true';
   const featuredFranchiseName = await getSiteSetting(FEATURED_FRANCHISE_KEY);
   const featuredFranchiseLabel = await getSiteSetting(FEATURED_FRANCHISE_LABEL_KEY);
-  const featuredFranchiseSaleOnly = (await getSiteSetting(FEATURED_FRANCHISE_SALE_ONLY_KEY)) !== 'false';
-  const featuredFranchiseEndsAt = await getSiteSetting(FEATURED_FRANCHISE_ENDS_AT_KEY);
-  const promoExpired = featuredFranchiseEndsAt !== null && Date.now() > promoEndTime(featuredFranchiseEndsAt);
   const featuredFranchise =
-    featuredFranchiseEnabled && featuredFranchiseName && !promoExpired
-      ? {
-          franchise: featuredFranchiseName,
-          label: featuredFranchiseLabel || `🔥 Jogos de ${featuredFranchiseName}`,
-          saleOnly: featuredFranchiseSaleOnly,
-          endsAt: featuredFranchiseEndsAt
-        }
+    featuredFranchiseEnabled && featuredFranchiseName
+      ? { franchise: featuredFranchiseName, label: featuredFranchiseLabel || `🔥 Jogos de ${featuredFranchiseName}` }
       : null;
 
   const items = games.map(toItem);

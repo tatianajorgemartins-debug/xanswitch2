@@ -11,9 +11,7 @@ import {
   LOYALTY_DISCOUNT_AMOUNT_KEY,
   FEATURED_FRANCHISE_ENABLED_KEY,
   FEATURED_FRANCHISE_KEY,
-  FEATURED_FRANCHISE_LABEL_KEY,
-  FEATURED_FRANCHISE_SALE_ONLY_KEY,
-  FEATURED_FRANCHISE_ENDS_AT_KEY
+  FEATURED_FRANCHISE_LABEL_KEY
 } from '@/lib/db';
 import { isAuthenticated } from '@/lib/auth';
 import { getPaymentFees } from '@/lib/paymentFees';
@@ -47,8 +45,6 @@ export default async function AdminPage() {
   const featuredFranchiseEnabled = (await getSiteSetting(FEATURED_FRANCHISE_ENABLED_KEY)) === 'true';
   const featuredFranchiseName = (await getSiteSetting(FEATURED_FRANCHISE_KEY)) ?? '';
   const featuredFranchiseLabel = (await getSiteSetting(FEATURED_FRANCHISE_LABEL_KEY)) ?? '';
-  const featuredFranchiseSaleOnly = (await getSiteSetting(FEATURED_FRANCHISE_SALE_ONLY_KEY)) !== 'false';
-  const featuredFranchiseEndsAt = (await getSiteSetting(FEATURED_FRANCHISE_ENDS_AT_KEY)) ?? '';
   const paymentFees = await getPaymentFees();
   return (
     <AdminClient
@@ -64,8 +60,6 @@ export default async function AdminPage() {
       featuredFranchiseEnabled={featuredFranchiseEnabled}
       featuredFranchiseName={featuredFranchiseName}
       featuredFranchiseLabel={featuredFranchiseLabel}
-      featuredFranchiseSaleOnly={featuredFranchiseSaleOnly}
-      featuredFranchiseEndsAt={featuredFranchiseEndsAt}
       paymentFees={paymentFees}
     />
   );

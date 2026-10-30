@@ -239,11 +239,6 @@ export const LOYALTY_DISCOUNT_AMOUNT_KEY = 'loyalty_discount_amount';
 export const FEATURED_FRANCHISE_ENABLED_KEY = 'featured_franchise_enabled';
 export const FEATURED_FRANCHISE_KEY = 'featured_franchise';
 export const FEATURED_FRANCHISE_LABEL_KEY = 'featured_franchise_label';
-// Promoção de verdade (item 11 das melhorias): o botão mostra só os jogos da
-// franquia COM desconto (padrão ligado) e pode ter data de fim (AAAA-MM-DD,
-// vale até o fim do dia, horário de Brasília) — passou, o botão some.
-export const FEATURED_FRANCHISE_SALE_ONLY_KEY = 'featured_franchise_sale_only';
-export const FEATURED_FRANCHISE_ENDS_AT_KEY = 'featured_franchise_ends_at';
 
 export async function setSiteSetting(key: string, value: string | null): Promise<void> {
   await getSql()`

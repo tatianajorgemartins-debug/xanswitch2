@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { User } from '@supabase/supabase-js';
+import { getContrastColor } from '@/lib/color';
 import type { Platform, GameType } from '@/lib/db';
 import {
   getCurrentUser,
@@ -17,10 +18,7 @@ import PromoSection from './PromoSection';
 import ReviewsSection, { HomeReviews } from './ReviewsSection';
 import HowItWorks from './HowItWorks';
 import FloatingWhatsApp from './FloatingWhatsApp';
-import Badge, { adminBadgeKind, badgeHint } from './Badge';
-import FeaturedPromoButton from './FeaturedPromoButton';
 import { installmentsLabel } from '@/lib/installments';
-import { displayFranchise, matchesSearch } from '@/lib/search';
 import ReviewForm from './ReviewForm';
 import { useDesignVariant } from './DesignVariant';
 import { scrollToResults } from './scrollToResults';
@@ -37,9 +35,6 @@ const BulkPurchaseModal = dynamic(() => import('./BulkPurchaseModal'), { ssr: fa
 // únicos que dá pra ver sem rolar); o resto entra logo depois que a página
 // aparece, em segundo plano. Deixa a página bem mais leve pra abrir.
 const INITIAL_CARDS = 12;
-// Catálogo completo (sem busca nem filtro) mostra os jogos em páginas, com
-// "Ver mais jogos" — a home inteira passava de 12 mil pixels no celular.
-const CATALOG_PAGE_SIZE = 24;
 
 // Os 5 jogos com mais favoritos (vitrine "Mais desejados"). Mesma conta
 // feita no servidor em lib/catalogData.ts.
@@ -187,7 +182,7 @@ export default function CatalogClient({
   // admin — null quando desativado. Aparece do lado de "Ver avaliações" e,
   // ao clicar, filtra o catálogo pra essa franquia (ver
   // FeaturedFranchisePanel em AdminClient.tsx).
-  featuredFranchise: { franchise: string; label: string; saleOnly: boolean; endsAt: string | null } | null;
+  featuredFranchise: { franchise: string; label: string } | null;
   // Só vem preenchido quando a página é acessada pelo link direto de um
   // jogo (app/jogo/[id]/page.tsx) — abre o modal de compra desse jogo
   // assim que a página carrega, sem precisar clicar em nada.
@@ -199,25 +194,6 @@ export default function CatalogClient({
 }) {
   const isRedesign = useDesignVariant() === 'redesign';
   const [query, setQuery] = useState('');
-  // A lista filtra enquanto a pessoa digita, mas espera ela dar uma pausa
-  // (250ms) — sem isso a grade toda pisca a cada letra.
-  const [searchTerm, setSearchTerm] = useState('');
-  // Altura do cabeçalho fixo (muda com a largura da tela) numa variável de
-  // CSS — a barra de busca usa pra ficar presa logo abaixo dele enquanto
-  // há uma busca ativa (.catalog-toolbar.is-searching).
-  useEffect(() => {
-    const header = document.querySelector<HTMLElement>('.site-header-bar');
-    if (!header || typeof ResizeObserver === 'undefined') return;
-    const update = () => document.documentElement.style.setProperty('--header-h', `${header.offsetHeight}px`);
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(header);
-    return () => observer.disconnect();
-  }, []);
-  useEffect(() => {
-    const timer = setTimeout(() => setSearchTerm(query.trim()), 250);
-    return () => clearTimeout(timer);
-  }, [query]);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [filtersOpen, setFiltersOpen] = useState(false);
   // Só importa no celular (≤700px, ver .catalog-toolbar-extra em
@@ -497,24 +473,17 @@ export default function CatalogClient({
       { label: 'Todos', count: items.length, shortcut: { kind: 'all' } }
     ];
     if (switch2 > 0) list.push({ label: 'Switch 2', count: switch2, shortcut: { kind: 'switch2' } });
-    shortcutFranchises.forEach((f) =>
-      list.push({ label: displayFranchise(f.name), count: f.count, shortcut: { kind: 'franchise', name: f.name } })
-    );
+    shortcutFranchises.forEach((f) => list.push({ label: f.name, count: f.count, shortcut: { kind: 'franchise', name: f.name } }));
     if (others > 0) list.push({ label: 'Outros', count: others, shortcut: { kind: 'others' } });
     return list;
   }, [items, shortcutFranchises, shortcutNames]);
 
-  // Busca tolerante (lib/search.ts): primeiro só o que bate certinho; se
-  // nada bater, aceita erros de digitação ("zeldaa" -> Zelda).
-  const fuzzySearch = useMemo(
-    () => searchTerm !== '' && !items.some((it) => matchesSearch(it.name, searchTerm, false)),
-    [items, searchTerm]
-  );
   const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
     const min = priceMin.trim() ? parseFloat(priceMin.replace(',', '.')) : null;
     const max = priceMax.trim() ? parseFloat(priceMax.replace(',', '.')) : null;
     const result = items.filter((it) => {
-      if (searchTerm && !matchesSearch(it.name, searchTerm, fuzzySearch)) return false;
+      if (q && !it.name.toLowerCase().includes(q)) return false;
       if (franchiseFilter && it.franchise !== franchiseFilter) return false;
       if (otherFranchises && it.franchise && shortcutNames.has(it.franchise)) return false;
       if (platformFilter !== 'all' && it.platform !== platformFilter && it.platform !== 'both') {
@@ -533,8 +502,7 @@ export default function CatalogClient({
     return [...result].sort((a, b) => (a.price - b.price) * direction);
   }, [
     items,
-    searchTerm,
-    fuzzySearch,
+    query,
     franchiseFilter,
     otherFranchises,
     shortcutNames,
@@ -546,7 +514,7 @@ export default function CatalogClient({
     quickFilter,
     sortMode
   ]);
-
+  const visibleItems = renderAllCards ? filtered : filtered.slice(0, INITIAL_CARDS);
 
   const activeFilterCount =
     (franchiseFilter ? 1 : 0) +
@@ -563,12 +531,6 @@ export default function CatalogClient({
   // catálogo inteiro, não faz sentido junto de uma busca filtrada) e pra
   // decidir quando mostrar o botão de limpar tudo.
   const isFiltering = activeFilterCount > 0 || query.trim() !== '';
-
-  // Com busca/filtro mostra tudo que bateu; sem, pagina (CATALOG_PAGE_SIZE).
-  const [catalogPages, setCatalogPages] = useState(1);
-  const pagedItems = isFiltering ? filtered : filtered.slice(0, catalogPages * CATALOG_PAGE_SIZE);
-  const visibleItems = renderAllCards ? pagedItems : pagedItems.slice(0, INITIAL_CARDS);
-  const hiddenCount = filtered.length - pagedItems.length;
 
   function scrollToGrid() {
     gridAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -593,8 +555,7 @@ export default function CatalogClient({
   // Botão de franquia em destaque (ver render mais abaixo) — mesma lógica
   // de handleFilterFlag, só que filtrando por franquia em vez de "mais
   // vendido"/"mais aguardado".
-  // saleOnly: o botão da promoção mostra só os jogos com desconto ativo.
-  function handleFranchiseHighlight(franchise: string, saleOnly = false) {
+  function handleFranchiseHighlight(franchise: string) {
     setQuery('');
     setPlatformFilter('all');
     setTypeFilter('all');
@@ -602,7 +563,6 @@ export default function CatalogClient({
     setPriceMax('');
     setQuickFilter(null);
     setFranchiseFilter(franchise);
-    setSaleOnly(saleOnly);
     scrollToGrid();
   }
 
@@ -716,7 +676,7 @@ export default function CatalogClient({
           </section>
         )}
         {isRedesign && <HowItWorks gameCount={items.length} />}
-        <div className={`catalog-toolbar${query.trim() ? ' is-searching' : ''}`}>
+        <div className="catalog-toolbar">
         <div className="catalog-toolbar-search">
           <svg className="catalog-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={16} height={16} style={{ color: 'var(--ink-dim)', flex: 'none' }} aria-hidden="true">
             <circle cx="11" cy="11" r="7" />
@@ -784,12 +744,12 @@ export default function CatalogClient({
           type="button"
           className="btn ghost catalog-toolbar-menu-btn"
           onClick={() => setMobileMenuOpen((v) => !v)}
-          aria-label={mobileMenuOpen ? 'Fechar filtros e opções' : 'Filtros e opções'}
+          aria-label={mobileMenuOpen ? 'Fechar mais opções' : 'Mais opções'}
           aria-expanded={mobileMenuOpen}
         >
           {isRedesign && (
             <span className="catalog-toolbar-menu-label" aria-hidden="true">
-              Filtros e opções
+              MENU
             </span>
           )}
           {mobileMenuOpen ? (
@@ -804,11 +764,13 @@ export default function CatalogClient({
         </button>
 
         {featuredFranchise && (
-          <FeaturedPromoButton
-            promo={featuredFranchise}
-            items={items}
-            onClick={() => handleFranchiseHighlight(featuredFranchise.franchise, featuredFranchise.saleOnly)}
-          />
+          <button
+            type="button"
+            className="btn featured-franchise-btn"
+            onClick={() => handleFranchiseHighlight(featuredFranchise.franchise)}
+          >
+            {featuredFranchise.label}
+          </button>
         )}
 
         <div className={`catalog-toolbar-extra${mobileMenuOpen ? ' is-open' : ''}`}>
@@ -881,7 +843,7 @@ export default function CatalogClient({
               <option value="">Todas</option>
               {franchises.map((f) => (
                 <option key={f} value={f}>
-                  {displayFranchise(f)}
+                  {f}
                 </option>
               ))}
             </select>
@@ -952,9 +914,7 @@ export default function CatalogClient({
 
       <PromoSection
         featuredItems={featuredItems}
-        // Visual novo: sem o carrossel lateral "Mais desejados" — repetia os
-        // mesmos jogos da seção "Os mais desejados" logo abaixo.
-        mostWantedItems={isRedesign ? [] : liveMostWantedItems.slice(0, 3)}
+        mostWantedItems={liveMostWantedItems.slice(0, 3)}
         upcomingItems={upcomingItems}
         onViewGame={handleViewGame}
         onFilterFlag={handleFilterFlag}
@@ -962,32 +922,17 @@ export default function CatalogClient({
 
       {!isFiltering && <HomeReviews reviews={reviews} onSeeAll={() => setReviewsModalOpen(true)} />}
 
-      {/* Visual novo: o banner grande "Ganhe cards colecionáveis" (imagem do
-          admin) vira um bloco compacto de texto — a home ficava longa
-          demais antes do catálogo. O visual antigo continua com a imagem. */}
-      {isRedesign ? (
-        !isFiltering && (
-          <div className="collectibles-teaser">
-            <span className="collectibles-teaser-icon" aria-hidden="true">🎴</span>
-            <p>
-              <strong>Ganhe cards colecionáveis.</strong> Cada compra vale um card e pontos que viram desconto nas
-              próximas.
-            </p>
-          </div>
-        )
-      ) : (
-        reviewsBannerUrl && (
-          <div className="reviews-banner">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={reviewsBannerUrl}
-              srcSet={imageSrcSet(reviewsBannerUrl, 1600)}
-              sizes="(max-width: 640px) 68vw, (max-width: 1240px) 100vw, 1200px"
-              onError={fallbackToOriginal}
-              alt=""
-            />
-          </div>
-        )
+      {reviewsBannerUrl && (
+        <div className="reviews-banner">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={reviewsBannerUrl}
+            srcSet={imageSrcSet(reviewsBannerUrl, 1600)}
+            sizes="(max-width: 640px) 68vw, (max-width: 1240px) 100vw, 1200px"
+            onError={fallbackToOriginal}
+            alt=""
+          />
+        </div>
       )}
 
       <div ref={gridAnchorRef} className="grid-anchor" />
@@ -1033,19 +978,10 @@ export default function CatalogClient({
           resultados, sobra página pra rolar o título até o topo. */}
       <div ref={resultsRef} className="catalog-results">
       <div className="catalog-count-row">
-        {searchTerm ? (
-          <h2 className="catalog-count">
-            Resultados para <span className="catalog-search-term">“{searchTerm}”</span>{' '}
-            <span className="catalog-search-total">
-              ({filtered.length} {filtered.length === 1 ? 'jogo' : 'jogos'})
-            </span>
-          </h2>
-        ) : (
-          <h2 className="catalog-count">
-            <span className="catalog-count-number">{filtered.length}</span>{' '}
-            {filtered.length === 1 ? 'jogo disponível' : 'jogos disponíveis'}
-          </h2>
-        )}
+        <p className="catalog-count">
+          <span className="catalog-count-number">{filtered.length}</span>{' '}
+          {filtered.length === 1 ? 'jogo disponível' : 'jogos disponíveis'}
+        </p>
         {isFiltering && (
           <button type="button" className="btn ghost catalog-clear-filter" onClick={clearAndScrollTop}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={13} height={13} aria-hidden="true">
@@ -1074,9 +1010,7 @@ export default function CatalogClient({
       {isRedesign && items.length > 0 && (
         <div className="catalog-shortcuts" role="group" aria-label="Atalhos de filtro">
           {shortcuts.map(({ label, count, shortcut }) => {
-            // Buscando, o "Todos" não fica marcado — senão parece que nada
-            // está filtrado (o título já diz "Resultados para...").
-            const active = shortcutKey(shortcut) === activeShortcut && !(searchTerm && shortcut.kind === 'all');
+            const active = shortcutKey(shortcut) === activeShortcut;
             return (
               <button
                 key={shortcutKey(shortcut)}
@@ -1093,43 +1027,7 @@ export default function CatalogClient({
         </div>
       )}
 
-      {filtered.length === 0 && searchTerm && items.length > 0 ? (
-        // Busca sem resultado: em vez de um beco sem saída, oferece pedir o
-        // jogo no WhatsApp (mensagem já com o que foi buscado) e mostra os
-        // mais desejados como sugestão.
-        <div className="catalog-empty-search">
-          <p className="catalog-empty-title">Não encontramos “{searchTerm}”.</p>
-          <p className="catalog-empty-text">Quer que a gente consiga pra você?</p>
-          {whatsappContactUrl && (
-            <a
-              className="btn primary catalog-empty-whatsapp"
-              href={`${whatsappContactUrl}?text=${encodeURIComponent(
-                `Olá! Procurei "${searchTerm}" no site da XAN Switch e não achei. Vocês conseguem pra mim?`
-              )}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Pedir no WhatsApp
-            </a>
-          )}
-          {liveMostWantedItems.length > 0 && (
-            <>
-              <p className="catalog-empty-suggest">Enquanto isso, os mais procurados:</p>
-              <div className="catalog-grid">
-                {liveMostWantedItems.slice(0, 4).map((item) => (
-                  <GameCard
-                    key={item.id}
-                    item={item}
-                    onSelect={() => openGame(item)}
-                    wishlisted={wishlistIds.has(item.id)}
-                    onToggleWishlist={() => toggleWishlist(item.id)}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      ) : filtered.length === 0 ? (
+      {filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--ink-dim)' }}>
           <p style={{ fontSize: 15, fontWeight: 600 }}>
             {items.length === 0
@@ -1160,14 +1058,6 @@ export default function CatalogClient({
               onToggleWishlist={() => toggleWishlist(item.id)}
             />
           ))}
-        </div>
-      )}
-
-      {hiddenCount > 0 && (
-        <div className="catalog-more">
-          <button type="button" className="btn ghost" onClick={() => setCatalogPages((p) => p + 1)}>
-            Ver mais jogos ({hiddenCount} restantes)
-          </button>
         </div>
       )}
       </div>
@@ -1285,6 +1175,17 @@ export default function CatalogClient({
   );
 }
 
+// Cores do 1º, 2º e 3º lugar da vitrine de mais desejados — em vez de
+// ouro/prata/bronze "de verdade" (que destoava do resto do site), usa as
+// mesmas cores que o site já usa pra "destaque" (verde), marca (roxo) e
+// desejo (rosa), com o mesmo tipo de brilho que já aparece em outros
+// lugares (preço, capa em hover).
+const RANK_BADGE_STYLE: Record<number, { background: string; color: string; glow: string }> = {
+  1: { background: 'var(--green)', color: '#07230c', glow: 'var(--green-glow)' },
+  2: { background: 'var(--purple)', color: '#fff', glow: 'var(--purple-glow)' },
+  3: { background: 'var(--wishlist-pink)', color: '#fff', glow: 'var(--wishlist-pink-glow)' }
+};
+
 function GameCard({
   item,
   onSelect,
@@ -1305,11 +1206,7 @@ function GameCard({
   // desejados"): a capa começa a baixar junto com a página, sem esperar.
   eager?: boolean;
 }) {
-  // No máximo 2 etiquetas por card, nessa ordem de prioridade: ranking,
-  // oferta, etiqueta do admin (ver Badge.tsx).
-  const shown = [rank ? 'rank' : null, item.isOnSale ? 'offer' : null, item.hasBadge ? 'admin' : null]
-    .filter(Boolean)
-    .slice(0, 2);
+  const rankStyle = rank ? RANK_BADGE_STYLE[rank] : undefined;
   return (
     // Esse card precisa conter DOIS elementos clicáveis (o card inteiro, que
     // abre o modal de compra, e o coração de favoritar) — HTML não permite
@@ -1344,10 +1241,20 @@ function GameCard({
           </svg>
         </button>
 
-        {shown.includes('rank') && (
-          <Badge kind="rank" className="game-card-rank" title={`${rank}º lugar entre os mais desejados`}>
+        {rankStyle && (
+          <div
+            className="game-card-rank"
+            style={
+              {
+                background: rankStyle.background,
+                color: rankStyle.color,
+                '--rank-glow': rankStyle.glow
+              } as React.CSSProperties
+            }
+            title={`${rank}º lugar entre os mais desejados`}
+          >
             {rank}º
-          </Badge>
+          </div>
         )}
 
         {item.imageUrl ? (
@@ -1380,16 +1287,19 @@ function GameCard({
           </div>
         )}
 
-        {shown.includes('offer') && (
-          <Badge kind="offer" className="game-card-sale" title={`Em promoção: ${item.salePercent}% de desconto`}>
-            -{item.salePercent}%
-          </Badge>
+        {item.isOnSale && (
+          <div className="game-card-sale" title={`Em promoção: ${item.salePercent}% de desconto`}>
+            PROMO -{item.salePercent}%
+          </div>
         )}
 
-        {shown.includes('admin') && (
-          <Badge kind={adminBadgeKind(item.badgeText)} className="game-card-badge" title={badgeHint(item.badgeText)}>
+        {item.hasBadge && (
+          <div
+            className="game-card-badge"
+            style={{ background: item.badgeColor, color: getContrastColor(item.badgeColor) }}
+          >
             {item.badgeText}
-          </Badge>
+          </div>
         )}
       </div>
       <div className="game-card-info">
@@ -1464,17 +1374,13 @@ function ListRow({
         <span className="list-row-name">{item.name}</span>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {item.hasBadge && (
-            <Badge kind={adminBadgeKind(item.badgeText)} className="tag" title={badgeHint(item.badgeText)}>
+            <span className="tag" style={{ background: item.badgeColor, color: getContrastColor(item.badgeColor) }}>
               {item.badgeText}
-            </Badge>
+            </span>
           )}
           {!platformRedundant && <span className="tag tag-platform">{platformLabel}</span>}
           {typeLabel && <span className="tag tag-type">{typeLabel}</span>}
-          {item.isOnSale && (
-            <Badge kind="offer" className="tag">
-              -{item.salePercent}%
-            </Badge>
-          )}
+          {item.isOnSale && <span className="tag tag-sale">PROMO -{item.salePercent}%</span>}
         </div>
       </div>
       <span style={{ flex: 'none', textAlign: 'right' }}>

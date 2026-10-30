@@ -1006,11 +1006,9 @@
     padding: 20px;
   }
 }
-@media (max-width: 1023px) {
+@media (max-width: 640px) {
   /* O seletor de catálogo vira uma linha inteira embaixo da logo, com os
-     nomes escritos em vez de só ícones. Vale até 1023px (e não só no
-     celular): entre ~700 e ~1000px, tudo numa linha só não cabia e os
-     ícones da direita saíam da tela (pior no Beedle, com as duas logos). */
+     nomes escritos em vez de só ícones. */
   .redesign .site-header {
     flex-wrap: wrap;
     row-gap: 10px;
@@ -1700,6 +1698,12 @@ html:has(.legal-page) {
   html:has(.legal-page) {
     scroll-behavior: auto;
   }
+}
+/* overflow-x: hidden no html/body (globals.css) impede o índice de ficar
+   grudado na tela; nesta página "clip" faz o mesmo papel sem esse efeito. */
+html:has(.legal-page),
+html:has(.legal-page) body {
+  overflow-x: clip;
 }
 
 /* ==========================================================================
@@ -3473,207 +3477,4 @@ html:has(.legal-page) {
 }
 :root[data-theme='light'] .redesign.theme-enabled input[aria-invalid='true'] {
   border-color: #c62828;
-}
-
-/* ---------- Busca (CatalogClient.tsx + lib/search.ts) ----------
-   Com uma busca ativa, a barra de busca fica presa logo abaixo do
-   cabeçalho (--header-h, medido no CatalogClient), pra refinar sem rolar
-   de volta. "Resultados para..." no lugar da contagem, e um estado vazio
-   que leva pro WhatsApp. */
-.redesign .catalog-toolbar.is-searching {
-  position: sticky;
-  top: var(--header-h, 72px);
-  z-index: 60;
-  margin-left: -20px;
-  margin-right: -20px;
-  padding: 10px 20px;
-  background: var(--bg);
-}
-/* Presa no topo, a barra fica só com a busca e os filtros — sem o botão
-   da promoção, que ocuparia uma linha inteira no celular. */
-.redesign .catalog-toolbar.is-searching .featured-franchise-btn {
-  display: none;
-}
-.redesign .catalog-search-term {
-  color: var(--accent);
-}
-.redesign .catalog-search-total {
-  color: var(--muted);
-  font-size: 0.55em;
-  font-weight: 600;
-  letter-spacing: 0;
-  white-space: nowrap;
-}
-.redesign .catalog-empty-search {
-  padding: 24px 0 8px;
-  text-align: center;
-}
-.redesign .catalog-empty-title {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 800;
-  color: var(--ink);
-}
-.redesign .catalog-empty-text {
-  margin: 4px 0 16px;
-  color: var(--muted);
-}
-.redesign .catalog-empty-whatsapp {
-  display: inline-flex;
-}
-.redesign .catalog-empty-suggest {
-  margin: 36px 0 16px;
-  text-align: left;
-  font-weight: 700;
-  color: var(--ink);
-}
-@media (max-width: 480px) {
-  .redesign .catalog-toolbar.is-searching {
-    margin-left: -16px;
-    margin-right: -16px;
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-}
-
-/* ---------- Etiquetas (Badge.tsx) ----------
-   3 variantes + ranking. Mantém posição e tamanho de cada lugar (card,
-   lista, banner, janela do jogo) e só unifica as cores. */
-.redesign .badge {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 4px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  line-height: 1.2;
-  text-transform: uppercase;
-}
-.redesign .badge-platform {
-  background: #e60012;
-  color: #fff;
-}
-.redesign .badge-status {
-  background: rgba(10, 7, 22, 0.82);
-  color: #fff;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
-}
-.redesign .badge-offer {
-  background: var(--promo);
-  color: var(--promo-ink);
-}
-.redesign .badge-rank {
-  background: var(--accent-fill);
-  color: #fff;
-}
-.redesign .badge[title] {
-  cursor: help;
-}
-
-/* ---------- Legibilidade (item 14) ----------
-   - Carrossel: além do degradê da esquerda, um de baixo pra cima, pra o
-     nome e o preço terem fundo escuro mesmo quando o texto cai sobre uma
-     parte clara da arte (no celular o texto fica embaixo).
-   - Preço riscado ("de"): mais contraste, ainda abaixo do preço "por".
-   - Cards: sem a linha reservada embaixo do nome quando ele cabe numa
-     linha só — o preço sobe e cola no nome. */
-.redesign .promo-banner-overlay {
-  background:
-    linear-gradient(0deg, rgba(6, 4, 14, 0.88) 0%, rgba(6, 4, 14, 0.35) 45%, rgba(6, 4, 14, 0) 70%),
-    linear-gradient(90deg, rgba(6, 4, 14, 0.92) 0%, rgba(6, 4, 14, 0.62) 45%, rgba(6, 4, 14, 0.05) 100%);
-}
-.redesign .promo-banner-name,
-.redesign .promo-banner-price,
-.redesign .promo-banner-category {
-  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.55);
-}
-.redesign .promo-banner-price-old {
-  color: rgba(255, 255, 255, 0.82);
-  font-weight: 600;
-}
-.redesign .game-card-old-price,
-.redesign .list-row-old-price,
-.redesign .product-price-old {
-  color: var(--ink);
-  opacity: 0.72;
-  font-weight: 600;
-}
-.redesign .game-card-name {
-  min-height: 0;
-  margin-bottom: 4px;
-}
-
-/* ---------- Botão da promoção (FeaturedPromoButton.tsx) ---------- */
-.redesign .featured-franchise-btn {
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-.redesign .featured-promo-off {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--promo-ink);
-  color: var(--promo);
-  font-size: 12px;
-  font-weight: 800;
-}
-.redesign .featured-promo-timer {
-  font-size: 12px;
-  font-weight: 700;
-  opacity: 0.8;
-}
-
-/* ---------- Home mais curta (item 10) ----------
-   - "Os mais desejados" no celular: uma linha de arrastar em vez de 3
-     linhas de cards.
-   - Bloco compacto no lugar do banner grande de cards colecionáveis.
-   - "Ver mais jogos" no fim do catálogo paginado. */
-@media (max-width: 700px) {
-  .redesign .most-wanted-section .catalog-grid {
-    display: flex;
-    gap: 12px;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scroll-padding-inline: 16px;
-    scrollbar-width: none;
-    margin: 0 -16px;
-    padding: 0 16px 4px;
-  }
-  .redesign .most-wanted-section .catalog-grid::-webkit-scrollbar {
-    display: none;
-  }
-  .redesign .most-wanted-section .catalog-grid > * {
-    flex: 0 0 44%;
-    scroll-snap-align: start;
-  }
-  /* O 5º card não some mais no celular (agora cabe arrastando). */
-  .redesign .most-wanted-section .most-wanted-fifth {
-    display: block;
-  }
-}
-.redesign .collectibles-teaser {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin: 0 0 48px;
-  padding: 14px 18px;
-  border-radius: 12px;
-  background: var(--surface);
-  color: var(--muted);
-  font-size: var(--step-small);
-  line-height: 1.45;
-}
-.redesign .collectibles-teaser p {
-  margin: 0;
-}
-.redesign .collectibles-teaser strong {
-  color: var(--ink);
-}
-.redesign .collectibles-teaser-icon {
-  flex: none;
-  font-size: 26px;
-}
-.redesign .catalog-more {
-  display: flex;
-  justify-content: center;
-  margin-top: 32px;
 }
