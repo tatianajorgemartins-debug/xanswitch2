@@ -202,6 +202,19 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   animation: quiz-cta-pulse 2.6s ease-in-out infinite;
 }
+/* "Descubra meu / próximo jogo 🎮" em duas linhas, com o joystick no fim
+   da segunda. */
+.quiz-showcase-cta {
+  border-radius: 16px;
+  line-height: 1.1;
+  text-align: left;
+}
+.quiz-showcase-cta-icon {
+  width: 1.35em;
+  height: 1.35em;
+  margin-left: 5px;
+  vertical-align: -0.35em;
+}
 .quiz-showcase-cta:hover,
 .quiz-showcase-cta:focus-visible {
   transform: translateY(-2px) scale(1.03);

@@ -118,7 +118,7 @@ type Effect = {
 export type QuizOption = { label: string; emoji: string; effect: Effect };
 export type QuizQuestion = { id: string; text: string; options: QuizOption[] };
 
-// O banco de perguntas. A cada rodada, entram 10 delas sorteadas (sempre
+// O banco de perguntas. A cada rodada, entram 5 delas sorteadas (sempre
 // incluindo a de orçamento — ver pickQuestions), em ordem aleatória.
 export const QUESTION_POOL: QuizQuestion[] = [
   {
@@ -300,7 +300,7 @@ export const QUESTION_POOL: QuizQuestion[] = [
   }
 ];
 
-export const QUESTIONS_PER_ROUND = 10;
+export const QUESTIONS_PER_ROUND = 5;
 
 function shuffle<T>(list: T[]): T[] {
   const copy = list.slice();

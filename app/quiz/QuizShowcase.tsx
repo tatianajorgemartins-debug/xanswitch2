@@ -62,7 +62,14 @@ export default function QuizShowcase({
           <h2 className="quiz-showcase-title">Qual será seu próximo jogo?</h2>
           <p className="quiz-showcase-sub">Responda algumas perguntas e descubra qual jogo combina com você!</p>
           <button type="button" className="quiz-showcase-cta" onClick={() => setOpen(true)}>
-            Descobrir meu próximo jogo
+            <span>
+              Descubra meu
+              <br />
+              próximo jogo
+              <svg className="quiz-showcase-cta-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M7.5 6h9a5.5 5.5 0 0 1 5.3 7l-1.1 3.9A2.9 2.9 0 0 1 15.9 18l-2.4-2.4h-3L8.1 18a2.9 2.9 0 0 1-4.8-1.1L2.2 13A5.5 5.5 0 0 1 7.5 6Zm-.5 3v1.5H5.5V12H7v1.5h1.5V12H10v-1.5H8.5V9H7Zm9.5 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm-2 2a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z" />
+              </svg>
+            </span>
           </button>
         </div>
       </div>

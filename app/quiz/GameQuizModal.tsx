@@ -206,7 +206,7 @@ function Intro({ items, onStart }: { items: Item[]; onStart: () => void }) {
         Qual será seu próximo jogo?
       </h2>
       <p className="quiz-lead">
-        Responda 10 perguntas rápidas sobre o seu jeito de jogar. A gente cruza tudo com o catálogo da XanSwitch e
+        Responda 5 perguntas rápidas sobre o seu jeito de jogar. A gente cruza tudo com o catálogo da XanSwitch e
         sorteia o jogo que mais combina com você.
       </p>
       <ul className="quiz-intro-steps">
