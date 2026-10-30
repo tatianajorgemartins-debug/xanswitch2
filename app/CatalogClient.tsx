@@ -96,6 +96,10 @@ export type Item = {
   isUpcoming: boolean;
   description: string | null;
   screenshots: string[];
+  // Ficha técnica opcional (admin) — null esconde o campo na janela do jogo.
+  language: string | null;
+  sizeGb: number | null;
+  players: string | null;
   // Link de pagamento parcelado (crédito), configurado manualmente no admin
   // pra esse jogo — quando presente, a tela de compra mostra dois botões em
   // vez de um só (ver StepSummary em PurchaseModal.tsx).

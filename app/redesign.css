@@ -3379,3 +3379,87 @@ html:has(.legal-page) body {
   font-weight: 600;
   text-align: center;
 }
+
+/* ---------- Janela do jogo: compra no topo (PurchaseModal.tsx) ----------
+   3 blocos: .product-head (nome, preço, parcelas), .product-buy (botões +
+   card) e .product-details (ficha + "Sobre o jogo"). Tablet: foto à
+   esquerda, os 3 blocos empilhados à direita, botões logo após o preço.
+   Computador largo: foto | cabeçalho + detalhes | compra (presa ao rolar).
+   Celular: tudo em coluna, botões presos no pé da janela com o preço. */
+.redesign .product-installments {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: var(--step-small);
+  font-weight: 600;
+}
+.redesign .product-sticky-price {
+  display: none;
+}
+.redesign .purchase-description-text.is-clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.redesign .purchase-description-more {
+  margin-top: 6px;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: var(--step-small);
+  cursor: pointer;
+}
+.redesign .product-buy {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.redesign .purchase-modal.is-product-step .product-buy .purchase-card-teaser {
+  margin-bottom: 0;
+}
+@media (min-width: 640px) {
+  .redesign .purchase-modal.is-product-step .product-media {
+    grid-row: 1 / span 3;
+  }
+  .redesign .purchase-modal.is-product-step .product-details {
+    grid-column: 2;
+  }
+}
+@media (min-width: 1000px) {
+  .redesign .purchase-modal.is-product-step .product-buy {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+  .redesign .purchase-modal.is-product-step .product-media {
+    grid-row: 1 / span 2;
+  }
+}
+@media (max-width: 639px) {
+  /* Com display: contents (ver acima), os filhos dos blocos viram itens da
+     grade — a ordem abaixo põe o card depois do cabeçalho e os botões por
+     último, que é o que mantém a barra presa no pé enquanto rola. */
+  .redesign .purchase-modal.is-product-step .product-head > * {
+    order: 1;
+  }
+  .redesign .purchase-modal.is-product-step .product-buy .purchase-card-teaser {
+    order: 2;
+    margin-top: 16px;
+  }
+  .redesign .purchase-modal.is-product-step .product-details > * {
+    order: 3;
+  }
+  .redesign .purchase-modal.is-product-step .product-buy .purchase-modal-actions {
+    order: 4;
+  }
+  .redesign .purchase-modal.is-product-step .product-sticky-price {
+    display: block;
+    margin: 0;
+    text-align: center;
+    color: var(--price);
+    font-weight: 800;
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+  }
+}

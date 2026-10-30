@@ -26,7 +26,7 @@ import { confirmOrderAction, confirmCreditOrderAction } from './orderActions';
 import { startPixPaymentAction } from './mercadoPagoActions';
 import { usePixPaymentStatus, PixAutoStatus } from './PixAutoConfirm';
 import { CardPaymentStep } from './CardPaymentStep';
-import { MAX_INSTALLMENTS } from '@/lib/installments';
+import { MAX_INSTALLMENTS, installmentsLabel } from '@/lib/installments';
 import { confirmWithTimeout } from '@/lib/confirmWithTimeout';
 import { XanLoader, useContentLoader, useStepLoader } from './XanLoader';
 import { getGameDiscountOfferAction, redeemDiscountAction, type GameDiscountOffer } from './cardActions';
@@ -568,7 +568,13 @@ function StepSummary({
         )}
       </div>
 
-      <div className="product-info">
+      {/* A janela é montada em 3 blocos, nessa ordem de importância: o
+          cabeçalho (nome, preço, parcelas), a compra (botões + card
+          colecionável) e os detalhes (ficha técnica, "Sobre o jogo"). No
+          tablet e no computador os botões ficam logo abaixo do preço (ver
+          .product-layout em redesign.css); no celular, presos no pé da
+          janela, com o preço junto, visíveis enquanto rola. */}
+      <div className="product-info product-head">
         {item.franchise && <p className="product-eyebrow">{item.franchise}</p>}
         <h2 className="product-title">{item.name}</h2>
         <div className="product-price-row">
@@ -576,6 +582,7 @@ function StepSummary({
           <span className="product-price">R$ {priceLabel}</span>
           {item.isOnSale && <span className="product-sale-badge">PROMO -{item.salePercent}%</span>}
         </div>
+        <p className="product-installments">ou {installmentsLabel(item.price)}</p>
 
         {item.discountEligible && (
           <GameDiscountBanner
@@ -590,45 +597,13 @@ function StepSummary({
             onToggleOptOut={onToggleDiscountOptOut}
           />
         )}
-
-        <div className="product-meta-grid">
-          <div className="product-meta-chip">
-            <p className="product-meta-chip-label">Plataforma</p>
-            <p className="product-meta-chip-value">{PLATFORM_LABEL[item.platform]}</p>
-          </div>
-          <div className="product-meta-chip">
-            <p className="product-meta-chip-label">Tipo</p>
-            <p className="product-meta-chip-value">{GAME_TYPE_LABEL[item.gameType]}</p>
-          </div>
-          <div className="product-meta-chip">
-            <p className="product-meta-chip-label">Formato</p>
-            <p className="product-meta-chip-value">Código digital</p>
-          </div>
-        </div>
-
-        {item.description && (
-          <div className="purchase-description">
-            <p className="purchase-description-label">Sobre o jogo</p>
-            <p className="purchase-description-text">{item.description}</p>
-          </div>
-        )}
       </div>
 
-      {/* Card colecionável + pagamento: no computador largo vira uma
-          terceira coluna (ver .product-buy em redesign.css); no celular e
-          no tablet continua logo abaixo das informações. */}
       <div className="product-buy">
-        <div className="purchase-card-teaser">
-          <span className="purchase-card-teaser-icon" aria-hidden="true">
-            🎴
-          </span>
-          <p>
-            Ao comprar, você ganha o <strong>card colecionável</strong> de {item.name} + <strong>{item.cardPoints}
-            {item.cardPoints === 1 ? ' ponto' : ' pontos'}</strong> pra trocar por desconto
-          </p>
-        </div>
-
         <div className="purchase-modal-actions">
+          <p className="product-sticky-price" aria-hidden="true">
+            R$ {priceLabel}
+          </p>
           {item.creditPaymentUrl || MP_CARD_ENABLED ? (
             <>
               <p className="purchase-payment-choice-label">Como você quer pagar?</p>
@@ -665,7 +640,81 @@ function StepSummary({
             {shareCopied ? 'Link copiado!' : 'Compartilhar este jogo'}
           </button>
         </div>
+
+        <div className="purchase-card-teaser">
+          <span className="purchase-card-teaser-icon" aria-hidden="true">
+            🎴
+          </span>
+          <p>
+            Ao comprar, você ganha o <strong>card colecionável</strong> de {item.name} + <strong>{item.cardPoints}
+            {item.cardPoints === 1 ? ' ponto' : ' pontos'}</strong> pra trocar por desconto
+          </p>
+        </div>
       </div>
+
+      <div className="product-info product-details">
+        <div className="product-meta-grid">
+          <div className="product-meta-chip">
+            <p className="product-meta-chip-label">Plataforma</p>
+            <p className="product-meta-chip-value">{PLATFORM_LABEL[item.platform]}</p>
+          </div>
+          <div className="product-meta-chip">
+            <p className="product-meta-chip-label">Tipo</p>
+            <p className="product-meta-chip-value">{GAME_TYPE_LABEL[item.gameType]}</p>
+          </div>
+          <div className="product-meta-chip">
+            <p className="product-meta-chip-label">Formato</p>
+            <p className="product-meta-chip-value">Código digital</p>
+          </div>
+          {item.language && (
+            <div className="product-meta-chip">
+              <p className="product-meta-chip-label">Idioma</p>
+              <p className="product-meta-chip-value">{item.language}</p>
+            </div>
+          )}
+          {item.sizeGb && (
+            <div className="product-meta-chip">
+              <p className="product-meta-chip-label">Tamanho</p>
+              <p className="product-meta-chip-value">{item.sizeGb.toString().replace('.', ',')} GB</p>
+            </div>
+          )}
+          {item.players && (
+            <div className="product-meta-chip">
+              <p className="product-meta-chip-label">Jogadores</p>
+              <p className="product-meta-chip-value">{item.players}</p>
+            </div>
+          )}
+        </div>
+
+        {item.description && <GameDescription text={item.description} />}
+      </div>
+    </div>
+  );
+}
+
+// "Sobre o jogo" cortado em ~4 linhas, com "Ler mais" — só aparece o botão
+// quando o texto passa disso.
+function GameDescription({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [overflowing, setOverflowing] = useState(false);
+  const textRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (el) setOverflowing(el.scrollHeight > el.clientHeight + 1);
+  }, [text]);
+
+  return (
+    <div className="purchase-description">
+      <p className="purchase-description-label">Sobre o jogo</p>
+      <p ref={textRef} className={`purchase-description-text${expanded ? '' : ' is-clamped'}`}>
+        {text}
+      </p>
+      {(overflowing || expanded) && (
+        <button type="button" className="purchase-description-more" onClick={() => setExpanded((v) => !v)}>
+          {expanded ? 'Ler menos' : 'Ler mais'}
+        </button>
+      )}
     </div>
   );
 }
