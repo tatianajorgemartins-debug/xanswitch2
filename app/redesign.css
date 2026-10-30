@@ -3621,3 +3621,59 @@ html:has(.legal-page) {
   font-weight: 700;
   opacity: 0.8;
 }
+
+/* ---------- Home mais curta (item 10) ----------
+   - "Os mais desejados" no celular: uma linha de arrastar em vez de 3
+     linhas de cards.
+   - Bloco compacto no lugar do banner grande de cards colecionáveis.
+   - "Ver mais jogos" no fim do catálogo paginado. */
+@media (max-width: 700px) {
+  .redesign .most-wanted-section .catalog-grid {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 16px;
+    scrollbar-width: none;
+    margin: 0 -16px;
+    padding: 0 16px 4px;
+  }
+  .redesign .most-wanted-section .catalog-grid::-webkit-scrollbar {
+    display: none;
+  }
+  .redesign .most-wanted-section .catalog-grid > * {
+    flex: 0 0 44%;
+    scroll-snap-align: start;
+  }
+  /* O 5º card não some mais no celular (agora cabe arrastando). */
+  .redesign .most-wanted-section .most-wanted-fifth {
+    display: block;
+  }
+}
+.redesign .collectibles-teaser {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 48px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: var(--step-small);
+  line-height: 1.45;
+}
+.redesign .collectibles-teaser p {
+  margin: 0;
+}
+.redesign .collectibles-teaser strong {
+  color: var(--ink);
+}
+.redesign .collectibles-teaser-icon {
+  flex: none;
+  font-size: 26px;
+}
+.redesign .catalog-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 32px;
+}

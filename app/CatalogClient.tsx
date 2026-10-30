@@ -37,6 +37,9 @@ const BulkPurchaseModal = dynamic(() => import('./BulkPurchaseModal'), { ssr: fa
 // únicos que dá pra ver sem rolar); o resto entra logo depois que a página
 // aparece, em segundo plano. Deixa a página bem mais leve pra abrir.
 const INITIAL_CARDS = 12;
+// Catálogo completo (sem busca nem filtro) mostra os jogos em páginas, com
+// "Ver mais jogos" — a home inteira passava de 12 mil pixels no celular.
+const CATALOG_PAGE_SIZE = 24;
 
 // Os 5 jogos com mais favoritos (vitrine "Mais desejados"). Mesma conta
 // feita no servidor em lib/catalogData.ts.
@@ -543,7 +546,7 @@ export default function CatalogClient({
     quickFilter,
     sortMode
   ]);
-  const visibleItems = renderAllCards ? filtered : filtered.slice(0, INITIAL_CARDS);
+
 
   const activeFilterCount =
     (franchiseFilter ? 1 : 0) +
@@ -560,6 +563,12 @@ export default function CatalogClient({
   // catálogo inteiro, não faz sentido junto de uma busca filtrada) e pra
   // decidir quando mostrar o botão de limpar tudo.
   const isFiltering = activeFilterCount > 0 || query.trim() !== '';
+
+  // Com busca/filtro mostra tudo que bateu; sem, pagina (CATALOG_PAGE_SIZE).
+  const [catalogPages, setCatalogPages] = useState(1);
+  const pagedItems = isFiltering ? filtered : filtered.slice(0, catalogPages * CATALOG_PAGE_SIZE);
+  const visibleItems = renderAllCards ? pagedItems : pagedItems.slice(0, INITIAL_CARDS);
+  const hiddenCount = filtered.length - pagedItems.length;
 
   function scrollToGrid() {
     gridAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -943,7 +952,9 @@ export default function CatalogClient({
 
       <PromoSection
         featuredItems={featuredItems}
-        mostWantedItems={liveMostWantedItems.slice(0, 3)}
+        // Visual novo: sem o carrossel lateral "Mais desejados" — repetia os
+        // mesmos jogos da seção "Os mais desejados" logo abaixo.
+        mostWantedItems={isRedesign ? [] : liveMostWantedItems.slice(0, 3)}
         upcomingItems={upcomingItems}
         onViewGame={handleViewGame}
         onFilterFlag={handleFilterFlag}
@@ -951,17 +962,32 @@ export default function CatalogClient({
 
       {!isFiltering && <HomeReviews reviews={reviews} onSeeAll={() => setReviewsModalOpen(true)} />}
 
-      {reviewsBannerUrl && (
-        <div className="reviews-banner">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={reviewsBannerUrl}
-            srcSet={imageSrcSet(reviewsBannerUrl, 1600)}
-            sizes="(max-width: 640px) 68vw, (max-width: 1240px) 100vw, 1200px"
-            onError={fallbackToOriginal}
-            alt=""
-          />
-        </div>
+      {/* Visual novo: o banner grande "Ganhe cards colecionáveis" (imagem do
+          admin) vira um bloco compacto de texto — a home ficava longa
+          demais antes do catálogo. O visual antigo continua com a imagem. */}
+      {isRedesign ? (
+        !isFiltering && (
+          <div className="collectibles-teaser">
+            <span className="collectibles-teaser-icon" aria-hidden="true">🎴</span>
+            <p>
+              <strong>Ganhe cards colecionáveis.</strong> Cada compra vale um card e pontos que viram desconto nas
+              próximas.
+            </p>
+          </div>
+        )
+      ) : (
+        reviewsBannerUrl && (
+          <div className="reviews-banner">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={reviewsBannerUrl}
+              srcSet={imageSrcSet(reviewsBannerUrl, 1600)}
+              sizes="(max-width: 640px) 68vw, (max-width: 1240px) 100vw, 1200px"
+              onError={fallbackToOriginal}
+              alt=""
+            />
+          </div>
+        )
       )}
 
       <div ref={gridAnchorRef} className="grid-anchor" />
@@ -1134,6 +1160,14 @@ export default function CatalogClient({
               onToggleWishlist={() => toggleWishlist(item.id)}
             />
           ))}
+        </div>
+      )}
+
+      {hiddenCount > 0 && (
+        <div className="catalog-more">
+          <button type="button" className="btn ghost" onClick={() => setCatalogPages((p) => p + 1)}>
+            Ver mais jogos ({hiddenCount} restantes)
+          </button>
         </div>
       )}
       </div>
