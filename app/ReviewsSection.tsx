@@ -97,7 +97,17 @@ export default function ReviewsSection({ reviews }: { reviews: ReviewItem[] }) {
 // (média e total) + 3 avaliações — as em destaque primeiro, depois as de
 // nota mais alta. No celular vira um carrossel de arrastar com bolinhas;
 // no computador, uma grade de 3. "Ver todas" abre o popup que já existia.
-export function HomeReviews({ reviews, onSeeAll }: { reviews: ReviewItem[]; onSeeAll: () => void }) {
+// onLeaveReview: abre o formulário "deixe sua avaliação" (antes ficava na
+// barra do catálogo; aqui fica junto das avaliações, que é onde faz sentido).
+export function HomeReviews({
+  reviews,
+  onSeeAll,
+  onLeaveReview
+}: {
+  reviews: ReviewItem[];
+  onSeeAll: () => void;
+  onLeaveReview?: () => void;
+}) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
 
@@ -152,6 +162,11 @@ export function HomeReviews({ reviews, onSeeAll }: { reviews: ReviewItem[]; onSe
         <button type="button" className="btn ghost" onClick={onSeeAll}>
           Ver todas as avaliações
         </button>
+        {onLeaveReview && (
+          <button type="button" className="btn ghost" onClick={onLeaveReview}>
+            Deixe sua avaliação
+          </button>
+        )}
       </div>
     </section>
   );

@@ -528,6 +528,105 @@ export default function CatalogClient({
   // decidir quando mostrar o botão de limpar tudo.
   const isFiltering = activeFilterCount > 0 || query.trim() !== '';
 
+  // ---------- Barra do catálogo do visual novo (busca + Filtros + chips) ----------
+  const navRef = useRef<HTMLDivElement>(null);
+  const [navStuck, setNavStuck] = useState(false);
+  const saleCount = useMemo(() => items.filter((it) => it.isOnSale).length, [items]);
+  // Quantos filtros da gaveta estão ligados (o número no botão "Filtros").
+  const sheetFilterCount =
+    (platformFilter !== 'all' ? 1 : 0) +
+    (typeFilter !== 'all' ? 1 : 0) +
+    (priceMin.trim() ? 1 : 0) +
+    (priceMax.trim() ? 1 : 0) +
+    (saleOnly ? 1 : 0);
+
+  // Filtros ligados, cada um como etiqueta que sai com um toque.
+  const activeTags: { key: string; label: string; clear: () => void }[] = [];
+  if (query.trim()) activeTags.push({ key: 'q', label: `“${query.trim()}”`, clear: () => setQuery('') });
+  if (franchiseFilter) activeTags.push({ key: 'f', label: franchiseFilter, clear: () => setFranchiseFilter('') });
+  if (otherFranchises) activeTags.push({ key: 'o', label: 'Outros', clear: () => setOtherFranchises(false) });
+  if (platformFilter !== 'all')
+    activeTags.push({ key: 'p', label: platformFilter === 'switch2' ? 'Switch 2' : 'Switch', clear: () => setPlatformFilter('all') });
+  if (typeFilter !== 'all')
+    activeTags.push({
+      key: 't',
+      label: typeFilter === 'base' ? 'Jogo base' : typeFilter === 'dlc' ? 'DLC' : 'Atualização',
+      clear: () => setTypeFilter('all')
+    });
+  if (priceMin.trim()) activeTags.push({ key: 'min', label: `A partir de R$ ${priceMin.trim()}`, clear: () => setPriceMin('') });
+  if (priceMax.trim()) activeTags.push({ key: 'max', label: `Até R$ ${priceMax.trim()}`, clear: () => setPriceMax('') });
+  if (saleOnly) activeTags.push({ key: 's', label: 'Em promoção', clear: () => setSaleOnly(false) });
+  if (quickFilter)
+    activeTags.push({ key: 'qf', label: quickFilter === 'bestseller' ? 'Mais vendidos' : 'Mais aguardados', clear: () => setQuickFilter(null) });
+
+  // Leva a lista de jogos pra logo abaixo da barra presa (cabeçalho + barra).
+  // Sem "force", só rola se os resultados estiverem fora de vista.
+  function revealResults(force = false) {
+    requestAnimationFrame(() => {
+      const el = resultsRef.current;
+      if (!el) return;
+      const header = document.querySelector('.site-header-bar');
+      const offset = (header?.getBoundingClientRect().bottom ?? 0) + (navRef.current?.offsetHeight ?? 0) + 12;
+      const top = el.getBoundingClientRect().top;
+      if (!force && top >= offset - 1 && top < window.innerHeight * 0.75) return;
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      window.scrollTo({ top: Math.max(0, top + window.scrollY - offset), behavior: reduceMotion ? 'auto' : 'smooth' });
+    });
+  }
+
+  // Altura do cabeçalho e da barra em variáveis de CSS (a barra gruda logo
+  // abaixo do cabeçalho; os "pulos" até a lista descontam as duas), e se
+  // a barra já está presa (fundo de vidro só quando gruda).
+  useEffect(() => {
+    if (!isRedesign) return;
+    const header = document.querySelector<HTMLElement>('.site-header-bar');
+    const nav = navRef.current;
+    if (!header || !nav) return;
+    const root = document.documentElement;
+    const measure = () => {
+      root.style.setProperty('--header-h', `${header.offsetHeight}px`);
+      root.style.setProperty('--nav-h', `${nav.offsetHeight}px`);
+    };
+    const onScroll = () => setNavStuck(nav.getBoundingClientRect().top <= header.getBoundingClientRect().bottom + 1);
+    measure();
+    onScroll();
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    observer?.observe(header);
+    observer?.observe(nav);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, [isRedesign]);
+
+  // "/" (fora de um campo de texto) vai direto pra busca, como em sites de
+  // loja grandes. Esc fecha a gaveta de filtros; no celular a página de
+  // fundo não rola enquanto ela está aberta.
+  useEffect(() => {
+    if (!isRedesign) return;
+    function onKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      const typing = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+      if (e.key === '/' && !typing) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      } else if (e.key === 'Escape' && filtersOpen) {
+        setFiltersOpen(false);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isRedesign, filtersOpen]);
+  useEffect(() => {
+    if (!isRedesign || !filtersOpen || !window.matchMedia('(max-width: 759px)').matches) return;
+    const original = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = original;
+    };
+  }, [isRedesign, filtersOpen]);
+
   function scrollToGrid() {
     gridAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -613,6 +712,13 @@ export default function CatalogClient({
   // disponíveis", com os resultados logo abaixo do cabeçalho. Tirar o foco
   // do campo fecha o teclado no celular, pra deixar os resultados à vista.
   function submitSearch() {
+    // Visual novo: a barra fica presa no topo, então o "pulo" até a lista
+    // desconta ela também (revealResults); espera o teclado do celular fechar.
+    if (isRedesign) {
+      searchInputRef.current?.blur();
+      setTimeout(() => revealResults(true), 250);
+      return;
+    }
     scrollToResults(resultsRef.current, searchInputRef.current);
   }
 
@@ -672,6 +778,248 @@ export default function CatalogClient({
           </section>
         )}
         {isRedesign && <HowItWorks gameCount={items.length} />}
+        {/* Visual novo: barra do catálogo só pra ACHAR jogos — busca grande +
+            Filtros na primeira linha, categorias logo abaixo (com Promoções
+            como uma delas), filtros ativos em etiquetas removíveis. Fica
+            presa logo abaixo do cabeçalho ao rolar (.is-stuck, vidro fosco).
+            Avaliações e "deixe um comentário" foram pra seção de avaliações
+            (HomeReviews). O visual antigo (página de teste ?d=atual)
+            continua com a barra de antes, no else abaixo. */}
+        {isRedesign ? (
+          <div ref={navRef} className={`catalog-nav${navStuck ? ' is-stuck' : ''}`}>
+            <div className="catalog-nav-row">
+              <div className="catalog-toolbar-search catalog-nav-search">
+                <svg className="catalog-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={16} height={16} aria-hidden="true">
+                  <circle cx="11" cy="11" r="7" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                  ref={searchInputRef}
+                  type="search"
+                  placeholder="Buscar jogo..."
+                  aria-label="Buscar jogo"
+                  value={query}
+                  enterKeyHint="search"
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      submitSearch();
+                    }
+                  }}
+                />
+                {query ? (
+                  <button type="button" className="catalog-nav-clear" onClick={() => setQuery('')} aria-label="Limpar busca">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={14} height={14} aria-hidden="true">
+                      <path d="M5 5l14 14M19 5L5 19" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                ) : (
+                  <kbd className="catalog-nav-kbd" aria-hidden="true">
+                    /
+                  </kbd>
+                )}
+              </div>
+              <button
+                type="button"
+                className={`catalog-nav-filters${filtersOpen ? ' is-open' : ''}`}
+                onClick={() => setFiltersOpen((v) => !v)}
+                aria-expanded={filtersOpen}
+                aria-controls="catalog-filters-sheet"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={16} height={16} aria-hidden="true">
+                  <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0" strokeLinecap="round" />
+                  <circle cx="16" cy="6" r="2" />
+                  <circle cx="10" cy="12" r="2" />
+                  <circle cx="18" cy="18" r="2" />
+                </svg>
+                <span className="catalog-nav-filters-label">Filtros</span>
+                {sheetFilterCount > 0 && <span className="catalog-nav-count">{sheetFilterCount}</span>}
+              </button>
+            </div>
+
+            <div className="catalog-nav-chips" role="group" aria-label="Categorias">
+              {shortcuts.slice(0, 1).map(({ label, count, shortcut }) => {
+                const active = shortcutKey(shortcut) === activeShortcut && !saleOnly && !query.trim();
+                return (
+                  <button
+                    key={shortcutKey(shortcut)}
+                    type="button"
+                    className={`catalog-shortcut${active ? ' active' : ''}`}
+                    aria-pressed={active}
+                    onClick={() => {
+                      setSaleOnly(false);
+                      selectShortcut(shortcut);
+                      revealResults();
+                    }}
+                  >
+                    {label}
+                    <span className="catalog-shortcut-count">{count}</span>
+                  </button>
+                );
+              })}
+              {featuredFranchise && (
+                <button
+                  type="button"
+                  className="catalog-shortcut is-featured"
+                  onClick={() => {
+                    handleFranchiseHighlight(featuredFranchise.franchise);
+                  }}
+                >
+                  {featuredFranchise.label}
+                </button>
+              )}
+              {saleCount > 0 && (
+                <button
+                  type="button"
+                  className={`catalog-shortcut is-sale${saleOnly ? ' active' : ''}`}
+                  aria-pressed={saleOnly}
+                  onClick={() => {
+                    setSaleOnly((v) => !v);
+                    revealResults();
+                  }}
+                >
+                  <span aria-hidden="true">🔥</span> Promoções
+                  <span className="catalog-shortcut-count">{saleCount}</span>
+                </button>
+              )}
+              {shortcuts.slice(1).map(({ label, count, shortcut }) => {
+                const active = shortcutKey(shortcut) === activeShortcut;
+                return (
+                  <button
+                    key={shortcutKey(shortcut)}
+                    type="button"
+                    className={`catalog-shortcut${active ? ' active' : ''}`}
+                    aria-pressed={active}
+                    onClick={() => {
+                      selectShortcut(shortcut);
+                      revealResults();
+                    }}
+                  >
+                    {label}
+                    <span className="catalog-shortcut-count">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {activeTags.length > 0 && (
+              <div className="catalog-nav-tags" aria-label="Filtros ativos">
+                <span className="catalog-nav-tags-label">Mostrando:</span>
+                {activeTags.map((tag) => (
+                  <button key={tag.key} type="button" className="catalog-nav-tag" onClick={tag.clear} aria-label={`Remover filtro ${tag.label}`}>
+                    {tag.label}
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" width={11} height={11} aria-hidden="true">
+                      <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                ))}
+                <button type="button" className="catalog-nav-clear-all" onClick={clearEverything}>
+                  Limpar tudo
+                </button>
+              </div>
+            )}
+
+            {filtersOpen && (
+              <>
+                <div className="catalog-sheet-backdrop" onClick={() => setFiltersOpen(false)} aria-hidden="true" />
+                <div id="catalog-filters-sheet" className="catalog-sheet" role="dialog" aria-modal="true" aria-label="Filtros">
+                  <div className="catalog-sheet-head">
+                    <span className="catalog-sheet-title">Filtros</span>
+                    <button type="button" className="catalog-sheet-close" onClick={() => setFiltersOpen(false)} aria-label="Fechar filtros">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={18} height={18} aria-hidden="true">
+                        <path d="M5 5l14 14M19 5L5 19" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="catalog-sheet-body">
+                    <SheetGroup label="Ordenar por">
+                      {SORT_OPTIONS.map((option) => (
+                        <SheetChip key={option.value} active={sortMode === option.value} onClick={() => setSortMode(option.value)}>
+                          {option.label}
+                        </SheetChip>
+                      ))}
+                    </SheetGroup>
+
+                    <SheetGroup label="Plataforma">
+                      {(
+                        [
+                          ['all', 'Todas'],
+                          ['switch1', 'Switch'],
+                          ['switch2', 'Switch 2']
+                        ] as const
+                      ).map(([value, label]) => (
+                        <SheetChip key={value} active={platformFilter === value} onClick={() => setPlatformFilter(value)}>
+                          {label}
+                        </SheetChip>
+                      ))}
+                    </SheetGroup>
+
+                    <SheetGroup label="Tipo">
+                      {(
+                        [
+                          ['all', 'Todos'],
+                          ['base', 'Jogo base'],
+                          ['dlc', 'DLC'],
+                          ['update', 'Atualização']
+                        ] as const
+                      ).map(([value, label]) => (
+                        <SheetChip key={value} active={typeFilter === value} onClick={() => setTypeFilter(value)}>
+                          {label}
+                        </SheetChip>
+                      ))}
+                    </SheetGroup>
+
+                    <SheetGroup label="Preço">
+                      <div className="catalog-sheet-price">
+                        <label>
+                          <span>De</span>
+                          <input type="text" inputMode="decimal" placeholder="R$ 0" value={priceMin} onChange={(e) => setPriceMin(e.target.value)} />
+                        </label>
+                        <label>
+                          <span>Até</span>
+                          <input type="text" inputMode="decimal" placeholder="R$ 999" value={priceMax} onChange={(e) => setPriceMax(e.target.value)} />
+                        </label>
+                      </div>
+                    </SheetGroup>
+
+                    <label className="catalog-sheet-switch">
+                      <span>Só jogos em promoção</span>
+                      <input type="checkbox" role="switch" checked={saleOnly} onChange={(e) => setSaleOnly(e.target.checked)} />
+                    </label>
+
+                    <SheetGroup label="Mostrar como">
+                      <SheetChip active={viewMode === 'grid'} onClick={() => setViewMode('grid')}>
+                        Grade
+                      </SheetChip>
+                      <SheetChip active={viewMode === 'list'} onClick={() => setViewMode('list')}>
+                        Lista
+                      </SheetChip>
+                    </SheetGroup>
+                  </div>
+
+                  <div className="catalog-sheet-foot">
+                    <button type="button" className="btn ghost" onClick={clearFilters} disabled={sheetFilterCount === 0 && !saleOnly}>
+                      Limpar
+                    </button>
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={() => {
+                        setFiltersOpen(false);
+                        revealResults(true);
+                      }}
+                    >
+                      Ver {filtered.length} {filtered.length === 1 ? 'jogo' : 'jogos'}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <>
         <div className="catalog-toolbar">
         <div className="catalog-toolbar-search">
           <svg className="catalog-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={16} height={16} style={{ color: 'var(--ink-dim)', flex: 'none' }} aria-hidden="true">
@@ -908,6 +1256,9 @@ export default function CatalogClient({
         </div>
       )}
 
+          </>
+        )}
+
       <PromoSection
         featuredItems={featuredItems}
         mostWantedItems={liveMostWantedItems.slice(0, 3)}
@@ -916,7 +1267,16 @@ export default function CatalogClient({
         onFilterFlag={handleFilterFlag}
       />
 
-      {!isFiltering && <HomeReviews reviews={reviews} onSeeAll={() => setReviewsModalOpen(true)} />}
+      {!isFiltering && (
+        <HomeReviews
+          reviews={reviews}
+          onSeeAll={() => setReviewsModalOpen(true)}
+          onLeaveReview={isRedesign ? () => setReviewFormOpen((v) => !v) : undefined}
+        />
+      )}
+      {isRedesign && reviewFormOpen && (
+        <ReviewForm onSubmitted={() => setReviewFormOpen(false)} instagramHandle={instagramHandle} />
+      )}
 
       {reviewsBannerUrl && (
         <div className="reviews-banner">
@@ -933,7 +1293,7 @@ export default function CatalogClient({
 
       <div ref={gridAnchorRef} className="grid-anchor" />
 
-      {quickFilter && (
+      {quickFilter && !isRedesign && (
         <div style={{ textAlign: 'center', marginBottom: 14 }}>
           <span className="tag tag-platform" style={{ fontSize: 12, padding: '5px 12px', display: 'inline-flex', gap: 8, alignItems: 'center' }}>
             Mostrando: {quickFilter === 'bestseller' ? 'Mais vendidos' : 'Mais aguardados'}
@@ -978,7 +1338,7 @@ export default function CatalogClient({
           <span className="catalog-count-number">{filtered.length}</span>{' '}
           {filtered.length === 1 ? 'jogo disponível' : 'jogos disponíveis'}
         </p>
-        {isFiltering && (
+        {isFiltering && !isRedesign && (
           <button type="button" className="btn ghost catalog-clear-filter" onClick={clearAndScrollTop}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={13} height={13} aria-hidden="true">
               <path d="M5 5l14 14M19 5L5 19" strokeLinecap="round" />
@@ -986,42 +1346,7 @@ export default function CatalogClient({
             Limpar filtro
           </button>
         )}
-        {isRedesign && (
-          <div className="catalog-sort" role="group" aria-label="Ordenar">
-            {SORT_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                className={sortMode === option.value ? 'active' : undefined}
-                aria-pressed={sortMode === option.value}
-                onClick={() => setSortMode(option.value)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
-
-      {isRedesign && items.length > 0 && (
-        <div className="catalog-shortcuts" role="group" aria-label="Atalhos de filtro">
-          {shortcuts.map(({ label, count, shortcut }) => {
-            const active = shortcutKey(shortcut) === activeShortcut;
-            return (
-              <button
-                key={shortcutKey(shortcut)}
-                type="button"
-                className={`catalog-shortcut${active ? ' active' : ''}`}
-                aria-pressed={active}
-                onClick={() => selectShortcut(shortcut)}
-              >
-                {label}
-                <span className="catalog-shortcut-count">{count}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
 
       {filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--ink-dim)' }}>
@@ -1181,6 +1506,25 @@ const RANK_BADGE_STYLE: Record<number, { background: string; color: string; glow
   2: { background: 'var(--purple)', color: '#fff', glow: 'var(--purple-glow)' },
   3: { background: 'var(--wishlist-pink)', color: '#fff', glow: 'var(--wishlist-pink-glow)' }
 };
+
+// Peças da gaveta de filtros (visual novo): um grupo com título e uma
+// fileira de opções em pílula.
+function SheetGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="catalog-sheet-group" role="group" aria-label={label}>
+      <p className="catalog-sheet-label">{label}</p>
+      <div className="catalog-sheet-options">{children}</div>
+    </div>
+  );
+}
+
+function SheetChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" className={`catalog-sheet-chip${active ? ' active' : ''}`} aria-pressed={active} onClick={onClick}>
+      {children}
+    </button>
+  );
+}
 
 function GameCard({
   item,
