@@ -121,8 +121,12 @@ export default function SiteHeader({
     if (target === activeCatalog) return;
     // Ctrl/Cmd+clique abre em outra aba: nada a fazer nesta.
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    // A página nova desenha a pílula onde ela ESTAVA no clique: com o mouse
+    // em cima, ela já deslizou até a opção clicada (hoverCatalog) — e aí não
+    // tem o que animar de novo. Sem hover (ex: teclado), parte do catálogo
+    // atual e desliza como sempre.
     try {
-      sessionStorage.setItem(SWITCHER_FROM_KEY, activeCatalog);
+      sessionStorage.setItem(SWITCHER_FROM_KEY, hoverCatalog ?? activeCatalog);
     } catch {}
     if (isRedesign) beginCatalogSwitch();
   }
