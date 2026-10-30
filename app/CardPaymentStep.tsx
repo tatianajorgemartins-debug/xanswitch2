@@ -100,6 +100,7 @@ export function CardPaymentStep({
   gameId,
   email,
   loggedIn,
+  splitPixId = null,
   onReadyChange,
   referralSource,
   setReferralSource,
@@ -110,6 +111,9 @@ export function CardPaymentStep({
   email: string;
   // Cartões salvos (e a caixinha de salvar) só existem pra quem tem conta.
   loggedIn: boolean;
+  // Pix + cartão (SplitPaymentStep.tsx): o id do Pix já pago — o cartão
+  // cobra só o que falta.
+  splitPixId?: string | null;
   // Avisa a janela de compra quando a tela pode aparecer (formulário
   // carregado, ou um erro pra mostrar) — até lá fica a tela de
   // carregamento do site (useStepLoader em PurchaseModal.tsx).
@@ -154,7 +158,7 @@ export function CardPaymentStep({
 
   useEffect(() => {
     let cancelled = false;
-    getCardChargeAction(gameId)
+    getCardChargeAction(gameId, splitPixId)
       .then((result) => {
         if (cancelled) return;
         if (result) setCharge(result);
@@ -166,7 +170,7 @@ export function CardPaymentStep({
     return () => {
       cancelled = true;
     };
-  }, [gameId]);
+  }, [gameId, splitPixId]);
 
   useEffect(() => {
     if (!loggedIn) return;
@@ -244,7 +248,8 @@ export function CardPaymentStep({
               const result = await payWithCardAction(gameId, email, card, referralAtSubmit.current, {
                 accessToken: wantsToSave ? await getAccessToken() : null,
                 savedCardId: null,
-                saveCard: wantsToSave
+                saveCard: wantsToSave,
+                splitPixId
               }).catch(() => CONNECTION_ERROR);
               handleResult(result);
             }
@@ -333,7 +338,7 @@ export function CardPaymentStep({
           identification: null
         },
         referralSource,
-        { accessToken: await getAccessToken(), savedCardId: selectedCard.id, saveCard: false }
+        { accessToken: await getAccessToken(), savedCardId: selectedCard.id, saveCard: false, splitPixId }
       ).catch(() => CONNECTION_ERROR);
       handleResult(result);
     } catch {
@@ -380,7 +385,11 @@ export function CardPaymentStep({
       {charge && (
         <>
           <p className="purchase-pix-amount">R$ {formatPriceBR(charge.amount)}</p>
-          {charge.feePercent > 0 && (
+          {charge.feePercent > 0 && splitPixId ? (
+            <p className="card-payment-fee-note">
+              Valor inclui a taxa de processamento do cartão ({formatPriceBR(charge.feePercent)}%) sobre a parte do cartão.
+            </p>
+          ) : charge.feePercent > 0 && (
             // Aviso exigido pra cobrar diferente por forma de pagamento (Lei
             // 13.455/2017): o cliente vê o valor e o porquê antes de pagar.
             <p className="card-payment-fee-note">

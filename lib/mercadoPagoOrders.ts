@@ -13,7 +13,8 @@ import {
   getMpPaymentRecord,
   markDiscountCreditUsed,
   releaseMpPaymentClaim,
-  setMpPaymentStatus
+  setMpPaymentStatus,
+  type MpPaymentRecord
 } from './db';
 import { after } from 'next/server';
 import { getPixPaymentState } from './mercadoPago';
@@ -40,6 +41,7 @@ export async function syncMercadoPagoPayment(paymentId: string): Promise<PixChec
       await setMpPaymentStatus(paymentId, 'amount_mismatch');
       return 'failed';
     }
+    if (record.payment_method === 'pix+cartao') return syncSplitPart(record);
     await createOrdersForApprovedPayment(paymentId);
     return 'approved';
   }
@@ -50,7 +52,36 @@ export async function syncMercadoPagoPayment(paymentId: string): Promise<PixChec
   return state.status;
 }
 
-async function createOrdersForApprovedPayment(paymentId: string): Promise<void> {
+// Pix + cartão: são duas cobranças, e o pedido só nasce quando as duas
+// estão pagas. A do Pix, ao cair, só fica marcada "paga, esperando o
+// cartão" (o cliente segue pro cartão na mesma tela); a do cartão, ao ser
+// aprovada, confere de novo no Mercado Pago que o Pix dela caiu e então
+// cria o pedido a partir da cobrança do Pix (que tem o jogo e os preços).
+async function syncSplitPart(record: MpPaymentRecord): Promise<PixCheckStatus> {
+  if (!record.split_pix_id) {
+    if (record.status !== 'paid_waiting_card') await setMpPaymentStatus(record.id, 'paid_waiting_card');
+    return 'approved';
+  }
+
+  const pixRecord = await getMpPaymentRecord(record.split_pix_id);
+  if (!pixRecord || pixRecord.split_pix_part === null) return 'failed';
+  if (!pixRecord.processed_at) {
+    const pixState = await getPixPaymentState(pixRecord.id);
+    if (pixState.status !== 'approved' || pixState.amount + 0.009 < parseFloat(pixRecord.total)) {
+      console.error(`[mercadopago] Cartão ${record.id} aprovado, mas o Pix ${pixRecord.id} não está pago.`);
+      return 'pending';
+    }
+  }
+  // A cobrança do cartão não gera pedido sozinha: só fica marcada como
+  // processada. Se já estava (aviso e tela chegando juntos), segue igual.
+  await claimApprovedMpPayment(record.id);
+  if (!pixRecord.processed_at) await createOrdersForApprovedPayment(pixRecord.id, parseFloat(record.total));
+  return 'approved';
+}
+
+// extraTotal: no Pix + cartão, o valor cobrado no cartão — entra no total
+// do aviso de novo pedido, junto do valor do Pix.
+async function createOrdersForApprovedPayment(paymentId: string, extraTotal = 0): Promise<void> {
   const record = await claimApprovedMpPayment(paymentId);
   if (!record) return; // outra chamada já está criando (ou já criou) os pedidos
 
@@ -86,7 +117,7 @@ async function createOrdersForApprovedPayment(paymentId: string): Promise<void> 
   after(() =>
     notifyNewOrder({
       items: record.items.map((it) => ({ gameName: it.gameName, price: it.price, amazonJpUrl: it.amazonJpUrl })),
-      total: parseFloat(record.total),
+      total: parseFloat(record.total) + extraTotal,
       customerEmail: record.customer_email
     })
   );

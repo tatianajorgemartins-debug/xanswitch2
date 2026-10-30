@@ -13,20 +13,27 @@
 // 3. payWithCardAction: cobra no cartão com o "token" que o formulário do
 //    Mercado Pago gerou no navegador; a resposta já vem decidida na hora.
 //
+// 4. Pix + cartão (startSplitPixPaymentAction → payWithCardAction com
+//    splitPixId): uma parte do jogo no Pix e o resto no cartão. O Pix vem
+//    primeiro; depois que ele cai, a mesma tela abre o cartão com o resto.
+//
 // Sem MP_ACCESS_TOKEN configurado, as ações de início devolvem
 // { mode: 'static' } e a tela segue no Pix de sempre (lib/pix.ts).
 import { randomUUID } from 'crypto';
 import {
   getAvailableDiscountCredit,
   getGameById,
+  getMpPaymentRecord,
   createMpPaymentRecord,
   setMpPaymentReferralSource,
   type Game,
-  type MpPaymentItem
+  type MpPaymentItem,
+  type MpPaymentRecord
 } from '@/lib/db';
 import {
   createCardPayment,
   createPixPayment,
+  getPixPaymentState,
   deleteCustomerCard,
   findCustomerId,
   findOrCreateCustomerId,
@@ -159,6 +166,92 @@ export async function startBulkPixPaymentAction(gameIds: number[], email: string
   return createCharge(items, trimmedEmail, null);
 }
 
+// --- Pix + cartão ---
+
+// Menor valor de cada parte (Pix e cartão), em reais do preço do jogo.
+const SPLIT_MIN_PART = 5;
+
+// Começa o Pix + cartão: cria só o Pix, com a parte que o cliente escolheu
+// (pixPart, em reais do preço do jogo). O resto (preço - pixPart) vai pro
+// cartão depois que o Pix cair. Sem desconto de fidelidade, igual ao cartão.
+export async function startSplitPixPaymentAction(
+  gameId: number,
+  email: string,
+  pixPart: number
+): Promise<StartPixResult> {
+  if (!isMercadoPagoEnabled()) return { mode: 'error', error: 'Pix + cartão indisponível no momento.' };
+  const trimmedEmail = email.trim();
+  if (!isValidEmail(trimmedEmail)) return { mode: 'error', error: 'Digite um e-mail válido.' };
+
+  const game = await loadGame(gameId);
+  if (!game) return { mode: 'error', error: 'Esse jogo não está mais disponível.' };
+  const item = gameToPaymentItem(game);
+  const part = Math.round(pixPart * 100) / 100;
+  if (!Number.isFinite(part) || part < SPLIT_MIN_PART || part > item.price - SPLIT_MIN_PART) {
+    return { mode: 'error', error: `Cada parte precisa ser de pelo menos R$ ${SPLIT_MIN_PART},00.` };
+  }
+
+  try {
+    const { pix: feePercent } = await getPaymentFees();
+    const total = priceWithFee(part, feePercent);
+    const charge = await createPixPayment({ amount: total, payerEmail: trimmedEmail, externalReference: randomUUID() });
+    await createMpPaymentRecord({
+      id: charge.id,
+      total,
+      customer_email: trimmedEmail,
+      discount_credit_id: null,
+      items: [item],
+      payment_method: 'pix+cartao',
+      split_pix_part: part
+    });
+    return {
+      mode: 'mercadopago',
+      paymentId: charge.id,
+      brCode: charge.qrCode,
+      qrCodeImage: `data:image/png;base64,${charge.qrCodeBase64}`,
+      amount: total,
+      feePercent
+    };
+  } catch (err) {
+    console.error('[mercadopago] Falha ao criar Pix (Pix + cartão):', err);
+    return { mode: 'error', error: GENERIC_ERROR };
+  }
+}
+
+// Confere a cobrança do Pix de um Pix + cartão antes de cobrar o resto no
+// cartão: tem que ser desse jogo, estar paga e ainda não ter sido
+// completada. Devolve o registro e quanto do preço falta (vai pro cartão).
+async function loadPaidSplitPix(
+  splitPixId: string,
+  gameId: number
+): Promise<{ record: MpPaymentRecord; cardPart: number } | { error: string }> {
+  if (!/^[A-Za-z0-9]+$/.test(splitPixId)) return { error: 'Pagamento não encontrado.' };
+  const record = await getMpPaymentRecord(splitPixId);
+  if (!record || record.split_pix_part === null || record.items[0]?.gameId !== gameId) {
+    return { error: 'Pagamento não encontrado.' };
+  }
+  if (record.processed_at) return { error: 'Esse jogo já foi pago por completo.' };
+  const state = await getPixPaymentState(splitPixId);
+  if (state.status !== 'approved') return { error: 'O Pix dessa compra ainda não caiu.' };
+  const price = record.items.reduce((sum, it) => sum + it.price, 0);
+  return { record, cardPart: Math.round((price - parseFloat(record.split_pix_part)) * 100) / 100 };
+}
+
+// Pra retomar um Pix + cartão (a pessoa fechou a janela depois de pagar o
+// Pix e abriu o jogo de novo): diz se o Pix já caiu e quanto falta.
+export async function getSplitStatusAction(
+  splitPixId: string,
+  gameId: number
+): Promise<{ status: 'paid'; pixPart: number; cardPart: number } | { status: 'none' }> {
+  try {
+    const paid = await loadPaidSplitPix(splitPixId, gameId);
+    if ('error' in paid) return { status: 'none' };
+    return { status: 'paid', pixPart: parseFloat(paid.record.split_pix_part as string), cardPart: paid.cardPart };
+  } catch {
+    return { status: 'none' };
+  }
+}
+
 // referralSource vai junto porque o "como você conheceu a loja?" é marcado
 // na própria tela do Pix, depois que a cobrança já existe.
 export async function checkPixPaymentAction(paymentId: string, referralSource: string | null): Promise<PixCheckStatus> {
@@ -200,12 +293,21 @@ function cardRejectionMessage(statusDetail: string): string {
 // lib/paymentFees.ts) e no Pix, pra tela mostrar antes de o cliente
 // digitar o cartão. O formulário do Mercado Pago calcula as parcelas em
 // cima desse valor.
+// splitPixId: no Pix + cartão, só o que falta depois do Pix.
 export async function getCardChargeAction(
-  gameId: number
+  gameId: number,
+  splitPixId: string | null = null
 ): Promise<{ amount: number; feePercent: number; pixAmount: number } | null> {
-  const game = await loadGame(gameId);
-  if (!game) return null;
-  const price = gamePrice(game).price;
+  let price: number;
+  if (splitPixId) {
+    const paid = await loadPaidSplitPix(splitPixId, gameId).catch(() => null);
+    if (!paid || 'error' in paid) return null;
+    price = paid.cardPart;
+  } else {
+    const game = await loadGame(gameId);
+    if (!game) return null;
+    price = gamePrice(game).price;
+  }
   const fees = await getPaymentFees();
   return { amount: priceWithFee(price, fees.card), feePercent: fees.card, pixAmount: priceWithFee(price, fees.pix) };
 }
@@ -260,7 +362,7 @@ export async function payWithCardAction(
   email: string,
   card: CardInput,
   referralSource: string | null,
-  options: { accessToken: string | null; savedCardId: string | null; saveCard: boolean } = {
+  options: { accessToken: string | null; savedCardId: string | null; saveCard: boolean; splitPixId?: string | null } = {
     accessToken: null,
     savedCardId: null,
     saveCard: false
@@ -273,6 +375,16 @@ export async function payWithCardAction(
   const game = await loadGame(gameId);
   if (!game) return { status: 'rejected', error: 'Esse jogo não está mais disponível.' };
   const item = gameToPaymentItem(game);
+
+  // Pix + cartão: cobra só o que falta depois do Pix já pago.
+  let splitPixId: string | null = null;
+  if (options.splitPixId) {
+    const paid = await loadPaidSplitPix(options.splitPixId, gameId).catch(() => null);
+    if (!paid) return { status: 'rejected', error: 'Não foi possível conferir o Pix agora. Tente de novo em instantes.' };
+    if ('error' in paid) return { status: 'rejected', error: paid.error };
+    item.price = paid.cardPart;
+    splitPixId = paid.record.id;
+  }
 
   const accountEmail =
     options.savedCardId || options.saveCard ? await verifyAccessToken(options.accessToken) : null;
@@ -303,15 +415,31 @@ export async function payWithCardAction(
       return { status: 'rejected', error: cardRejectionMessage(charge.statusDetail) };
     }
 
-    await createMpPaymentRecord({
-      id: charge.id,
-      total,
-      customer_email: trimmedEmail,
-      discount_credit_id: null,
-      items: [item],
-      payment_method: 'cartao',
-      referral_source: referralSource && isValidReferralSource(referralSource) ? referralSource : null
-    });
+    const referral = referralSource && isValidReferralSource(referralSource) ? referralSource : null;
+    if (splitPixId) {
+      // O jogo e os preços ficam na cobrança do Pix; esta só completa ela.
+      await setMpPaymentReferralSource(splitPixId, referral);
+      await createMpPaymentRecord({
+        id: charge.id,
+        total,
+        customer_email: trimmedEmail,
+        discount_credit_id: null,
+        items: [],
+        payment_method: 'pix+cartao',
+        referral_source: referral,
+        split_pix_id: splitPixId
+      });
+    } else {
+      await createMpPaymentRecord({
+        id: charge.id,
+        total,
+        customer_email: trimmedEmail,
+        discount_credit_id: null,
+        items: [item],
+        payment_method: 'cartao',
+        referral_source: referral
+      });
+    }
 
     if (charge.state.status === 'approved') {
       // Cria o pedido agora (o aviso do Mercado Pago pode chegar depois;

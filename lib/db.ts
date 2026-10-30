@@ -348,8 +348,9 @@ export async function createOrder(data: {
 // Pedido pago pelo Mercado Pago (ver lib/mercadoPagoOrders.ts): o
 // pagamento já foi confirmado pelo próprio Mercado Pago, então os pontos
 // do card entram confirmados direto, sem esperar você em "🎖️ Clientes".
-// payment_method: 'pix' ou 'cartao' (cartão pelo Mercado Pago — diferente
-// de 'credito', o link de pagamento externo configurado por jogo).
+// payment_method: 'pix', 'cartao' (cartão pelo Mercado Pago — diferente
+// de 'credito', o link de pagamento externo configurado por jogo) ou
+// 'pix+cartao' (parte no Pix, parte no cartão).
 export async function createPaidMercadoPagoOrder(data: {
   game_id: number | null;
   game_name: string;
@@ -373,7 +374,7 @@ export async function createPaidMercadoPagoOrder(data: {
 // --- Pix e cartão pelo Mercado Pago (ver db/migration-mercadopago.sql e
 // db/migration-mercadopago-cartao.sql) ---
 
-export type MpPaymentMethod = 'pix' | 'cartao';
+export type MpPaymentMethod = 'pix' | 'cartao' | 'pix+cartao';
 
 export type MpPaymentItem = {
   gameId: number | null;
@@ -394,6 +395,10 @@ export type MpPaymentRecord = {
   discount_credit_id: number | null;
   items: MpPaymentItem[];
   payment_method: MpPaymentMethod;
+  // Pix + cartão (db/migration-pix-cartao.sql): na cobrança do Pix, quanto
+  // do preço do jogo foi pago no Pix; na do cartão, o id da do Pix.
+  split_pix_part: string | null;
+  split_pix_id: string | null;
   processed_at: Date | null;
   created_at: Date;
 };
@@ -406,7 +411,20 @@ export async function createMpPaymentRecord(data: {
   items: MpPaymentItem[];
   payment_method: MpPaymentMethod;
   referral_source?: string | null;
+  split_pix_part?: number | null;
+  split_pix_id?: string | null;
 }): Promise<void> {
+  // As colunas do Pix + cartão só entram quando usadas: assim o Pix e o
+  // cartão de sempre continuam funcionando mesmo antes de rodar a migração
+  // db/migration-pix-cartao.sql.
+  if (data.split_pix_part != null || data.split_pix_id != null) {
+    await getSql()`
+      INSERT INTO mp_payments (id, total, customer_email, discount_credit_id, items, payment_method, referral_source, split_pix_part, split_pix_id)
+      VALUES (${data.id}, ${data.total}, ${data.customer_email}, ${data.discount_credit_id}, ${JSON.stringify(data.items)}::jsonb, ${data.payment_method}, ${data.referral_source ?? null}, ${data.split_pix_part ?? null}, ${data.split_pix_id ?? null})
+      ON CONFLICT (id) DO NOTHING
+    `;
+    return;
+  }
   await getSql()`
     INSERT INTO mp_payments (id, total, customer_email, discount_credit_id, items, payment_method, referral_source)
     VALUES (${data.id}, ${data.total}, ${data.customer_email}, ${data.discount_credit_id}, ${JSON.stringify(data.items)}::jsonb, ${data.payment_method}, ${data.referral_source ?? null})
@@ -443,6 +461,23 @@ export async function claimApprovedMpPayment(id: string): Promise<MpPaymentRecor
     RETURNING *
   `;
   return (rows[0] as MpPaymentRecord) ?? null;
+}
+
+// Pix + cartão em que o Pix já caiu mas o cartão nunca foi pago (o cliente
+// desistiu no meio): aparece no admin pra você devolver o Pix ou chamar o
+// cliente. Só os de mais de 30 minutos — antes disso ele ainda pode estar
+// digitando o cartão.
+export async function getStalledSplitPayments(): Promise<MpPaymentRecord[]> {
+  const rows = await getSql()`
+    SELECT * FROM mp_payments
+    WHERE split_pix_part IS NOT NULL
+      AND status = 'paid_waiting_card'
+      AND processed_at IS NULL
+      AND created_at < now() - interval '30 minutes'
+    ORDER BY created_at DESC
+    LIMIT 50
+  `;
+  return rows as MpPaymentRecord[];
 }
 
 // Desfaz a reserva acima se a criação dos pedidos falhar no meio, pra uma

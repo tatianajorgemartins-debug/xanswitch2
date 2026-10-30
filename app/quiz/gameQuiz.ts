@@ -119,7 +119,7 @@ export type QuizOption = { label: string; emoji: string; effect: Effect };
 export type QuizQuestion = { id: string; text: string; options: QuizOption[] };
 
 // O banco de perguntas. A cada rodada, entram 5 delas sorteadas (sempre
-// incluindo a de orçamento — ver pickQuestions), em ordem aleatória.
+// incluindo a do parceiro da Nintendo — ver pickQuestions), em ordem aleatória.
 export const QUESTION_POOL: QuizQuestion[] = [
   {
     id: 'estilo',
@@ -183,13 +183,14 @@ export const QUESTION_POOL: QuizQuestion[] = [
     ]
   },
   {
-    id: 'orcamento',
-    text: 'Quanto você quer investir no próximo jogo?',
+    id: 'parceiro',
+    text: 'Qual personagem da Nintendo seria seu parceiro de aventura?',
     options: [
-      { emoji: '🪙', label: 'Até R$ 100', effect: { budget: 100 } },
-      { emoji: '💵', label: 'Até R$ 200', effect: { budget: 200 } },
-      { emoji: '💰', label: 'Até R$ 300', effect: { budget: 300 } },
-      { emoji: '💎', label: 'O jogo certo vale qualquer preço', effect: { budget: null } }
+      { emoji: '🍄', label: 'Mario', effect: { franchise: 'mario', tags: { plataforma: 2, familia: 1 } } },
+      { emoji: '🗡️', label: 'Link', effect: { franchise: 'zelda', tags: { aventura: 2, mundoaberto: 1 } } },
+      { emoji: '⚡', label: 'Pikachu', effect: { franchise: 'pokemon', tags: { colecionar: 2, rpg: 1 } } },
+      { emoji: '🌸', label: 'Kirby', effect: { franchise: 'fofos', tags: { fofo: 2, relaxante: 1 } } },
+      { emoji: '🚀', label: 'Samus', effect: { franchise: 'metroid', tags: { acao: 2, desafio: 1 } } }
     ]
   },
   {
@@ -312,10 +313,9 @@ function shuffle<T>(list: T[]): T[] {
 }
 
 export function pickQuestions(): QuizQuestion[] {
-  // Orçamento sempre entra: sem ela, o quiz poderia indicar um jogo caro
-  // pra quem só queria gastar pouco.
-  const required = QUESTION_POOL.filter((q) => q.id === 'orcamento');
-  const rest = shuffle(QUESTION_POOL.filter((q) => q.id !== 'orcamento')).slice(0, QUESTIONS_PER_ROUND - required.length);
+  // A do parceiro da Nintendo sempre entra — é a cara da loja.
+  const required = QUESTION_POOL.filter((q) => q.id === 'parceiro');
+  const rest = shuffle(QUESTION_POOL.filter((q) => q.id !== 'parceiro')).slice(0, QUESTIONS_PER_ROUND - required.length);
   return shuffle([...required, ...rest]);
 }
 

@@ -23,7 +23,8 @@ import { isValidEmail, REFERRAL_SOURCES } from '@/lib/validation';
 import { signUp, signIn, translateAuthError, getAccessToken } from '@/lib/wishlist';
 import { CollectibleCard, DownloadCardButton } from './CollectibleCard';
 import { confirmOrderAction, confirmCreditOrderAction } from './orderActions';
-import { startPixPaymentAction } from './mercadoPagoActions';
+import { startPixPaymentAction, getSplitStatusAction } from './mercadoPagoActions';
+import { SplitPaymentStep, readSplitPix, forgetSplitPix, type SplitResume } from './SplitPaymentStep';
 import { usePixPaymentStatus, PixAutoStatus } from './PixAutoConfirm';
 import { CardPaymentStep } from './CardPaymentStep';
 import { MAX_INSTALLMENTS, installmentsLabel } from '@/lib/installments';
@@ -33,6 +34,8 @@ import { getGameDiscountOfferAction, redeemDiscountAction, type GameDiscountOffe
 import { fallbackToOriginal, IMAGE_SIZES, imageSrcSet } from '@/lib/imageVariants';
 
 type Step = 1 | 2 | 3 | 4;
+// 'pix+cartao': parte no Pix, parte no cartão (SplitPaymentStep.tsx).
+type PaymentMethod = 'pix' | 'credito' | 'pix+cartao';
 
 // Cartão pelo Mercado Pago, dentro do site (CardPaymentStep.tsx): com a
 // chave pública configurada, todo jogo oferece "Crédito parcelado" e o link
@@ -56,7 +59,30 @@ export default function PurchaseModal({
   // etapa 3 mostra (Pix com QR Code, ou o link externo de crédito
   // parcelado). Os dois caminhos passam pela mesma etapa de e-mail/conta
   // (etapa 2) e os dois premiam o card colecionável no final.
-  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'credito'>('pix');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
+
+  // Pix + cartão começado antes, com o Pix já pago e o cartão não: oferece
+  // continuar direto no cartão (ver SplitPaymentStep.tsx).
+  const [splitResume, setSplitResume] = useState<SplitResume | null>(null);
+  useEffect(() => {
+    const saved = readSplitPix(item.id);
+    if (!saved) return;
+    let cancelled = false;
+    getSplitStatusAction(saved.pixId, item.id)
+      .then((result) => {
+        if (cancelled) return;
+        if (result.status === 'paid') {
+          setEmail(saved.email);
+          setSplitResume({ pixId: saved.pixId, pixPart: result.pixPart, cardPart: result.cardPart });
+        } else {
+          forgetSplitPix(item.id);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [item.id]);
 
   // A única confirmação exigida antes do pagamento: a conta precisa estar
   // com saldo zerado (Brasil e Japão), senão o resgate do código não
@@ -125,7 +151,11 @@ export default function PurchaseModal({
   // tela de carregamento do site cobre até lá.
   const [cardStepReady, setCardStepReady] = useState(false);
   const paymentDataReady =
-    paymentMethod === 'pix' ? pix !== null || pixError !== null : MP_CARD_ENABLED ? cardStepReady : true;
+    paymentMethod === 'pix'
+      ? pix !== null || pixError !== null
+      : paymentMethod === 'pix+cartao' || MP_CARD_ENABLED
+        ? cardStepReady
+        : true;
   const payment = useStepLoader(modalRef, step === 3, paymentDataReady);
   const loader = content.phase !== 'hidden' ? content : payment;
 
@@ -292,7 +322,9 @@ export default function PurchaseModal({
                 ? 'Pedido confirmado'
                 : paymentMethod === 'pix'
                   ? 'Pagamento via Pix'
-                  : 'Pagamento no cartão'}
+                  : paymentMethod === 'pix+cartao'
+                    ? 'Pix + cartão'
+                    : 'Pagamento no cartão'}
           </span>
           <button type="button" className="purchase-modal-close" onClick={onClose} aria-label="Fechar">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width={18} height={18}>
@@ -317,6 +349,11 @@ export default function PurchaseModal({
               onNext={(method) => {
                 setPaymentMethod(method);
                 setStep(2);
+              }}
+              splitResume={splitResume}
+              onResumeSplit={() => {
+                setPaymentMethod('pix+cartao');
+                setStep(3);
               }}
               onOpenScreenshot={setLightboxIndex}
             />
@@ -365,6 +402,24 @@ export default function PurchaseModal({
             />
           )}
 
+          {step === 3 && paymentMethod === 'pix+cartao' && (
+            <SplitPaymentStep
+              gameId={item.id}
+              price={item.price}
+              email={user?.email ?? email}
+              loggedIn={Boolean(user)}
+              resume={splitResume}
+              onReadyChange={setCardStepReady}
+              referralSource={referralSource}
+              setReferralSource={setReferralSource}
+              onBack={() => setStep(splitResume ? 1 : 2)}
+              onConfirmed={() => {
+                setSplitResume(null);
+                setStep(4);
+              }}
+            />
+          )}
+
           {step === 3 && paymentMethod === 'credito' && MP_CARD_ENABLED && (
             <CardPaymentStep
               gameId={item.id}
@@ -399,7 +454,7 @@ export default function PurchaseModal({
               imageUrl={item.imageUrl}
               points={item.cardPoints}
               paymentMethod={paymentMethod}
-              paidOnline={mpPaymentId !== null || (paymentMethod === 'credito' && MP_CARD_ENABLED)}
+              paidOnline={mpPaymentId !== null || paymentMethod === 'pix+cartao' || (paymentMethod === 'credito' && MP_CARD_ENABLED)}
               accountEmail={user ? null : email}
               onViewCollection={onViewCollection}
               onClose={onClose}
@@ -450,6 +505,8 @@ function StepSummary({
   onRedeemDiscount,
   onToggleDiscountOptOut,
   onNext,
+  splitResume,
+  onResumeSplit,
   onOpenScreenshot
 }: {
   item: Item;
@@ -462,7 +519,9 @@ function StepSummary({
   redeemError: string | null;
   onRedeemDiscount: () => void;
   onToggleDiscountOptOut: () => void;
-  onNext: (method: 'pix' | 'credito') => void;
+  onNext: (method: PaymentMethod) => void;
+  splitResume: SplitResume | null;
+  onResumeSplit: () => void;
   onOpenScreenshot: (index: number) => void;
 }) {
   const galleryRef = useRef<HTMLDivElement>(null);
@@ -604,6 +663,17 @@ function StepSummary({
           <p className="product-sticky-price" aria-hidden="true">
             R$ {priceLabel}
           </p>
+          {splitResume && (
+            <div className="split-resume" role="status">
+              <p>
+                Você já pagou <strong>R$ {splitResume.pixPart.toFixed(2).replace('.', ',')}</strong> no Pix deste jogo.
+                Falta R$ {splitResume.cardPart.toFixed(2).replace('.', ',')} no cartão.
+              </p>
+              <button type="button" className="btn primary product-cta" onClick={onResumeSplit}>
+                Continuar no cartão
+              </button>
+            </div>
+          )}
           {item.creditPaymentUrl || MP_CARD_ENABLED ? (
             <>
               <p className="purchase-payment-choice-label">Como você quer pagar?</p>
@@ -621,6 +691,11 @@ function StepSummary({
                   </svg>
                   Crédito parcelado
                 </button>
+                {MP_CARD_ENABLED && (
+                  <button type="button" className="btn ghost product-split-cta" onClick={() => onNext('pix+cartao')}>
+                    Dividir entre Pix e cartão
+                  </button>
+                )}
               </div>
             </>
           ) : (
@@ -787,7 +862,7 @@ function OrderSummary({
   pixPriceLabel
 }: {
   item: Item;
-  paymentMethod: 'pix' | 'credito';
+  paymentMethod: PaymentMethod;
   pixPriceLabel: string;
 }) {
   return (
@@ -805,10 +880,16 @@ function OrderSummary({
       )}
       <div className="order-summary-info">
         <span className="order-summary-name">{item.name}</span>
-        <span className="order-summary-method">{paymentMethod === 'pix' ? 'Pix à vista' : 'Cartão de crédito'}</span>
+        <span className="order-summary-method">
+          {paymentMethod === 'pix' ? 'Pix à vista' : paymentMethod === 'pix+cartao' ? 'Pix + cartão' : 'Cartão de crédito'}
+        </span>
       </div>
       <span className="order-summary-price">
-        {paymentMethod === 'pix' ? `R$ ${pixPriceLabel}` : `em até ${MAX_INSTALLMENTS}x`}
+        {paymentMethod === 'pix'
+          ? `R$ ${pixPriceLabel}`
+          : paymentMethod === 'pix+cartao'
+            ? `R$ ${item.price.toFixed(2).replace('.', ',')}`
+            : `em até ${MAX_INSTALLMENTS}x`}
       </span>
     </div>
   );
@@ -1427,7 +1508,7 @@ function StepCardReveal({
   gameName: string;
   imageUrl: string | null;
   points: number;
-  paymentMethod: 'pix' | 'credito';
+  paymentMethod: PaymentMethod;
   // Pago pelo Mercado Pago (Pix ou cartão): o pagamento já foi aprovado e
   // os pontos já entraram confirmados.
   paidOnline: boolean;

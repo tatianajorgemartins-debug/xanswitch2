@@ -37,6 +37,7 @@ export default function AdminClient({
   visitCount,
   reviews,
   orders,
+  stalledSplits,
   wishlistCounts,
   pointAdjustmentTotals,
   availableDiscountCreditTotals,
@@ -51,6 +52,7 @@ export default function AdminClient({
   visitCount: number;
   reviews: Review[];
   orders: Order[];
+  stalledSplits: StalledSplit[];
   wishlistCounts: Record<number, number>;
   pointAdjustmentTotals: Record<string, number>;
   availableDiscountCreditTotals: Record<string, number>;
@@ -348,7 +350,7 @@ export default function AdminClient({
         />
       )}
 
-      {showOrdersPanel && <OrdersPanel orders={orders} onDelete={handleDeleteOrder} />}
+      {showOrdersPanel && <OrdersPanel orders={orders} stalledSplits={stalledSplits} onDelete={handleDeleteOrder} />}
 
       {showFeesPanel && (
         <div
@@ -807,11 +809,17 @@ function PaymentFeesForm({ initial }: { initial: { card: number; pix: number } }
 // confirmação de pagamento — serve pra você não perder o rastro se alguém
 // pagar e esquecer de chamar no WhatsApp depois. A confirmação de verdade
 // continua sendo feita manualmente, vendo o Pix cair na sua conta.
+// Pix + cartão em que o cliente pagou o Pix e não terminou o cartão (ver
+// getStalledSplitPayments em lib/db.ts).
+type StalledSplit = { id: string; email: string; gameName: string; pixTotal: number; createdAt: string };
+
 function OrdersPanel({
   orders,
+  stalledSplits,
   onDelete
 }: {
   orders: Order[];
+  stalledSplits: StalledSplit[];
   onDelete: (id: number) => void;
 }) {
   return (
@@ -828,6 +836,32 @@ function OrdersPanel({
       <h4 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--ink-dim)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
         Pedidos gerados (mais recentes primeiro)
       </h4>
+      {stalledSplits.length > 0 && (
+        <div
+          style={{
+            border: '1px solid var(--gold)',
+            borderRadius: 10,
+            padding: '10px 12px',
+            marginBottom: 12,
+            fontSize: 13.5,
+            lineHeight: 1.45
+          }}
+        >
+          <p style={{ margin: '0 0 6px', fontWeight: 700, color: 'var(--gold)' }}>
+            ⚠ Pix + cartão sem o cartão ({stalledSplits.length})
+          </p>
+          <p style={{ margin: '0 0 8px', color: 'var(--ink-dim)', fontSize: 12.5 }}>
+            O cliente pagou o Pix mas não pagou o resto no cartão. Ele pode terminar abrindo o jogo de novo no
+            mesmo aparelho; se não for terminar, devolva o Pix no painel do Mercado Pago (procure pelo id).
+          </p>
+          {stalledSplits.map((p) => (
+            <p key={p.id} style={{ margin: '2px 0', color: 'var(--ink)' }}>
+              {p.gameName} · {p.email} · Pix R$ {formatPriceBR(p.pixTotal)} ·{' '}
+              {new Date(p.createdAt).toLocaleString('pt-BR')} · <code style={{ fontSize: 11.5 }}>{p.id}</code>
+            </p>
+          ))}
+        </div>
+      )}
       {orders.length === 0 ? (
         <p style={{ color: 'var(--ink-dim)', fontSize: 14, padding: '6px 2px', margin: 0 }}>
           Nenhum pedido registrado ainda.
@@ -886,10 +920,14 @@ function OrdersPanel({
                         padding: '2px 8px'
                       }}
                     >
-                      {o.payment_method === 'cartao' ? '✓ Cartão pago (Mercado Pago)' : '✓ Pix pago (Mercado Pago)'}
+                      {o.payment_method === 'cartao'
+                        ? '✓ Cartão pago (Mercado Pago)'
+                        : o.payment_method === 'pix+cartao'
+                          ? '✓ Pix + cartão pagos (Mercado Pago)'
+                          : '✓ Pix pago (Mercado Pago)'}
                     </span>
                   )}
-                  {o.payment_method === 'cartao' && (
+                  {(o.payment_method === 'cartao' || o.payment_method === 'pix+cartao') && (
                     // Jogo digital no cartão é alvo de compra com cartão
                     // roubado (o dono contesta semanas depois): vale olhar
                     // o pedido com calma antes de mandar o código.

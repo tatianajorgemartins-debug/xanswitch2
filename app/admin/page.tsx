@@ -4,6 +4,7 @@ import {
   getVisitCount,
   getAllReviews,
   getRecentOrders,
+  getStalledSplitPayments,
   getAllPointAdjustmentTotals,
   getAllAvailableDiscountCreditTotals,
   getSiteSetting,
@@ -32,6 +33,15 @@ export default async function AdminPage() {
   const visitCount = await getVisitCount();
   const reviews = await getAllReviews();
   const orders = await getRecentOrders();
+  // Antes de rodar db/migration-pix-cartao.sql a consulta falha — aí só
+  // não mostra o aviso.
+  const stalledSplits = (await getStalledSplitPayments().catch(() => [])).map((p) => ({
+    id: p.id,
+    email: p.customer_email,
+    gameName: p.items[0]?.gameName ?? '',
+    pixTotal: parseFloat(p.total),
+    createdAt: new Date(p.created_at).toISOString()
+  }));
   // Se o Supabase de lista de desejos ainda não estiver configurado (por
   // exemplo, logo depois do deploy, antes de rodar a migração), não deixa
   // isso quebrar o painel inteiro — só mostra "Mais desejados" vazio.
@@ -52,6 +62,7 @@ export default async function AdminPage() {
       visitCount={visitCount}
       reviews={reviews}
       orders={orders}
+      stalledSplits={stalledSplits}
       wishlistCounts={Object.fromEntries(wishlistCounts)}
       pointAdjustmentTotals={pointAdjustmentTotals}
       availableDiscountCreditTotals={availableDiscountCreditTotals}
