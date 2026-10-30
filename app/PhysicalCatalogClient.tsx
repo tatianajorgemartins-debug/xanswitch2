@@ -13,6 +13,7 @@ import { useDesignVariant } from './DesignVariant';
 import { scrollToResults } from './scrollToResults';
 import type { PhysicalItem } from '@/lib/physicalCatalogData';
 import { fallbackToOriginal, IMAGE_SIZES, imageSrcSet } from '@/lib/imageVariants';
+import FloatingWhatsApp from './FloatingWhatsApp';
 
 export default function PhysicalCatalogClient({
   items,
@@ -269,6 +270,8 @@ export default function PhysicalCatalogClient({
       </div>
 
       {selectedItem && <PhysicalProductModal item={selectedItem} onClose={closeProduct} />}
+
+      <FloatingWhatsApp baseUrl={whatsappContactUrl} productName={selectedItem?.name} modalOpen={selectedItem !== null} />
     </>
   );
 }

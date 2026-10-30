@@ -17,6 +17,7 @@ import SiteHeader from './SiteHeader';
 import PromoSection from './PromoSection';
 import ReviewsSection, { HomeReviews } from './ReviewsSection';
 import HowItWorks from './HowItWorks';
+import FloatingWhatsApp from './FloatingWhatsApp';
 import { installmentsLabel } from '@/lib/installments';
 import ReviewForm from './ReviewForm';
 import { useDesignVariant } from './DesignVariant';
@@ -1142,6 +1143,8 @@ export default function CatalogClient({
           Não foi possível salvar o favorito: {wishlistError}
         </div>
       )}
+
+      <FloatingWhatsApp baseUrl={whatsappContactUrl} productName={selectedItem?.name} modalOpen={selectedItem !== null} />
 
       {showBackToTop && (
         <button

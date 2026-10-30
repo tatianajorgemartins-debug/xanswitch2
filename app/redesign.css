@@ -3231,3 +3231,36 @@ html:has(.legal-page) body {
   font-weight: 600;
   color: rgba(255, 255, 255, 0.82);
 }
+
+/* ---------- WhatsApp flutuante (FloatingWhatsApp.tsx) ----------
+   Canto inferior direito; o "voltar ao topo" fica logo acima (bottom 84px,
+   ver .back-to-top). Fica por cima da janela do jogo (z-index acima de
+   200) — e, no celular, com a janela aberta, sobe pra não cobrir a barra
+   de compra presa no pé dela. */
+.redesign .floating-whatsapp {
+  position: fixed;
+  right: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  z-index: 210;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: #25d366;
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.redesign .floating-whatsapp:hover {
+  transform: translateY(-2px);
+}
+.redesign .floating-whatsapp:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+@media (max-width: 639px) {
+  .redesign .floating-whatsapp.is-over-modal {
+    bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+  }
+}
