@@ -3488,15 +3488,18 @@ html:has(.legal-page) body {
    - ícones em círculos de vidro com borda fina; "Minha conta" é o único
      botão preenchido (roxo do site), mais claro no hover.
    ========================================================================== */
+/* Cores do XAN Switch: vidro puxado pro roxo-escuro do site (--surface),
+   bordas com um toque do roxo de destaque e a pílula no roxo de ação. */
 .redesign {
-  --hdr-glass: rgba(20, 20, 23, 0.78);
-  --hdr-capsule: rgba(24, 24, 28, 0.32);
-  --hdr-border: rgba(255, 255, 255, 0.14);
-  --hdr-border-soft: rgba(255, 255, 255, 0.1);
-  --hdr-pill: rgba(255, 255, 255, 0.13);
-  --hdr-text: #a1a1a6;
-  --hdr-text-on: #ffffff;
-  --hdr-fade: rgb(10, 7, 22);
+  --hdr-glass: rgba(20, 13, 39, 0.62);
+  --hdr-capsule: rgba(20, 13, 39, 0.55);
+  --hdr-border: rgba(164, 99, 255, 0.22);
+  --hdr-border-soft: rgba(164, 99, 255, 0.18);
+  --hdr-pill: var(--accent-fill);
+  --hdr-text: var(--muted);
+  --hdr-text-on: var(--ink);
+  --hdr-pill-text: var(--accent-ink);
+  --hdr-fade: rgba(10, 7, 22, 0.55);
 }
 .redesign .site-header-bar {
   background: transparent;
@@ -3602,14 +3605,11 @@ html:has(.legal-page) body {
 
 /* Tema claro: mesmo desenho, vidro claro e bordas escuras suaves. */
 :root[data-theme='light'] .redesign.theme-enabled {
-  --hdr-glass: rgba(255, 255, 255, 0.78);
-  --hdr-capsule: rgba(255, 255, 255, 0.55);
-  --hdr-border: rgba(20, 12, 40, 0.12);
-  --hdr-border-soft: rgba(20, 12, 40, 0.1);
-  --hdr-pill: rgba(20, 12, 40, 0.08);
-  --hdr-text: #6b6580;
-  --hdr-text-on: #15102a;
-  --hdr-fade: rgb(247, 245, 252);
+  --hdr-glass: rgba(255, 255, 255, 0.62);
+  --hdr-capsule: rgba(255, 255, 255, 0.6);
+  --hdr-border: rgba(123, 47, 240, 0.18);
+  --hdr-border-soft: rgba(123, 47, 240, 0.14);
+  --hdr-fade: rgba(247, 245, 252, 0.6);
 }
 :root[data-theme='light'] .redesign.theme-enabled .site-header-bar.is-scrolled {
   background: linear-gradient(180deg, var(--hdr-fade) 0%, var(--hdr-fade) 55%, rgba(247, 245, 252, 0) 100%);
@@ -3692,4 +3692,43 @@ html:has(.legal-page) body {
   .redesign .catalog-switcher.has-thumb .catalog-switcher-option {
     padding: 9px 10px;
   }
+}
+/* Rolando: vidro fosco (o conteúdo passa por baixo desfocado) no lugar do
+   fundo sólido + degradê. */
+.redesign .site-header-bar.is-scrolled,
+:root[data-theme='light'] .redesign.theme-enabled .site-header-bar.is-scrolled {
+  background: var(--hdr-fade);
+  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  backdrop-filter: blur(18px) saturate(1.6);
+  box-shadow: inset 0 -1px 0 var(--hdr-border-soft);
+}
+.redesign .site-header-bar::after {
+  display: none;
+}
+/* Texto branco acompanha a pílula roxa (que segue o mouse via
+   data-active), não o item da página atual — senão, no tema claro, o
+   item atual ficaria branco sem a pílula embaixo. */
+.redesign .catalog-switcher.has-thumb .catalog-switcher-option,
+.redesign .catalog-switcher.has-thumb .catalog-switcher-option.active,
+:root[data-theme='light'] .redesign.theme-enabled .catalog-switcher.has-thumb .catalog-switcher-option.active {
+  color: var(--hdr-text);
+}
+.redesign .catalog-switcher.has-thumb .catalog-switcher-option:hover {
+  color: var(--hdr-text-on);
+}
+.redesign .catalog-switcher.has-thumb[data-active='digital'] a.catalog-switcher-option:nth-of-type(1),
+.redesign .catalog-switcher.has-thumb[data-active='fisico'] a.catalog-switcher-option:nth-of-type(2),
+:root[data-theme='light'] .redesign.theme-enabled .catalog-switcher.has-thumb[data-active='digital'] a.catalog-switcher-option:nth-of-type(1),
+:root[data-theme='light'] .redesign.theme-enabled .catalog-switcher.has-thumb[data-active='fisico'] a.catalog-switcher-option:nth-of-type(2) {
+  color: var(--hdr-pill-text);
+}
+/* Tema: a pílula é roxa, então o ícone ativo fica branco nos dois temas. */
+.redesign .theme-switch-option.is-dark,
+:root[data-theme='light'] .redesign.theme-enabled .theme-switch-option.is-light {
+  color: var(--hdr-pill-text);
+}
+/* Ícones de vidro: no hover, o roxo do site (como era antes). */
+.redesign .social-icon:hover {
+  color: var(--accent);
+  opacity: 1;
 }
