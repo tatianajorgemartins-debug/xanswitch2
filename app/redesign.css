@@ -1006,9 +1006,11 @@
     padding: 20px;
   }
 }
-@media (max-width: 640px) {
+@media (max-width: 1023px) {
   /* O seletor de catálogo vira uma linha inteira embaixo da logo, com os
-     nomes escritos em vez de só ícones. */
+     nomes escritos em vez de só ícones. Vale até 1023px (e não só no
+     celular): entre ~700 e ~1000px, tudo numa linha só não cabia e os
+     ícones da direita saíam da tela (pior no Beedle, com as duas logos). */
   .redesign .site-header {
     flex-wrap: wrap;
     row-gap: 10px;
