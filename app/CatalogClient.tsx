@@ -913,9 +913,9 @@ export default function CatalogClient({
       <PromoSection
         featuredItems={featuredItems}
         mostWantedItems={liveMostWantedItems.slice(0, 3)}
-        upcomingItems={upcomingItems}
+        allItems={items}
         onViewGame={handleViewGame}
-        onFilterFlag={handleFilterFlag}
+        onOpenGame={openGame}
       />
 
       {!isFiltering && <HomeReviews reviews={reviews} onSeeAll={() => setReviewsModalOpen(true)} />}

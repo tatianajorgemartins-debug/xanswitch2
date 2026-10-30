@@ -1,23 +1,28 @@
 import PromoCarousel, { type PromoSlide } from './PromoCarousel';
 import type { Item } from './CatalogClient';
 import { useDesignVariant } from './DesignVariant';
+import QuizShowcase from './quiz/QuizShowcase';
 
 export default function PromoSection({
   featuredItems,
   mostWantedItems,
-  upcomingItems,
+  allItems,
   onViewGame,
-  onFilterFlag
+  onOpenGame
 }: {
   featuredItems: Item[];
   mostWantedItems: Item[];
-  upcomingItems: Item[];
+  // Catálogo inteiro — é dele que o "Qual será seu próximo jogo?" sorteia.
+  allItems: Item[];
   onViewGame: (name: string) => void;
-  onFilterFlag: (flag: 'bestseller' | 'upcoming') => void;
+  onOpenGame: (item: Item) => void;
 }) {
   const isRedesign = useDesignVariant() === 'redesign';
   const hasFeatured = featuredItems.length > 0;
-  const hasSide = mostWantedItems.length > 0 || upcomingItems.length > 0;
+  // O mostruário do quiz ocupa o lugar que era dos banners rotativos
+  // "Mais aguardados" (ver quiz/QuizShowcase.tsx).
+  const hasQuiz = allItems.some((it) => !it.isUpcoming && it.imageUrl);
+  const hasSide = mostWantedItems.length > 0 || hasQuiz;
   if (!hasFeatured && !hasSide) return null;
 
   const featuredSlides: PromoSlide[] = featuredItems.map((item) => ({
@@ -31,13 +36,6 @@ export default function PromoSection({
     item,
     category: isRedesign ? 'Mais desejados' : '❤️ Mais desejados',
     onClick: () => onViewGame(item.name)
-  }));
-
-  const upcomingSlides: PromoSlide[] = upcomingItems.map((item) => ({
-    item,
-    category: isRedesign ? 'Mais aguardados' : '👀 Mais aguardados',
-    priceOverride: 'EM BREVE',
-    onClick: () => onFilterFlag('upcoming')
   }));
 
   return (
@@ -55,25 +53,19 @@ export default function PromoSection({
             {mostWantedSlides.length > 0 && (
               <PromoCarousel slides={mostWantedSlides} intervalMs={4000} size="small" showControls={false} />
             )}
-            {upcomingSlides.length > 0 && (
-              <PromoCarousel slides={upcomingSlides} intervalMs={4000} size="small" showControls={false} />
-            )}
+            {hasQuiz && <QuizShowcase items={allItems} onOpenGame={onOpenGame} />}
           </div>
-          {/* Celular: as duas categorias juntas, revezando num carrossel
-              só — evita empilhar dois banners inteiros embaixo do de
-              destaque, o que deixava a tela poluída antes de chegar no
-              catálogo em si. */}
-          {/* No visual novo, o celular mostra só os "Mais aguardados" aqui —
-              os mais desejados já aparecem na vitrine própria logo abaixo. */}
-          {(!isRedesign || upcomingSlides.length > 0) && (
-          <div className="promo-section-side-compact">
-            <PromoCarousel
-              slides={isRedesign ? upcomingSlides : [...mostWantedSlides, ...upcomingSlides]}
-              intervalMs={3500}
-              size="small"
-              showControls={false}
-            />
-          </div>
+          {/* Celular: no lugar do carrossel compacto, só o mostruário do
+              quiz — os mais desejados já aparecem na vitrine própria logo
+              abaixo. Sem o quiz (catálogo sem capas), volta pro carrossel. */}
+          {hasQuiz ? (
+            <div className="promo-section-side-compact has-quiz">
+              <QuizShowcase items={allItems} onOpenGame={onOpenGame} variant="compact" />
+            </div>
+          ) : (
+            <div className="promo-section-side-compact">
+              <PromoCarousel slides={mostWantedSlides} intervalMs={3500} size="small" showControls={false} />
+            </div>
           )}
         </>
       )}
