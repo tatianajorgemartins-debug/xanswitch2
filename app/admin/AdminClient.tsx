@@ -7,7 +7,7 @@ import { uploadToSignedTicket } from '@/lib/supabaseBrowser';
 import type { Game, Review, Order } from '@/lib/db';
 import { getContrastColor } from '@/lib/color';
 import { formatPriceBR } from '@/lib/whatsapp';
-import { priceWithFee } from '@/lib/gamePrice';
+import { gamePrice, priceWithFee } from '@/lib/gamePrice';
 import { compressImageFile } from '@/lib/imageCompression';
 import {
   createGameAction,
@@ -27,6 +27,8 @@ import {
   updatePaymentFeesAction,
   createManualDiscountCreditAction,
   updateFeaturedFranchiseAction,
+  createPrivateOfferAction,
+  setPrivateOfferActiveAction,
   type GameFormState
 } from './actions';
 
@@ -46,7 +48,8 @@ export default function AdminClient({
   featuredFranchiseEnabled,
   featuredFranchiseName,
   featuredFranchiseLabel,
-  paymentFees
+  paymentFees,
+  privateOffers
 }: {
   initialGames: Game[];
   visitCount: number;
@@ -62,6 +65,7 @@ export default function AdminClient({
   featuredFranchiseName: string;
   featuredFranchiseLabel: string;
   paymentFees: { card: number; pix: number };
+  privateOffers: PrivateOfferRow[] | null;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -73,6 +77,7 @@ export default function AdminClient({
   const [showBannerPanel, setShowBannerPanel] = useState(false);
   const [showFranchisePanel, setShowFranchisePanel] = useState(false);
   const [showFeesPanel, setShowFeesPanel] = useState(false);
+  const [showOffersPanel, setShowOffersPanel] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingGame, setEditingGame] = useState<Game | null>(null);
 
@@ -339,6 +344,9 @@ export default function AdminClient({
         <button className="btn ghost" onClick={() => setShowFeesPanel((s) => !s)}>
           💳 Taxas de pagamento (cartão {formatPriceBR(paymentFees.card)}%)
         </button>
+        <button className="btn ghost" onClick={() => setShowOffersPanel((s) => !s)}>
+          🔗 Links exclusivos
+        </button>
       </div>
 
       {showReviewsPanel && (
@@ -366,6 +374,8 @@ export default function AdminClient({
           <PaymentFeesForm initial={paymentFees} />
         </div>
       )}
+
+      {showOffersPanel && <PrivateOffersPanel games={initialGames} offers={privateOffers} />}
 
       {showWishlistPanel && <WishlistPanel entries={mostWantedGames} />}
 
@@ -726,6 +736,250 @@ function FeaturedToggleButton({
 // Taxas do Mercado Pago repassadas ao cliente (ver lib/paymentFees.ts): o
 // site cobra preço ÷ (1 − taxa) no cartão/Pix, pra sobrar o preço inteiro
 // do jogo depois que o Mercado Pago desconta a parte dele.
+// --- Links exclusivos: um jogo com preço especial, num link só pra quem
+// você mandar (app/oferta/[token]/page.tsx). ---
+type PrivateOfferRow = {
+  token: string;
+  gameId: number;
+  price: number;
+  note: string | null;
+  maxUses: number | null;
+  uses: number;
+  expiresAt: string | null;
+  active: boolean;
+  createdAt: string;
+};
+
+const SITE_URL = 'https://www.xanswitch.com.br';
+
+function offerUrl(token: string): string {
+  return `${SITE_URL}/oferta/${token}`;
+}
+
+function offerStatus(o: PrivateOfferRow): { label: string; live: boolean } {
+  if (!o.active) return { label: 'Desativado', live: false };
+  if (o.expiresAt && new Date(o.expiresAt) <= new Date()) return { label: 'Vencido', live: false };
+  if (o.maxUses !== null && o.uses >= o.maxUses) return { label: 'Usado', live: false };
+  return { label: 'Ativo', live: true };
+}
+
+function PrivateOffersPanel({ games, offers }: { games: Game[]; offers: PrivateOfferRow[] | null }) {
+  const router = useRouter();
+  const activeGames = useMemo(
+    () => games.filter((g) => !g.archived).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
+    [games]
+  );
+  const [gameId, setGameId] = useState<number | ''>('');
+  const [priceInput, setPriceInput] = useState('');
+  const [maxUsesInput, setMaxUsesInput] = useState('1');
+  const [daysInput, setDaysInput] = useState('7');
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [created, setCreated] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const selectedGame = activeGames.find((g) => g.id === gameId) ?? null;
+  const gameById = useMemo(() => new Map(games.map((g) => [g.id, g])), [games]);
+
+  function copy(token: string) {
+    navigator.clipboard
+      .writeText(offerUrl(token))
+      .then(() => {
+        setCopied(token);
+        setTimeout(() => setCopied(null), 2000);
+      })
+      .catch(() => {});
+  }
+
+  async function handleCreate() {
+    if (gameId === '') {
+      setError('Escolha o jogo.');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    setCreated(null);
+    const maxUses = maxUsesInput.trim() === '' || maxUsesInput.trim() === '0' ? null : Number(maxUsesInput);
+    const days = daysInput.trim() === '' || daysInput.trim() === '0' ? null : Number(daysInput.replace(',', '.'));
+    const result = await createPrivateOfferAction(gameId, Number(priceInput.replace(',', '.')), maxUses, days, note);
+    setSaving(false);
+    if (result.error || !result.token) {
+      setError(result.error ?? 'Não foi possível criar o link.');
+      return;
+    }
+    setCreated(result.token);
+    copy(result.token);
+    setPriceInput('');
+    setNote('');
+    router.refresh();
+  }
+
+  async function toggle(o: PrivateOfferRow) {
+    await setPrivateOfferActiveAction(o.token, !o.active);
+    router.refresh();
+  }
+
+  const labelStyle = { fontSize: 12.5, color: 'var(--ink-dim)', fontWeight: 600 } as const;
+
+  return (
+    <div
+      className="admin-panel"
+      style={{
+        background: 'var(--panel)',
+        border: '1px solid rgba(164,99,255,.25)',
+        borderRadius: 14,
+        padding: 16,
+        marginBottom: 20
+      }}
+    >
+      <h4 style={{ margin: '0 0 6px', fontSize: 13, color: 'var(--ink-dim)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+        Links exclusivos
+      </h4>
+      <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--ink-dim)', lineHeight: 1.5 }}>
+        Escolha um jogo e um preço especial: o site gera um link que só quem receber consegue usar. O preço é conferido no
+        servidor em cada pagamento (Pix, cartão e Pix + cartão), e o link para de valer quando vence ou chega no limite de
+        compras.
+      </p>
+
+      {offers === null ? (
+        <p style={{ color: 'var(--gold)', fontSize: 13.5, margin: 0 }}>
+          Falta rodar o <code>db/migration-private-offers.sql</code> no SQL Editor do Neon.
+        </p>
+      ) : (
+        <>
+          <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', marginBottom: 10 }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, gridColumn: '1 / -1' }}>
+              <span style={labelStyle}>Jogo</span>
+              <select value={gameId} onChange={(e) => setGameId(e.target.value ? Number(e.target.value) : '')}>
+                <option value="">Escolha o jogo...</option>
+                {activeGames.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name} — R$ {formatPriceBR(gamePrice(g).price)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={labelStyle}>Preço especial (R$)</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder={selectedGame ? formatPriceBR(gamePrice(selectedGame).price) : 'Ex: 199,90'}
+                value={priceInput}
+                onChange={(e) => setPriceInput(e.target.value)}
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={labelStyle}>Quantas compras (0 = sem limite)</span>
+              <input type="text" inputMode="numeric" value={maxUsesInput} onChange={(e) => setMaxUsesInput(e.target.value)} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={labelStyle}>Vale por quantos dias (0 = sempre)</span>
+              <input type="text" inputMode="numeric" value={daysInput} onChange={(e) => setDaysInput(e.target.value)} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, gridColumn: '1 / -1' }}>
+              <span style={labelStyle}>Pra quem é (só você vê — opcional)</span>
+              <input type="text" placeholder="Ex: Maria do Instagram" value={note} onChange={(e) => setNote(e.target.value)} />
+            </label>
+          </div>
+          {error && <p style={{ color: '#ff8a8a', fontSize: 13, fontWeight: 600, margin: '0 0 8px' }}>{error}</p>}
+          <button className="btn primary" onClick={handleCreate} disabled={saving}>
+            {saving ? 'Gerando...' : '🔗 Gerar link'}
+          </button>
+
+          {created && (
+            <div
+              style={{
+                marginTop: 12,
+                padding: '10px 12px',
+                borderRadius: 10,
+                border: '1px solid var(--green)',
+                fontSize: 13.5
+              }}
+            >
+              <p style={{ margin: '0 0 6px', fontWeight: 700, color: 'var(--green)' }}>
+                ✓ Link criado{copied === created ? ' e copiado' : ''}! Mande pro cliente:
+              </p>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input type="text" readOnly value={offerUrl(created)} onFocus={(e) => e.target.select()} style={{ flex: 1, minWidth: 0 }} />
+                <button className="btn ghost" onClick={() => copy(created)}>
+                  {copied === created ? 'Copiado!' : 'Copiar'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <h4 style={{ margin: '20px 0 8px', fontSize: 13, color: 'var(--ink-dim)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+            Links criados
+          </h4>
+          {offers.length === 0 ? (
+            <p style={{ color: 'var(--ink-dim)', fontSize: 14, margin: 0 }}>Nenhum link criado ainda.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {offers.map((o) => {
+                const status = offerStatus(o);
+                const game = gameById.get(o.gameId);
+                return (
+                  <div
+                    key={o.token}
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '6px 12px',
+                      alignItems: 'center',
+                      padding: '10px 12px',
+                      borderRadius: 10,
+                      background: 'rgba(164,99,255,.06)',
+                      opacity: status.live ? 1 : 0.6,
+                      fontSize: 13.5
+                    }}
+                  >
+                    <strong style={{ color: 'var(--ink)' }}>{game?.name ?? `Jogo #${o.gameId}`}</strong>
+                    <span style={{ color: 'var(--green)', fontWeight: 700 }}>R$ {formatPriceBR(o.price)}</span>
+                    {game && (
+                      <span style={{ color: 'var(--ink-dim)', textDecoration: 'line-through', fontSize: 12.5 }}>
+                        R$ {formatPriceBR(gamePrice(game).price)}
+                      </span>
+                    )}
+                    <span
+                      style={{
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: 6,
+                        background: status.live ? 'var(--green)' : 'rgba(255,255,255,.12)',
+                        color: status.live ? '#04210a' : 'var(--ink)'
+                      }}
+                    >
+                      {status.label}
+                    </span>
+                    <span style={{ color: 'var(--ink-dim)', fontSize: 12.5 }}>
+                      {o.uses}/{o.maxUses ?? '∞'} compras
+                      {o.expiresAt ? ` · vence ${new Date(o.expiresAt).toLocaleDateString('pt-BR')}` : ''}
+                      {o.note ? ` · ${o.note}` : ''}
+                    </span>
+                    <span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+                      {status.live && (
+                        <button className="btn ghost" style={{ padding: '4px 10px', fontSize: 12.5 }} onClick={() => copy(o.token)}>
+                          {copied === o.token ? 'Copiado!' : 'Copiar link'}
+                        </button>
+                      )}
+                      <button className="btn ghost" style={{ padding: '4px 10px', fontSize: 12.5 }} onClick={() => toggle(o)}>
+                        {o.active ? 'Desativar' : 'Reativar'}
+                      </button>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 function PaymentFeesForm({ initial }: { initial: { card: number; pix: number } }) {
   const router = useRouter();
   const [cardInput, setCardInput] = useState(formatPriceBR(initial.card));

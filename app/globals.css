@@ -4000,3 +4000,31 @@ button.account-avatar {
 .split-resume .product-cta {
   width: 100%;
 }
+
+/* Link exclusivo (app/oferta/[token]/page.tsx). */
+.offer-badge {
+  margin: 0 0 8px;
+  color: var(--gold);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+.offer-expired {
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 120px 20px 80px;
+  text-align: center;
+}
+.offer-expired-emoji {
+  font-size: 44px;
+  margin: 0 0 10px;
+}
+.offer-expired h1 {
+  margin: 0 0 10px;
+  font-size: 24px;
+}
+.offer-expired p {
+  margin: 0 0 22px;
+  color: var(--ink-dim);
+  line-height: 1.5;
+}

@@ -1,5 +1,6 @@
 'use server';
 
+import { randomBytes } from 'crypto';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { uploadImageBuffer, deleteImageByUrl } from '@/lib/supabaseAdmin';
@@ -26,6 +27,8 @@ import {
   updateAvailableDiscountCreditsAmount,
   getSiteSetting,
   setSiteSetting,
+  createPrivateOffer,
+  setPrivateOfferActive,
   REVIEWS_BANNER_KEY,
   LOYALTY_DISCOUNT_AMOUNT_KEY,
   FEATURED_FRANCHISE_ENABLED_KEY,
@@ -550,4 +553,51 @@ export async function removeReviewsBannerAction(): Promise<void> {
   }
   revalidatePath('/admin');
   revalidatePath('/');
+}
+
+// --- Links exclusivos (ver db/migration-private-offers.sql) ---
+
+// Cria um link /oferta/<token> com um preço especial pra um jogo. O token é
+// aleatório e longo o bastante pra ninguém adivinhar. maxUses null = sem
+// limite de compras; expiresInDays null = não vence.
+export async function createPrivateOfferAction(
+  gameId: number,
+  price: number,
+  maxUses: number | null,
+  expiresInDays: number | null,
+  note: string
+): Promise<{ error: string | null; token?: string }> {
+  await requireAuth();
+  const game = await getGameById(gameId).catch(() => null);
+  if (!game || game.archived) return { error: 'Escolha um jogo do catálogo.' };
+  const rounded = Math.round(price * 100) / 100;
+  if (!Number.isFinite(rounded) || rounded < 1) return { error: 'Digite um preço de pelo menos R$ 1,00.' };
+  if (maxUses !== null && (!Number.isInteger(maxUses) || maxUses < 1)) {
+    return { error: 'Quantidade de compras precisa ser 1 ou mais (ou deixe sem limite).' };
+  }
+  if (expiresInDays !== null && (!Number.isFinite(expiresInDays) || expiresInDays <= 0)) {
+    return { error: 'Validade precisa ser de pelo menos 1 dia (ou deixe sem validade).' };
+  }
+  const token = randomBytes(12).toString('base64url');
+  try {
+    await createPrivateOffer({
+      token,
+      game_id: gameId,
+      price: rounded,
+      note: note.trim() || null,
+      max_uses: maxUses,
+      expires_at: expiresInDays !== null ? new Date(Date.now() + expiresInDays * 86400000) : null
+    });
+  } catch (err) {
+    console.error('[admin] Falha ao criar link exclusivo:', err);
+    return { error: 'Não foi possível criar o link. Já rodou o db/migration-private-offers.sql no Neon?' };
+  }
+  revalidatePath('/admin');
+  return { error: null, token };
+}
+
+export async function setPrivateOfferActiveAction(token: string, active: boolean): Promise<void> {
+  await requireAuth();
+  await setPrivateOfferActive(token, active);
+  revalidatePath('/admin');
 }

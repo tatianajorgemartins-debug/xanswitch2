@@ -101,6 +101,7 @@ export function CardPaymentStep({
   email,
   loggedIn,
   splitPixId = null,
+  offerToken = null,
   onReadyChange,
   referralSource,
   setReferralSource,
@@ -114,6 +115,8 @@ export function CardPaymentStep({
   // Pix + cartão (SplitPaymentStep.tsx): o id do Pix já pago — o cartão
   // cobra só o que falta.
   splitPixId?: string | null;
+  // Link exclusivo: o servidor cobra o preço especial do link.
+  offerToken?: string | null;
   // Avisa a janela de compra quando a tela pode aparecer (formulário
   // carregado, ou um erro pra mostrar) — até lá fica a tela de
   // carregamento do site (useStepLoader em PurchaseModal.tsx).
@@ -158,7 +161,7 @@ export function CardPaymentStep({
 
   useEffect(() => {
     let cancelled = false;
-    getCardChargeAction(gameId, splitPixId)
+    getCardChargeAction(gameId, splitPixId, offerToken)
       .then((result) => {
         if (cancelled) return;
         if (result) setCharge(result);
@@ -170,7 +173,7 @@ export function CardPaymentStep({
     return () => {
       cancelled = true;
     };
-  }, [gameId, splitPixId]);
+  }, [gameId, splitPixId, offerToken]);
 
   useEffect(() => {
     if (!loggedIn) return;
@@ -249,7 +252,8 @@ export function CardPaymentStep({
                 accessToken: wantsToSave ? await getAccessToken() : null,
                 savedCardId: null,
                 saveCard: wantsToSave,
-                splitPixId
+                splitPixId,
+                offerToken
               }).catch(() => CONNECTION_ERROR);
               handleResult(result);
             }
@@ -338,7 +342,7 @@ export function CardPaymentStep({
           identification: null
         },
         referralSource,
-        { accessToken: await getAccessToken(), savedCardId: selectedCard.id, saveCard: false, splitPixId }
+        { accessToken: await getAccessToken(), savedCardId: selectedCard.id, saveCard: false, splitPixId, offerToken }
       ).catch(() => CONNECTION_ERROR);
       handleResult(result);
     } catch {

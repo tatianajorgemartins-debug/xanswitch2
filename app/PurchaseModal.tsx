@@ -252,7 +252,7 @@ export default function PurchaseModal({
 
     (async () => {
       const accessToken = discountApplied ? await getAccessToken() : null;
-      const result = await startPixPaymentAction(item.id, user?.email ?? email, discountApplied, accessToken);
+      const result = await startPixPaymentAction(item.id, user?.email ?? email, discountApplied, accessToken, item.offerToken ?? null);
       if (result.mode === 'mercadopago') {
         setMpPaymentId(result.paymentId);
         setMpPixCharge({ amount: result.amount, feePercent: result.feePercent });
@@ -408,6 +408,7 @@ export default function PurchaseModal({
               price={item.price}
               email={user?.email ?? email}
               loggedIn={Boolean(user)}
+              offerToken={item.offerToken ?? null}
               resume={splitResume}
               onReadyChange={setCardStepReady}
               referralSource={referralSource}
@@ -425,6 +426,7 @@ export default function PurchaseModal({
               gameId={item.id}
               email={user?.email ?? email}
               loggedIn={Boolean(user)}
+              offerToken={item.offerToken ?? null}
               onReadyChange={setCardStepReady}
               referralSource={referralSource}
               setReferralSource={setReferralSource}
@@ -663,6 +665,9 @@ function StepSummary({
           <p className="product-sticky-price" aria-hidden="true">
             R$ {priceLabel}
           </p>
+          {item.offerToken && (
+            <p className="offer-badge">🔒 Preço exclusivo do seu link</p>
+          )}
           {splitResume && (
             <div className="split-resume" role="status">
               <p>

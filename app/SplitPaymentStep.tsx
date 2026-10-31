@@ -63,6 +63,7 @@ export function SplitPaymentStep({
   price,
   email,
   loggedIn,
+  offerToken = null,
   resume,
   onReadyChange,
   referralSource,
@@ -74,6 +75,8 @@ export function SplitPaymentStep({
   price: number;
   email: string;
   loggedIn: boolean;
+  // Link exclusivo: o Pix e o cartão saem do preço especial do link.
+  offerToken?: string | null;
   // Pix já pago numa visita anterior: começa direto no cartão.
   resume: SplitResume | null;
   onReadyChange: (ready: boolean) => void;
@@ -109,7 +112,7 @@ export function SplitPaymentStep({
     if (!valid) return;
     setStarting(true);
     setError(null);
-    const result = await startSplitPixPaymentAction(gameId, email, typed).catch(() => ({
+    const result = await startSplitPixPaymentAction(gameId, email, typed, offerToken).catch(() => ({
       mode: 'error' as const,
       error: 'A conexão falhou. Tente de novo.'
     }));

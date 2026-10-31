@@ -11,6 +11,7 @@ import {
   claimApprovedMpPayment,
   createPaidMercadoPagoOrder,
   getMpPaymentRecord,
+  incrementPrivateOfferUse,
   markDiscountCreditUsed,
   releaseMpPaymentClaim,
   setMpPaymentStatus,
@@ -102,6 +103,12 @@ async function createOrdersForApprovedPayment(paymentId: string, extraTotal = 0)
         })
       )
     );
+
+    // Compras por link exclusivo contam no link (ele para de valer quando
+    // chega no limite de compras).
+    for (const it of record.items) {
+      if (it.offerToken) await incrementPrivateOfferUse(it.offerToken).catch(() => {});
+    }
 
     if (record.discount_credit_id) {
       const discountedOrder = orders.find((_, i) => record.items[i].discountApplied > 0) ?? orders[0];

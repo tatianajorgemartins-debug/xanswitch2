@@ -107,6 +107,9 @@ export type Item = {
   // Se esse jogo aceita desconto de fidelidade (troca de pontos), marcado
   // no admin — ver a etapa de pagamento em PurchaseModal.tsx.
   discountEligible: boolean;
+  // Aberto por um link exclusivo (app/oferta/[token]/page.tsx): o token vai
+  // junto de cada pagamento, e o servidor cobra o preço especial do link.
+  offerToken?: string;
 };
 
 export type ReviewItem = {

@@ -384,6 +384,9 @@ export type MpPaymentItem = {
   cardPoints: number;
   cardImageUrl: string | null;
   amazonJpUrl: string | null;
+  // Comprado por um link exclusivo (oferta com preço especial): o token,
+  // pra contar a compra no link quando o pedido for criado.
+  offerToken?: string | null;
 };
 
 export type MpPaymentRecord = {
@@ -663,4 +666,58 @@ export async function getAllAvailableDiscountCreditTotals(): Promise<Record<stri
     result[row.email as string] = parseFloat(row.total as string);
   }
   return result;
+}
+
+// --- Links exclusivos (ver db/migration-private-offers.sql) ---
+
+export type PrivateOffer = {
+  token: string;
+  game_id: number;
+  price: string; // numeric vem como texto do postgres
+  note: string | null;
+  max_uses: number | null;
+  uses: number;
+  expires_at: Date | null;
+  active: boolean;
+  created_at: Date;
+};
+
+export async function createPrivateOffer(data: {
+  token: string;
+  game_id: number;
+  price: number;
+  note: string | null;
+  max_uses: number | null;
+  expires_at: Date | null;
+}): Promise<void> {
+  await getSql()`
+    INSERT INTO private_offers (token, game_id, price, note, max_uses, expires_at)
+    VALUES (${data.token}, ${data.game_id}, ${data.price}, ${data.note}, ${data.max_uses}, ${data.expires_at})
+  `;
+}
+
+export async function getAllPrivateOffers(): Promise<PrivateOffer[]> {
+  const rows = await getSql()`SELECT * FROM private_offers ORDER BY created_at DESC LIMIT 200`;
+  return rows as PrivateOffer[];
+}
+
+// O link ainda vale? Ativo, dentro da validade e com compras sobrando.
+export async function getValidPrivateOffer(token: string): Promise<PrivateOffer | null> {
+  const rows = await getSql()`
+    SELECT * FROM private_offers
+    WHERE token = ${token}
+      AND active
+      AND (expires_at IS NULL OR expires_at > now())
+      AND (max_uses IS NULL OR uses < max_uses)
+  `;
+  return (rows[0] as PrivateOffer) ?? null;
+}
+
+export async function setPrivateOfferActive(token: string, active: boolean): Promise<void> {
+  await getSql()`UPDATE private_offers SET active = ${active} WHERE token = ${token}`;
+}
+
+// Conta uma compra paga pelo link (chamado quando o pedido é criado).
+export async function incrementPrivateOfferUse(token: string): Promise<void> {
+  await getSql()`UPDATE private_offers SET uses = uses + 1 WHERE token = ${token}`;
 }

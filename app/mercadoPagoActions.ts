@@ -24,6 +24,7 @@ import {
   getAvailableDiscountCredit,
   getGameById,
   getMpPaymentRecord,
+  getValidPrivateOffer,
   createMpPaymentRecord,
   setMpPaymentReferralSource,
   type Game,
@@ -63,11 +64,24 @@ async function loadGame(gameId: number): Promise<Game | null> {
   return game && !game.archived ? game : null;
 }
 
-function gameToPaymentItem(game: Game): MpPaymentItem {
+// Link exclusivo (admin → 🔗 Links exclusivos): o preço especial vem do
+// banco, pelo token — nunca do navegador. Token inválido, vencido, de outro
+// jogo ou já usado até o limite = erro (não cai no preço normal escondido).
+async function loadOffer(offerToken: string | null | undefined, gameId: number): Promise<{ token: string; price: number } | null | 'invalid'> {
+  if (!offerToken) return null;
+  if (!/^[A-Za-z0-9_-]{8,64}$/.test(offerToken)) return 'invalid';
+  const offer = await getValidPrivateOffer(offerToken).catch(() => null);
+  if (!offer || offer.game_id !== gameId) return 'invalid';
+  return { token: offer.token, price: parseFloat(offer.price) };
+}
+const OFFER_ERROR = 'Esse link exclusivo não vale mais (venceu ou já foi usado). Fale com a gente no WhatsApp.';
+
+function gameToPaymentItem(game: Game, offer: { token: string; price: number } | null = null): MpPaymentItem {
   return {
     gameId: game.id,
     gameName: game.name,
-    price: gamePrice(game).price,
+    price: offer ? offer.price : gamePrice(game).price,
+    offerToken: offer?.token ?? null,
     discountApplied: 0,
     cardPoints: game.card_points,
     cardImageUrl: game.image_url,
@@ -124,7 +138,8 @@ export async function startPixPaymentAction(
   gameId: number,
   email: string,
   applyDiscount: boolean,
-  accessToken: string | null
+  accessToken: string | null,
+  offerToken: string | null = null
 ): Promise<StartPixResult> {
   if (!isMercadoPagoEnabled()) return { mode: 'static' };
   const trimmedEmail = email.trim();
@@ -132,10 +147,13 @@ export async function startPixPaymentAction(
 
   const game = await loadGame(gameId);
   if (!game) return { mode: 'error', error: 'Esse jogo não está mais disponível.' };
-  const item = gameToPaymentItem(game);
+  const offer = await loadOffer(offerToken, gameId);
+  if (offer === 'invalid') return { mode: 'error', error: OFFER_ERROR };
+  const item = gameToPaymentItem(game, offer);
 
+  // Link exclusivo já é o preço especial: sem desconto de fidelidade junto.
   let discountCreditId: number | null = null;
-  if (applyDiscount && game.discount_eligible) {
+  if (applyDiscount && game.discount_eligible && !offer) {
     const verifiedEmail = await verifyAccessToken(accessToken);
     if (verifiedEmail && verifiedEmail.toLowerCase() === trimmedEmail.toLowerCase()) {
       const credit = await getAvailableDiscountCredit(verifiedEmail);
@@ -161,7 +179,7 @@ export async function startBulkPixPaymentAction(gameIds: number[], email: string
   if (games.length === 0 || games.some((g) => !g)) {
     return { mode: 'error', error: 'Algum desses jogos não está mais disponível. Volte e confira a lista.' };
   }
-  const items = (games as Game[]).map(gameToPaymentItem);
+  const items = (games as Game[]).map((g) => gameToPaymentItem(g));
 
   return createCharge(items, trimmedEmail, null);
 }
@@ -177,7 +195,8 @@ const SPLIT_MIN_PART = 5;
 export async function startSplitPixPaymentAction(
   gameId: number,
   email: string,
-  pixPart: number
+  pixPart: number,
+  offerToken: string | null = null
 ): Promise<StartPixResult> {
   if (!isMercadoPagoEnabled()) return { mode: 'error', error: 'Pix + cartão indisponível no momento.' };
   const trimmedEmail = email.trim();
@@ -185,7 +204,9 @@ export async function startSplitPixPaymentAction(
 
   const game = await loadGame(gameId);
   if (!game) return { mode: 'error', error: 'Esse jogo não está mais disponível.' };
-  const item = gameToPaymentItem(game);
+  const offer = await loadOffer(offerToken, gameId);
+  if (offer === 'invalid') return { mode: 'error', error: OFFER_ERROR };
+  const item = gameToPaymentItem(game, offer);
   const part = Math.round(pixPart * 100) / 100;
   if (!Number.isFinite(part) || part < SPLIT_MIN_PART || part > item.price - SPLIT_MIN_PART) {
     return { mode: 'error', error: `Cada parte precisa ser de pelo menos R$ ${SPLIT_MIN_PART},00.` };
@@ -296,7 +317,8 @@ function cardRejectionMessage(statusDetail: string): string {
 // splitPixId: no Pix + cartão, só o que falta depois do Pix.
 export async function getCardChargeAction(
   gameId: number,
-  splitPixId: string | null = null
+  splitPixId: string | null = null,
+  offerToken: string | null = null
 ): Promise<{ amount: number; feePercent: number; pixAmount: number } | null> {
   let price: number;
   if (splitPixId) {
@@ -306,7 +328,9 @@ export async function getCardChargeAction(
   } else {
     const game = await loadGame(gameId);
     if (!game) return null;
-    price = gamePrice(game).price;
+    const offer = await loadOffer(offerToken, gameId);
+    if (offer === 'invalid') return null;
+    price = offer ? offer.price : gamePrice(game).price;
   }
   const fees = await getPaymentFees();
   return { amount: priceWithFee(price, fees.card), feePercent: fees.card, pixAmount: priceWithFee(price, fees.pix) };
@@ -362,7 +386,7 @@ export async function payWithCardAction(
   email: string,
   card: CardInput,
   referralSource: string | null,
-  options: { accessToken: string | null; savedCardId: string | null; saveCard: boolean; splitPixId?: string | null } = {
+  options: { accessToken: string | null; savedCardId: string | null; saveCard: boolean; splitPixId?: string | null; offerToken?: string | null } = {
     accessToken: null,
     savedCardId: null,
     saveCard: false
@@ -374,7 +398,9 @@ export async function payWithCardAction(
 
   const game = await loadGame(gameId);
   if (!game) return { status: 'rejected', error: 'Esse jogo não está mais disponível.' };
-  const item = gameToPaymentItem(game);
+  const offer = options.splitPixId ? null : await loadOffer(options.offerToken, gameId);
+  if (offer === 'invalid') return { status: 'rejected', error: OFFER_ERROR };
+  const item = gameToPaymentItem(game, offer);
 
   // Pix + cartão: cobra só o que falta depois do Pix já pago.
   let splitPixId: string | null = null;

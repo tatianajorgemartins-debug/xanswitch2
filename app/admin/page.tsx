@@ -5,6 +5,7 @@ import {
   getAllReviews,
   getRecentOrders,
   getStalledSplitPayments,
+  getAllPrivateOffers,
   getAllPointAdjustmentTotals,
   getAllAvailableDiscountCreditTotals,
   getSiteSetting,
@@ -56,6 +57,22 @@ export default async function AdminPage() {
   const featuredFranchiseName = (await getSiteSetting(FEATURED_FRANCHISE_KEY)) ?? '';
   const featuredFranchiseLabel = (await getSiteSetting(FEATURED_FRANCHISE_LABEL_KEY)) ?? '';
   const paymentFees = await getPaymentFees();
+  // null = tabela ainda não existe (falta rodar db/migration-private-offers.sql).
+  const privateOffers = await getAllPrivateOffers()
+    .then((rows) =>
+      rows.map((o) => ({
+        token: o.token,
+        gameId: o.game_id,
+        price: parseFloat(o.price),
+        note: o.note,
+        maxUses: o.max_uses,
+        uses: o.uses,
+        expiresAt: o.expires_at ? new Date(o.expires_at).toISOString() : null,
+        active: o.active,
+        createdAt: new Date(o.created_at).toISOString()
+      }))
+    )
+    .catch(() => null);
   return (
     <AdminClient
       initialGames={games}
@@ -72,6 +89,7 @@ export default async function AdminPage() {
       featuredFranchiseName={featuredFranchiseName}
       featuredFranchiseLabel={featuredFranchiseLabel}
       paymentFees={paymentFees}
+      privateOffers={privateOffers}
     />
   );
 }
