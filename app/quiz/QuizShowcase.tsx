@@ -5,11 +5,11 @@
 // É só a porta de entrada: perguntas, sorteio e resultado vivem
 // exclusivamente dentro do pop-up (GameQuizModal.tsx), que só é baixado
 // quando a pessoa clica no botão.
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { Item } from '../CatalogClient';
 import { fallbackToOriginal, imageSrcSet } from '@/lib/imageVariants';
-import { eligibleItems } from './gameQuiz';
+import { eligibleItems, variedCovers } from './gameQuiz';
 import './quiz.css';
 
 const GameQuizModal = dynamic(() => import('./GameQuizModal'), { ssr: false });
@@ -26,14 +26,23 @@ export default function QuizShowcase({
 }) {
   const [open, setOpen] = useState(false);
   // Capas da esteirinha decorativa (repetidas pra dar a volta sem emenda).
-  const covers = useMemo(() => eligibleItems(items).slice(0, 10), [items]);
+  // Na primeira pintura (servidor) vão as primeiras do catálogo — sortear lá
+  // daria capas diferentes entre servidor e navegador. Logo depois de abrir,
+  // troca por um sorteio intercalando franquias (variedCovers).
+  const firstCovers = useMemo(() => eligibleItems(items).slice(0, 10), [items]);
+  const [covers, setCovers] = useState(firstCovers);
+  const [shuffled, setShuffled] = useState(false);
+  useEffect(() => {
+    setCovers(variedCovers(items, 10));
+    setShuffled(true);
+  }, [items]);
 
   if (covers.length === 0) return null;
 
   return (
     <>
       <div className={`quiz-showcase quiz-showcase-${variant}`}>
-        <div className="quiz-showcase-belt" aria-hidden>
+        <div className="quiz-showcase-belt" aria-hidden style={{ opacity: shuffled ? 1 : 0, transition: 'opacity 0.4s ease' }}>
           <div className="quiz-showcase-belt-track">
             {[...covers, ...covers].map((it, i) => (
               // eslint-disable-next-line @next/next/no-img-element

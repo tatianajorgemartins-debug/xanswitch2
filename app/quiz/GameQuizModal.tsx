@@ -15,6 +15,7 @@ import {
   buildReel,
   pickQuestions,
   recommend,
+  variedCovers,
   WINNER_INDEX,
   type QuizOption,
   type Recommendation
@@ -184,7 +185,7 @@ export default function GameQuizModal({
 }
 
 function Intro({ items, onStart }: { items: Item[]; onStart: () => void }) {
-  const covers = useMemo(() => items.filter((it) => it.imageUrl && !it.isUpcoming).slice(0, 5), [items]);
+  const covers = useMemo(() => variedCovers(items, 5), [items]);
   return (
     <div className="quiz-intro">
       <div className="quiz-intro-covers" aria-hidden>

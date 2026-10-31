@@ -357,6 +357,26 @@ export function eligibleItems(items: Item[]): Item[] {
   return base.length > 0 ? base : withCover;
 }
 
+// Capas sorteadas pra vitrine do quiz, intercalando franquias: embaralha,
+// separa por franquia e vai pegando uma de cada (assim não saem quatro
+// Bayonettas seguidas só porque são as primeiras do catálogo).
+export function variedCovers(items: Item[], count: number): Item[] {
+  const groups = new Map<string, Item[]>();
+  for (const it of shuffle(eligibleItems(items))) {
+    const key = (it.franchise ?? it.name).toLowerCase();
+    groups.set(key, [...(groups.get(key) ?? []), it]);
+  }
+  const queues = shuffle([...groups.values()]);
+  const picked: Item[] = [];
+  while (picked.length < count && queues.some((q) => q.length > 0)) {
+    for (const q of queues) {
+      const next = q.shift();
+      if (next && picked.length < count) picked.push(next);
+    }
+  }
+  return picked;
+}
+
 export type Recommendation = {
   item: Item;
   compatibility: number; // 0–100
