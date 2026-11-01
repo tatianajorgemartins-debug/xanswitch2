@@ -171,3 +171,37 @@
     width: 40%;
   }
 }
+
+/* Hover do "Começar a jornada" (só com mouse): o botão sobe, ganha brilho
+   dourado e um reflexo atravessa a pílula — igual ao botão dentro do quiz. */
+.ql-showcase-cta {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.25s var(--ql-ease),
+    box-shadow 0.25s var(--ql-ease),
+    filter 0.25s ease;
+}
+.ql-showcase-cta::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.55) 50%, transparent 70%);
+  transform: translateX(-130%);
+  pointer-events: none;
+}
+@media (hover: hover) {
+  .ql-showcase:hover .ql-showcase-cta,
+  .ql-showcase:focus-visible .ql-showcase-cta {
+    transform: translateY(-2px);
+    filter: brightness(1.07);
+    box-shadow:
+      0 6px 0 #6d5320,
+      0 0 28px rgba(242, 205, 115, 0.55);
+  }
+  .ql-showcase:hover .ql-showcase-cta::after,
+  .ql-showcase:focus-visible .ql-showcase-cta::after {
+    transform: translateX(130%);
+    transition: transform 0.7s var(--ql-ease);
+  }
+}

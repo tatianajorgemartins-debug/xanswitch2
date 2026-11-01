@@ -960,3 +960,44 @@ body:has(.ql-overlay) .back-to-top {
 .ql-preview .ql-btn {
   max-width: 220px;
 }
+
+/* Hover dos botões dourados (só com mouse): sobe, brilho dourado mais forte
+   e um reflexo atravessando a pílula. */
+.ql-btn:not(.is-ghost) {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.25s var(--ql-ease),
+    box-shadow 0.25s var(--ql-ease),
+    filter 0.25s ease;
+}
+.ql-btn:not(.is-ghost)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.55) 50%, transparent 70%);
+  transform: translateX(-130%);
+  pointer-events: none;
+}
+@media (hover: hover) {
+  .ql-btn:not(.is-ghost):hover:not(:disabled) {
+    transform: translateY(-3px);
+    filter: brightness(1.07);
+    box-shadow:
+      0 8px 0 #6d5320,
+      0 0 44px rgba(242, 205, 115, 0.6);
+  }
+  .ql-btn:not(.is-ghost):hover:not(:disabled)::after {
+    transform: translateX(130%);
+    transition: transform 0.7s var(--ql-ease);
+  }
+  .ql-btn.is-ghost:hover {
+    border-color: rgba(242, 205, 115, 0.6);
+    background: rgba(27, 58, 40, 0.8);
+  }
+}
+/* Clique: o botão "afunda" (vence o hover enquanto pressionado). */
+.ql-btn:not(.is-ghost):active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 #6d5320;
+}
