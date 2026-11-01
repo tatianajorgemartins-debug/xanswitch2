@@ -1,27 +1,20 @@
 // Imagem 9:16 (1080×1920) do resultado do "Qual Link é você?", pra postar
-// nos stories. Desenhada num <canvas> no próprio navegador, com o mesmo
-// visual do site: fundo roxo-escuro, card do Link (o "palco" do
-// resultado), Archivo no texto, Cinzel no nome e o dourado do site no
-// arquétipo. O texto importante fica fora das faixas de cima e de baixo
-// que o Instagram cobre com a própria interface.
-import { siteFontFamily } from '@/lib/cardCanvas';
+// nos stories. Desenhada num <canvas> no próprio navegador, no visual do
+// quiz (verde de Hyrule, moldura dourada dupla, Cinzel/Cormorant). O Link é
+// o herói da imagem: ocupa tudo o que o texto não usa, com "LINK" gigante
+// vazado atrás e luz dourada embaixo. O texto importante fica fora das
+// faixas de cima e de baixo que o Instagram cobre com a própria interface.
 import { LINKS, linkImage, type LinkId } from './quizData.ts';
-import { cinzel, cormorant } from './fonts.ts';
+import { cinzel, cinzelDecorative, cormorant } from './fonts.ts';
 
 const W = 1080;
 const H = 1920;
-const PAD = 90;
+const PAD = 100;
 
-const COLORS = {
-  bg: '#0a0716',
-  surface: '#140d27',
-  surface2: '#1c1338',
-  ink: '#f4f1fb',
-  muted: '#b7aed4',
-  accentFill: '#7b2ff0',
-  gold: '#ffd24e',
-  goldInk: '#2b1a00'
-};
+const GOLD = '#f2cd73';
+const GOLD_SOFT = '#e9c977';
+const CREAM = '#fff6e0';
+const MUTED = '#cbbf9f';
 
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -58,29 +51,29 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
-// Pílula com texto centralizado em (cx, cy); devolve a largura.
-function pill(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  cx: number,
-  cy: number,
-  opts: { font: string; fill: string; color: string; padX: number; height: number }
-): number {
-  ctx.font = opts.font;
-  const w = ctx.measureText(text).width + opts.padX * 2;
-  roundRect(ctx, cx - w / 2, cy - opts.height / 2, w, opts.height, opts.height / 2);
-  ctx.fillStyle = opts.fill;
-  ctx.fill();
-  ctx.fillStyle = opts.color;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(text, cx, cy + 2);
-  ctx.textBaseline = 'alphabetic';
-  return w;
-}
-
 function setLetterSpacing(ctx: CanvasRenderingContext2D, value: string) {
   if ('letterSpacing' in ctx) (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing = value;
+}
+
+// Selo: ◆ TEXTO ◆ com linhas finas douradas dos lados.
+function seal(ctx: CanvasRenderingContext2D, text: string, y: number, font: string) {
+  ctx.font = font;
+  setLetterSpacing(ctx, '6px');
+  ctx.fillStyle = GOLD_SOFT;
+  ctx.textAlign = 'center';
+  const label = `◆  ${text}  ◆`;
+  ctx.fillText(label, W / 2, y);
+  const half = ctx.measureText(label).width / 2;
+  setLetterSpacing(ctx, '0px');
+  for (const dir of [-1, 1]) {
+    const from = W / 2 + dir * (half + 20);
+    const to = W / 2 + dir * (half + 120);
+    const grad = ctx.createLinearGradient(from, 0, to, 0);
+    grad.addColorStop(0, 'rgba(233,201,119,.7)');
+    grad.addColorStop(1, 'rgba(233,201,119,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(Math.min(from, to), y - 11, 100, 2);
+  }
 }
 
 export async function renderStoryImage(resultId: LinkId): Promise<Blob> {
@@ -91,175 +84,192 @@ export async function renderStoryImage(resultId: LinkId): Promise<Blob> {
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Este navegador não consegue gerar a imagem.');
 
-  const sans = siteFontFamily();
   const display = cinzel.style.fontFamily;
+  const deco = cinzelDecorative.style.fontFamily;
   const serif = cormorant.style.fontFamily;
   await Promise.all([
-    document.fonts.load(`800 40px ${sans}`),
-    document.fonts.load(`600 40px ${sans}`),
     document.fonts.load(`900 90px ${display}`),
+    document.fonts.load(`700 30px ${display}`),
+    document.fonts.load(`700 200px ${deco}`),
     document.fonts.load(`italic 600 48px ${serif}`)
   ]).catch(() => {});
 
-  // Fundo: roxo do site, luz roxa em cima e o verde de Hyrule embaixo.
-  ctx.fillStyle = COLORS.bg;
+  // Fundo: verde quase preto, com luz verde em cima e vinheta nas bordas.
+  ctx.fillStyle = '#07110c';
   ctx.fillRect(0, 0, W, H);
-  const top = ctx.createRadialGradient(W / 2, -120, 40, W / 2, -120, 1100);
-  top.addColorStop(0, 'rgba(123,47,240,.55)');
-  top.addColorStop(1, 'rgba(123,47,240,0)');
-  ctx.fillStyle = top;
+  const topGlow = ctx.createRadialGradient(W / 2, 200, 40, W / 2, 200, 1100);
+  topGlow.addColorStop(0, 'rgba(36,82,52,.85)');
+  topGlow.addColorStop(1, 'rgba(36,82,52,0)');
+  ctx.fillStyle = topGlow;
   ctx.fillRect(0, 0, W, H);
-  const bottom = ctx.createRadialGradient(W / 2, H + 100, 40, W / 2, H + 100, 900);
-  bottom.addColorStop(0, 'rgba(78,240,95,.16)');
-  bottom.addColorStop(1, 'rgba(78,240,95,0)');
-  ctx.fillStyle = bottom;
+  const vignette = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.75);
+  vignette.addColorStop(0, 'rgba(0,0,0,0)');
+  vignette.addColorStop(1, 'rgba(0,0,0,.55)');
+  ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, W, H);
 
-  const [logo, art] = await Promise.all([loadImage('/logo.png').catch(() => null), loadImage(linkImage(resultId))]);
-
-  // Cabeçalho: logo + selo do quiz.
-  if (logo) {
-    const lw = 230;
-    ctx.drawImage(logo, (W - lw) / 2, 150, lw, (logo.height / logo.width) * lw);
-  }
-  setLetterSpacing(ctx, '4px');
-  ctx.font = `800 28px ${sans}`;
-  ctx.fillStyle = COLORS.gold;
+  // Moldura dupla dourada, com losangos no meio de cima e de baixo.
+  ctx.strokeStyle = 'rgba(214,177,94,.55)';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(40, 40, W - 80, H - 80);
+  ctx.strokeStyle = 'rgba(214,177,94,.28)';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(58, 58, W - 116, H - 116);
+  ctx.fillStyle = '#07110c';
+  ctx.fillRect(W / 2 - 26, 30, 52, 22);
+  ctx.fillRect(W / 2 - 26, H - 52, 52, 22);
+  ctx.font = `700 26px ${display}`;
   ctx.textAlign = 'center';
-  ctx.fillText('◆  QUIZ ZELDA · QUAL LINK É VOCÊ?', W / 2, 330);
-  setLetterSpacing(ctx, '0px');
+  ctx.fillStyle = GOLD_SOFT;
+  ctx.fillText('◆', W / 2, 51);
+  ctx.fillText('◆', W / 2, H - 31);
 
-  // Mede o texto primeiro: o palco do Link fica com o espaço que sobrar,
-  // pra nada encostar na chamada final (nomes longos, traços em 2 linhas).
-  const name = link.nome.startsWith('O ') ? link.nome.slice(2) : link.nome;
-  let nameSize = 96;
-  ctx.font = `900 ${nameSize}px ${display}`;
-  let nameLines = wrap(ctx, name, W - PAD * 2);
-  if (nameLines.length > 2) {
-    nameSize = 76;
-    ctx.font = `900 ${nameSize}px ${display}`;
-    nameLines = wrap(ctx, name, W - PAD * 2);
+  const [logo, art] = await Promise.all([
+    loadImage('/quiz-zelda/logo-xan.webp').catch(() => null),
+    loadImage(linkImage(resultId))
+  ]);
+
+  // Cabeçalho (dentro da faixa de cima: só marca, nada essencial).
+  if (logo) {
+    const lw = 190;
+    ctx.drawImage(logo, (W - lw) / 2, 120, lw, (logo.height / logo.width) * lw);
   }
-  const chipFont = `600 30px ${sans}`;
-  const chipH = 58;
-  const gap = 12;
-  ctx.font = chipFont;
-  const widths = link.tracos.map((t) => ctx.measureText(t).width + 48);
-  const rows: { items: number[]; width: number }[] = [];
-  widths.forEach((w, i) => {
-    const last = rows[rows.length - 1];
-    if (last && last.width + gap + w <= W - PAD * 2) {
-      last.items.push(i);
-      last.width += gap + w;
-    } else {
-      rows.push({ items: [i], width: w });
-    }
-  });
-  const quoteFont = `italic 600 48px ${serif}`;
+  seal(ctx, 'QUAL LINK É VOCÊ?', 300, `700 30px ${display}`);
+
+  // Mede o texto de baixo primeiro: o Link fica com todo o resto.
+  const name = link.nome.startsWith('O ') ? link.nome.slice(2) : link.nome;
+  let nameSize = 92;
+  ctx.font = `900 ${nameSize}px ${display}`;
+  let nameLines = wrap(ctx, name.toUpperCase(), W - PAD * 2);
+  if (nameLines.length > 2) {
+    nameSize = 74;
+    ctx.font = `900 ${nameSize}px ${display}`;
+    nameLines = wrap(ctx, name.toUpperCase(), W - PAD * 2);
+  }
+  const quoteFont = `italic 600 46px ${serif}`;
   ctx.font = quoteFont;
-  const quoteLines = wrap(ctx, link.frase, W - PAD * 2 - 40).slice(0, 3);
+  const quoteLines = wrap(ctx, link.frase, W - PAD * 2 - 20).slice(0, 2);
 
-  const ctaY = H - 300;
-  const textHeight =
-    86 + nameSize + 6 + (nameLines.length - 1) * nameSize * 1.04 + 30 + 96 + rows.length * (chipH + gap) + 46 + quoteLines.length * 58;
-  const textBottomLimit = ctaY - 42 - 110;
+  const ctaY = H - 330;
+  // Mesmas medidas usadas pra escrever o texto mais abaixo.
+  const textHeight = nameSize + (nameLines.length - 1) * nameSize * 1.05 + quoteLines.length * 56 + 206;
+  const textTop = ctaY - 70 - textHeight;
 
-  // "Palco" do Link: card arredondado com o Link inteiro.
-  const stageX = PAD;
-  const stageY = 380;
-  const stageW = W - PAD * 2;
-  const stageH = Math.max(340, Math.min(720, textBottomLimit - stageY - textHeight));
+  // Palco: "LINK" gigante vazado atrás, luz dourada e sombra no chão.
+  const heroTop = 350;
+  const floorY = textTop - 40;
+  const heroCenter = (heroTop + floorY) / 2;
   ctx.save();
-  roundRect(ctx, stageX, stageY, stageW, stageH, 56);
-  ctx.clip();
-  ctx.fillStyle = COLORS.surface;
-  ctx.fillRect(stageX, stageY, stageW, stageH);
-  const stageTop = ctx.createRadialGradient(W / 2, stageY, 20, W / 2, stageY, 620);
-  stageTop.addColorStop(0, 'rgba(123,47,240,.6)');
-  stageTop.addColorStop(1, 'rgba(123,47,240,0)');
-  ctx.fillStyle = stageTop;
-  ctx.fillRect(stageX, stageY, stageW, stageH);
-  const stageFloor = ctx.createRadialGradient(W / 2, stageY + stageH, 20, W / 2, stageY + stageH, 460);
-  stageFloor.addColorStop(0, 'rgba(78,240,95,.22)');
-  stageFloor.addColorStop(1, 'rgba(78,240,95,0)');
-  ctx.fillStyle = stageFloor;
-  ctx.fillRect(stageX, stageY, stageW, stageH);
-  // Sombra oval no chão.
-  const floorY = stageY + stageH - 60;
+  let bigSize = Math.round(Math.min(360, (floorY - heroTop) * 0.55));
+  ctx.font = `700 ${bigSize}px ${deco}`;
+  const bigWidth = ctx.measureText('LINK').width;
+  // A perna do K passa um pouco da medida — por isso a folga maior.
+  if (bigWidth > W - 340) {
+    bigSize = Math.floor((bigSize * (W - 340)) / bigWidth);
+    ctx.font = `700 ${bigSize}px ${deco}`;
+  }
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(242,205,115,.16)';
+  ctx.strokeText('LINK', W / 2, heroCenter);
+  ctx.restore();
+
+  const glow = ctx.createRadialGradient(W / 2, floorY - 120, 20, W / 2, floorY - 120, 560);
+  glow.addColorStop(0, 'rgba(242,205,115,.42)');
+  glow.addColorStop(0.5, 'rgba(242,205,115,.12)');
+  glow.addColorStop(1, 'rgba(242,205,115,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, H);
+
   ctx.save();
   ctx.translate(W / 2, floorY);
-  ctx.scale(1, 0.14);
-  const shadow = ctx.createRadialGradient(0, 0, 10, 0, 0, 260);
-  shadow.addColorStop(0, 'rgba(0,0,0,.6)');
+  ctx.scale(1, 0.13);
+  const shadow = ctx.createRadialGradient(0, 0, 10, 0, 0, 340);
+  shadow.addColorStop(0, 'rgba(0,0,0,.75)');
   shadow.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = shadow;
-  ctx.fillRect(-300, -300, 600, 600);
+  ctx.fillRect(-400, -400, 800, 800);
   ctx.restore();
-  const scale = Math.min((stageW - 160) / art.width, (stageH - 120) / art.height);
+
+  const maxW = W - 120;
+  const maxH = floorY - heroTop - 10;
+  const scale = Math.min(maxW / art.width, maxH / art.height);
   const aw = art.width * scale;
   const ah = art.height * scale;
-  ctx.shadowColor = 'rgba(0,0,0,.5)';
-  ctx.shadowBlur = 36;
-  ctx.shadowOffsetY = 16;
-  ctx.drawImage(art, (W - aw) / 2, floorY + 12 - ah, aw, ah);
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,.6)';
+  ctx.shadowBlur = 50;
+  ctx.shadowOffsetY = 24;
+  ctx.drawImage(art, (W - aw) / 2, floorY + 14 - ah, aw, ah);
   ctx.restore();
 
-  // Nome, arquétipo, traços.
-  let y = stageY + stageH + 86;
+  // Texto: "Meu Link é", nome, arquétipo e frase.
+  let y = textTop + 40;
   ctx.textAlign = 'center';
-  ctx.font = `600 38px ${sans}`;
-  ctx.fillStyle = COLORS.muted;
+  ctx.font = `italic 600 44px ${serif}`;
+  ctx.fillStyle = MUTED;
   ctx.fillText('Meu Link é', W / 2, y);
 
-  y += nameSize + 6;
+  y += 16 + nameSize;
   ctx.font = `900 ${nameSize}px ${display}`;
-  ctx.fillStyle = COLORS.ink;
   for (const line of nameLines) {
+    ctx.fillStyle = '#000';
+    ctx.fillText(line, W / 2, y + 6);
+    ctx.fillStyle = CREAM;
     ctx.fillText(line, W / 2, y);
-    y += nameSize * 1.04;
+    y += nameSize * 1.05;
   }
 
-  y += 30;
-  pill(ctx, link.arquetipo, W / 2, y, {
-    font: `800 38px ${sans}`,
-    fill: COLORS.gold,
-    color: COLORS.goldInk,
-    padX: 34,
-    height: 76
-  });
+  // Arquétipo em pílula dourada, logo abaixo da última linha do nome.
+  y += 50 - nameSize * 1.05;
+  ctx.font = `900 34px ${display}`;
+  setLetterSpacing(ctx, '2px');
+  const label = link.arquetipo.toUpperCase();
+  const pw = Math.min(W - PAD * 2, ctx.measureText(label).width + 70);
+  const pillGrad = ctx.createLinearGradient(0, y, 0, y + 76);
+  pillGrad.addColorStop(0, '#f6da8c');
+  pillGrad.addColorStop(1, '#d6a94a');
+  ctx.save();
+  ctx.shadowColor = 'rgba(242,205,115,.45)';
+  ctx.shadowBlur = 40;
+  roundRect(ctx, (W - pw) / 2, y, pw, 76, 38);
+  ctx.fillStyle = pillGrad;
+  ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = '#1b1405';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, W / 2, y + 40);
+  ctx.textBaseline = 'alphabetic';
+  setLetterSpacing(ctx, '0px');
+  y += 76 + 66;
 
-  // Traços em pílulas (uma ou duas linhas, centralizadas).
-  y += 96;
-  for (const row of rows) {
-    let x = (W - row.width) / 2;
-    for (const i of row.items) {
-      pill(ctx, link.tracos[i], x + widths[i] / 2, y, { font: chipFont, fill: COLORS.surface2, color: COLORS.ink, padX: 24, height: chipH });
-      x += widths[i] + gap;
-    }
-    y += chipH + gap;
-  }
-
-  // Frase da jornada.
-  y += 46;
   ctx.font = quoteFont;
-  ctx.fillStyle = COLORS.ink;
-  ctx.textAlign = 'center';
+  ctx.fillStyle = GOLD;
   for (const line of quoteLines) {
     ctx.fillText(line, W / 2, y);
-    y += 58;
+    y += 56;
   }
 
   // Chamada final, acima da faixa de baixo que o Instagram cobre.
-  pill(ctx, 'Descubra o seu em xanswitch.com.br/qual-link', W / 2, ctaY, {
-    font: `700 32px ${sans}`,
-    fill: COLORS.accentFill,
-    color: '#ffffff',
-    padX: 40,
-    height: 84
-  });
-  ctx.font = `600 30px ${sans}`;
-  ctx.fillStyle = COLORS.muted;
-  ctx.fillText('@xan.switch', W / 2, ctaY + 90);
+  ctx.font = `700 32px ${display}`;
+  setLetterSpacing(ctx, '3px');
+  const cta = 'XANSWITCH.COM.BR/QUAL-LINK';
+  const cw = Math.min(W - 120, ctx.measureText(cta).width + 80);
+  roundRect(ctx, (W - cw) / 2, ctaY - 40, cw, 80, 40);
+  ctx.fillStyle = 'rgba(15,32,24,.9)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(214,177,94,.55)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = GOLD;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(cta, W / 2, ctaY + 2);
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = `700 28px ${display}`;
+  ctx.fillStyle = CREAM;
+  ctx.fillText('DESCUBRA O SEU  ·  @XAN.SWITCH', W / 2, ctaY + 92);
+  setLetterSpacing(ctx, '0px');
 
   return new Promise((resolve, reject) =>
     canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Falha ao gerar a imagem.'))), 'image/png')

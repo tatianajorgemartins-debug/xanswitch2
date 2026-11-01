@@ -110,6 +110,11 @@ function pendingImages(root: ParentNode, onlyInViewport: boolean): HTMLImageElem
   const width = window.innerWidth;
   return Array.from(root.querySelectorAll('img')).filter((img) => {
     if (img.complete) return false;
+    // Imagens decorativas (esteiras e vitrines dos quizzes, marcadas com
+    // data-loader-skip) não seguram a abertura — algumas são sorteadas e
+    // trocadas logo depois, e a tela ficaria esperando imagens que nem
+    // estão mais na página.
+    if (img.closest('[data-loader-skip]')) return false;
     if (!onlyInViewport) return img.loading !== 'lazy';
     // Inclui o eixo horizontal: os slides seguintes dos carrosséis ficam
     // fora da tela, do lado, e não precisam estar prontos pra abrir.

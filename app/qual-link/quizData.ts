@@ -6,20 +6,9 @@
 // Imagens: public/quiz-zelda/link-<id>.webp (ver
 // scripts/convert-qual-link-images.mjs).
 
-export type LinkId =
-  | 'nes'
-  | 'alttp'
-  | 'la'
-  | 'oot'
-  | 'mm'
-  | 'ww'
-  | 'fs'
-  | 'mc'
-  | 'tp'
-  | 'ss'
-  | 'albw'
-  | 'botw'
-  | 'totk';
+import type { LinkId } from './links.ts';
+
+export { LINK_ORDER, linkImage, cardImage, type LinkId } from './links.ts';
 
 export type LinkResult = {
   nome: string;
@@ -34,17 +23,6 @@ export type LinkResult = {
 
 export type QuizOption = { texto: string; principal: LinkId; secundario: LinkId };
 export type QuizQuestion = { pergunta: string; opcoes: QuizOption[] };
-
-export const LINK_ORDER: LinkId[] = ['nes', 'alttp', 'la', 'oot', 'mm', 'ww', 'fs', 'mc', 'tp', 'ss', 'albw', 'botw', 'totk'];
-
-export function linkImage(id: LinkId): string {
-  return `/quiz-zelda/link-${id}.webp`;
-}
-
-// Arte quadrada do card colecionável (Link sobre fundo de Hyrule).
-export function cardImage(id: LinkId): string {
-  return `/quiz-zelda/card-${id}.webp`;
-}
 
 export const LINKS: Record<LinkId, LinkResult> = {
   nes: {

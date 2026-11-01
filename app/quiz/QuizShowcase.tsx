@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { Item } from '../CatalogClient';
 import { fallbackToOriginal, imageSrcSet } from '@/lib/imageVariants';
-import { eligibleItems, variedCovers } from './gameQuiz';
+import { eligibleItems, variedCovers } from './covers';
 import './quiz.css';
 
 const GameQuizModal = dynamic(() => import('./GameQuizModal'), { ssr: false });
@@ -42,7 +42,7 @@ export default function QuizShowcase({
   return (
     <>
       <div className={`quiz-showcase quiz-showcase-${variant}`}>
-        <div className="quiz-showcase-belt" aria-hidden style={{ opacity: shuffled ? 1 : 0, transition: 'opacity 0.4s ease' }}>
+        <div className="quiz-showcase-belt" aria-hidden data-loader-skip style={{ opacity: shuffled ? 1 : 0, transition: 'opacity 0.4s ease' }}>
           <div className="quiz-showcase-belt-track">
             {[...covers, ...covers].map((it, i) => (
               // eslint-disable-next-line @next/next/no-img-element

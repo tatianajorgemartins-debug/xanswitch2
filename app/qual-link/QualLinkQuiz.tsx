@@ -296,7 +296,9 @@ export default function QualLinkQuiz({
         <div className="ql-frame">
           {screen === 'intro' && (
             <div className="ql-intro">
-              <p className="ql-seal">Quiz Zelda · XAN Switch</p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className="ql-logo ql-in" src="/quiz-zelda/logo-xan.webp" alt="Xan Switch" width={150} height={62} />
+              <p className="ql-seal">Quiz de personalidade</p>
               <h1 className="ql-title" tabIndex={-1} data-autofocus aria-label="Qual Link é você?">
                 <Words text="Qual Link é você?" highlight="Link" />
               </h1>
@@ -331,12 +333,9 @@ export default function QualLinkQuiz({
               <span className="ql-bignum" aria-hidden="true">
                 {pad(index + 1)}
               </span>
-              <div className="ql-question-head">
-                <p className="ql-seal">Pergunta {pad(index + 1)}</p>
-                <span className="ql-count">
-                  {index + 1}/{PERGUNTAS.length}
-                </span>
-              </div>
+              <p className="ql-seal ql-seal-lines">
+                Pergunta {pad(index + 1)} · {index + 1}/{PERGUNTAS.length}
+              </p>
               <div
                 className="ql-progress"
                 role="progressbar"

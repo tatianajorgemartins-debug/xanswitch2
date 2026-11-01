@@ -6,9 +6,9 @@
 // Os Links do banner vão se revezando, começando sempre pelos mesmos (pra
 // servidor e navegador desenharem igual) e trocando depois de abrir.
 import { useEffect, useState } from 'react';
-import { LINK_ORDER, linkImage } from './quizData.ts';
-import { QL_FONT_CLASSES } from './fonts.ts';
-import './qual-link.css';
+import { LINK_ORDER, linkImage } from './links.ts';
+import { cinzel } from './fonts.ts';
+import './qual-link-showcase.css';
 
 const ROTATE_MS = 3200;
 
@@ -36,7 +36,7 @@ export default function QualLinkShowcase({
   return (
     <button
       type="button"
-      className={`ql-showcase ql-showcase-${variant} ${QL_FONT_CLASSES}`}
+      className={`ql-showcase ql-showcase-${variant} ${cinzel.variable}`}
       onClick={onOpen}
       aria-label="Fazer o quiz Qual Link é você? e ganhar um card colecionável"
     >
@@ -48,7 +48,7 @@ export default function QualLinkShowcase({
         <p className="ql-showcase-sub">10 perguntas, 13 heróis. Descubra o seu.</p>
         <span className="ql-showcase-cta">Começar a jornada</span>
       </div>
-      <div className="ql-showcase-art" aria-hidden="true">
+      <div className="ql-showcase-art" aria-hidden="true" data-loader-skip>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img key={`l-${left}`} className="is-left" src={linkImage(left)} alt="" loading="lazy" decoding="async" />
         {/* eslint-disable-next-line @next/next/no-img-element */}

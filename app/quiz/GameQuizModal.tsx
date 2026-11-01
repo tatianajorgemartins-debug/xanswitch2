@@ -11,6 +11,7 @@ import { createPortal } from 'react-dom';
 import type { Item } from '../CatalogClient';
 import { fallbackToOriginal, imageSrcSet } from '@/lib/imageVariants';
 import { installmentsLabel } from '@/lib/installments';
+import './quiz-modal.css';
 import {
   buildReel,
   pickQuestions,
