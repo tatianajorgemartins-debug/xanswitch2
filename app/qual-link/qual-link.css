@@ -75,23 +75,49 @@
   border-radius: 4px;
   background: linear-gradient(180deg, rgba(15, 32, 24, 0.6), rgba(7, 17, 12, 0.85));
 }
+/* A borda de cima e de baixo é desenhada pelos ::before/::after, com um vão
+   no meio onde fica o losango — sem um fundo sólido tampando a linha (que
+   apareceria como um quadrado escuro sobre o degradê). */
+.ql-frame {
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+}
 .ql-frame::before,
 .ql-frame::after {
-  content: '◆';
+  content: '';
   position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 0 10px;
-  background: var(--ql-bg);
-  color: var(--ql-gold);
-  font-size: 12px;
-  line-height: 1;
+  left: -1.5px;
+  right: -1.5px;
+  height: 12px;
+  background:
+    linear-gradient(
+        90deg,
+        var(--ql-line) calc(50% - 16px),
+        transparent calc(50% - 16px),
+        transparent calc(50% + 16px),
+        var(--ql-line) calc(50% + 16px)
+      )
+      center / 100% 1.5px no-repeat;
 }
 .ql-frame::before {
   top: -7px;
 }
 .ql-frame::after {
   bottom: -7px;
+}
+.ql-frame > .ql-diamond {
+  position: absolute;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  background: var(--ql-gold);
+  transform: translateX(-50%) rotate(45deg);
+}
+.ql-frame > .ql-diamond.is-top {
+  top: -5px;
+}
+.ql-frame > .ql-diamond.is-bottom {
+  bottom: -5px;
 }
 
 .ql-logo {

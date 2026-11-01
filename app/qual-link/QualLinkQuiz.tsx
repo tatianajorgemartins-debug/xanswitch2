@@ -294,6 +294,8 @@ export default function QualLinkQuiz({
         </button>
 
         <div className="ql-frame">
+          <span className="ql-diamond is-top" aria-hidden="true" />
+          <span className="ql-diamond is-bottom" aria-hidden="true" />
           {screen === 'intro' && (
             <div className="ql-intro">
               {/* eslint-disable-next-line @next/next/no-img-element */}

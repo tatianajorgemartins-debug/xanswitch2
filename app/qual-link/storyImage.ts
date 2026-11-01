@@ -108,21 +108,35 @@ export async function renderStoryImage(resultId: LinkId): Promise<Blob> {
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, W, H);
 
-  // Moldura dupla dourada, com losangos no meio de cima e de baixo.
+  // Moldura dupla dourada. A linha de fora tem um vão no meio de cima e de
+  // baixo, onde fica o losango (sem "tampar" a linha com um quadrado, que
+  // não combinaria com o degradê do fundo).
+  const gap = 26;
   ctx.strokeStyle = 'rgba(214,177,94,.55)';
   ctx.lineWidth = 3;
-  ctx.strokeRect(40, 40, W - 80, H - 80);
+  ctx.beginPath();
+  ctx.moveTo(W / 2 - gap, 40);
+  ctx.lineTo(40, 40);
+  ctx.lineTo(40, H - 40);
+  ctx.lineTo(W / 2 - gap, H - 40);
+  ctx.moveTo(W / 2 + gap, H - 40);
+  ctx.lineTo(W - 40, H - 40);
+  ctx.lineTo(W - 40, 40);
+  ctx.lineTo(W / 2 + gap, 40);
+  ctx.stroke();
   ctx.strokeStyle = 'rgba(214,177,94,.28)';
   ctx.lineWidth = 1.5;
   ctx.strokeRect(58, 58, W - 116, H - 116);
-  ctx.fillStyle = '#07110c';
-  ctx.fillRect(W / 2 - 26, 30, 52, 22);
-  ctx.fillRect(W / 2 - 26, H - 52, 52, 22);
-  ctx.font = `700 26px ${display}`;
-  ctx.textAlign = 'center';
   ctx.fillStyle = GOLD_SOFT;
-  ctx.fillText('◆', W / 2, 51);
-  ctx.fillText('◆', W / 2, H - 31);
+  for (const cy of [40, H - 40]) {
+    ctx.beginPath();
+    ctx.moveTo(W / 2, cy - 11);
+    ctx.lineTo(W / 2 + 11, cy);
+    ctx.lineTo(W / 2, cy + 11);
+    ctx.lineTo(W / 2 - 11, cy);
+    ctx.closePath();
+    ctx.fill();
+  }
 
   const [logo, art] = await Promise.all([
     loadImage('/quiz-zelda/logo-xan.webp').catch(() => null),
