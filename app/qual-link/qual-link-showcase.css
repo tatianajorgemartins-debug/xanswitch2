@@ -142,9 +142,11 @@
     gap: 10px;
     height: auto;
   }
+  /* Altura acompanha o conteúdo: com fonte maior ou tela mais estreita
+     (ex.: Galaxy A56), o texto não encosta na moldura. */
   .promo-section-side-compact .ql-showcase {
-    height: 160px;
-    min-height: 0;
+    height: auto;
+    min-height: 172px;
     flex: none;
   }
   .promo-section-side-compact .quiz-showcase {
@@ -152,6 +154,20 @@
     flex: none;
   }
   .ql-showcase-content {
-    padding-left: 16px;
+    padding: 22px 0 24px 20px;
+  }
+  .ql-showcase-seal {
+    margin-bottom: 8px;
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
+  }
+  .ql-showcase-title {
+    margin-bottom: 8px;
+  }
+  .ql-showcase-sub {
+    margin-bottom: 14px;
+  }
+  .ql-showcase-art {
+    width: 40%;
   }
 }
