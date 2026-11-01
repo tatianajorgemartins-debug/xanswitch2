@@ -164,9 +164,32 @@ export async function renderStoryImage(resultId: LinkId): Promise<Blob> {
   ctx.font = quoteFont;
   const quoteLines = wrap(ctx, link.frase, W - PAD * 2 - 20).slice(0, 2);
 
+  // Traços em pílulas com contorno dourado, em uma ou duas linhas.
+  const chipFont = `700 26px ${display}`;
+  const chipH = 58;
+  const chipGap = 12;
+  ctx.font = chipFont;
+  setLetterSpacing(ctx, '3px');
+  const chipWidths = link.tracos.map((t) => ctx.measureText(t.toUpperCase()).width + 56);
+  setLetterSpacing(ctx, '0px');
+  const chipRows: number[][] = [];
+  let rowWidth = 0;
+  chipWidths.forEach((w, i) => {
+    const row = chipRows[chipRows.length - 1];
+    if (row && rowWidth + chipGap + w <= W - PAD * 2) {
+      row.push(i);
+      rowWidth += chipGap + w;
+    } else {
+      chipRows.push([i]);
+      rowWidth = w;
+    }
+  });
+
   const ctaY = H - 330;
-  // Mesmas medidas usadas pra escrever o texto mais abaixo.
-  const textHeight = nameSize + (nameLines.length - 1) * nameSize * 1.05 + quoteLines.length * 56 + 206;
+  // Mesmas medidas usadas pra escrever o texto mais abaixo: "Meu Link é",
+  // nome, jogo/ano, arquétipo, traços e frase.
+  const textHeight =
+    nameSize + (nameLines.length - 1) * nameSize * 1.05 + chipRows.length * (chipH + chipGap) + quoteLines.length * 56 + 254;
   const textTop = ctaY - 70 - textHeight;
 
   // Palco: "LINK" gigante vazado atrás, luz dourada e sombra no chão.
@@ -218,7 +241,7 @@ export async function renderStoryImage(resultId: LinkId): Promise<Blob> {
   ctx.drawImage(art, (W - aw) / 2, floorY + 14 - ah, aw, ah);
   ctx.restore();
 
-  // Texto: "Meu Link é", nome, arquétipo e frase.
+  // Texto: "Meu Link é", nome, jogo/ano, arquétipo, traços e frase.
   let y = textTop + 40;
   ctx.textAlign = 'center';
   ctx.font = `italic 600 44px ${serif}`;
@@ -235,8 +258,16 @@ export async function renderStoryImage(resultId: LinkId): Promise<Blob> {
     y += nameSize * 1.05;
   }
 
-  // Arquétipo em pílula dourada, logo abaixo da última linha do nome.
-  y += 50 - nameSize * 1.05;
+  // Jogo e ano, logo abaixo da última linha do nome.
+  y += 58 - nameSize * 1.05;
+  ctx.font = `700 30px ${display}`;
+  setLetterSpacing(ctx, '4px');
+  ctx.fillStyle = MUTED;
+  ctx.fillText(link.jogo.toUpperCase(), W / 2, y);
+  setLetterSpacing(ctx, '0px');
+
+  // Arquétipo em pílula dourada.
+  y += 34;
   ctx.font = `900 34px ${display}`;
   setLetterSpacing(ctx, '2px');
   const label = link.arquetipo.toUpperCase();
@@ -256,7 +287,31 @@ export async function renderStoryImage(resultId: LinkId): Promise<Blob> {
   ctx.fillText(label, W / 2, y + 40);
   ctx.textBaseline = 'alphabetic';
   setLetterSpacing(ctx, '0px');
-  y += 76 + 66;
+  y += 76 + 22;
+
+  // Traços.
+  ctx.font = chipFont;
+  setLetterSpacing(ctx, '3px');
+  ctx.textBaseline = 'middle';
+  for (const row of chipRows) {
+    const total = row.reduce((sum, i) => sum + chipWidths[i], 0) + chipGap * (row.length - 1);
+    let x = (W - total) / 2;
+    for (const i of row) {
+      roundRect(ctx, x, y, chipWidths[i], chipH, chipH / 2);
+      ctx.fillStyle = 'rgba(15,32,24,.75)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(214,177,94,.45)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = GOLD_SOFT;
+      ctx.fillText(link.tracos[i].toUpperCase(), x + chipWidths[i] / 2, y + chipH / 2 + 2);
+      x += chipWidths[i] + chipGap;
+    }
+    y += chipH + chipGap;
+  }
+  ctx.textBaseline = 'alphabetic';
+  setLetterSpacing(ctx, '0px');
+  y += 62 - chipGap;
 
   ctx.font = quoteFont;
   ctx.fillStyle = GOLD;
@@ -289,4 +344,5 @@ export async function renderStoryImage(resultId: LinkId): Promise<Blob> {
     canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Falha ao gerar a imagem.'))), 'image/png')
   );
 }
+
 

@@ -287,7 +287,9 @@ export default function CatalogClient({
 
   // Quiz "Qual Link é você?" (qual-link/QualLinkQuiz.tsx). resume: voltando
   // do login pedido pelo próprio quiz — reabre direto no resultado.
-  const [qualLink, setQualLink] = useState<{ resume: boolean } | null>(initialQualLink ? { resume: false } : null);
+  const [qualLink, setQualLink] = useState<{ resume: boolean; answers?: number[] | null } | null>(
+    initialQualLink ? { resume: false } : null
+  );
   useEffect(() => {
     try {
       if (sessionStorage.getItem(QUAL_LINK_LOGIN_FLAG)) {
@@ -1106,6 +1108,7 @@ export default function CatalogClient({
         <QualLinkQuiz
           user={user}
           resumePending={qualLink.resume}
+          initialAnswers={qualLink.answers ?? null}
           onClose={() => setQualLink(null)}
           onRequestLogin={() => {
             try {
@@ -1127,6 +1130,10 @@ export default function CatalogClient({
         onRemoveFromWishlist={toggleWishlist}
         onBulkPurchase={setBulkPurchaseItems}
         onInstagramSaved={setInstagramHandle}
+        onOpenQuiz={(answers) => {
+          setAccountModalOpen(false);
+          setQualLink({ resume: false, answers });
+        }}
       />
 
       {/* Compra em lote de vários jogos da lista de desejos de uma vez —

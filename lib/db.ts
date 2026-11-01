@@ -753,3 +753,24 @@ export async function getQuizCardsByEmail(email: string): Promise<QuizCard[]> {
   `;
   return rows as QuizCard[];
 }
+
+// --- Histórico dos quizzes (ver db/migration-quiz-results.sql) ---
+
+export type QuizResultRow = { id: number; quiz: string; result_id: string; answers: number[]; created_at: Date };
+
+export async function saveQuizResult(quiz: string, email: string, resultId: string, answers: number[]): Promise<void> {
+  await getSql()`
+    INSERT INTO quiz_results (quiz, customer_email, result_id, answers)
+    VALUES (${quiz}, ${email.toLowerCase()}, ${resultId}, ${JSON.stringify(answers)}::jsonb)
+  `;
+}
+
+export async function getQuizResultsByEmail(email: string, limit = 50): Promise<QuizResultRow[]> {
+  const rows = await getSql()`
+    SELECT id, quiz, result_id, answers, created_at FROM quiz_results
+    WHERE customer_email = ${email.toLowerCase()}
+    ORDER BY created_at DESC
+    LIMIT ${limit}
+  `;
+  return rows as QuizResultRow[];
+}

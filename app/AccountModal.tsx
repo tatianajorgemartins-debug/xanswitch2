@@ -22,6 +22,7 @@ import {
 } from '@/lib/wishlist';
 import { getMyCardsAction, type CardSummary } from './cardActions';
 import { CollectibleCard, DownloadCardButton } from './CollectibleCard';
+import QuizHistory from './qual-link/QuizHistory';
 import { fallbackToOriginal, IMAGE_SIZES, imageSrcSet } from '@/lib/imageVariants';
 
 const WISHLIST_PREVIEW_LIMIT = 5;
@@ -34,7 +35,8 @@ export default function AccountModal({
   onOpenGame,
   onRemoveFromWishlist,
   onBulkPurchase,
-  onInstagramSaved
+  onInstagramSaved,
+  onOpenQuiz
 }: {
   open: boolean;
   onClose: () => void;
@@ -47,6 +49,9 @@ export default function AccountModal({
   // texto do botão de conta no cabeçalho na hora, sem esperar reabrir o
   // popup.
   onInstagramSaved: (handle: string) => void;
+  // Abre o quiz "Qual Link é você?" — num resultado salvo (respostas) ou do
+  // começo (null).
+  onOpenQuiz: (answers: number[] | null) => void;
 }) {
   // Fecha com Esc, trava o scroll de fundo — mesmo comportamento de
   // qualquer outro modal do site.
@@ -99,6 +104,7 @@ export default function AccountModal({
                 onBulkPurchase(items);
               }}
               onInstagramSaved={onInstagramSaved}
+              onOpenQuiz={onOpenQuiz}
             />
           ) : (
             <LoginForm />
@@ -350,7 +356,8 @@ function LoggedInView({
   onOpenGame,
   onRemoveFromWishlist,
   onBulkPurchase,
-  onInstagramSaved
+  onInstagramSaved,
+  onOpenQuiz
 }: {
   user: User;
   wishlistItems: Item[];
@@ -358,6 +365,7 @@ function LoggedInView({
   onRemoveFromWishlist: (gameId: number) => void;
   onBulkPurchase: (items: Item[]) => void;
   onInstagramSaved: (handle: string) => void;
+  onOpenQuiz: (answers: number[] | null) => void;
 }) {
   const [instagram, setInstagram] = useState('');
   const [loadingInstagram, setLoadingInstagram] = useState(true);
@@ -613,6 +621,8 @@ function LoggedInView({
           )}
         </div>
       )}
+
+      <QuizHistory onOpen={onOpenQuiz} />
 
       <form onSubmit={handleSaveInstagram} className="account-instagram-field">
         <label htmlFor="account-instagram" className="account-section-label">

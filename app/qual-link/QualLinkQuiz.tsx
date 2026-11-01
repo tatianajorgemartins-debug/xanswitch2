@@ -16,7 +16,7 @@ import { getAccessToken } from '@/lib/wishlist';
 import { CollectibleCard } from '../CollectibleCard';
 import { LINKS, LINK_ORDER, PERGUNTAS, cardImage, linkImage, type LinkId } from './quizData.ts';
 import { affinity, shuffledOrder, winner, type Answers } from './quizLogic.ts';
-import { claimQuizCardAction, type QuizCardResult } from './quizCardActions';
+import { claimQuizCardAction, saveQuizResultAction, type QuizCardResult } from './quizCardActions';
 import { renderStoryImage } from './storyImage.ts';
 import { QL_FONT_CLASSES } from './fonts.ts';
 import { clearQualLinkLoginFlag } from './loginFlag';
@@ -103,18 +103,25 @@ function pad(n: number): string {
 export default function QualLinkQuiz({
   user,
   resumePending,
+  initialAnswers = null,
   onClose,
   onRequestLogin
 }: {
   user: User | null;
   // Voltando do login: abre direto no resultado guardado e pega o card.
   resumePending: boolean;
+  // Um resultado salvo (Minha conta → Meus resultados de quiz): abre direto
+  // nele, sem salvar de novo no histórico.
+  initialAnswers?: number[] | null;
   onClose: () => void;
   onRequestLogin: () => void;
 }) {
-  const [screen, setScreen] = useState<Screen>('intro');
+  const [screen, setScreen] = useState<Screen>(initialAnswers ? 'result' : 'intro');
   const [index, setIndex] = useState(0);
-  const [answers, setAnswers] = useState<(number | null)[]>(() => PERGUNTAS.map(() => null));
+  const [answers, setAnswers] = useState<(number | null)[]>(() => initialAnswers ?? PERGUNTAS.map(() => null));
+  // Jogada terminada que ainda não foi pro histórico da conta (vai assim que
+  // houver alguém logado — inclusive quem entra na conta depois de jogar).
+  const [needsSave, setNeedsSave] = useState(false);
   // Ordem embaralhada das opções de cada pergunta (sorteada a cada jogada).
   const [orders, setOrders] = useState<number[][]>(() => PERGUNTAS.map((q) => q.opcoes.map((_, i) => i)));
   const [picked, setPicked] = useState<number | null>(null);
@@ -145,8 +152,18 @@ export default function QualLinkQuiz({
     if (pending) {
       setAnswers(pending);
       setScreen('result');
+      setNeedsSave(true);
     }
   }, [resumePending]);
+
+  // Histórico: guarda a jogada na conta de quem está logado.
+  useEffect(() => {
+    if (!needsSave || !user || !finalAnswers) return;
+    setNeedsSave(false);
+    getAccessToken()
+      .then((token) => saveQuizResultAction(token, finalAnswers))
+      .catch(() => {});
+  }, [needsSave, user, finalAnswers]);
 
   // Trava a rolagem da página por trás e fecha com Esc.
   useEffect(() => {
@@ -217,6 +234,7 @@ export default function QualLinkQuiz({
       } else {
         const list = next as Answers;
         savePending(list);
+        setNeedsSave(true);
         track('quiz_complete', { result: winner(list) });
         setScreen('result');
       }
