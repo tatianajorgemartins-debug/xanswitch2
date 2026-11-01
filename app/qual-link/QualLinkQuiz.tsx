@@ -25,13 +25,14 @@ import './qual-link.css';
 export const PENDING_KEY = 'xan-qual-link-pending';
 const ZELDA_URL = '/franquia/Legend%20Of%20Zelda';
 const SITE = 'xanswitch.com.br';
+const QUIZ_URL = `https://www.${SITE}/qual-link`;
 const ADVANCE_MS = 250;
 
 type Screen = 'intro' | 'question' | 'result';
 
 // Eventos pro Google Analytics / Meta Pixel — o site ainda não tem nenhum
 // dos dois instalado; quando tiver, os eventos já saem sozinhos daqui.
-function track(event: 'quiz_start' | 'quiz_complete' | 'quiz_cta_click', params: Record<string, string> = {}) {
+function track(event: 'quiz_start' | 'quiz_complete' | 'quiz_cta_click' | 'quiz_share', params: Record<string, string> = {}) {
   const w = window as unknown as {
     gtag?: (...args: unknown[]) => void;
     fbq?: (...args: unknown[]) => void;
@@ -246,13 +247,34 @@ export default function QualLinkQuiz({
   async function share(id: LinkId) {
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Qual Link é você?', text: shareText(id), url: `https://www.${SITE}/qual-link` });
+        await navigator.share({ title: 'Qual Link é você?', text: shareText(id), url: QUIZ_URL });
         return;
       } catch (err) {
         if ((err as Error).name === 'AbortError') return;
       }
     }
     copyResult(id);
+  }
+
+  // Convidar alguém pro quiz, a qualquer momento (abertura e ícone do topo):
+  // no celular abre o compartilhar do sistema; sem ele, copia o link.
+  async function shareQuiz() {
+    track('quiz_share');
+    const text = 'Descobre qual Link de Zelda é você nesse quiz da @xan.switch! 10 perguntas, 13 heróis.';
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'Qual Link é você?', text, url: QUIZ_URL });
+        return;
+      } catch (err) {
+        if ((err as Error).name === 'AbortError') return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(`${text} ${QUIZ_URL}`);
+      showToast('Link do quiz copiado!');
+    } catch {
+      showToast(QUIZ_URL);
+    }
   }
 
   async function saveImage(id: LinkId) {
@@ -287,6 +309,14 @@ export default function QualLinkQuiz({
   return (
     <div className={`ql-overlay ${QL_FONT_CLASSES}`} role="dialog" aria-modal="true" aria-label="Quiz Qual Link é você?">
       <div className="ql-scroll" ref={rootRef}>
+        <button type="button" className="ql-share-top" onClick={shareQuiz} aria-label="Compartilhar o quiz">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={18} height={18} aria-hidden="true">
+            <circle cx="18" cy="5" r="3" />
+            <circle cx="6" cy="12" r="3" />
+            <circle cx="18" cy="19" r="3" />
+            <path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" strokeLinecap="round" />
+          </svg>
+        </button>
         <button type="button" className="ql-close" onClick={handleClose} aria-label="Fechar o quiz">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={18} height={18} aria-hidden="true">
             <path d="M5 5l14 14M19 5L5 19" strokeLinecap="round" />
@@ -318,8 +348,17 @@ export default function QualLinkQuiz({
               <button type="button" className="ql-btn ql-in" style={cascade(0, 1000)} onClick={start}>
                 Começar a jornada
               </button>
-              <p className="ql-meta ql-in" style={cascade(1, 1000)}>10 perguntas · 13 resultados · ~3 minutos</p>
-              <div className="ql-reward-hint ql-in" style={cascade(2, 1000)}>
+              <button type="button" className="ql-btn is-ghost ql-share-quiz ql-in" style={cascade(1, 1000)} onClick={shareQuiz}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={18} height={18} aria-hidden="true">
+                  <circle cx="18" cy="5" r="3" />
+                  <circle cx="6" cy="12" r="3" />
+                  <circle cx="18" cy="19" r="3" />
+                  <path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" strokeLinecap="round" />
+                </svg>
+                Compartilhar o quiz
+              </button>
+              <p className="ql-meta ql-in" style={cascade(2, 1000)}>10 perguntas · 13 resultados · ~3 minutos</p>
+              <div className="ql-reward-hint ql-in" style={cascade(3, 1000)}>
                 <span className="ql-reward-hint-icon" aria-hidden="true">
                   +1
                 </span>

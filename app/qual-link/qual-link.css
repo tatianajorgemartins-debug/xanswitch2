@@ -892,3 +892,35 @@ body:has(.ql-overlay) .back-to-top {
     display: none;
   }
 }
+
+/* Compartilhar o quiz: botão na abertura e ícone fixo no topo (ao lado do
+   fechar), disponível do começo ao fim. */
+.ql-share-quiz {
+  gap: 10px;
+  margin-top: 14px;
+}
+.ql-share-top {
+  position: fixed;
+  top: 12px;
+  right: 64px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--ql-line);
+  border-radius: 999px;
+  background: rgba(7, 17, 12, 0.85);
+  color: var(--ql-gold);
+  cursor: pointer;
+}
+.ql-share-top:hover,
+.ql-close:hover {
+  border-color: rgba(242, 205, 115, 0.6);
+}
+/* Títulos recebem o foco só pra leitores de tela (tabindex -1) — sem a
+   moldura de foco, que aparecia em volta do título depois de um clique. */
+.ql-overlay [tabindex='-1']:focus,
+.ql-overlay [tabindex='-1']:focus-visible {
+  outline: none;
+}
