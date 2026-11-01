@@ -121,6 +121,9 @@ export default function QualLinkQuiz({
   const [claim, setClaim] = useState<QuizCardResult | { status: 'idle' | 'claiming' }>({ status: 'idle' });
   const [toast, setToast] = useState<string | null>(null);
   const [savingImage, setSavingImage] = useState(false);
+  // Imagem dos stories mostrada na tela (navegador do Instagram/Facebook,
+  // que não deixa baixar arquivo) — a pessoa toca e segura pra salvar.
+  const [storyPreview, setStoryPreview] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const advanceTimer = useRef<number | null>(null);
 
@@ -281,19 +284,29 @@ export default function QualLinkQuiz({
     setSavingImage(true);
     try {
       const blob = await renderStoryImage(id);
-      const file = new File([blob], `qual-link-${id}.png`, { type: 'image/png' });
-      // No celular, compartilhar a imagem direto é mais prático que baixar.
-      const touch = window.matchMedia('(pointer: coarse)').matches;
-      if (touch && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'Qual Link é você?' }).catch(() => {});
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = file.name;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 2000);
+      // Navegador de dentro do Instagram/Facebook bloqueia downloads: lá a
+      // imagem aparece na tela pra pessoa tocar e segurar pra salvar (como
+      // "data:", que o "salvar imagem" desses navegadores aceita melhor).
+      if (/Instagram|FBAN|FBAV|FB_IAB/i.test(navigator.userAgent)) {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(blob);
+        });
+        setStoryPreview(dataUrl);
+        return;
       }
+      const url = URL.createObjectURL(blob);
+      // Nos outros, o download começa direto (sem abrir o compartilhar).
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `qual-link-${id}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      showToast('Imagem baixada!');
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
     } catch {
       showToast('Não foi possível gerar a imagem.');
     } finally {
@@ -552,6 +565,20 @@ export default function QualLinkQuiz({
           )}
         </div>
       </div>
+      {storyPreview && (
+        <div className="ql-preview" role="dialog" aria-modal="true" aria-label="Imagem pros stories">
+          <p className="ql-preview-hint">Toque e segure a imagem pra salvar</p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={storyPreview} alt="Seu resultado do quiz Qual Link é você?" />
+          <button
+            type="button"
+            className="ql-btn is-ghost"
+            onClick={() => setStoryPreview(null)}
+          >
+            Fechar
+          </button>
+        </div>
+      )}
       {toast && (
         <p className="ql-toast" role="status">
           {toast}

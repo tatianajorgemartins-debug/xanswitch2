@@ -924,3 +924,39 @@ body:has(.ql-overlay) .back-to-top {
 .ql-overlay [tabindex='-1']:focus-visible {
   outline: none;
 }
+
+/* Imagem dos stories na tela (navegador do Instagram/Facebook, que bloqueia
+   downloads): ocupa a tela, com a dica de tocar e segurar pra salvar. */
+.ql-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 20px;
+  background: #050c08;
+}
+.ql-preview img {
+  max-width: 100%;
+  max-height: calc(100% - 140px);
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  -webkit-touch-callout: default;
+}
+.ql-preview-hint {
+  margin: 0;
+  color: var(--ql-gold-2);
+  font-family: var(--ql-title);
+  --font: var(--ql-title);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.ql-preview .ql-btn {
+  max-width: 220px;
+}
