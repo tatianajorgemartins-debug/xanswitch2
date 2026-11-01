@@ -15,10 +15,12 @@ import {
   createDiscountCredit,
   getAvailableDiscountCredit,
   getSiteSetting,
+  getQuizCardsByEmail,
   LOYALTY_DISCOUNT_AMOUNT_KEY,
   type Order
 } from '@/lib/db';
 import { verifyAccessToken } from '@/lib/supabaseAuthServer';
+import { LINKS, cardImage, type LinkId } from './qual-link/quizData.ts';
 
 const POINTS_PER_DISCOUNT = 5;
 const DEFAULT_DISCOUNT_AMOUNT = 20;
@@ -80,6 +82,21 @@ export async function getMyCardsAction(accessToken: string): Promise<MyCardsResu
 
   const orders = await getOrdersByEmail(email);
   const cards = orders.filter((o) => o.card_points_earned > 0).map(toCardSummary);
+  // Cards dos quizzes (o ponto deles já está nos ajustes, então entram como
+  // confirmados). Sem a tabela ainda (migração não rodada), só não aparecem.
+  const quizCards = await getQuizCardsByEmail(email).catch(() => []);
+  quizCards.forEach((q, i) => {
+    const link = LINKS[q.result_id as LinkId];
+    if (!link) return;
+    cards.push({
+      orderId: -1 - i,
+      gameName: `Qual Link é você? · ${link.nome}`,
+      imageUrl: cardImage(q.result_id as LinkId),
+      points: 1,
+      confirmed: true,
+      purchasedAt: new Date(q.created_at).toString()
+    });
+  });
   const pendingPoints = orders
     .filter((o) => o.card_points_earned > 0 && !o.card_points_confirmed)
     .reduce((sum, o) => sum + o.card_points_earned, 0);

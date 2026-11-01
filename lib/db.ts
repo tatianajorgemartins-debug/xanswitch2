@@ -721,3 +721,35 @@ export async function setPrivateOfferActive(token: string, active: boolean): Pro
 export async function incrementPrivateOfferUse(token: string): Promise<void> {
   await getSql()`UPDATE private_offers SET uses = uses + 1 WHERE token = ${token}`;
 }
+
+// --- Cards dos quizzes (ver db/migration-quiz-cards.sql) ---
+
+export type QuizCard = { quiz: string; customer_email: string; result_id: string; created_at: Date };
+
+// Dá o card do quiz pra essa conta, se ela ainda não tiver um. Devolve
+// inserted: false (com o card que já existia) quando já tinha — é a chave
+// primária (quiz, e-mail) que garante um por conta, mesmo com dois cliques
+// ao mesmo tempo.
+export async function claimQuizCard(
+  quiz: string,
+  email: string,
+  resultId: string
+): Promise<{ inserted: boolean; card: QuizCard }> {
+  const lower = email.toLowerCase();
+  const inserted = await getSql()`
+    INSERT INTO quiz_cards (quiz, customer_email, result_id)
+    VALUES (${quiz}, ${lower}, ${resultId})
+    ON CONFLICT (quiz, customer_email) DO NOTHING
+    RETURNING *
+  `;
+  if (inserted[0]) return { inserted: true, card: inserted[0] as QuizCard };
+  const existing = await getSql()`SELECT * FROM quiz_cards WHERE quiz = ${quiz} AND customer_email = ${lower}`;
+  return { inserted: false, card: existing[0] as QuizCard };
+}
+
+export async function getQuizCardsByEmail(email: string): Promise<QuizCard[]> {
+  const rows = await getSql()`
+    SELECT * FROM quiz_cards WHERE customer_email = ${email.toLowerCase()} ORDER BY created_at
+  `;
+  return rows as QuizCard[];
+}

@@ -25,6 +25,10 @@ import { useDesignVariant } from './DesignVariant';
 import { scrollToResults } from './scrollToResults';
 import { fallbackToOriginal, IMAGE_SIZES, imageSrcSet } from '@/lib/imageVariants';
 import { afterPageLoad } from '@/lib/afterPageLoad';
+import { QUAL_LINK_LOGIN_FLAG } from './qual-link/loginFlag';
+
+// O quiz "Qual Link é você?" só é baixado quando alguém abre.
+const QualLinkQuiz = dynamic(() => import('./qual-link/QualLinkQuiz'), { ssr: false });
 
 // Os popups só baixam depois que o catálogo já está na tela (logo em
 // seguida, em segundo plano — ver preloadModals): assim não atrasam a
@@ -160,7 +164,8 @@ export default function CatalogClient({
   reviewsBannerUrl,
   featuredFranchise,
   initialGameId,
-  initialFranchiseFilter
+  initialFranchiseFilter,
+  initialQualLink
 }: {
   items: Item[];
   featuredItems: Item[];
@@ -191,6 +196,8 @@ export default function CatalogClient({
   // franquia (app/franquia/[name]/page.tsx) — já filtra o catálogo pra essa
   // franquia ao carregar, sem precisar clicar em nada.
   initialFranchiseFilter?: string;
+  // /qual-link: abre o quiz "Qual Link é você?" assim que a página carrega.
+  initialQualLink?: boolean;
 }) {
   const isRedesign = useDesignVariant() === 'redesign';
   const [query, setQuery] = useState('');
@@ -277,6 +284,20 @@ export default function CatalogClient({
   const [user, setUser] = useState<User | null>(null);
   const [wishlistIds, setWishlistIds] = useState<Set<number>>(new Set());
   const [accountModalOpen, setAccountModalOpen] = useState(false);
+
+  // Quiz "Qual Link é você?" (qual-link/QualLinkQuiz.tsx). resume: voltando
+  // do login pedido pelo próprio quiz — reabre direto no resultado.
+  const [qualLink, setQualLink] = useState<{ resume: boolean } | null>(initialQualLink ? { resume: false } : null);
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(QUAL_LINK_LOGIN_FLAG)) {
+        sessionStorage.removeItem(QUAL_LINK_LOGIN_FLAG);
+        setQualLink({ resume: true });
+      }
+    } catch {
+      // sem sessionStorage: só não reabre sozinho
+    }
+  }, []);
   // "Minha conta" no catálogo de produtos físicos leva pra cá com ?conta=1
   // (ver accountHref em PhysicalCatalogClient.tsx) — abre o popup sozinho e
   // limpa o endereço.
@@ -919,6 +940,7 @@ export default function CatalogClient({
         allItems={items}
         onViewGame={handleViewGame}
         onOpenGame={openGame}
+        onOpenQualLink={() => setQualLink({ resume: false })}
       />
 
       {!isFiltering && <HomeReviews reviews={reviews} onSeeAll={() => setReviewsModalOpen(true)} />}
@@ -1080,6 +1102,22 @@ export default function CatalogClient({
 
       {/* Popup de login/conta — mesma lógica: só existe na tela quando
           aberto, fica por cima de tudo via position: fixed. */}
+      {qualLink && (
+        <QualLinkQuiz
+          user={user}
+          resumePending={qualLink.resume}
+          onClose={() => setQualLink(null)}
+          onRequestLogin={() => {
+            try {
+              sessionStorage.setItem(QUAL_LINK_LOGIN_FLAG, '1');
+            } catch {
+              // sem sessionStorage: o login por e-mail continua funcionando
+            }
+            setAccountModalOpen(true);
+          }}
+        />
+      )}
+
       <AccountModal
         open={accountModalOpen}
         onClose={() => setAccountModalOpen(false)}

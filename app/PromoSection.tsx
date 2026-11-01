@@ -2,13 +2,15 @@ import PromoCarousel, { type PromoSlide } from './PromoCarousel';
 import type { Item } from './CatalogClient';
 import { useDesignVariant } from './DesignVariant';
 import QuizShowcase from './quiz/QuizShowcase';
+import QualLinkShowcase from './qual-link/QualLinkShowcase';
 
 export default function PromoSection({
   featuredItems,
   mostWantedItems,
   allItems,
   onViewGame,
-  onOpenGame
+  onOpenGame,
+  onOpenQualLink
 }: {
   featuredItems: Item[];
   mostWantedItems: Item[];
@@ -16,13 +18,17 @@ export default function PromoSection({
   allItems: Item[];
   onViewGame: (name: string) => void;
   onOpenGame: (item: Item) => void;
+  // Abre o quiz "Qual Link é você?" (qual-link/QualLinkQuiz.tsx).
+  onOpenQualLink: () => void;
 }) {
   const isRedesign = useDesignVariant() === 'redesign';
   const hasFeatured = featuredItems.length > 0;
   // O mostruário do quiz ocupa o lugar que era dos banners rotativos
   // "Mais aguardados" (ver quiz/QuizShowcase.tsx).
   const hasQuiz = allItems.some((it) => !it.isUpcoming && it.imageUrl);
-  const hasSide = mostWantedItems.length > 0 || hasQuiz;
+  // O banner do "Qual Link é você?" fica no lugar do "Mais desejados"
+  // (os mais desejados continuam na vitrine própria, mais abaixo).
+  const hasSide = true;
   if (!hasFeatured && !hasSide) return null;
 
   const featuredSlides: PromoSlide[] = featuredItems.map((item) => ({
@@ -50,9 +56,7 @@ export default function PromoSection({
           {/* Computador/tablet: as duas categorias empilhadas, cada uma
               com seu próprio carrossel. */}
           <div className="promo-section-side promo-section-side-wide">
-            {mostWantedSlides.length > 0 && (
-              <PromoCarousel slides={mostWantedSlides} intervalMs={4000} size="small" showControls={false} />
-            )}
+            <QualLinkShowcase onOpen={onOpenQualLink} />
             {hasQuiz && <QuizShowcase items={allItems} onOpenGame={onOpenGame} />}
           </div>
           {/* Celular: no lugar do carrossel compacto, só o mostruário do
@@ -60,11 +64,12 @@ export default function PromoSection({
               abaixo. Sem o quiz (catálogo sem capas), volta pro carrossel. */}
           {hasQuiz ? (
             <div className="promo-section-side-compact has-quiz">
+              <QualLinkShowcase onOpen={onOpenQualLink} variant="compact" />
               <QuizShowcase items={allItems} onOpenGame={onOpenGame} variant="compact" />
             </div>
           ) : (
             <div className="promo-section-side-compact">
-              <PromoCarousel slides={mostWantedSlides} intervalMs={3500} size="small" showControls={false} />
+              <QualLinkShowcase onOpen={onOpenQualLink} variant="compact" />
             </div>
           )}
         </>
