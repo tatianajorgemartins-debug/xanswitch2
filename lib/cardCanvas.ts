@@ -95,7 +95,7 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 // A fonte do site (Archivo, carregada pelo next/font em SiteShell.tsx) tem
 // um nome gerado na hora do build — lê o nome de verdade da variável CSS
 // que o SiteShell coloca no .redesign. Fora dele, cai numa sans comum.
-function siteFontFamily(): string {
+export function siteFontFamily(): string {
   const root = document.querySelector('.redesign');
   const family = root ? getComputedStyle(root).getPropertyValue('--font-redesign').trim() : '';
   return `${family ? `${family}, ` : ''}'Helvetica Neue', Arial, sans-serif`;

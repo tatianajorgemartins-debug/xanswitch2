@@ -1,30 +1,26 @@
 /* "Qual Link é você?" (QualLinkQuiz.tsx e o banner QualLinkShowcase.tsx).
-   Clima "Hyrule premium": verde quase preto, moldura dourada dupla, Cinzel
-   nos títulos/selos, Cormorant Garamond no texto. Tudo preso em .ql-* pra
-   não vazar pro resto do site. */
+   Mesma identidade do site (redesign.css): fundo roxo-escuro, superfícies
+   --surface, roxo pra ação/seleção, Archivo no texto. O toque de Zelda
+   fica no dourado do site (--promo) e na Cinzel só nos títulos grandes.
+   Tudo preso em .ql-* pra não vazar pro resto do site. */
+.ql-overlay,
+.ql-showcase {
+  --ql-gold: var(--promo, #ffd24e);
+  --ql-gold-soft: rgba(255, 210, 78, 0.14);
+  --ql-hyrule: rgba(78, 240, 95, 0.1);
+  --ql-display: var(--ql-cinzel), 'Cinzel', Georgia, serif;
+}
+
 .ql-overlay {
-  --ql-bg: #07110c;
-  --ql-panel: #0f2018;
-  --ql-gold: #e9c977;
-  --ql-gold-2: #f2cd73;
-  --ql-line: rgba(214, 177, 94, 0.28);
-  --ql-line-faint: rgba(214, 177, 94, 0.14);
-  --ql-cream: #fff6e0;
-  --ql-muted: #cbbf9f;
-  --ql-title: var(--ql-cinzel), 'Cinzel', Georgia, serif;
-  --ql-deco: var(--ql-cinzel-deco), 'Cinzel Decorative', Georgia, serif;
-  --ql-body: var(--ql-cormorant), 'Cormorant Garamond', Georgia, serif;
   position: fixed;
   inset: 0;
   z-index: 150; /* acima do cabeçalho (100), abaixo do popup de conta (200) */
   background:
-    radial-gradient(1200px 700px at 50% -10%, #173322 0%, transparent 60%),
-    radial-gradient(900px 600px at 50% 120%, #10261a 0%, transparent 60%),
-    var(--ql-bg);
-  color: var(--ql-cream);
-  font-family: var(--ql-body);
-  --font: var(--ql-body); /* o .redesign força var(--font) em tudo */
-  animation: ql-fade 0.3s ease;
+    radial-gradient(900px 520px at 50% -12%, rgba(123, 47, 240, 0.32), transparent 65%),
+    radial-gradient(700px 420px at 50% 115%, var(--ql-hyrule), transparent 70%),
+    var(--bg, #0a0716);
+  color: var(--ink, #f4f1fb);
+  animation: ql-fade 0.25s ease;
 }
 @keyframes ql-fade {
   from {
@@ -36,7 +32,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
-  padding: 56px 14px 48px;
+  padding: 64px 16px 40px;
 }
 .ql-close {
   position: fixed;
@@ -47,125 +43,97 @@
   place-items: center;
   width: 44px;
   height: 44px;
-  border: 1px solid var(--ql-line);
+  border: 0;
   border-radius: 999px;
-  background: rgba(7, 17, 12, 0.85);
-  color: var(--ql-gold);
+  background: var(--surface-2, #1c1338);
+  color: var(--ink, #f4f1fb);
   cursor: pointer;
 }
+.ql-close:hover {
+  background: var(--surface-3, #271b4a);
+}
 .ql-overlay :focus-visible {
-  outline: 2px solid var(--ql-gold-2);
+  outline: 2px solid var(--accent, #a463ff);
   outline-offset: 3px;
 }
 
-/* Moldura dupla dourada, com losangos no meio da borda de cima e de baixo. */
 .ql-frame {
-  position: relative;
-  max-width: 760px;
+  max-width: 620px;
   margin: 0 auto;
-  padding: 40px clamp(16px, 5vw, 52px) 40px;
-  border: 1.5px solid var(--ql-line);
-  outline: 1px solid var(--ql-line-faint);
-  outline-offset: -9px;
-  border-radius: 4px;
-  background: linear-gradient(180deg, rgba(15, 32, 24, 0.6), rgba(7, 17, 12, 0.85));
-}
-.ql-frame::before,
-.ql-frame::after {
-  content: '◆';
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 0 10px;
-  background: var(--ql-bg);
-  color: var(--ql-gold);
-  font-size: 12px;
-  line-height: 1;
-}
-.ql-frame::before {
-  top: -7px;
-}
-.ql-frame::after {
-  bottom: -7px;
 }
 
-.ql-logo {
-  display: block;
-  width: 130px;
-  height: auto;
-  margin: 0 auto 16px;
-  filter: drop-shadow(0 0 10px rgba(240, 200, 110, 0.25));
-}
-/* Selo: ◆ TEXTO ◆ com linhas finas dos lados. */
+/* Selo pequeno em caixa alta (rótulo de seção), no dourado do site. */
 .ql-seal {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin: 0 0 10px;
+  gap: 8px;
+  margin: 0 0 12px;
   color: var(--ql-gold);
-  font-family: var(--ql-title);
-  --font: var(--ql-title); /* o .redesign força var(--font) em tudo */
+  font-size: 12px;
   font-weight: 700;
-  font-size: 12.5px;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  text-align: center;
 }
-.ql-seal::before,
-.ql-seal::after {
+.ql-seal::before {
   content: '';
-  flex: 0 1 48px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--ql-gold));
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  transform: rotate(45deg);
 }
-.ql-seal::after {
-  transform: scaleX(-1);
-}
+
 .ql-title {
-  margin: 8px 0 12px;
-  color: var(--ql-cream);
-  font-family: var(--ql-title);
-  --font: var(--ql-title); /* o .redesign força var(--font) em tudo */
+  margin: 0 0 12px;
+  color: var(--ink, #f4f1fb);
+  font-family: var(--ql-display);
+  --font: var(--ql-display); /* o .redesign força var(--font) em tudo */
   font-weight: 900;
-  font-size: clamp(34px, 9vw, 60px);
-  line-height: 1.05;
-  text-align: center;
-  text-shadow:
-    0 3px 0 #000,
-    0 0 24px rgba(0, 0, 0, 0.6);
+  font-size: clamp(2.25rem, 1.4rem + 4vw, 3.5rem);
+  line-height: 1.02;
+  letter-spacing: -0.01em;
   outline: none;
 }
 .ql-title em {
   font-style: normal;
-  color: var(--ql-gold-2);
+  color: var(--ql-gold);
 }
 .ql-lead {
-  max-width: 560px;
-  margin: 0 auto 22px;
-  color: var(--ql-muted);
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 1.4;
-  text-align: center;
+  max-width: 460px;
+  margin: 0 auto 24px;
+  color: var(--muted, #b7aed4);
+  font-size: var(--step-lead, 1.125rem);
+  line-height: 1.5;
 }
 
-/* Faixa com os 13 Links (rola de lado no celular). */
+/* ---------- Abertura ---------- */
+.ql-intro {
+  text-align: center;
+}
 .ql-strip {
-  display: grid;
-  grid-template-columns: repeat(13, 1fr);
-  gap: 4px;
-  margin: 0 0 26px;
+  display: flex;
+  gap: 8px;
+  margin: 0 -16px 28px;
+  padding: 4px 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.ql-strip::-webkit-scrollbar {
+  display: none;
 }
 .ql-strip-item {
+  flex: 0 0 72px;
+  height: 92px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  aspect-ratio: 3 / 4;
+  padding: 6px 4px 0;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 50% 85%, var(--ql-hyrule), transparent 70%),
+    var(--surface, #140d27);
+  scroll-snap-align: start;
   overflow: hidden;
-  border: 1px solid var(--ql-line-faint);
-  border-radius: 3px;
-  background: radial-gradient(circle at 50% 60%, #1b3a28, #0b1811);
 }
 .ql-strip-item img {
   width: 100%;
@@ -173,143 +141,151 @@
   object-fit: contain;
   object-position: bottom;
 }
-@media (max-width: 620px) {
+@media (min-width: 700px) {
   .ql-strip {
-    display: flex;
-    margin: 0 calc(-1 * clamp(16px, 5vw, 52px)) 24px;
-    padding: 0 clamp(16px, 5vw, 52px);
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-  }
-  .ql-strip::-webkit-scrollbar {
-    display: none;
+    flex-wrap: wrap;
+    justify-content: center;
+    overflow: visible;
+    margin: 0 0 28px;
+    padding: 0;
   }
   .ql-strip-item {
-    flex: 0 0 64px;
-    scroll-snap-align: start;
+    flex-basis: 64px;
+    height: 82px;
   }
 }
+.ql-meta {
+  margin: 14px 0 0;
+  color: var(--muted, #b7aed4);
+  font-size: 13px;
+}
+.ql-reward-hint {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 440px;
+  margin: 24px auto 0;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--ql-gold-soft);
+  color: var(--ink, #f4f1fb);
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: left;
+}
+.ql-reward-hint-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--ql-gold);
+  color: var(--promo-ink, #2b1a00);
+  font-weight: 800;
+  font-size: 13px;
+}
 
-/* Botão principal: pílula dourada. */
+/* ---------- Botões (os mesmos do site) ---------- */
 .ql-btn {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
-  max-width: 380px;
-  min-height: 54px;
-  margin: 0 auto;
-  padding: 14px 28px;
+  max-width: 360px;
+  min-height: 52px;
+  padding: 0 24px;
   border: 0;
   border-radius: 999px;
-  background: linear-gradient(180deg, #f6da8c, #d6a94a);
-  color: #1b1405;
-  font-family: var(--ql-title);
-  --font: var(--ql-title); /* o .redesign força var(--font) em tudo */
+  background: var(--accent-fill, #7b2ff0);
+  color: var(--accent-ink, #fff);
+  font-size: 16px;
   font-weight: 700;
-  font-size: 15px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
   cursor: pointer;
-  box-shadow:
-    0 6px 0 #6d5320,
-    0 12px 24px rgba(0, 0, 0, 0.45);
-  transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease;
+  transition: background 0.2s ease;
 }
 .ql-btn:hover {
-  transform: translateY(-1px);
-}
-.ql-btn:active {
-  transform: translateY(4px);
-  box-shadow:
-    0 2px 0 #6d5320,
-    0 6px 14px rgba(0, 0, 0, 0.45);
+  background: var(--accent-fill-hover, #8c48f7);
 }
 .ql-btn:disabled {
   opacity: 0.6;
   cursor: wait;
 }
 .ql-btn.is-ghost {
-  border: 1.5px solid var(--ql-line);
-  background: rgba(15, 32, 24, 0.6);
-  color: var(--ql-gold);
-  box-shadow: none;
-}
-.ql-meta {
-  margin: 16px 0 0;
-  color: var(--ql-muted);
-  font-family: var(--ql-title);
-  --font: var(--ql-title); /* o .redesign força var(--font) em tudo */
-  font-size: 12px;
-  letter-spacing: 0.16em;
-  text-align: center;
-  text-transform: uppercase;
-}
-.ql-card-hint {
-  margin: 18px auto 0;
-  max-width: 460px;
-  color: var(--ql-muted);
-  font-size: 17px;
+  background: var(--surface-2, #1c1338);
+  color: var(--ink, #f4f1fb);
   font-weight: 600;
-  text-align: center;
 }
-.ql-card-hint strong {
-  color: var(--ql-gold-2);
+.ql-btn.is-ghost:hover {
+  background: var(--surface-3, #271b4a);
 }
 
-/* Perguntas */
+/* ---------- Perguntas ---------- */
 .ql-question {
   position: relative;
-  animation: ql-rise 0.35s ease;
+  animation: ql-rise 0.3s ease;
 }
 @keyframes ql-rise {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
 }
-.ql-bignum {
-  position: absolute;
-  top: -26px;
-  right: -6px;
-  z-index: 0;
-  color: transparent;
-  font-family: var(--ql-deco);
-  --font: var(--ql-deco); /* o .redesign força var(--font) em tudo */
-  font-weight: 700;
-  font-size: clamp(110px, 30vw, 190px);
-  line-height: 1;
-  -webkit-text-stroke: 1.5px rgba(242, 205, 115, 0.22);
-  pointer-events: none;
-  user-select: none;
+.ql-question-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.ql-question-head .ql-seal {
+  margin: 0;
+}
+.ql-count {
+  color: var(--muted, #b7aed4);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 .ql-progress {
-  position: relative;
-  height: 4px;
-  margin: 4px 0 22px;
+  height: 6px;
+  margin: 0 0 28px;
   border-radius: 999px;
-  background: var(--ql-line-faint);
+  background: var(--surface-2, #1c1338);
   overflow: hidden;
 }
 .ql-progress span {
-  position: absolute;
-  inset: 0 auto 0 0;
-  background: linear-gradient(90deg, #d6a94a, #f6da8c);
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent-fill, #7b2ff0), var(--accent, #a463ff));
   transition: width 0.35s ease;
+}
+.ql-bignum {
+  position: absolute;
+  top: 18px;
+  right: -4px;
+  z-index: 0;
+  color: transparent;
+  font-family: var(--ql-cinzel-deco), var(--ql-display);
+  --font: var(--ql-cinzel-deco);
+  font-weight: 700;
+  font-size: clamp(96px, 26vw, 150px);
+  line-height: 1;
+  -webkit-text-stroke: 1.5px rgba(164, 99, 255, 0.22);
+  pointer-events: none;
+  user-select: none;
 }
 .ql-question-title {
   position: relative;
   z-index: 1;
-  margin: 0 0 20px;
-  color: var(--ql-cream);
-  font-family: var(--ql-title);
-  --font: var(--ql-title); /* o .redesign força var(--font) em tudo */
-  font-weight: 900;
-  font-size: clamp(22px, 5.6vw, 32px);
+  margin: 0 0 22px;
+  color: var(--ink, #f4f1fb);
+  font-size: clamp(1.375rem, 1.1rem + 1.4vw, 1.875rem);
+  font-weight: 800;
   line-height: 1.2;
-  text-align: center;
-  text-shadow: 0 3px 0 #000;
+  letter-spacing: -0.02em;
   outline: none;
 }
 .ql-options {
@@ -325,291 +301,350 @@
   gap: 14px;
   width: 100%;
   min-height: 60px;
-  padding: 12px 16px;
-  border: 1.5px solid var(--ql-line);
-  border-radius: 14px;
-  background: rgba(15, 32, 24, 0.75);
-  color: var(--ql-cream);
-  font-family: var(--ql-body);
-  --font: var(--ql-body); /* o .redesign força var(--font) em tudo */
-  font-weight: 600;
-  font-size: 18.5px;
-  line-height: 1.3;
+  padding: 12px 16px 12px 12px;
+  border: 1.5px solid transparent;
+  border-radius: 16px;
+  background: var(--surface, #140d27);
+  color: var(--ink, #f4f1fb);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.35;
   text-align: left;
   cursor: pointer;
   transition:
     background 0.18s ease,
-    border-color 0.18s ease,
-    transform 0.18s ease;
+    border-color 0.18s ease;
 }
 @media (hover: hover) {
   .ql-option:hover:not(.is-selected) {
-    border-color: rgba(242, 205, 115, 0.6);
-    background: rgba(27, 58, 40, 0.8);
+    background: var(--surface-2, #1c1338);
   }
 }
 .ql-option.is-selected {
-  border-color: var(--ql-gold-2);
-  background: linear-gradient(180deg, rgba(246, 218, 140, 0.2), rgba(214, 169, 74, 0.12));
-  transform: scale(1.01);
+  border-color: var(--accent, #a463ff);
+  background: rgba(123, 47, 240, 0.18);
 }
 .ql-option-letter {
   display: grid;
   place-items: center;
   flex: none;
-  width: 34px;
-  height: 34px;
-  border: 1.5px solid var(--ql-gold);
-  border-radius: 999px;
-  color: var(--ql-gold);
-  font-family: var(--ql-title);
-  --font: var(--ql-title); /* o .redesign força var(--font) em tudo */
-  font-weight: 700;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--surface-3, #271b4a);
+  color: var(--accent, #a463ff);
   font-size: 15px;
+  font-weight: 800;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
 }
 .ql-option.is-selected .ql-option-letter {
-  background: linear-gradient(180deg, #f6da8c, #d6a94a);
-  color: #1b1405;
+  background: var(--accent-fill, #7b2ff0);
+  color: #fff;
 }
 .ql-back {
-  display: block;
-  margin: 18px auto 0;
-  padding: 10px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 20px 0 0;
+  padding: 10px 4px;
   border: 0;
   background: none;
-  color: var(--ql-muted);
-  font-family: var(--ql-title);
-  --font: var(--ql-title); /* o .redesign força var(--font) em tudo */
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  color: var(--muted, #b7aed4);
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
 }
 .ql-back:hover {
-  color: var(--ql-gold);
+  color: var(--ink, #f4f1fb);
 }
 
-/* Resultado */
+/* ---------- Resultado ---------- */
 .ql-result {
-  animation: ql-rise 0.45s ease;
+  animation: ql-rise 0.4s ease;
 }
-.ql-result-art {
+/* "Palco" do Link: card arredondado com luz roxa em cima e o verde de
+   Hyrule embaixo; o Link fica inteiro, apoiado numa sombra no chão. */
+.ql-stage {
+  position: relative;
   display: flex;
+  align-items: flex-end;
   justify-content: center;
-  margin: 6px auto 0;
-  background: radial-gradient(circle at 50% 75%, rgba(242, 205, 115, 0.25), transparent 62%);
+  height: clamp(300px, 78vw, 380px);
+  margin: 0 0 22px;
+  padding: 52px 24px 30px;
+  border-radius: 28px;
+  background:
+    radial-gradient(70% 55% at 50% 0%, rgba(123, 47, 240, 0.45), transparent 75%),
+    radial-gradient(60% 40% at 50% 100%, rgba(78, 240, 95, 0.16), transparent 80%),
+    var(--surface, #140d27);
+  overflow: hidden;
 }
-.ql-result-art img {
-  width: auto;
-  max-width: 78%;
-  max-height: 340px;
-  filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.6));
+.ql-stage .ql-seal {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  white-space: nowrap;
+}
+.ql-stage-floor {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  width: 58%;
+  height: 26px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.55), transparent);
+}
+.ql-stage img {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 14px 20px rgba(0, 0, 0, 0.45));
+  animation: ql-pop 0.5s cubic-bezier(0.2, 1.3, 0.4, 1);
+}
+@keyframes ql-pop {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.94);
+  }
+}
+.ql-result-head {
+  margin-bottom: 22px;
+  text-align: center;
 }
 .ql-result-you {
-  margin: 12px 0 0;
-  color: var(--ql-muted);
-  font-size: 20px;
+  margin: 0 0 2px;
+  color: var(--muted, #b7aed4);
+  font-size: 15px;
   font-weight: 600;
-  text-align: center;
 }
 .ql-result-name {
-  margin-top: 0;
-  font-size: clamp(30px, 8vw, 52px);
+  margin-bottom: 8px;
+  font-size: clamp(2rem, 1.3rem + 3.6vw, 3rem);
 }
 .ql-result-game {
-  margin: 0;
-  color: var(--ql-muted);
-  font-family: var(--ql-title);
-  --font: var(--ql-title); /* o .redesign força var(--font) em tudo */
+  margin: 0 0 14px;
+  color: var(--muted, #b7aed4);
   font-size: 13px;
-  letter-spacing: 0.12em;
-  text-align: center;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 .ql-archetype {
-  margin: 14px 0 12px;
-  color: var(--ql-gold-2);
-  font-family: var(--ql-title);
-  --font: var(--ql-title); /* o .redesign força var(--font) em tudo */
-  font-weight: 900;
-  font-size: clamp(18px, 4.6vw, 24px);
-  letter-spacing: 0.06em;
-  text-align: center;
-  text-transform: uppercase;
+  display: inline-block;
+  margin: 0 0 14px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--ql-gold);
+  color: var(--promo-ink, #2b1a00);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 .ql-traits {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 6px;
-  margin: 0 0 18px;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 .ql-traits li {
-  padding: 4px 12px;
-  border: 1px solid var(--ql-line);
+  padding: 6px 12px;
   border-radius: 999px;
-  color: var(--ql-gold);
-  font-family: var(--ql-title);
-  --font: var(--ql-title); /* o .redesign força var(--font) em tudo */
-  font-weight: 700;
-  font-size: 11.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  background: var(--surface-2, #1c1338);
+  color: var(--ink, #f4f1fb);
+  font-size: 13px;
+  font-weight: 600;
+}
+.ql-card {
+  margin: 0 0 12px;
+  padding: 18px;
+  border-radius: 20px;
+  background: var(--surface, #140d27);
 }
 .ql-text {
-  margin: 0 0 18px;
-  font-size: 19.5px;
-  font-weight: 600;
-  line-height: 1.5;
+  margin: 0;
+  color: var(--ink, #f4f1fb);
+  font-size: 16px;
+  line-height: 1.65;
 }
 .ql-boxes {
   display: grid;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 12px;
+  margin-bottom: 12px;
 }
-@media (min-width: 640px) {
+@media (min-width: 600px) {
   .ql-boxes {
     grid-template-columns: 1fr 1fr;
   }
 }
-.ql-box,
-.ql-quote {
-  margin: 0;
-  padding: 14px 16px;
-  border: 1px solid var(--ql-line-faint);
-  border-radius: 12px;
-  background: rgba(15, 32, 24, 0.6);
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 1.45;
-}
-.ql-box p {
+.ql-boxes .ql-card {
   margin: 0;
 }
-.ql-box-label {
-  margin: 0 0 4px !important;
+.ql-card-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  color: var(--ink, #f4f1fb);
+  font-size: 14px;
+  font-weight: 800;
+}
+.ql-card-label span {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.ql-card-label .is-good {
+  background: rgba(78, 240, 95, 0.14);
+  color: var(--price, #4ef05f);
+}
+.ql-card-label .is-warn {
+  background: var(--ql-gold-soft);
   color: var(--ql-gold);
-  font-family: var(--ql-title);
-  --font: var(--ql-title); /* o .redesign força var(--font) em tudo */
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 0.16em;
+}
+.ql-card-body {
+  margin: 0;
+  color: var(--muted, #b7aed4);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.ql-card-body::first-letter {
   text-transform: uppercase;
 }
 .ql-quote {
-  margin-bottom: 24px;
-  color: var(--ql-gold-2);
-  font-style: italic;
-  font-size: 21px;
+  margin: 0 0 12px;
+  padding: 22px 20px;
+  border-radius: 20px;
+  background:
+    radial-gradient(80% 120% at 0% 0%, rgba(123, 47, 240, 0.28), transparent 70%),
+    var(--surface, #140d27);
   text-align: center;
 }
-.ql-quote .ql-box-label {
-  font-style: normal;
+.ql-quote-text {
+  margin: 0;
+  color: var(--ink, #f4f1fb);
+  font-family: var(--ql-cormorant), Georgia, serif;
+  --font: var(--ql-cormorant);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 23px;
+  line-height: 1.3;
 }
 
-.ql-affinity {
-  margin: 0 0 24px;
-  padding: 18px 16px 8px;
-  border: 1px solid var(--ql-line);
-  border-radius: 14px;
-}
 .ql-affinity-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-top: 12px;
 }
 .ql-affinity-row img {
   flex: none;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
+  padding: 3px;
   object-fit: contain;
-  border-radius: 8px;
-  background: radial-gradient(circle at 50% 60%, #1b3a28, #0b1811);
+  border-radius: 12px;
+  background: var(--surface-2, #1c1338);
 }
 .ql-affinity-info {
   flex: 1;
   min-width: 0;
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
 }
 .ql-affinity-bar {
   height: 6px;
-  margin-top: 5px;
+  margin-top: 6px;
   border-radius: 999px;
-  background: var(--ql-line-faint);
+  background: var(--surface-2, #1c1338);
   overflow: hidden;
 }
 .ql-affinity-bar span {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #d6a94a, #f6da8c);
+  background: linear-gradient(90deg, var(--accent-fill, #7b2ff0), var(--accent, #a463ff));
 }
 .ql-affinity-row strong {
   flex: none;
-  min-width: 48px;
-  color: var(--ql-gold-2);
-  font-family: var(--ql-title);
-  --font: var(--ql-title); /* o .redesign força var(--font) em tudo */
-  font-size: 17px;
+  min-width: 44px;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
 .ql-reward {
-  margin: 0 0 24px;
-  padding: 18px 16px;
-  border: 1.5px solid var(--ql-line);
-  border-radius: 14px;
-  background: linear-gradient(180deg, rgba(246, 218, 140, 0.08), rgba(15, 32, 24, 0.4));
+  margin: 0 0 20px;
+  padding: 20px 18px;
+  border: 1.5px solid rgba(255, 210, 78, 0.35);
+  border-radius: 20px;
+  background:
+    radial-gradient(90% 80% at 50% 0%, rgba(255, 210, 78, 0.12), transparent 75%),
+    var(--surface, #140d27);
   text-align: center;
 }
 .ql-reward-card {
-  width: min(260px, 72vw);
-  margin: 4px auto 12px;
+  width: min(240px, 66vw);
+  margin: 6px auto 14px;
 }
 .ql-reward-text {
-  margin: 0 0 14px;
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 1.45;
+  max-width: 400px;
+  margin: 0 auto 16px;
+  color: var(--ink, #f4f1fb);
+  font-size: 15px;
+  line-height: 1.5;
+}
+.ql-reward-text:last-child {
+  margin-bottom: 0;
 }
 .ql-reward-text strong {
-  color: var(--ql-gold-2);
+  color: var(--ql-gold);
 }
 .ql-reward-text.is-error {
-  color: #ffb4a8;
+  color: #ff9b8a;
 }
 .ql-actions {
   display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 .ql-actions .ql-btn {
   max-width: none;
+  min-height: 48px;
+  padding: 0 12px;
+  font-size: 14.5px;
 }
-@media (min-width: 640px) {
-  .ql-actions {
-    grid-template-columns: 1fr 1fr;
-  }
+.ql-actions .ql-btn.is-wide {
+  grid-column: 1 / -1;
 }
 .ql-cta {
-  display: block;
-  padding: 12px;
-  color: var(--ql-gold-2);
-  font-family: var(--ql-title);
-  --font: var(--ql-title); /* o .redesign força var(--font) em tudo */
-  font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 0.12em;
-  text-align: center;
-  text-decoration: underline;
-  text-decoration-color: var(--ql-line);
-  text-underline-offset: 6px;
-  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  border-radius: 999px;
+  background: var(--ql-gold);
+  color: var(--promo-ink, #2b1a00);
+  font-size: 16px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.ql-cta:hover {
+  filter: brightness(1.06);
 }
 .ql-toast {
   position: fixed;
@@ -618,149 +653,127 @@
   z-index: 3;
   transform: translateX(-50%);
   margin: 0;
-  padding: 10px 18px;
-  border: 1px solid var(--ql-line);
+  padding: 12px 20px;
   border-radius: 999px;
-  background: #0f2018;
-  color: var(--ql-cream);
-  font-family: var(--ql-title);
-  --font: var(--ql-title); /* o .redesign força var(--font) em tudo */
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 0.06em;
+  background: var(--surface-3, #271b4a);
+  color: var(--ink, #f4f1fb);
+  font-size: 14px;
+  font-weight: 600;
   white-space: nowrap;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
 }
 @media (prefers-reduced-motion: reduce) {
   .ql-overlay,
   .ql-question,
-  .ql-result {
+  .ql-result,
+  .ql-stage img,
+  .ql-showcase-art img.is-main {
     animation: none;
   }
 }
 
-/* Banner da página inicial (QualLinkShowcase.tsx), no lugar do "Mais
-   desejados": mesmo clima, em formato de card. */
+/* Quiz aberto: os botões flutuantes saem da frente. */
+body:has(.ql-overlay) .floating-whatsapp,
+body:has(.ql-overlay) .back-to-top {
+  display: none;
+}
+
+/* ---------- Banner da página inicial (QualLinkShowcase.tsx) ----------
+   Mesmo formato do card vizinho "Qual será seu próximo jogo?". */
 .ql-showcase {
-  --ql-gold: #e9c977;
-  --ql-gold-2: #f2cd73;
-  --ql-line: rgba(214, 177, 94, 0.28);
-  --ql-line-faint: rgba(214, 177, 94, 0.14);
-  --ql-cream: #fff6e0;
-  --ql-title: var(--ql-cinzel), 'Cinzel', Georgia, serif;
-  --ql-body: var(--ql-cormorant), 'Cormorant Garamond', Georgia, serif;
   position: relative;
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: stretch;
   width: 100%;
-  min-height: 190px;
-  padding: 18px 18px 18px 20px;
+  min-height: 180px;
+  padding: 0;
   overflow: hidden;
-  border: 1.5px solid var(--ql-line);
-  outline: 1px solid var(--ql-line-faint);
-  outline-offset: -7px;
-  border-radius: 18px;
+  border: 0;
+  border-radius: var(--radius, 16px);
   background:
-    radial-gradient(420px 220px at 85% 70%, rgba(242, 205, 115, 0.18), transparent 70%),
-    radial-gradient(600px 300px at 20% -20%, #173322, transparent 60%),
-    #07110c;
-  color: var(--ql-cream);
+    radial-gradient(60% 90% at 88% 100%, rgba(78, 240, 95, 0.16), transparent 70%),
+    radial-gradient(70% 90% at 0% 0%, rgba(123, 47, 240, 0.35), transparent 70%),
+    var(--surface, #140d27);
+  color: var(--ink, #f4f1fb);
   text-align: left;
   cursor: pointer;
   font: inherit;
-  font-family: var(--ql-body);
-  --font: var(--ql-body);
-  transition: transform 0.2s ease;
-}
-.ql-showcase:hover {
-  transform: translateY(-2px);
 }
 .ql-showcase-content {
   position: relative;
   z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   flex: 1;
   min-width: 0;
+  padding: 18px 0 18px 20px;
 }
 .ql-showcase-seal {
-  margin: 0 0 4px;
+  margin: 0 0 6px;
   color: var(--ql-gold);
-  font-family: var(--ql-title);
-  --font: var(--ql-title); /* o .redesign força var(--font) em tudo */
-  font-weight: 700;
-  font-size: 10.5px;
-  letter-spacing: 0.22em;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 .ql-showcase-title {
   margin: 0 0 6px;
-  font-family: var(--ql-title);
-  --font: var(--ql-title); /* o .redesign força var(--font) em tudo */
-  font-weight: 900;
-  font-size: 26px;
+  font-size: clamp(1.1rem, 0.8rem + 0.9vw, 1.5rem);
+  font-weight: 800;
   line-height: 1.05;
-  text-shadow: 0 3px 0 #000;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
 }
 .ql-showcase-title em {
   font-style: normal;
-  color: var(--ql-gold-2);
+  color: var(--ql-gold);
 }
 .ql-showcase-sub {
   margin: 0 0 12px;
-  color: #cbbf9f;
-  font-family: var(--ql-body);
-  --font: var(--ql-body); /* o .redesign força var(--font) em tudo */
-  font-weight: 600;
-  font-size: 16px;
-  line-height: 1.25;
+  color: var(--muted, #b7aed4);
+  font-size: 13.5px;
+  line-height: 1.3;
 }
 .ql-showcase-cta {
-  display: inline-block;
-  padding: 9px 18px;
+  align-self: flex-start;
+  padding: 10px 16px;
   border-radius: 999px;
-  background: linear-gradient(180deg, #f6da8c, #d6a94a);
-  color: #1b1405;
-  font-family: var(--ql-title);
-  --font: var(--ql-title); /* o .redesign força var(--font) em tudo */
-  font-weight: 700;
-  font-size: 11.5px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  box-shadow: 0 4px 0 #6d5320;
+  background: var(--ql-gold);
+  color: var(--promo-ink, #2b1a00);
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.ql-showcase:hover .ql-showcase-cta {
+  filter: brightness(1.06);
 }
 .ql-showcase-art {
   position: relative;
   flex: none;
   width: 42%;
-  max-width: 190px;
-  align-self: stretch;
+  max-width: 200px;
 }
 .ql-showcase-art img {
   position: absolute;
-  bottom: -18px;
+  bottom: 10px;
   height: auto;
-  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.55));
-  transition: opacity 0.6s ease;
+  max-height: calc(100% - 20px);
+  object-fit: contain;
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.5));
 }
 .ql-showcase-art img.is-main {
-  right: 0;
-  width: 78%;
+  right: 10px;
+  width: 74%;
   z-index: 2;
+  animation: ql-pop 0.5s ease;
 }
 .ql-showcase-art img.is-left {
-  left: -6%;
-  width: 52%;
-  bottom: 0;
-  opacity: 0.55;
+  left: 0;
+  width: 46%;
+  opacity: 0.5;
   z-index: 1;
-}
-.ql-showcase-compact {
-  min-height: 150px;
-}
-.ql-showcase-compact .ql-showcase-title {
-  font-size: 22px;
-}
-.ql-showcase-compact .ql-showcase-sub {
-  font-size: 15px;
 }
 
 /* Encaixe no promo-section: no computador divide a coluna lateral meio a
@@ -782,7 +795,7 @@
     height: auto;
   }
   .promo-section-side-compact .ql-showcase {
-    height: 150px;
+    height: 156px;
     min-height: 0;
     flex: none;
   }
@@ -792,33 +805,157 @@
   }
 }
 
-/* Quiz aberto: o botão flutuante do WhatsApp sai da frente. */
-body:has(.ql-overlay) .floating-whatsapp,
-body:has(.ql-overlay) .back-to-top {
-  display: none;
+/* Tema claro do site: o quiz acompanha (as variáveis do site já trocam;
+   aqui só os brilhos, que no claro ficam mais suaves). */
+:root[data-theme='light'] .redesign.theme-enabled .ql-overlay {
+  background:
+    radial-gradient(900px 520px at 50% -12%, rgba(123, 47, 240, 0.14), transparent 65%),
+    var(--bg);
 }
-.ql-showcase-cta {
-  white-space: nowrap;
+:root[data-theme='light'] .redesign.theme-enabled .ql-stage {
+  background:
+    radial-gradient(70% 55% at 50% 0%, rgba(123, 47, 240, 0.18), transparent 75%),
+    radial-gradient(60% 40% at 50% 100%, rgba(40, 170, 70, 0.14), transparent 80%),
+    var(--surface);
 }
-@media (max-width: 600px) {
-  .promo-section-side-compact .ql-showcase {
-    height: auto;
-    min-height: 168px;
-    padding: 16px 14px 16px 16px;
-  }
-  .ql-showcase-compact .ql-showcase-seal {
-    font-size: 9.5px;
-    letter-spacing: 0.16em;
-  }
-  .ql-showcase-compact .ql-showcase-cta {
-    padding: 9px 14px;
-    font-size: 10.5px;
-    letter-spacing: 0.1em;
-  }
-  .ql-showcase-compact .ql-showcase-art {
-    width: 40%;
+.ql-restart {
+  display: flex;
+  margin: 8px auto 0;
+}
+
+/* ---------- Motion ----------
+   Mesma linguagem dos vídeos da loja (skill motiondinamico): entradas
+   rápidas com desaceleração longa (expo-out, 300–600 ms), saídas mais
+   curtas com fade + desfoque, sem quique. Título palavra por palavra
+   (desfocado → nítido, subindo ~10px), blocos em cascata (0,92 → 1),
+   brilho roxo na seleção e nos botões. */
+.ql-overlay,
+.ql-showcase {
+  --ql-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ql-glow: 0 0 34px rgba(123, 77, 245, 0.45);
+}
+.ql-word {
+  display: inline-block;
+  animation: ql-word 0.55s var(--ql-ease) both;
+  animation-delay: calc(var(--i, 0) * 85ms + 80ms);
+}
+@keyframes ql-word {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(12px);
   }
 }
-.ql-showcase-seal {
-  white-space: nowrap;
+.ql-question-title .ql-word {
+  animation-duration: 0.45s;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+.ql-in {
+  animation: ql-in 0.55s var(--ql-ease) both;
+  animation-delay: calc(var(--base, 0ms) + var(--i, 0) * 110ms);
+}
+@keyframes ql-in {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(14px) scale(0.92);
+  }
+}
+.ql-option.ql-in {
+  animation-duration: 0.45s;
+  animation-delay: calc(var(--base, 0ms) + var(--i, 0) * 70ms);
+}
+.ql-strip-item.is-tile {
+  animation-delay: calc(var(--base, 0ms) + var(--i, 0) * 45ms);
+}
+.ql-archetype.is-pop {
+  animation-name: ql-pop-in;
+}
+@keyframes ql-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+
+/* Brilho roxo: botão principal e opção escolhida. */
+.ql-btn:not(.is-ghost) {
+  box-shadow: var(--ql-glow);
+}
+.ql-option.is-selected {
+  box-shadow: var(--ql-glow);
+}
+
+/* Escolheu: as outras opções saem rápido (fade + desfoque) e a escolhida
+   dá um leve punch-in antes de avançar. */
+.ql-question.is-leaving .ql-option:not(.is-selected) {
+  opacity: 0.25;
+  filter: blur(2px);
+  transition:
+    opacity 0.2s ease,
+    filter 0.2s ease;
+}
+.ql-question.is-leaving .ql-option.is-selected {
+  transform: scale(1.02);
+  transition: transform 0.2s var(--ql-ease);
+}
+
+/* Resultado: o Link entra com punch-in (1,15 → 1) e um brilho atravessa
+   o palco, como a revelação de logo dos vídeos. */
+.ql-stage img {
+  animation: ql-punch 0.8s var(--ql-ease) 0.15s both;
+}
+@keyframes ql-punch {
+  from {
+    opacity: 0;
+    filter: blur(10px) drop-shadow(0 14px 20px rgba(0, 0, 0, 0.45));
+    transform: translateY(18px) scale(1.15);
+  }
+}
+.ql-stage-shine {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.16) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: ql-shine 1.1s var(--ql-ease) 0.6s forwards;
+  pointer-events: none;
+}
+@keyframes ql-shine {
+  to {
+    transform: translateX(120%);
+  }
+}
+.ql-fill {
+  transform-origin: left;
+  animation: ql-fill 1s var(--ql-ease) 1.9s both;
+}
+@keyframes ql-fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+.ql-reward-card.is-reveal {
+  animation: ql-in 0.7s var(--ql-ease) both;
+  filter: drop-shadow(0 0 28px rgba(255, 210, 78, 0.25));
+}
+
+/* Banner da home: o Link novo entra com o mesmo punch-in. */
+.ql-showcase-art img.is-main {
+  animation: ql-punch 0.7s var(--ql-ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ql-word,
+  .ql-in,
+  .ql-stage img,
+  .ql-stage-shine,
+  .ql-fill,
+  .ql-reward-card.is-reveal,
+  .ql-showcase-art img.is-main {
+    animation: none;
+  }
+  .ql-stage-shine {
+    display: none;
+  }
 }

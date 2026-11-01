@@ -10,7 +10,7 @@
 // meu card": as respostas ficam guardadas no navegador (PENDING_KEY) e,
 // voltando do login (inclusive do Google, que recarrega a página), o quiz
 // reabre no resultado e guarda o card sozinho.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { getAccessToken } from '@/lib/wishlist';
 import { CollectibleCard } from '../CollectibleCard';
@@ -71,6 +71,28 @@ function clearPending() {
 function shortName(id: LinkId): string {
   const nome = LINKS[id].nome;
   return nome.startsWith('O ') ? nome.slice(2) : nome;
+}
+
+// Motion (mesma linguagem dos vídeos da loja): títulos entram palavra por
+// palavra (desfocado → nítido, subindo) e os blocos entram em cascata. A
+// ordem vem da variável --i de cada elemento (ver .ql-word e .ql-in em
+// qual-link.css).
+function Words({ text, highlight }: { text: string; highlight?: string }) {
+  return (
+    <>
+      {text.split(' ').map((word, i) => (
+        <Fragment key={i}>
+          <span className="ql-word" style={{ '--i': i } as React.CSSProperties}>
+            {highlight && word === highlight ? <em>{word}</em> : word}
+          </span>{' '}
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
+function cascade(i: number, base = 0): React.CSSProperties {
+  return { '--i': i, '--base': `${base}ms` } as React.CSSProperties;
 }
 
 function pad(n: number): string {
@@ -274,41 +296,47 @@ export default function QualLinkQuiz({
         <div className="ql-frame">
           {screen === 'intro' && (
             <div className="ql-intro">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img className="ql-logo" src="/quiz-zelda/logo-xan.webp" alt="Xan Switch" width={150} height={62} />
-              <p className="ql-seal">Quiz de personalidade</p>
-              <h1 className="ql-title" tabIndex={-1} data-autofocus>
-                Qual <em>Link</em> é você?
+              <p className="ql-seal">Quiz Zelda · XAN Switch</p>
+              <h1 className="ql-title" tabIndex={-1} data-autofocus aria-label="Qual Link é você?">
+                <Words text="Qual Link é você?" highlight="Link" />
               </h1>
-              <p className="ql-lead">
+              <p className="ql-lead ql-in" style={cascade(0, 380)}>
                 Treze heróis, uma lenda. Responda com o coração e descubra qual Link carrega a sua personalidade.
               </p>
               <div className="ql-strip" aria-hidden="true">
-                {LINK_ORDER.map((id) => (
-                  <div key={id} className="ql-strip-item">
+                {LINK_ORDER.map((id, i) => (
+                  <div key={id} className="ql-strip-item ql-in is-tile" style={cascade(i, 520)}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={linkImage(id)} alt="" loading="lazy" decoding="async" />
                   </div>
                 ))}
               </div>
-              <button type="button" className="ql-btn" onClick={start}>
+              <button type="button" className="ql-btn ql-in" style={cascade(0, 1000)} onClick={start}>
                 Começar a jornada
               </button>
-              <p className="ql-meta">10 perguntas · 13 resultados · ~3 minutos</p>
-              <p className="ql-card-hint">
-                ◆ Termine logado na sua conta e ganhe um <strong>card colecionável de 1 ponto</strong> com o seu Link.
-              </p>
+              <p className="ql-meta ql-in" style={cascade(1, 1000)}>10 perguntas · 13 resultados · ~3 minutos</p>
+              <div className="ql-reward-hint ql-in" style={cascade(2, 1000)}>
+                <span className="ql-reward-hint-icon" aria-hidden="true">
+                  +1
+                </span>
+                <span>
+                  Termine logado na sua conta e ganhe um <strong>card colecionável de 1 ponto</strong> com o seu Link.
+                </span>
+              </div>
             </div>
           )}
 
           {screen === 'question' && (
-            <div className="ql-question" key={index}>
+            <div className={`ql-question${picked !== null ? ' is-leaving' : ''}`} key={index}>
               <span className="ql-bignum" aria-hidden="true">
                 {pad(index + 1)}
               </span>
-              <p className="ql-seal">
-                Pergunta {pad(index + 1)} · {index + 1}/{PERGUNTAS.length}
-              </p>
+              <div className="ql-question-head">
+                <p className="ql-seal">Pergunta {pad(index + 1)}</p>
+                <span className="ql-count">
+                  {index + 1}/{PERGUNTAS.length}
+                </span>
+              </div>
               <div
                 className="ql-progress"
                 role="progressbar"
@@ -319,8 +347,8 @@ export default function QualLinkQuiz({
               >
                 <span style={{ width: `${((index + 1) / PERGUNTAS.length) * 100}%` }} />
               </div>
-              <h2 className="ql-question-title" tabIndex={-1} data-autofocus>
-                {PERGUNTAS[index].pergunta}
+              <h2 className="ql-question-title" tabIndex={-1} data-autofocus aria-label={PERGUNTAS[index].pergunta}>
+                <Words text={PERGUNTAS[index].pergunta} />
               </h2>
               <div className="ql-options">
                 {orders[index].map((optionIndex, position) => {
@@ -329,7 +357,8 @@ export default function QualLinkQuiz({
                     <button
                       key={optionIndex}
                       type="button"
-                      className={`ql-option${selected ? ' is-selected' : ''}`}
+                      className={`ql-option ql-in${selected ? ' is-selected' : ''}`}
+                      style={cascade(position, Math.min(PERGUNTAS[index].pergunta.split(' ').length * 40, 480))}
                       onClick={() => choose(optionIndex)}
                       aria-pressed={selected}
                     >
@@ -349,39 +378,63 @@ export default function QualLinkQuiz({
 
           {screen === 'result' && resultId && (
             <div className="ql-result">
-              <p className="ql-seal">Seu resultado</p>
-              <div className="ql-result-art">
+              <div className="ql-stage ql-in" style={cascade(0)}>
+                <span className="ql-stage-shine" aria-hidden="true" />
+                <p className="ql-seal">Seu resultado</p>
+                <span className="ql-stage-floor" aria-hidden="true" />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={linkImage(resultId)} alt={LINKS[resultId].nome} />
               </div>
-              <p className="ql-result-you">Você é o</p>
-              <h2 className="ql-title ql-result-name" tabIndex={-1} data-autofocus>
-                {shortName(resultId)}
-              </h2>
-              <p className="ql-result-game">{LINKS[resultId].jogo}</p>
-              <p className="ql-archetype">◆ {LINKS[resultId].arquetipo} ◆</p>
-              <ul className="ql-traits">
-                {LINKS[resultId].tracos.map((t) => (
-                  <li key={t}>{t}</li>
-                ))}
-              </ul>
-              <p className="ql-text">{LINKS[resultId].descricao}</p>
+
+              <div className="ql-result-head">
+                <p className="ql-result-you">Você é o</p>
+                <h2 className="ql-title ql-result-name" tabIndex={-1} data-autofocus aria-label={shortName(resultId)}>
+                  <Words text={shortName(resultId)} />
+                </h2>
+                <p className="ql-result-game ql-in" style={cascade(0, 650)}>
+                  {LINKS[resultId].jogo}
+                </p>
+                <p className="ql-archetype ql-in is-pop" style={cascade(1, 650)}>
+                  {LINKS[resultId].arquetipo}
+                </p>
+                <ul className="ql-traits" aria-label="Seus traços">
+                  {LINKS[resultId].tracos.map((t, i) => (
+                    <li key={t} className="ql-in" style={cascade(i, 950)}>
+                      {t}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="ql-card ql-in" style={cascade(0, 1300)}>
+                <p className="ql-text">{LINKS[resultId].descricao}</p>
+              </div>
               <div className="ql-boxes">
-                <div className="ql-box">
-                  <p className="ql-box-label">Ponto forte</p>
-                  <p>{LINKS[resultId].forte}</p>
+                <div className="ql-card ql-in" style={cascade(1, 1300)}>
+                  <p className="ql-card-label">
+                    <span className="is-good" aria-hidden="true">
+                      ▲
+                    </span>
+                    Ponto forte
+                  </p>
+                  <p className="ql-card-body">{LINKS[resultId].forte}</p>
                 </div>
-                <div className="ql-box">
-                  <p className="ql-box-label">Cuidado com</p>
-                  <p>{LINKS[resultId].cuidado}</p>
+                <div className="ql-card ql-in" style={cascade(2, 1300)}>
+                  <p className="ql-card-label">
+                    <span className="is-warn" aria-hidden="true">
+                      !
+                    </span>
+                    Cuidado com
+                  </p>
+                  <p className="ql-card-body">{LINKS[resultId].cuidado}</p>
                 </div>
               </div>
-              <blockquote className="ql-quote">
-                <p className="ql-box-label">Frase da sua jornada</p>
-                {LINKS[resultId].frase}
-              </blockquote>
+              <figure className="ql-quote ql-in" style={cascade(3, 1300)}>
+                <p className="ql-seal">Frase da sua jornada</p>
+                <blockquote className="ql-quote-text">{LINKS[resultId].frase}</blockquote>
+              </figure>
 
-              <div className="ql-affinity">
+              <div className="ql-card ql-in" style={cascade(4, 1300)}>
                 <p className="ql-seal">Sua afinidade</p>
                 {top3.map((a) => (
                   <div key={a.id} className="ql-affinity-row">
@@ -390,7 +443,7 @@ export default function QualLinkQuiz({
                     <div className="ql-affinity-info">
                       <span>{LINKS[a.id].nome}</span>
                       <div className="ql-affinity-bar">
-                        <span style={{ width: `${a.percent}%` }} />
+                        <span className="ql-fill" style={{ width: `${a.percent}%` }} />
                       </div>
                     </div>
                     <strong>{a.percent}%</strong>
@@ -398,11 +451,11 @@ export default function QualLinkQuiz({
                 ))}
               </div>
 
-              <div className="ql-reward">
+              <div className="ql-reward ql-in" style={cascade(5, 1300)}>
                 <p className="ql-seal">Sua recompensa</p>
                 {claim.status === 'granted' || claim.status === 'already' ? (
                   <>
-                    <div className="ql-reward-card">
+                    <div className="ql-reward-card is-reveal">
                       <CollectibleCard
                         gameName={`Qual Link é você? · ${LINKS[claim.resultId].nome}`}
                         imageUrl={cardImage(claim.resultId)}
@@ -438,22 +491,23 @@ export default function QualLinkQuiz({
               </div>
 
               <div className="ql-actions">
-                <button type="button" className="ql-btn" onClick={() => share(resultId)}>
+                <button type="button" className="ql-btn is-wide" onClick={() => saveImage(resultId)} disabled={savingImage}>
+                  {savingImage ? 'Gerando imagem...' : 'Baixar imagem pros stories'}
+                </button>
+                <button type="button" className="ql-btn is-ghost" onClick={() => share(resultId)}>
                   Compartilhar
                 </button>
                 <button type="button" className="ql-btn is-ghost" onClick={() => copyResult(resultId)}>
                   Copiar resultado
                 </button>
-                <button type="button" className="ql-btn is-ghost" onClick={() => saveImage(resultId)} disabled={savingImage}>
-                  {savingImage ? 'Gerando imagem...' : 'Baixar imagem pros stories'}
-                </button>
-                <button type="button" className="ql-btn is-ghost" onClick={start}>
-                  Refazer o quiz
-                </button>
               </div>
               <a className="ql-cta" href={ZELDA_URL} onClick={() => track('quiz_cta_click', { result: resultId })}>
-                Ver jogos de Zelda na loja →
+                Ver jogos de Zelda na loja
+                <span aria-hidden="true">→</span>
               </a>
+              <button type="button" className="ql-back ql-restart" onClick={start}>
+                ↺ Refazer o quiz
+              </button>
             </div>
           )}
         </div>
