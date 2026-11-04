@@ -21,6 +21,14 @@ export type DeliveryEmailData = {
   whatsappUrl?: string | null;
 };
 
+const SITE_URL = 'https://www.xanswitch.com.br';
+export const REDEEM_URL = 'https://ec.nintendo.com/redeem';
+
+// Link do botão "Copiar" (página app/copiar).
+function copyUrl(code: string): string {
+  return `${SITE_URL}/copiar#${encodeURIComponent(code.trim())}`;
+}
+
 function formatPriceBR(price: number): string {
   return price.toFixed(2).replace('.', ',');
 }
@@ -56,9 +64,28 @@ export function buildDeliveryHtml(d: DeliveryEmailData): string {
   const help = d.whatsappUrl
     ? `responder este e-mail ou chamar a gente no <a href="${escapeHtml(d.whatsappUrl)}" style="color:#7b3fe4">WhatsApp</a>`
     : 'responder este e-mail ou chamar a gente no WhatsApp';
+  // E-mail não roda JavaScript: o botão "Copiar" abre a página /copiar do
+  // site, que copia o código (ele vai depois do #, então não chega no
+  // servidor). Sem código ainda (prévia do admin vazia), não tem botão.
+  const copyButton = d.code.trim()
+    ? `<td width="1" class="copy-cell" style="padding-left:10px;vertical-align:middle">
+                    <a href="${escapeHtml(copyUrl(d.code))}" style="display:inline-block;background:#7b3fe4;border-radius:10px;padding:10px 14px;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;white-space:nowrap"><img src="${SITE_URL}/email/copy-icon.png" width="16" height="16" alt="" style="vertical-align:-3px;margin-right:6px;border:0" />Copiar</a>
+                  </td>`
+    : '';
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  /* Celular: o botão Copiar desce pra baixo do código. */
+  @media (max-width: 480px) {
+    .code-cell, .copy-cell { display: block !important; width: auto !important; text-align: center !important; }
+    .code-cell { font-size: 20px !important; letter-spacing: 1px !important; }
+    .copy-cell { padding: 12px 0 0 !important; }
+  }
+</style>
+</head>
 <body style="margin:0;padding:0;background:#f4f1fa;font-family:Arial,Helvetica,sans-serif;color:#1d1530">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f1fa;padding:24px 12px">
     <tr><td align="center">
@@ -75,7 +102,12 @@ export function buildDeliveryHtml(d: DeliveryEmailData): string {
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px">
             <tr><td style="border:2px dashed #7b3fe4;border-radius:12px;padding:16px;text-align:center">
               <div style="font-size:12px;color:#6b5f87;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Seu código</div>
-              <div style="font-family:'Courier New',monospace;font-size:22px;font-weight:700;letter-spacing:2px;color:#1d1530;word-break:break-all">${code}</div>
+              <table role="presentation" cellpadding="0" cellspacing="0" align="center">
+                <tr>
+                  <td class="code-cell" style="font-family:'Courier New',monospace;font-size:22px;font-weight:700;letter-spacing:2px;color:#1d1530;overflow-wrap:anywhere;vertical-align:middle">${code}</td>
+                  ${copyButton}
+                </tr>
+              </table>
             </td></tr>
           </table>
 

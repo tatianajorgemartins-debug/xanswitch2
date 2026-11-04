@@ -1,0 +1,90 @@
+/* Página /copiar (botão "Copiar" do e-mail com a chave do jogo). */
+.copy-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: radial-gradient(circle at 50% 20%, #241446 0%, #0a0716 65%);
+  color: #fff;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.copy-card {
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 28px 22px;
+}
+
+.copy-logo {
+  height: 44px;
+  width: auto;
+  margin: 0 auto 22px;
+  display: block;
+}
+
+.copy-label {
+  margin: 0 0 8px;
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #b9a5ff;
+}
+
+.copy-code {
+  margin: 0 0 20px;
+  padding: 16px 12px;
+  border: 2px dashed #7b2ff0;
+  border-radius: 14px;
+  font-family: 'Courier New', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  overflow-wrap: anywhere;
+  user-select: all;
+  -webkit-user-select: all;
+}
+
+.copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: #7b2ff0;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.copy-btn:active {
+  transform: scale(0.97);
+}
+
+.copy-btn.is-done {
+  background: #1f9d5c;
+}
+
+.copy-next {
+  display: inline-block;
+  margin-top: 18px;
+  color: #ffd24e;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.copy-hint {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.65);
+}
