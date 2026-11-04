@@ -1281,10 +1281,17 @@ function DeliveryComposer({ order }: { order: Order }) {
       // janela nova) e só depois registra no banco. api.whatsapp.com/send em
       // vez de wa.me: o redirecionamento do wa.me estraga os emojis (viram
       // "�") no WhatsApp Web/Desktop.
-      const url = `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${encodeURIComponent(
-        buildDeliveryWhatsAppText({ ...data, code: trimmed })
-      )}`;
-      window.open(url, '_blank', 'noopener,noreferrer');
+      const query = `phone=${whatsappNumber}&text=${encodeURIComponent(buildDeliveryWhatsAppText({ ...data, code: trimmed }))}`;
+      const webUrl = `https://api.whatsapp.com/send?${query}`;
+      // No Android, abre direto o WhatsApp Business (pacote com.whatsapp.w4b)
+      // em vez do WhatsApp normal; sem o Business instalado, cai no link
+      // comum. No computador o sistema é quem escolhe o app.
+      // (O intent:// abre o app sem sair da página do admin.)
+      if (/Android/i.test(navigator.userAgent)) {
+        window.location.href = `intent://send?${query}#Intent;scheme=whatsapp;package=com.whatsapp.w4b;S.browser_fallback_url=${encodeURIComponent(webUrl)};end`;
+      } else {
+        window.open(webUrl, '_blank', 'noopener,noreferrer');
+      }
       setSending(true);
       setResult(null);
       try {
