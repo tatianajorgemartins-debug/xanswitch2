@@ -144,7 +144,7 @@ export function SplitPaymentStep({
     <>
       <ReferralSourcePicker value={referralSource} onChange={setReferralSource} />
       <div className="purchase-urgency-box">
-        <p>Seu código chega por e-mail ainda hoje, assim que as duas partes forem pagas 🎮</p>
+        <p>Seu código chega por e-mail (ou WhatsApp, se você informou) ainda hoje, assim que as duas partes forem pagas 🎮</p>
       </div>
     </>
   );

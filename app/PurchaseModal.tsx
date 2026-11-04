@@ -19,7 +19,7 @@ import type { Item } from './CatalogClient';
 import type { Platform, GameType } from '@/lib/db';
 import { getContrastColor } from '@/lib/color';
 import { generatePixPayload, type PixPayload } from '@/lib/pix';
-import { isValidEmail, REFERRAL_SOURCES } from '@/lib/validation';
+import { isValidEmail, normalizeWhatsApp, DELIVERY_WHATSAPP_COOKIE, REFERRAL_SOURCES } from '@/lib/validation';
 import { signUp, signIn, translateAuthError, getAccessToken } from '@/lib/wishlist';
 import { CollectibleCard, DownloadCardButton } from './CollectibleCard';
 import { confirmOrderAction, confirmCreditOrderAction } from './orderActions';
@@ -900,6 +900,33 @@ function OrderSummary({
   );
 }
 
+// WhatsApp da etapa de e-mail ↔ cookie (ver lib/deliveryWhatsApp.ts).
+// Vale por 1 dia: tempo de sobra pra terminar o pagamento, e sem ficar
+// "grudado" em compras futuras de quem trocou de ideia.
+function saveDeliveryWhatsApp(normalized: string | null) {
+  try {
+    const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = normalized
+      ? `${DELIVERY_WHATSAPP_COOKIE}=${normalized}; Path=/; Max-Age=86400; SameSite=Lax${secure}`
+      : `${DELIVERY_WHATSAPP_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
+  } catch {
+    // Sem cookie (navegador bloqueando): a chave só vai por e-mail.
+  }
+}
+
+// Já preenche o campo com o número da última compra (se ainda estiver no
+// cookie), pra quem compra de novo no mesmo dia não digitar outra vez.
+function readSavedWhatsApp(): string {
+  try {
+    if (typeof document === 'undefined') return '';
+    const match = document.cookie.match(new RegExp(`(?:^|; )${DELIVERY_WHATSAPP_COOKIE}=(\\d+)`));
+    const digits = match?.[1] ?? '';
+    return digits.startsWith('55') ? digits.slice(2) : digits;
+  } catch {
+    return '';
+  }
+}
+
 export function StepChecklistAndEmail({
   checked,
   onChangeChecked,
@@ -924,9 +951,23 @@ export function StepChecklistAndEmail({
   const [emailTouched, setEmailTouched] = useState(false);
   const [showBalanceHelp, setShowBalanceHelp] = useState(false);
 
+  // WhatsApp opcional: preenchido, a chave do jogo vai pelo WhatsApp em vez
+  // do e-mail. Vai pro servidor num cookie do próprio navegador (ver
+  // lib/deliveryWhatsApp.ts), lido na hora em que o pedido é criado.
+  const [whatsapp, setWhatsapp] = useState(() => readSavedWhatsApp());
+  const [whatsappTouched, setWhatsappTouched] = useState(false);
+
   const emailValid = user ? true : isValidEmail(email);
   const showEmailError = !user && emailTouched && email.trim() !== '' && !emailValid;
-  const canContinue = checked && emailValid;
+  const whatsappValid = whatsapp.trim() === '' || normalizeWhatsApp(whatsapp) !== null;
+  const showWhatsappError = whatsappTouched && !whatsappValid;
+  const canContinue = checked && emailValid && whatsappValid;
+
+  function handleContinue() {
+    if (!canContinue) return;
+    saveDeliveryWhatsApp(normalizeWhatsApp(whatsapp));
+    onNext();
+  }
 
   return (
     <>
@@ -958,7 +999,8 @@ export function StepChecklistAndEmail({
       </div>
 
       <p className="purchase-email-intro">
-        É pra esse e-mail que enviaremos o código do jogo depois da confirmação do pagamento.
+        É pra esse e-mail que enviaremos o código do jogo depois da confirmação do pagamento — ou pro seu WhatsApp, se
+        você preferir e informar logo abaixo.
       </p>
 
       {user ? (
@@ -990,8 +1032,33 @@ export function StepChecklistAndEmail({
         </>
       )}
 
+      <label className="purchase-email-label" htmlFor="purchase-whatsapp-input" style={{ marginTop: 16 }}>
+        Seu WhatsApp (opcional)
+      </label>
+      <input
+        id="purchase-whatsapp-input"
+        type="text"
+        inputMode="tel"
+        autoComplete="tel-national"
+        placeholder="(21) 99999-9999"
+        value={whatsapp}
+        onChange={(e) => setWhatsapp(e.target.value)}
+        onBlur={() => setWhatsappTouched(true)}
+        aria-invalid={showWhatsappError}
+        aria-describedby={showWhatsappError ? 'purchase-whatsapp-error' : 'purchase-whatsapp-hint'}
+      />
+      {showWhatsappError ? (
+        <p id="purchase-whatsapp-error" className="purchase-field-error" role="alert">
+          Confira o número — coloque o DDD junto (ex.: (21) 99999-9999). Ou deixe em branco pra receber por e-mail.
+        </p>
+      ) : (
+        <p id="purchase-whatsapp-hint" className="purchase-email-intro" style={{ margin: '6px 0 0' }}>
+          Preencheu? O código chega pelo WhatsApp. Deixou em branco? Chega por e-mail.
+        </p>
+      )}
+
       <div className="purchase-modal-actions" style={{ marginTop: 20 }}>
-        <button type="button" className="btn primary" disabled={!canContinue} onClick={onNext}>
+        <button type="button" className="btn primary" disabled={!canContinue} onClick={handleContinue}>
           Continuar para o pagamento
         </button>
         <button type="button" className="purchase-step-back" onClick={onBack}>
@@ -1335,7 +1402,7 @@ function StepPayment({
         <>
           <ReferralSourcePicker value={referralSource} onChange={setReferralSource} />
           <div className="purchase-urgency-box">
-            <p>Após o pagamento, seu código chega por e-mail ainda hoje 🎮</p>
+            <p>Após o pagamento, seu código chega por e-mail (ou WhatsApp, se você informou) ainda hoje 🎮</p>
           </div>
         </>
       }
@@ -1467,7 +1534,7 @@ function StepCreditPayment({
         <p>
           O pagamento parcelado acontece numa aba separada, fora da XAN Switch. Ao clicar em "Continuar pro
           pagamento", abrimos essa aba e já registramos seu pedido aqui — seu card colecionável é liberado na
-          hora. Conclua o pagamento por lá; seu código chega por e-mail assim que a gente confirmar.
+          hora. Conclua o pagamento por lá; seu código chega por e-mail (ou WhatsApp) assim que a gente confirmar.
         </p>
       </div>
 
@@ -1526,8 +1593,8 @@ function StepCardReveal({
     <>
       <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 15, color: 'var(--ink)', marginBottom: 4 }}>
         {paymentMethod === 'pix' || paidOnline
-          ? 'Pagamento confirmado! Seu código chega no seu e-mail ainda hoje 🎮'
-          : 'Pedido registrado! Conclua o pagamento na aba que abrimos — seu código chega por e-mail assim que confirmarmos 🎮'}
+          ? 'Pagamento confirmado! Seu código chega no seu e-mail (ou WhatsApp, se você informou) ainda hoje 🎮'
+          : 'Pedido registrado! Conclua o pagamento na aba que abrimos — seu código chega por e-mail (ou WhatsApp) assim que confirmarmos 🎮'}
       </p>
       <p style={{ textAlign: 'center', fontSize: 13.5, color: 'var(--ink-dim)', marginBottom: 18 }}>
         E olha só o que você ganhou:

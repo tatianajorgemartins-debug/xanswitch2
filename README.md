@@ -681,6 +681,46 @@ a variável `CRON_SECRET` no Passo 5), isso roda sozinho pra sempre.
 
 ---
 
+## Enviar a chave do jogo pro cliente (pelo admin)
+
+**Na compra:** na etapa do e-mail, o cliente vê um campo **"Seu WhatsApp
+(opcional)"**. Preencheu → a chave vai pelo WhatsApp. Deixou em branco → vai
+por e-mail. O aviso de novo pedido (e-mail/Telegram) já diz por onde entregar.
+
+**No admin:** em **/admin → 📋 Pedidos**, todo pedido tem o botão
+**💬 Preparar WhatsApp** (se o cliente informou o número) ou **✉ Preparar
+e-mail**. Ele abre a mensagem já montada (jogo, valor, número do pedido e o
+passo a passo de resgate), com a prévia exata do que o cliente vai receber.
+Você só cola a chave e clica em enviar:
+
+- **WhatsApp:** abre o WhatsApp (no celular, o app; no PC, o WhatsApp Web)
+  na conversa do cliente com a mensagem e a chave já escritas — é só
+  apertar enviar lá.
+- **E-mail:** sai na hora, pelo Resend.
+
+Dá pra trocar de canal na hora (botões "💬 WhatsApp / 📧 E-mail"), se o
+número estiver errado, por exemplo. Depois do envio o pedido aparece como
+**✓ Código enviado** (por onde e quando), e o botão vira **↻ Reenviar
+código**. O botão "📋 Pedidos" mostra quantos ainda faltam enviar.
+
+Os textos do e-mail e do WhatsApp ficam em `lib/deliveryEmail.ts`.
+
+**Configuração (uma vez só):**
+
+1. Rode `db/migration-entrega-codigo.sql` no editor SQL do Neon. (O site
+   funciona mesmo antes disso — só não guarda o WhatsApp do cliente nem
+   marca os pedidos como entregues.)
+2. Pro envio por e-mail: no Resend, vá em **Domains → Add Domain**, coloque
+   `xanswitch.com.br` e adicione no painel do seu domínio (onde você
+   comprou, ou no DNS da Vercel) os registros que o Resend mostrar. Espere
+   ele marcar **Verified**. Sem isso, o Resend só deixa mandar e-mail pra
+   você mesma. (O envio pelo WhatsApp não depende disso.)
+3. Na Vercel (Settings → Environment Variables), crie:
+   - `STORE_FROM_EMAIL` → `XAN Switch <pedidos@xanswitch.com.br>`
+   - `STORE_REPLY_TO_EMAIL` (opcional) → o e-mail onde você quer receber
+     as respostas dos clientes.
+4. Faça um novo deploy.
+
 ## Domínio próprio (opcional)
 
 Se você tiver ou comprar um domínio (tipo `xanswitch.com.br`), dá pra

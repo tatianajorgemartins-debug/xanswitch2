@@ -21,6 +21,8 @@ import {
   setReviewFeatured,
   deleteReview,
   deleteOrder,
+  getOrderById,
+  markOrderCodeSent,
   setOrderCardPointsConfirmed,
   createPointAdjustment,
   createDiscountCredit,
@@ -38,6 +40,8 @@ import {
   type GameType
 } from '@/lib/db';
 import { MP_CARD_FEE_KEY, MP_PIX_FEE_KEY } from '@/lib/paymentFees';
+import { buildDeliveryHtml, buildDeliverySubject, buildDeliveryText } from '@/lib/deliveryEmail';
+import { buildWhatsAppContactLink } from '@/lib/whatsapp';
 
 const PLATFORMS: Platform[] = ['switch1', 'switch2', 'both'];
 const GAME_TYPES: GameType[] = ['base', 'dlc', 'update'];
@@ -418,6 +422,127 @@ export async function deleteOrderAction(id: number): Promise<void> {
   await requireAuth();
   await deleteOrder(id);
   revalidatePath('/admin');
+}
+
+// Envia pro cliente o e-mail com a chave do jogo — botão "Enviar ao
+// cliente" em /admin > Pedidos. O e-mail já sai montado com os dados do
+// pedido (ver lib/deliveryEmail.ts); você só cola a chave.
+//
+// Sai pelo mesmo Resend do aviso de novo pedido (RESEND_API_KEY), mas pra
+// mandar pra QUALQUER cliente o Resend exige um domínio verificado — por
+// isso o remetente vem de STORE_FROM_EMAIL (ex: "XAN Switch
+// <pedidos@xanswitch.com.br>"). Ver .env.example.
+//
+// Pode ser chamado de novo pro mesmo pedido (botão "Reenviar"), ex: se o
+// cliente disser que não recebeu ou se você mandou a chave errada.
+export async function sendGameCodeAction(
+  orderId: number,
+  rawCode: string
+): Promise<{ ok: boolean; message: string }> {
+  await requireAuth();
+
+  const code = String(rawCode ?? '').trim();
+  if (!code) return { ok: false, message: 'Cole a chave do jogo antes de enviar.' };
+  if (code.length > 500) return { ok: false, message: 'A chave está grande demais — confira o que foi colado.' };
+
+  const order = await getOrderById(orderId);
+  if (!order) return { ok: false, message: 'Pedido não encontrado (talvez tenha sido apagado).' };
+  const to = order.customer_email?.trim();
+  if (!to) return { ok: false, message: 'Esse pedido não tem e-mail do cliente.' };
+
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.STORE_FROM_EMAIL;
+  if (!apiKey) return { ok: false, message: 'Falta configurar RESEND_API_KEY na Vercel.' };
+  if (!from) {
+    return {
+      ok: false,
+      message:
+        'Falta configurar STORE_FROM_EMAIL na Vercel (ex: XAN Switch <pedidos@xanswitch.com.br>), com o domínio verificado no Resend.'
+    };
+  }
+
+  const data = {
+    orderId: order.id,
+    gameName: order.game_name,
+    price: parseFloat(order.price),
+    code,
+    whatsappUrl: buildWhatsAppContactLink()
+  };
+  const replyTo = process.env.STORE_REPLY_TO_EMAIL || process.env.ORDER_NOTIFICATION_EMAIL;
+
+  let res: Response;
+  try {
+    res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      signal: AbortSignal.timeout(15000),
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from,
+        to,
+        ...(replyTo ? { reply_to: replyTo } : {}),
+        subject: buildDeliverySubject(order.game_name),
+        html: buildDeliveryHtml(data),
+        text: buildDeliveryText(data)
+      })
+    });
+  } catch (err) {
+    console.error('[entrega] Falha de conexão com o Resend:', err);
+    return { ok: false, message: 'Não deu pra falar com o Resend agora. Tente de novo em instantes.' };
+  }
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    console.error(`[entrega] Resend respondeu ${res.status}: ${body}`);
+    if (res.status === 403) {
+      return {
+        ok: false,
+        message:
+          'O Resend recusou o envio (403). Normalmente é porque o domínio do STORE_FROM_EMAIL ainda não foi verificado no Resend.'
+      };
+    }
+    return { ok: false, message: `O Resend recusou o envio (${res.status}). Nada foi enviado ao cliente.` };
+  }
+
+  try {
+    await markOrderCodeSent(order.id, code, 'email');
+  } catch (err) {
+    console.error('[entrega] E-mail enviado, mas falhou ao marcar o pedido:', err);
+    revalidatePath('/admin');
+    return {
+      ok: true,
+      message:
+        'E-mail enviado! Mas o pedido não foi marcado como entregue — rode db/migration-entrega-codigo.sql no Neon.'
+    };
+  }
+
+  revalidatePath('/admin');
+  return { ok: true, message: `E-mail enviado para ${to}.` };
+}
+
+// Pedido em que o cliente informou WhatsApp: o admin abre o WhatsApp (link
+// wa.me) com a mensagem e a chave já escritas — é só apertar enviar lá. O
+// site não consegue saber se você realmente apertou enviar no WhatsApp,
+// então esta ação só registra que a chave foi entregue por lá (status,
+// chave e horário), igual ao envio por e-mail.
+export async function markCodeSentByWhatsAppAction(
+  orderId: number,
+  rawCode: string
+): Promise<{ ok: boolean; message: string }> {
+  await requireAuth();
+  const code = String(rawCode ?? '').trim();
+  if (!code) return { ok: false, message: 'Cole a chave do jogo antes de enviar.' };
+  if (code.length > 500) return { ok: false, message: 'A chave está grande demais — confira o que foi colado.' };
+  try {
+    await markOrderCodeSent(orderId, code, 'whatsapp');
+  } catch (err) {
+    console.error('[entrega] Falha ao marcar o pedido como entregue pelo WhatsApp:', err);
+    return {
+      ok: false,
+      message: 'O WhatsApp abriu, mas o pedido não foi marcado como entregue — rode db/migration-entrega-codigo.sql no Neon.'
+    };
+  }
+  revalidatePath('/admin');
+  return { ok: true, message: 'Marcado como enviado pelo WhatsApp.' };
 }
 
 // Confirma (ou desmarca, caso você clique por engano) os pontos do card

@@ -9,6 +9,8 @@ import { getContrastColor } from '@/lib/color';
 import { formatPriceBR } from '@/lib/whatsapp';
 import { gamePrice, priceWithFee } from '@/lib/gamePrice';
 import { compressImageFile } from '@/lib/imageCompression';
+import { buildDeliveryHtml, buildDeliverySubject, buildDeliveryWhatsAppText } from '@/lib/deliveryEmail';
+import { formatWhatsApp } from '@/lib/validation';
 import {
   createGameAction,
   updateGameAction,
@@ -20,6 +22,8 @@ import {
   setReviewFeaturedAction,
   deleteOrderAction,
   confirmOrderPointsAction,
+  sendGameCodeAction,
+  markCodeSentByWhatsAppAction,
   adjustClientPointsAction,
   updateReviewsBannerAction,
   removeReviewsBannerAction,
@@ -72,6 +76,9 @@ export default function AdminClient({
   const [showArchived, setShowArchived] = useState(false);
   const [showReviewsPanel, setShowReviewsPanel] = useState(false);
   const [showOrdersPanel, setShowOrdersPanel] = useState(false);
+  // Pedidos com e-mail do cliente que ainda não receberam a chave — aparece
+  // no botão "📋 Pedidos" pra você ver de longe quantos faltam.
+  const pendingCodeCount = orders.filter((o) => o.customer_email && !o.code_sent_at).length;
   const [showWishlistPanel, setShowWishlistPanel] = useState(false);
   const [showClientsPanel, setShowClientsPanel] = useState(false);
   const [showBannerPanel, setShowBannerPanel] = useState(false);
@@ -328,6 +335,7 @@ export default function AdminClient({
         </button>
         <button className="btn ghost" onClick={() => setShowOrdersPanel((s) => !s)}>
           📋 Pedidos ({orders.length})
+          {pendingCodeCount > 0 && ` · ✉ ${pendingCodeCount} pra enviar`}
         </button>
         <button className="btn ghost" onClick={() => setShowWishlistPanel((s) => !s)}>
           ❤️ Mais desejados ({mostWantedGames.length})
@@ -1192,6 +1200,19 @@ function OrdersPanel({
                   {o.customer_email && (
                     <span style={{ color: 'var(--ink-dim)', fontSize: 12.5 }}>✉ {o.customer_email}</span>
                   )}
+                  {o.customer_whatsapp && (
+                    <span style={{ color: 'var(--ink-dim)', fontSize: 12.5 }}>💬 {formatWhatsApp(o.customer_whatsapp)}</span>
+                  )}
+                  {o.code_sent_at ? (
+                    <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--green)' }}>
+                      ✓ Código enviado{o.code_sent_via === 'whatsapp' ? ' pelo WhatsApp' : o.code_sent_via === 'email' ? ' por e-mail' : ''} em{' '}
+                      {new Date(o.code_sent_at).toLocaleString('pt-BR')}
+                    </span>
+                  ) : (
+                    o.customer_email && (
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--gold)' }}>⏳ Aguardando código</span>
+                    )
+                  )}
                   {o.referral_source && (
                     <span style={{ color: 'var(--ink-dim)', fontSize: 12.5 }}>📣 {o.referral_source}</span>
                   )}
@@ -1213,8 +1234,247 @@ function OrdersPanel({
               <button className="btn ghost" onClick={() => onDelete(o.id)} style={{ flex: 'none' }}>
                 🗑
               </button>
+              {o.customer_email && <DeliveryComposer order={o} />}
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Entrega da chave, já montada com os dados do pedido. Se o cliente
+// informou WhatsApp na compra, o padrão é o WhatsApp (abre o wa.me com a
+// mensagem pronta); senão, e-mail (sai pelo Resend). Dá pra trocar de canal
+// na hora, se precisar. Fica fechado por padrão; aberto, mostra a prévia
+// exata do que o cliente vai receber, o campo da chave e o botão de enviar.
+// Os textos moram em lib/deliveryEmail.ts.
+function DeliveryComposer({ order }: { order: Order }) {
+  const router = useRouter();
+  const alreadySent = Boolean(order.code_sent_at);
+  const whatsappNumber = order.customer_whatsapp || null;
+  const [channel, setChannel] = useState<'whatsapp' | 'email'>(whatsappNumber ? 'whatsapp' : 'email');
+  const [open, setOpen] = useState(false);
+  const [code, setCode] = useState('');
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  const price = parseFloat(order.price);
+  const data = {
+    orderId: order.id,
+    gameName: order.game_name,
+    price: Number.isFinite(price) ? price : 0,
+    code,
+    whatsappUrl: null
+  };
+  const previewHtml = useMemo(() => buildDeliveryHtml(data), [order.id, order.game_name, price, code]);
+  const whatsappText = buildDeliveryWhatsAppText({ ...data, code: code.trim() || '(a chave que você colar aparece aqui)' });
+
+  async function handleSend() {
+    const trimmed = code.trim();
+    if (!trimmed || sending) return;
+    const verb = alreadySent ? 'REENVIAR' : 'Enviar';
+
+    if (channel === 'whatsapp' && whatsappNumber) {
+      if (!window.confirm(`${verb} a chave "${trimmed}" de ${order.game_name} pelo WhatsApp ${formatWhatsApp(whatsappNumber)}?`)) return;
+      // Abre o WhatsApp ainda dentro do clique (senão o navegador bloqueia a
+      // janela nova) e só depois registra no banco.
+      const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+        buildDeliveryWhatsAppText({ ...data, code: trimmed })
+      )}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setSending(true);
+      setResult(null);
+      try {
+        const r = await markCodeSentByWhatsAppAction(order.id, trimmed);
+        setResult(r.ok ? { ok: true, message: 'WhatsApp aberto com a mensagem pronta — é só apertar enviar lá. ✓ Pedido marcado como enviado.' } : r);
+        if (r.ok) {
+          setCode('');
+          router.refresh();
+        }
+      } catch {
+        setResult({ ok: false, message: 'O WhatsApp abriu, mas não deu pra marcar o pedido como enviado. Tente de novo.' });
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+
+    if (!window.confirm(`${verb} a chave "${trimmed}" de ${order.game_name} para ${order.customer_email}?`)) return;
+    setSending(true);
+    setResult(null);
+    try {
+      const r = await sendGameCodeAction(order.id, trimmed);
+      setResult(r);
+      if (r.ok) {
+        setCode('');
+        router.refresh();
+      }
+    } catch {
+      setResult({ ok: false, message: 'Algo deu errado no envio. Confira sua conexão e tente de novo.' });
+    } finally {
+      setSending(false);
+    }
+  }
+
+  const isWhatsApp = channel === 'whatsapp' && Boolean(whatsappNumber);
+  const toggleStyle = (active: boolean) => ({
+    fontSize: 12.5,
+    padding: '5px 10px',
+    borderRadius: 8,
+    border: `1px solid ${active ? 'var(--green)' : 'rgba(255,255,255,.2)'}`,
+    background: active ? 'rgba(78,240,95,.12)' : 'transparent',
+    color: 'var(--ink)',
+    fontWeight: 700,
+    cursor: 'pointer'
+  });
+
+  return (
+    <div style={{ flexBasis: '100%', marginTop: 2 }}>
+      <button
+        type="button"
+        className="btn ghost"
+        onClick={() => setOpen((v) => !v)}
+        style={{ fontSize: 13, padding: '6px 12px' }}
+      >
+        {open
+          ? '▲ Fechar'
+          : alreadySent
+            ? '↻ Reenviar código'
+            : whatsappNumber
+              ? '💬 Preparar WhatsApp'
+              : '✉ Preparar e-mail'}
+      </button>
+
+      {result && !open && (
+        <p style={{ margin: '6px 0 0', fontSize: 12.5, fontWeight: 700, color: result.ok ? 'var(--green)' : '#ff6b6b' }}>
+          {result.message}
+        </p>
+      )}
+
+      {open && (
+        <div
+          style={{
+            marginTop: 10,
+            border: '1px solid rgba(164,99,255,.3)',
+            borderRadius: 12,
+            padding: 12,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10
+          }}
+        >
+          {whatsappNumber && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontSize: 12.5, color: 'var(--ink-dim)' }}>Enviar por:</span>
+              <button type="button" style={toggleStyle(channel === 'whatsapp')} onClick={() => setChannel('whatsapp')}>
+                💬 WhatsApp
+              </button>
+              <button type="button" style={toggleStyle(channel === 'email')} onClick={() => setChannel('email')}>
+                📧 E-mail
+              </button>
+            </div>
+          )}
+
+          <div style={{ fontSize: 13, lineHeight: 1.5 }}>
+            <div>
+              <span style={{ color: 'var(--ink-dim)' }}>Para:</span>{' '}
+              <strong>{isWhatsApp && whatsappNumber ? `WhatsApp ${formatWhatsApp(whatsappNumber)}` : order.customer_email}</strong>
+            </div>
+            {!isWhatsApp && (
+              <div>
+                <span style={{ color: 'var(--ink-dim)' }}>Assunto:</span> {buildDeliverySubject(order.game_name)}
+              </div>
+            )}
+            {alreadySent && order.delivered_code && (
+              <div style={{ color: 'var(--gold)' }}>
+                Já enviado antes{order.code_sent_via === 'whatsapp' ? ' pelo WhatsApp' : order.code_sent_via === 'email' ? ' por e-mail' : ''} com a
+                chave <code>{order.delivered_code}</code>
+              </div>
+            )}
+          </div>
+
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 700 }}>
+            Chave do jogo
+            <input
+              type="text"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              placeholder="Cole aqui a chave (ex: XXXX-XXXX-XXXX-XXXX)"
+              autoComplete="off"
+              spellCheck={false}
+              style={{
+                fontFamily: 'monospace',
+                fontSize: 16,
+                letterSpacing: 1,
+                padding: '10px 12px',
+                borderRadius: 8,
+                border: '1px solid rgba(164,99,255,.45)',
+                background: 'rgba(0,0,0,.25)',
+                color: 'var(--ink)'
+              }}
+            />
+          </label>
+
+          <button
+            type="button"
+            className="btn"
+            onClick={handleSend}
+            disabled={!code.trim() || sending}
+            style={{ alignSelf: 'flex-start', opacity: !code.trim() || sending ? 0.55 : 1 }}
+          >
+            {sending
+              ? 'Enviando…'
+              : isWhatsApp
+                ? alreadySent
+                  ? '↻ Reenviar pelo WhatsApp'
+                  : '💬 Enviar pelo WhatsApp'
+                : alreadySent
+                  ? '↻ Reenviar por e-mail'
+                  : '📨 Enviar por e-mail'}
+          </button>
+
+          {result && (
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: result.ok ? 'var(--green)' : '#ff6b6b' }}>
+              {result.message}
+            </p>
+          )}
+
+          <div style={{ fontSize: 12, color: 'var(--ink-dim)' }}>
+            Prévia {isWhatsApp ? 'da mensagem de WhatsApp' : 'do e-mail'} que o cliente vai receber:
+          </div>
+          {isWhatsApp ? (
+            <pre
+              style={{
+                margin: 0,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                fontFamily: 'inherit',
+                fontSize: 13.5,
+                lineHeight: 1.5,
+                background: '#dcf8c6',
+                color: '#111b21',
+                borderRadius: 10,
+                padding: '10px 12px',
+                maxWidth: 480
+              }}
+            >
+              {whatsappText}
+            </pre>
+          ) : (
+            <iframe
+              title={`Prévia do e-mail do pedido ${order.id}`}
+              srcDoc={previewHtml}
+              sandbox=""
+              style={{ width: '100%', height: 560, border: 'none', borderRadius: 10, background: '#f4f1fa' }}
+            />
+          )}
         </div>
       )}
     </div>

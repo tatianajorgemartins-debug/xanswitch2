@@ -17,7 +17,7 @@ const steps = (gameCount: number) => [
   {
     title: 'Receba o código no e-mail',
     // Mesmo prazo que a tela de pagamento já promete.
-    text: 'Seu código chega por e-mail ainda hoje.',
+    text: 'Seu código chega por e-mail ou WhatsApp ainda hoje.',
     icon: <path d="M3 6.5A1.5 1.5 0 014.5 5h15A1.5 1.5 0 0121 6.5v11a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 17.5v-11zM3.5 6.5l8.5 6 8.5-6" />
   }
 ];

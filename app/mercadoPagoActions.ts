@@ -31,6 +31,8 @@ import {
   type MpPaymentItem,
   type MpPaymentRecord
 } from '@/lib/db';
+import { setMpPaymentWhatsApp } from '@/lib/db';
+import { readDeliveryWhatsApp } from '@/lib/deliveryWhatsApp';
 import {
   createCardPayment,
   createPixPayment,
@@ -89,6 +91,18 @@ function gameToPaymentItem(game: Game, offer: { token: string; price: number } |
   };
 }
 
+// Guarda na cobrança o WhatsApp que o cliente informou na compra (ver
+// lib/deliveryWhatsApp.ts) — ele passa pros pedidos quando o pagamento cai
+// (lib/mercadoPagoOrders.ts). Nunca derruba a compra: antes de rodar
+// db/migration-entrega-codigo.sql esse UPDATE falha e é só ignorado.
+async function attachWhatsAppToCharge(paymentId: string): Promise<void> {
+  const whatsapp = await readDeliveryWhatsApp();
+  if (!whatsapp) return;
+  await setMpPaymentWhatsApp(paymentId, whatsapp).catch((err) => {
+    console.error('[mercadopago] Não deu pra guardar o WhatsApp da cobrança (rodou db/migration-entrega-codigo.sql?):', err);
+  });
+}
+
 async function createCharge(
   items: MpPaymentItem[],
   email: string,
@@ -117,6 +131,7 @@ async function createCharge(
       items,
       payment_method: 'pix'
     });
+    await attachWhatsAppToCharge(charge.id);
     return {
       mode: 'mercadopago',
       paymentId: charge.id,
@@ -225,6 +240,7 @@ export async function startSplitPixPaymentAction(
       payment_method: 'pix+cartao',
       split_pix_part: part
     });
+    await attachWhatsAppToCharge(charge.id);
     return {
       mode: 'mercadopago',
       paymentId: charge.id,
@@ -465,6 +481,7 @@ export async function payWithCardAction(
         payment_method: 'cartao',
         referral_source: referral
       });
+      await attachWhatsAppToCharge(charge.id);
     }
 
     if (charge.state.status === 'approved') {

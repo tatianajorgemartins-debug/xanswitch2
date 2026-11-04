@@ -19,7 +19,14 @@ type OrderNotification = {
   items: { gameName: string; price: number; amazonJpUrl?: string | null }[];
   total: number;
   customerEmail: string;
+  // WhatsApp que o cliente informou pra receber a chave (opcional, só
+  // números com 55 na frente). Null = entrega por e-mail.
+  customerWhatsApp?: string | null;
 };
+
+function deliveryLine(order: OrderNotification): string {
+  return order.customerWhatsApp ? `WhatsApp (+${order.customerWhatsApp})` : 'E-mail';
+}
 
 // Tempo máximo de espera por cada serviço de aviso — se um deles ficar
 // travado, desiste e segue pros outros em vez de esperar indefinidamente.
@@ -75,6 +82,7 @@ async function sendOrderEmail(order: OrderNotification): Promise<void> {
         <ul>${linhasJogos}</ul>
         <p><strong>Total:</strong> R$ ${formatPriceBR(order.total)}</p>
         <p><strong>E-mail do cliente:</strong> ${order.customerEmail}</p>
+        <p><strong>Entregar a chave por:</strong> ${deliveryLine(order)}</p>
         <p><strong>Horário:</strong> ${horario}</p>
       `
     })
@@ -95,7 +103,7 @@ async function sendOrderWhatsApp(order: OrderNotification): Promise<void> {
 
   const text = `Novo pedido!\nJogo(s): ${buildGamesList(order.items)}\nTotal: R$ ${formatPriceBR(
     order.total
-  )}\nE-mail: ${order.customerEmail}`;
+  )}\nE-mail: ${order.customerEmail}\nEntregar por: ${deliveryLine(order)}`;
 
   const url = `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encodeURIComponent(text)}&apikey=${apiKey}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(NOTIFY_TIMEOUT_MS) });
@@ -120,7 +128,7 @@ async function sendOrderTelegram(order: OrderNotification): Promise<void> {
         }`
     )
     .join('\n\n');
-  const text = `🎮 Novo pedido!\n\n${jogos}\n\nTotal: R$ ${formatPriceBR(order.total)}\nE-mail: ${order.customerEmail}`;
+  const text = `🎮 Novo pedido!\n\n${jogos}\n\nTotal: R$ ${formatPriceBR(order.total)}\nE-mail: ${order.customerEmail}\nEntregar por: ${deliveryLine(order)}`;
 
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',

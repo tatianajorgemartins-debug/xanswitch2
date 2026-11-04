@@ -381,7 +381,7 @@ export function CardPaymentStep({
         <>
           <ReferralSourcePicker value={referralSource} onChange={setReferralSource} />
           <div className="purchase-urgency-box">
-            <p>Pagamento processado pelo Mercado Pago. Aprovou, seu código chega por e-mail ainda hoje 🎮</p>
+            <p>Pagamento processado pelo Mercado Pago. Aprovou, seu código chega por e-mail (ou WhatsApp, se você informou) ainda hoje 🎮</p>
           </div>
         </>
       }

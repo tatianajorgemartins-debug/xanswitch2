@@ -295,7 +295,7 @@ function BulkStepPayment({
         <>
           <ReferralSourcePicker value={referralSource} onChange={setReferralSource} />
           <div className="purchase-urgency-box">
-            <p>Após o pagamento, seus códigos chegam por e-mail ainda hoje 🎮</p>
+            <p>Após o pagamento, seus códigos chegam por e-mail (ou WhatsApp, se você informou) ainda hoje 🎮</p>
           </div>
         </>
       }
@@ -377,7 +377,7 @@ function BulkStepConfirm({
   return (
     <>
       <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 15, color: 'var(--ink)', marginBottom: 4 }}>
-        Pagamento confirmado! Seus códigos chegam no seu e-mail ainda hoje 🎮
+        Pagamento confirmado! Seus códigos chegam no seu e-mail (ou WhatsApp, se você informou) ainda hoje 🎮
       </p>
       <p style={{ textAlign: 'center', fontSize: 13.5, color: 'var(--ink-dim)', marginBottom: 18 }}>
         E olha só os cards que você ganhou:

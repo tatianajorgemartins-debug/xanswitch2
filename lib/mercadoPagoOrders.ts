@@ -14,6 +14,7 @@ import {
   incrementPrivateOfferUse,
   markDiscountCreditUsed,
   releaseMpPaymentClaim,
+  setOrderWhatsApp,
   setMpPaymentStatus,
   type MpPaymentRecord
 } from './db';
@@ -104,6 +105,13 @@ async function createOrdersForApprovedPayment(paymentId: string, extraTotal = 0)
       )
     );
 
+    // WhatsApp informado na compra (se houver) vai junto pros pedidos. Só
+    // um extra: se falhar, os pedidos continuam valendo.
+    if (record.customer_whatsapp) {
+      const whatsapp = record.customer_whatsapp;
+      await Promise.all(orders.map((o) => setOrderWhatsApp(o.id, whatsapp).catch(() => {})));
+    }
+
     // Compras por link exclusivo contam no link (ele para de valer quando
     // chega no limite de compras).
     for (const it of record.items) {
@@ -125,7 +133,8 @@ async function createOrdersForApprovedPayment(paymentId: string, extraTotal = 0)
     notifyNewOrder({
       items: record.items.map((it) => ({ gameName: it.gameName, price: it.price, amazonJpUrl: it.amazonJpUrl })),
       total: parseFloat(record.total) + extraTotal,
-      customerEmail: record.customer_email
+      customerEmail: record.customer_email,
+      customerWhatsApp: record.customer_whatsapp ?? null
     })
   );
 }

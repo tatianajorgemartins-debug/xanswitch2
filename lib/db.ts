@@ -323,6 +323,18 @@ export type Order = {
   // Id do pagamento no Mercado Pago quando o Pix foi automático (ver
   // lib/mercadoPagoOrders.ts) — null nos pedidos do Pix de sempre.
   mp_payment_id: string | null;
+  // Chave do jogo enviada pro cliente pelo admin e quando o e-mail saiu
+  // (ver db/migration-entrega-codigo.sql e sendGameCodeAction em
+  // app/admin/actions.ts). Null/undefined enquanto não foi enviada — e
+  // também antes de rodar a migração.
+  delivered_code?: string | null;
+  code_sent_at?: Date | null;
+  // 'email' ou 'whatsapp' — por onde a chave foi enviada.
+  code_sent_via?: string | null;
+  // WhatsApp que o cliente informou na compra (opcional — só números, com
+  // 55 na frente). Preenchido = a chave vai pelo WhatsApp; vazio = por
+  // e-mail. Ver lib/deliveryWhatsApp.ts.
+  customer_whatsapp?: string | null;
   created_at: Date;
 };
 
@@ -402,6 +414,9 @@ export type MpPaymentRecord = {
   // do preço do jogo foi pago no Pix; na do cartão, o id da do Pix.
   split_pix_part: string | null;
   split_pix_id: string | null;
+  // WhatsApp do cliente (db/migration-entrega-codigo.sql) — passado pros
+  // pedidos quando o pagamento cai. Undefined antes da migração.
+  customer_whatsapp?: string | null;
   processed_at: Date | null;
   created_at: Date;
 };
@@ -529,6 +544,33 @@ export async function getOrdersByEmail(email: string): Promise<Order[]> {
     ORDER BY created_at DESC
   `;
   return rows as Order[];
+}
+
+export async function getOrderById(id: number): Promise<Order | null> {
+  const rows = await getSql()`SELECT * FROM orders WHERE id = ${id}`;
+  return (rows[0] as Order) ?? null;
+}
+
+// Marca o pedido como entregue depois que o e-mail com a chave saiu (ver
+// sendGameCodeAction em app/admin/actions.ts).
+export async function markOrderCodeSent(id: number, code: string, via: 'email' | 'whatsapp'): Promise<void> {
+  await getSql()`
+    UPDATE orders
+    SET status = 'codigo_enviado', delivered_code = ${code}, code_sent_at = now(), code_sent_via = ${via}
+    WHERE id = ${id}
+  `;
+}
+
+// WhatsApp opcional do cliente (ver lib/deliveryWhatsApp.ts). Gravado
+// DEPOIS do pedido/cobrança já existir, num UPDATE separado: assim, se a
+// migração db/migration-entrega-codigo.sql ainda não tiver rodado, só esse
+// UPDATE falha (quem chama ignora o erro) e a compra continua normal.
+export async function setOrderWhatsApp(id: number, whatsapp: string): Promise<void> {
+  await getSql()`UPDATE orders SET customer_whatsapp = ${whatsapp} WHERE id = ${id}`;
+}
+
+export async function setMpPaymentWhatsApp(id: string, whatsapp: string): Promise<void> {
+  await getSql()`UPDATE mp_payments SET customer_whatsapp = ${whatsapp} WHERE id = ${id}`;
 }
 
 export async function deleteOrder(id: number): Promise<void> {

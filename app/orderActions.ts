@@ -6,8 +6,10 @@ import {
   findRecentDuplicateOrder,
   getGameById,
   getAvailableDiscountCredit,
-  markDiscountCreditUsed
+  markDiscountCreditUsed,
+  setOrderWhatsApp
 } from '@/lib/db';
+import { readDeliveryWhatsApp } from '@/lib/deliveryWhatsApp';
 import { notifyNewOrder } from '@/lib/notifications';
 import { isValidEmail, isValidReferralSource } from '@/lib/validation';
 import { verifyAccessToken } from '@/lib/supabaseAuthServer';
@@ -19,6 +21,20 @@ export type ConfirmOrderResult = { ok: true } | { ok: false; error: string };
 // Action diretamente) só é ignorado, nunca barra o pedido.
 function sanitizeReferralSource(value: string | null): string | null {
   return value && isValidReferralSource(value) ? value : null;
+}
+
+// Guarda nos pedidos o WhatsApp que o cliente informou na compra (se
+// informou — ver lib/deliveryWhatsApp.ts). Nunca derruba o pedido: antes de
+// rodar db/migration-entrega-codigo.sql esse UPDATE falha e é só ignorado.
+async function attachWhatsApp(orderIds: number[], whatsapp: string | null): Promise<void> {
+  if (!whatsapp) return;
+  await Promise.all(
+    orderIds.map((id) =>
+      setOrderWhatsApp(id, whatsapp).catch((err) => {
+        console.error('[pedidos] Não deu pra guardar o WhatsApp do pedido (rodou db/migration-entrega-codigo.sql?):', err);
+      })
+    )
+  );
 }
 
 // Busca, direto no banco (não confia no que o navegador mandou), os dados
@@ -113,6 +129,9 @@ export async function confirmOrderAction(
     await markDiscountCreditUsed(creditIdToMark, order.id).catch(() => {});
   }
 
+  const whatsapp = await readDeliveryWhatsApp();
+  await attachWhatsApp([order.id], whatsapp);
+
   // O pedido já está salvo no banco nesse ponto — se a notificação falhar
   // (e-mail fora do ar, CallMeBot indisponível etc.), o pedido continua
   // valendo e visível em /admin > Pedidos, então não há por que travar a
@@ -120,7 +139,8 @@ export async function confirmOrderAction(
   after(() => notifyNewOrder({
     items: [{ gameName, price: finalPrice, amazonJpUrl: game.amazonJpUrl }],
     total: finalPrice,
-    customerEmail: trimmedEmail
+    customerEmail: trimmedEmail,
+    customerWhatsApp: whatsapp
   }));
 
   return { ok: true };
@@ -154,8 +174,9 @@ export async function confirmBulkOrderAction(
   if (pendingItems.length === 0) return { ok: true };
 
   const amazonJpUrls: (string | null)[] = [];
+  let createdOrders;
   try {
-    await Promise.all(
+    createdOrders = await Promise.all(
       pendingItems.map(async (it, index) => {
         const game = await snapshotGameForOrder(it.id);
         amazonJpUrls[index] = game.amazonJpUrl;
@@ -176,10 +197,14 @@ export async function confirmBulkOrderAction(
     return { ok: false, error: 'Não foi possível registrar seu pedido agora. Tente novamente em instantes.' };
   }
 
+  const whatsapp = await readDeliveryWhatsApp();
+  await attachWhatsApp(createdOrders.map((o) => o.id), whatsapp);
+
   after(() => notifyNewOrder({
     items: pendingItems.map((it, index) => ({ gameName: it.name, price: it.price, amazonJpUrl: amazonJpUrls[index] ?? null })),
     total: pendingItems.reduce((sum, it) => sum + it.price, 0),
-    customerEmail: trimmedEmail
+    customerEmail: trimmedEmail,
+    customerWhatsApp: whatsapp
   }));
 
   return { ok: true };
@@ -212,8 +237,9 @@ export async function confirmCreditOrderAction(
 
   const game = await snapshotGameForOrder(gameId);
 
+  let order;
   try {
-    await createOrder({
+    order = await createOrder({
       game_id: gameId,
       game_name: gameName,
       price,
@@ -231,10 +257,14 @@ export async function confirmCreditOrderAction(
     return { ok: false, error: 'Não foi possível registrar seu pedido agora. Tente novamente em instantes.' };
   }
 
+  const whatsapp = await readDeliveryWhatsApp();
+  await attachWhatsApp([order.id], whatsapp);
+
   after(() => notifyNewOrder({
     items: [{ gameName, price, amazonJpUrl: game.amazonJpUrl }],
     total: price,
-    customerEmail: trimmedEmail
+    customerEmail: trimmedEmail,
+    customerWhatsApp: whatsapp
   }));
 
   return { ok: true };
