@@ -1278,8 +1278,10 @@ function DeliveryComposer({ order }: { order: Order }) {
     if (channel === 'whatsapp' && whatsappNumber) {
       if (!window.confirm(`${verb} a chave "${trimmed}" de ${order.game_name} pelo WhatsApp ${formatWhatsApp(whatsappNumber)}?`)) return;
       // Abre o WhatsApp ainda dentro do clique (senão o navegador bloqueia a
-      // janela nova) e só depois registra no banco.
-      const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+      // janela nova) e só depois registra no banco. api.whatsapp.com/send em
+      // vez de wa.me: o redirecionamento do wa.me estraga os emojis (viram
+      // "�") no WhatsApp Web/Desktop.
+      const url = `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${encodeURIComponent(
         buildDeliveryWhatsAppText({ ...data, code: trimmed })
       )}`;
       window.open(url, '_blank', 'noopener,noreferrer');
