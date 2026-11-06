@@ -546,6 +546,11 @@
 .adm-sale-date {
   color: var(--ink-dim);
 }
+.adm-sale-date small {
+  display: block;
+  font-size: 12px;
+  opacity: 0.8;
+}
 .adm-sale-main {
   display: flex;
   flex-direction: column;
@@ -781,6 +786,10 @@
   .adm-sale-date {
     grid-area: meta;
     font-size: 12.5px;
+  }
+  .adm-sale-date small {
+    display: inline;
+    margin-left: 6px;
   }
   .adm-sale-pay {
     display: none;

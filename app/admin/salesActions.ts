@@ -20,6 +20,7 @@ export type SaleInput = {
   fee: string;
   notes: string;
   date: string; // AAAA-MM-DD
+  time: string; // HH:MM (horário de Brasília)
 };
 
 type Result = { ok: true } | { ok: false; error: string };
@@ -48,6 +49,7 @@ function parseInput(input: SaleInput): SaleFields | string {
   if (!PAYMENT_METHODS.some((m) => m.id === input.paymentMethod)) return 'Escolha a forma de pagamento.';
   if (!SALE_STATUSES.some((s) => s.id === input.status)) return 'Escolha a situação da venda.';
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) return 'Escolha a data da venda.';
+  const time = /^([01]\d|2[0-3]):[0-5]\d$/.test(input.time) ? input.time : '12:00';
   const email = input.customerEmail.trim();
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'O e-mail do cliente parece errado.';
   const whatsapp = normalizeWhatsApp(input.customerWhatsapp);
@@ -65,8 +67,8 @@ function parseInput(input: SaleInput): SaleFields | string {
     cost,
     fee,
     notes: input.notes.trim().slice(0, 1000) || null,
-    // Meio-dia de Brasília: a data não "pula" de dia por causa do fuso.
-    created_at: `${input.date}T12:00:00-03:00`
+    // Horário de Brasília (sem horário de verão desde 2019).
+    created_at: `${input.date}T${time}:00-03:00`
   };
 }
 

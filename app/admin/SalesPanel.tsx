@@ -40,6 +40,10 @@ function dayKey(d: Date | string): string {
 function formatDay(d: Date | string): string {
   return new Date(d).toLocaleDateString('pt-BR', { timeZone: TZ, day: '2-digit', month: '2-digit', year: '2-digit' });
 }
+// "18:42" no fuso de Brasília.
+function formatTime(d: Date | string): string {
+  return new Date(d).toLocaleTimeString('pt-BR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
+}
 function monthLabel(key: string): string {
   const [y, m] = key.split('-');
   return `${MONTHS[parseInt(m, 10) - 1]}/${y.slice(2)}`;
@@ -239,12 +243,13 @@ export default function SalesPanel({ orders, games }: { orders: Order[]; games: 
   }
 
   function exportCsv() {
-    const header = ['Data', 'Jogo', 'Cliente', 'E-mail', 'WhatsApp', 'Pagamento', 'Situação', 'Origem', 'Preço', 'Custo', 'Taxa extra', 'Lucro', 'Observação'];
+    const header = ['Data', 'Hora', 'Jogo', 'Cliente', 'E-mail', 'WhatsApp', 'Pagamento', 'Situação', 'Origem', 'Preço', 'Custo', 'Taxa extra', 'Lucro', 'Observação'];
     const num = (n: number | null) => (n === null ? '' : n.toFixed(2).replace('.', ','));
     const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
     const lines = filtered.map((o) =>
       [
         formatDay(o.created_at),
+        formatTime(o.created_at),
         o.game_name,
         o.customer_name ?? '',
         o.customer_email ?? '',
@@ -507,7 +512,7 @@ export default function SalesPanel({ orders, games }: { orders: Order[]; games: 
         ) : (
           <div className="adm-sale-list">
             <div className="adm-sale-row is-head" aria-hidden="true">
-              <span>Data</span>
+              <span>Data e hora</span>
               <span>Jogo / cliente</span>
               <span>Pagamento</span>
               <span>Preço</span>
@@ -563,7 +568,10 @@ function SaleRow({ order: o, suggestion, onEdit }: { order: Order; suggestion: n
 
   return (
     <div className={`adm-sale-row${st === 'cancelado' ? ' is-cancelled' : ''}`}>
-      <span className="adm-sale-date">{formatDay(o.created_at)}</span>
+      <span className="adm-sale-date">
+        {formatDay(o.created_at)}
+        <small>{formatTime(o.created_at)}</small>
+      </span>
       <span className="adm-sale-main">
         <strong>{o.game_name}</strong>
         <small>
@@ -624,7 +632,8 @@ function toInput(o: Order | null, today: string): SaleInput {
       cost: '',
       fee: '',
       notes: '',
-      date: today
+      date: today,
+      time: formatTime(new Date())
     };
   }
   const fmt = (v: string | null | undefined) => (toNumber(v) === null ? '' : formatPriceBR(toNumber(v)!));
@@ -640,7 +649,8 @@ function toInput(o: Order | null, today: string): SaleInput {
     cost: fmt(o.cost),
     fee: fmt(o.fee),
     notes: o.notes ?? '',
-    date: dayKey(o.created_at)
+    date: dayKey(o.created_at),
+    time: formatTime(o.created_at)
   };
 }
 
@@ -734,6 +744,10 @@ function SaleForm({
           <label>
             Data *
             <input type="date" value={form.date} onChange={(e) => set('date', e.target.value)} required />
+          </label>
+          <label>
+            Hora
+            <input type="time" value={form.time} onChange={(e) => set('time', e.target.value)} />
           </label>
           <label>
             Pagamento *
