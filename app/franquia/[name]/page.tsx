@@ -42,7 +42,8 @@ export async function generateMetadata({ params }: { params: Promise<{ name: str
   const title = `Jogos de ${decoded} — XAN Switch`;
   const description = `Confira todos os jogos de ${decoded} disponíveis na XAN Switch — código digital, entrega rápida.`;
 
-  return { title, description, openGraph: { title, description } };
+  // Imagem de prévia: a mesma do site (app/opengraph-image.jpg).
+  return { title, description, openGraph: { title, description, images: ['/opengraph-image.jpg'] } };
 }
 
 export default async function FranchisePage({ params }: { params: Promise<{ name: string }> }) {

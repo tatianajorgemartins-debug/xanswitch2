@@ -3,8 +3,17 @@ import { preconnect } from 'react-dom';
 import './globals.css';
 
 export const metadata: Metadata = {
+  // Endereço usado pra montar os links completos das imagens de prévia
+  // (opengraph-image.jpg nesta pasta é a imagem que aparece quando o link do
+  // site é mandado no WhatsApp, Instagram etc.).
+  metadataBase: new URL('https://www.xanswitch.com.br'),
   title: 'XAN Switch — Catálogo',
-  description: 'Catálogo de jogos digitais para Nintendo Switch — XAN Switch'
+  description: 'Catálogo de jogos digitais para Nintendo Switch — XAN Switch',
+  openGraph: {
+    siteName: 'XAN Switch',
+    locale: 'pt_BR',
+    type: 'website'
+  }
 };
 
 // Cor da barra de status do celular (e do app instalado) — o fundo escuro do site.
