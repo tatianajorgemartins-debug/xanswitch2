@@ -335,6 +335,16 @@ export type Order = {
   // 55 na frente). Preenchido = a chave vai pelo WhatsApp; vazio = por
   // e-mail. Ver lib/deliveryWhatsApp.ts.
   customer_whatsapp?: string | null;
+  // Controle de vendas (db/migration-controle-vendas.sql — undefined antes
+  // dela): custo da chave e taxa extra em R$ (numeric vem como string),
+  // observação, nome/@ do cliente, origem ('site' ou 'manual') e quando foi
+  // concluída. Ver lib/sales.ts.
+  cost?: string | null;
+  fee?: string | null;
+  notes?: string | null;
+  customer_name?: string | null;
+  source?: string;
+  completed_at?: Date | null;
   created_at: Date;
 };
 
@@ -546,6 +556,78 @@ export async function getOrdersByEmail(email: string): Promise<Order[]> {
   return rows as Order[];
 }
 
+// Todas as vendas, sem limite — o controle de vendas do admin filtra e soma
+// tudo no navegador.
+export async function getAllOrders(): Promise<Order[]> {
+  const rows = await getSql()`SELECT * FROM orders ORDER BY created_at DESC`;
+  return rows as Order[];
+}
+
+export type SaleFields = {
+  game_id: number | null;
+  game_name: string;
+  price: number;
+  customer_email: string | null;
+  customer_name: string | null;
+  customer_whatsapp: string | null;
+  payment_method: string;
+  status: string;
+  cost: number | null;
+  fee: number | null;
+  notes: string | null;
+  created_at: string; // ISO
+};
+
+// Edição completa de uma venda no controle de vendas.
+export async function updateSale(id: number, f: SaleFields): Promise<void> {
+  await getSql()`
+    UPDATE orders SET
+      game_id = ${f.game_id}, game_name = ${f.game_name}, price = ${f.price},
+      customer_email = ${f.customer_email}, customer_name = ${f.customer_name},
+      customer_whatsapp = ${f.customer_whatsapp}, payment_method = ${f.payment_method},
+      cost = ${f.cost}, fee = ${f.fee}, notes = ${f.notes}, created_at = ${f.created_at},
+      completed_at = CASE
+        WHEN ${f.status} = 'concluido' THEN COALESCE(completed_at, now())
+        ELSE NULL
+      END,
+      status = ${f.status}
+    WHERE id = ${id}
+  `;
+}
+
+// Venda feita fora do site (direct, WhatsApp, pessoalmente), lançada à mão.
+export async function createManualSale(f: SaleFields): Promise<Order> {
+  const rows = await getSql()`
+    INSERT INTO orders (
+      game_id, game_name, price, customer_email, customer_name, customer_whatsapp,
+      payment_method, status, cost, fee, notes, created_at, source,
+      card_points_earned, discount_applied, completed_at
+    ) VALUES (
+      ${f.game_id}, ${f.game_name}, ${f.price}, ${f.customer_email}, ${f.customer_name}, ${f.customer_whatsapp},
+      ${f.payment_method}, ${f.status}, ${f.cost}, ${f.fee}, ${f.notes}, ${f.created_at}, 'manual',
+      0, 0, ${f.status === 'concluido' ? new Date().toISOString() : null}
+    )
+    RETURNING *
+  `;
+  return rows[0] as Order;
+}
+
+// Só o custo — o campo rápido da lista de vendas.
+export async function setSaleCost(id: number, cost: number | null): Promise<void> {
+  await getSql()`UPDATE orders SET cost = ${cost} WHERE id = ${id}`;
+}
+
+// Muda o status de várias vendas de uma vez ("marcar como concluída").
+export async function setSalesStatus(ids: number[], status: string): Promise<void> {
+  if (ids.length === 0) return;
+  await getSql()`
+    UPDATE orders SET
+      completed_at = CASE WHEN ${status} = 'concluido' THEN COALESCE(completed_at, now()) ELSE NULL END,
+      status = ${status}
+    WHERE id = ANY(${ids})
+  `;
+}
+
 export async function getOrderById(id: number): Promise<Order | null> {
   const rows = await getSql()`SELECT * FROM orders WHERE id = ${id}`;
   return (rows[0] as Order) ?? null;
@@ -559,6 +641,11 @@ export async function markOrderCodeSent(id: number, code: string, via: 'email' |
     SET status = 'codigo_enviado', delivered_code = ${code}, code_sent_at = now(), code_sent_via = ${via}
     WHERE id = ${id}
   `;
+  // Chave entregue = venda concluída (sai de "Pedidos a entregar" e conta no
+  // controle de vendas). Separado do UPDATE acima: antes de rodar
+  // db/migration-controle-vendas.sql a coluna completed_at não existe, e o
+  // envio da chave não pode falhar por isso.
+  await getSql()`UPDATE orders SET status = 'concluido', completed_at = now() WHERE id = ${id}`.catch(() => {});
 }
 
 // WhatsApp opcional do cliente (ver lib/deliveryWhatsApp.ts). Gravado

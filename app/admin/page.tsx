@@ -3,7 +3,7 @@ import {
   getAllGames,
   getVisitCount,
   getAllReviews,
-  getRecentOrders,
+  getAllOrders,
   getStalledSplitPayments,
   getAllPrivateOffers,
   getAllPointAdjustmentTotals,
@@ -33,7 +33,8 @@ export default async function AdminPage() {
   const games = await getAllGames();
   const visitCount = await getVisitCount();
   const reviews = await getAllReviews();
-  const orders = await getRecentOrders();
+  // Todas as vendas (o controle de vendas filtra e soma tudo no navegador).
+  const orders = await getAllOrders();
   // Antes de rodar db/migration-pix-cartao.sql a consulta falha — aí só
   // não mostra o aviso.
   const stalledSplits = (await getStalledSplitPayments().catch(() => [])).map((p) => ({

@@ -11,6 +11,10 @@ import { gamePrice, priceWithFee } from '@/lib/gamePrice';
 import { compressImageFile } from '@/lib/imageCompression';
 import { buildDeliveryHtml, buildDeliverySubject, buildDeliveryWhatsAppText } from '@/lib/deliveryEmail';
 import { formatWhatsApp } from '@/lib/validation';
+import { normalizeStatus, saleProfit } from '@/lib/sales';
+import SalesPanel from './SalesPanel';
+import { setSalesStatusAction } from './salesActions';
+import './admin.css';
 import {
   createGameAction,
   updateGameAction,
@@ -37,6 +41,9 @@ import {
 } from './actions';
 
 const emptyFormState: GameFormState = { error: null };
+
+const TAB_IDS = ['inicio', 'pedidos', 'vendas', 'jogos', 'clientes', 'comentarios', 'divulgacao', 'config'] as const;
+type TabId = (typeof TAB_IDS)[number];
 
 export default function AdminClient({
   initialGames,
@@ -74,17 +81,24 @@ export default function AdminClient({
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
-  const [showReviewsPanel, setShowReviewsPanel] = useState(false);
-  const [showOrdersPanel, setShowOrdersPanel] = useState(false);
-  // Pedidos com e-mail do cliente que ainda não receberam a chave — aparece
-  // no botão "📋 Pedidos" pra você ver de longe quantos faltam.
-  const pendingCodeCount = orders.filter((o) => o.customer_email && !o.code_sent_at).length;
-  const [showWishlistPanel, setShowWishlistPanel] = useState(false);
-  const [showClientsPanel, setShowClientsPanel] = useState(false);
-  const [showBannerPanel, setShowBannerPanel] = useState(false);
-  const [showFranchisePanel, setShowFranchisePanel] = useState(false);
-  const [showFeesPanel, setShowFeesPanel] = useState(false);
-  const [showOffersPanel, setShowOffersPanel] = useState(false);
+  // Seção aberta do painel. Fica no endereço (#vendas, #jogos...) pra
+  // continuar na mesma seção depois de atualizar a página.
+  const [tab, setTab] = useState<TabId>('inicio');
+  useEffect(() => {
+    const fromHash = window.location.hash.slice(1) as TabId;
+    if (TAB_IDS.includes(fromHash)) setTab(fromHash);
+  }, []);
+  // No celular a barra de seções rola pro lado: mantém a aberta à vista.
+  useEffect(() => {
+    document.querySelector('.adm-nav-btn.is-active')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  }, [tab]);
+  function goTo(id: TabId) {
+    setTab(id);
+    window.history.replaceState(null, '', `#${id}`);
+    window.scrollTo({ top: 0 });
+  }
+  // Vendas pagas que ainda esperam a chave (o resto já está concluído).
+  const pendingOrders = useMemo(() => orders.filter((o) => normalizeStatus(o.status) === 'aguardando_codigo'), [orders]);
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingGame, setEditingGame] = useState<Game | null>(null);
 
@@ -216,7 +230,7 @@ export default function AdminClient({
           cards: []
         };
       // orders já vem do servidor ordenado do mais recente pro mais antigo
-      // (ver getRecentOrders) — o primeiro pedido que achamos de cada
+      // (ver getAllOrders) — o primeiro pedido que achamos de cada
       // cliente já é o mais recente dele.
       if (createdAt > entry.lastPurchaseAt) entry.lastPurchaseAt = createdAt;
       if (o.card_points_earned > 0) {
@@ -256,248 +270,343 @@ export default function AdminClient({
       .sort((a, b) => (a.lastPurchaseAt < b.lastPurchaseAt ? 1 : -1));
   }, [orders, pointAdjustmentTotals, availableDiscountCreditTotals]);
 
+  // Painel do mês na tela inicial (vendas que não foram canceladas).
+  const monthStats = useMemo(() => {
+    const month = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
+    let count = 0;
+    let revenue = 0;
+    let profit = 0;
+    let withCost = 0;
+    for (const o of orders) {
+      if (normalizeStatus(o.status) === 'cancelado') continue;
+      if (new Date(o.created_at).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }).slice(0, 7) !== month) continue;
+      count++;
+      revenue += parseFloat(o.price) || 0;
+      const p = saleProfit(o);
+      if (p !== null) {
+        profit += p;
+        withCost++;
+      }
+    }
+    return { count, revenue, profit, withCost };
+  }, [orders]);
+
+  const tabs: { id: TabId; icon: string; label: string; badge?: number }[] = [
+    { id: 'inicio', icon: '🏠', label: 'Início' },
+    { id: 'pedidos', icon: '📦', label: 'Pedidos a entregar', badge: pendingOrders.length },
+    { id: 'vendas', icon: '📊', label: 'Controle de vendas' },
+    { id: 'jogos', icon: '🎮', label: 'Jogos do catálogo' },
+    { id: 'clientes', icon: '🎖️', label: 'Clientes e pontos' },
+    { id: 'comentarios', icon: '💬', label: 'Comentários', badge: pendingReviewCount },
+    { id: 'divulgacao', icon: '📣', label: 'Divulgação' },
+    { id: 'config', icon: '⚙️', label: 'Configurações' }
+  ];
+
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 20px 80px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 22, flexWrap: 'wrap' }}>
-        <div className="brand">
-          XAN<span>SWITCH</span>
+    <div className="adm-shell">
+      <aside className="adm-side">
+        <div className="adm-brand">
+          <div className="brand">
+            XAN<span>SWITCH</span>
+          </div>
+          <span className="adm-brand-sub">Painel da loja</span>
         </div>
-        <p style={{ color: 'var(--ink-dim)', fontSize: 14.5, fontWeight: 600, margin: 0, flex: 1 }}>
-          Painel de administração — adicione, edite, arquive e exclua os jogos do catálogo.
-        </p>
-        <span
-          title="Visitas no catálogo público, sem contar você (quando está com sessão ativa no admin no mesmo navegador)"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            background: 'var(--panel)',
-            border: '1px solid rgba(164,99,255,.3)',
-            borderRadius: 10,
-            padding: '9px 14px',
-            fontSize: 14,
-            fontWeight: 700,
-            color: 'var(--ink)'
-          }}
-        >
-          👁 <span style={{ color: 'var(--green)' }}>{visitCount}</span> visitas
-        </span>
-        <a href="/" target="_blank" rel="noreferrer" className="btn ghost">
-          🔗 Ver catálogo público
-        </a>
-        <a href="/admin/produtos-fisicos" className="btn ghost">
-          📦 Produtos físicos
-        </a>
-        <a href="/admin/teste" className="btn ghost">
-          🧪 Página de teste
-        </a>
-        <form action={logoutAction}>
-          <button type="submit" className="btn ghost">
-            Sair
-          </button>
-        </form>
-      </div>
-
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
-        <div
-          style={{
-            flex: 1,
-            minWidth: 220,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            background: 'var(--panel)',
-            border: '1px solid rgba(164,99,255,.3)',
-            borderRadius: 10,
-            padding: '10px 14px'
-          }}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={16} height={16} style={{ color: 'var(--ink-dim)', flex: 'none' }}>
-            <circle cx="11" cy="11" r="7" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Buscar jogo..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            style={{ background: 'none', border: 'none', width: '100%' }}
-          />
-        </div>
-        <button className="btn primary" onClick={openAddPanel}>
-          ＋ Adicionar jogo
-        </button>
-        <button className="btn ghost" onClick={() => setShowArchived((s) => !s)}>
-          📦 Arquivados ({archivedGames.length})
-        </button>
-        <button className="btn ghost" onClick={() => setShowReviewsPanel((s) => !s)}>
-          💬 Comentários{pendingReviewCount > 0 ? ` (${pendingReviewCount} pendente${pendingReviewCount > 1 ? 's' : ''})` : ''}
-        </button>
-        <button className="btn ghost" onClick={() => setShowOrdersPanel((s) => !s)}>
-          📋 Pedidos ({orders.length})
-          {pendingCodeCount > 0 && ` · ✉ ${pendingCodeCount} pra enviar`}
-        </button>
-        <button className="btn ghost" onClick={() => setShowWishlistPanel((s) => !s)}>
-          ❤️ Mais desejados ({mostWantedGames.length})
-        </button>
-        <button className="btn ghost" onClick={() => setShowClientsPanel((s) => !s)}>
-          🎖️ Clientes ({clientSummaries.length})
-        </button>
-        <button className="btn ghost" onClick={() => setShowBannerPanel((s) => !s)}>
-          🖼️ Banner de avaliações
-        </button>
-        <button className="btn ghost" onClick={() => setShowFranchisePanel((s) => !s)}>
-          🔥 Franquia em destaque{featuredFranchiseEnabled ? ` (${featuredFranchiseName})` : ''}
-        </button>
-        <button className="btn ghost" onClick={() => setShowFeesPanel((s) => !s)}>
-          💳 Taxas de pagamento (cartão {formatPriceBR(paymentFees.card)}%)
-        </button>
-        <button className="btn ghost" onClick={() => setShowOffersPanel((s) => !s)}>
-          🔗 Links exclusivos
-        </button>
-      </div>
-
-      {showReviewsPanel && (
-        <ReviewsPanel
-          reviews={reviews}
-          onApprove={handleApproveReview}
-          onDelete={handleDeleteReview}
-          onToggleFeatured={handleToggleFeaturedReview}
-        />
-      )}
-
-      {showOrdersPanel && <OrdersPanel orders={orders} stalledSplits={stalledSplits} onDelete={handleDeleteOrder} />}
-
-      {showFeesPanel && (
-        <div
-          className="admin-panel"
-          style={{
-            background: 'var(--panel)',
-            border: '1px solid rgba(164,99,255,.25)',
-            borderRadius: 14,
-            padding: 16,
-            marginBottom: 20
-          }}
-        >
-          <PaymentFeesForm initial={paymentFees} />
-        </div>
-      )}
-
-      {showOffersPanel && <PrivateOffersPanel games={initialGames} offers={privateOffers} />}
-
-      {showWishlistPanel && <WishlistPanel entries={mostWantedGames} />}
-
-      {showClientsPanel && (
-        <ClientsPanel
-          clients={clientSummaries}
-          onConfirmPoints={handleConfirmOrderPoints}
-          onDeleteCard={handleDeleteOrder}
-          discountAmount={discountAmount}
-        />
-      )}
-
-      {showBannerPanel && <ReviewsBannerPanel currentUrl={reviewsBannerUrl} />}
-
-      {showFranchisePanel && (
-        <FeaturedFranchisePanel
-          allFranchises={allFranchises}
-          enabled={featuredFranchiseEnabled}
-          franchise={featuredFranchiseName}
-          label={featuredFranchiseLabel}
-        />
-      )}
-
-      {panelOpen && (
-        <GameFormPanel
-          game={editingGame}
-          allFranchises={allFranchises}
-          onClose={closePanel}
-          onSaved={() => { closePanel(); router.refresh(); }}
-        />
-      )}
-
-      {showArchived && (
-        <div
-          className="admin-panel"
-          style={{
-            background: 'var(--panel)',
-            border: '1px solid rgba(164,99,255,.25)',
-            borderRadius: 14,
-            padding: 16,
-            marginBottom: 20
-          }}
-        >
-          {archivedGames.length === 0 ? (
-            <p style={{ color: 'var(--ink-dim)', fontSize: 14, padding: '10px 6px' }}>
-              Nenhum jogo arquivado.
-            </p>
-          ) : (
-            archivedGames.map((g) => (
-              <div
-                key={g.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '10px 6px',
-                  borderBottom: '1px solid rgba(255,255,255,.06)'
-                }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={g.image_url || ''}
-                  alt=""
-                  loading="lazy"
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 6,
-                    objectFit: 'cover',
-                    background: 'var(--bg-dark)',
-                    border: '1px solid rgba(164,99,255,.3)'
-                  }}
-                />
-                <span style={{ flex: 1, fontWeight: 700, fontSize: 14.5 }}>{g.name}</span>
-                <button className="btn ghost" onClick={() => handleArchive(g.id, false)}>
-                  ↺ Restaurar
-                </button>
-                <button className="btn ghost" onClick={() => handleDelete(g.id, g.name)}>
-                  🗑
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
-      {activeGames.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--ink-dim)' }}>
-          <p style={{ fontSize: 15, fontWeight: 600 }}>
-            Nenhum jogo ainda. Clique em &quot;＋ Adicionar jogo&quot; pra começar seu catálogo.
-          </p>
-        </div>
-      ) : (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-            gap: 20
-          }}
-        >
-          {activeGames.map((g) => (
-            <AdminGameCard
-              key={g.id}
-              game={g}
-              onEdit={() => openEditPanel(g)}
-              onArchive={() => handleArchive(g.id, true)}
-              onDelete={() => handleDelete(g.id, g.name)}
-            />
+        <nav className="adm-nav" aria-label="Seções do painel">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={`adm-nav-btn${tab === t.id ? ' is-active' : ''}`}
+              onClick={() => goTo(t.id)}
+              aria-current={tab === t.id ? 'page' : undefined}
+            >
+              <span aria-hidden="true">{t.icon}</span>
+              <span className="adm-nav-label">{t.label}</span>
+              {t.badge ? <span className="adm-badge">{t.badge}</span> : null}
+            </button>
           ))}
+        </nav>
+        <div className="adm-side-foot">
+          <a href="/" target="_blank" rel="noreferrer" className="adm-side-link">
+            🔗 Abrir a loja
+          </a>
+          <form action={logoutAction}>
+            <button type="submit" className="adm-side-link">
+              ↩ Sair do painel
+            </button>
+          </form>
         </div>
-      )}
+      </aside>
+
+      <main className="adm-main">
+        {tab === 'inicio' && (
+          <section>
+            <div className="adm-section-head">
+              <div>
+                <h2>Olá! 👋</h2>
+                <p className="adm-help">Aqui está o resumo da loja. Clique em qualquer cartão pra ir direto pra seção.</p>
+              </div>
+            </div>
+
+            <div className="adm-home-grid">
+              <button type="button" className={`adm-home-card${pendingOrders.length ? ' is-alert' : ''}`} onClick={() => goTo('pedidos')}>
+                <span className="adm-home-icon">📦</span>
+                <strong>{pendingOrders.length}</strong>
+                <span>{pendingOrders.length === 1 ? 'pedido pra entregar' : 'pedidos pra entregar'}</span>
+                <small>{pendingOrders.length ? 'Enviar as chaves →' : 'Tudo entregue 🎉'}</small>
+              </button>
+              <button type="button" className="adm-home-card" onClick={() => goTo('vendas')}>
+                <span className="adm-home-icon">📊</span>
+                <strong>{monthStats.count}</strong>
+                <span>vendas este mês</span>
+                <small>R$ {formatPriceBR(monthStats.revenue)} faturados</small>
+              </button>
+              <button type="button" className="adm-home-card is-profit" onClick={() => goTo('vendas')}>
+                <span className="adm-home-icon">💰</span>
+                <strong>{monthStats.withCost ? `R$ ${formatPriceBR(monthStats.profit)}` : '—'}</strong>
+                <span>de lucro este mês</span>
+                <small>
+                  {monthStats.count - monthStats.withCost > 0
+                    ? `${monthStats.count - monthStats.withCost} venda(s) sem custo informado`
+                    : 'Custos em dia ✓'}
+                </small>
+              </button>
+              <button type="button" className={`adm-home-card${pendingReviewCount ? ' is-alert' : ''}`} onClick={() => goTo('comentarios')}>
+                <span className="adm-home-icon">💬</span>
+                <strong>{pendingReviewCount}</strong>
+                <span>{pendingReviewCount === 1 ? 'comentário esperando aprovação' : 'comentários esperando aprovação'}</span>
+                <small>{pendingReviewCount ? 'Revisar →' : 'Nada pendente'}</small>
+              </button>
+              <div className="adm-home-card is-static">
+                <span className="adm-home-icon">👁</span>
+                <strong>{visitCount}</strong>
+                <span>visitas na loja</span>
+                <small>sem contar você</small>
+              </div>
+              <button type="button" className="adm-home-card" onClick={() => goTo('jogos')}>
+                <span className="adm-home-icon">🎮</span>
+                <strong>{games.filter((g) => !g.archived).length}</strong>
+                <span>jogos no catálogo</span>
+                <small>{archivedGames.length} arquivados</small>
+              </button>
+            </div>
+
+            <h3 className="adm-subtitle">Atalhos</h3>
+            <div className="adm-shortcuts">
+              <button type="button" className="btn primary" onClick={() => { goTo('jogos'); openAddPanel(); }}>
+                ＋ Adicionar jogo
+              </button>
+              <button type="button" className="btn ghost" onClick={() => goTo('vendas')}>
+                ＋ Lançar venda feita fora do site
+              </button>
+              <button type="button" className="btn ghost" onClick={() => goTo('divulgacao')}>
+                🔗 Criar link exclusivo pra um cliente
+              </button>
+            </div>
+          </section>
+        )}
+
+        {tab === 'pedidos' && (
+          <section>
+            <div className="adm-section-head">
+              <div>
+                <h2>📦 Pedidos a entregar</h2>
+                <p className="adm-help">
+                  Vendas pagas que ainda esperam a chave do jogo. Clique em <strong>Preparar</strong>, cole a chave e
+                  envie: a venda é marcada como concluída sozinha e vai pro <strong>Controle de vendas</strong>.
+                </p>
+              </div>
+            </div>
+            <OrdersPanel orders={pendingOrders} stalledSplits={stalledSplits} onDelete={handleDeleteOrder} />
+          </section>
+        )}
+
+        {tab === 'vendas' && <SalesPanel orders={orders} games={games} />}
+
+        {tab === 'jogos' && (
+          <section>
+            <div className="adm-section-head">
+              <div>
+                <h2>🎮 Jogos do catálogo</h2>
+                <p className="adm-help">
+                  Tudo que aparece na loja. Clique num jogo pra editar preço, capa e detalhes. <strong>Arquivar</strong>{' '}
+                  esconde o jogo da loja sem apagar (dá pra trazer de volta depois).
+                </p>
+              </div>
+              <div className="adm-head-actions">
+                <button className="btn primary" onClick={openAddPanel}>
+                  ＋ Adicionar jogo
+                </button>
+                <button className="btn ghost" onClick={() => setShowArchived((s) => !s)}>
+                  📦 Arquivados ({archivedGames.length})
+                </button>
+                <a href="/admin/produtos-fisicos" className="btn ghost">
+                  📦 Produtos físicos
+                </a>
+              </div>
+            </div>
+
+            <div className="adm-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={16} height={16} aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input type="search" placeholder="Buscar jogo pelo nome..." value={query} onChange={(e) => setQuery(e.target.value)} />
+            </div>
+
+            {panelOpen && (
+              <GameFormPanel
+                game={editingGame}
+                allFranchises={allFranchises}
+                onClose={closePanel}
+                onSaved={() => { closePanel(); router.refresh(); }}
+              />
+            )}
+
+            {showArchived && (
+              <div className="adm-card admin-panel">
+                <h3>Jogos arquivados</h3>
+                {archivedGames.length === 0 ? (
+                  <p className="adm-empty">Nenhum jogo arquivado.</p>
+                ) : (
+                  archivedGames.map((g) => (
+                    <div key={g.id} className="adm-archived-row">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={g.image_url || ''} alt="" loading="lazy" />
+                      <span>{g.name}</span>
+                      <button className="btn ghost" onClick={() => handleArchive(g.id, false)}>
+                        ↺ Voltar pra loja
+                      </button>
+                      <button className="btn ghost" onClick={() => handleDelete(g.id, g.name)} aria-label={`Excluir ${g.name}`}>
+                        🗑
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {activeGames.length === 0 ? (
+              <p className="adm-empty">
+                {query ? 'Nenhum jogo com esse nome.' : 'Nenhum jogo ainda. Clique em "＋ Adicionar jogo" pra começar.'}
+              </p>
+            ) : (
+              <div className="adm-games-grid">
+                {activeGames.map((g) => (
+                  <AdminGameCard
+                    key={g.id}
+                    game={g}
+                    onEdit={() => openEditPanel(g)}
+                    onArchive={() => handleArchive(g.id, true)}
+                    onDelete={() => handleDelete(g.id, g.name)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {tab === 'clientes' && (
+          <section>
+            <div className="adm-section-head">
+              <div>
+                <h2>🎖️ Clientes e pontos</h2>
+                <p className="adm-help">
+                  Cada cliente que comprou com e-mail, com os cards e pontos de fidelidade. Confirme aqui os pontos de
+                  compras que você conferiu, ou dê pontos/desconto na mão.
+                </p>
+              </div>
+            </div>
+            <ClientsPanel
+              clients={clientSummaries}
+              onConfirmPoints={handleConfirmOrderPoints}
+              onDeleteCard={handleDeleteOrder}
+              discountAmount={discountAmount}
+            />
+          </section>
+        )}
+
+        {tab === 'comentarios' && (
+          <section>
+            <div className="adm-section-head">
+              <div>
+                <h2>💬 Comentários</h2>
+                <p className="adm-help">
+                  Avaliações que os clientes deixaram. Elas só aparecem na loja depois que você <strong>aprova</strong>;
+                  a ⭐ coloca a avaliação em destaque.
+                </p>
+              </div>
+            </div>
+            <ReviewsPanel
+              reviews={reviews}
+              onApprove={handleApproveReview}
+              onDelete={handleDeleteReview}
+              onToggleFeatured={handleToggleFeaturedReview}
+            />
+          </section>
+        )}
+
+        {tab === 'divulgacao' && (
+          <section>
+            <div className="adm-section-head">
+              <div>
+                <h2>📣 Divulgação</h2>
+                <p className="adm-help">Ferramentas pra vender mais: links com preço especial, destaques na loja e o que o público mais quer.</p>
+              </div>
+            </div>
+            <div className="adm-stack">
+              <div className="adm-block">
+                <PrivateOffersPanel games={initialGames} offers={privateOffers} />
+              </div>
+              <div className="adm-block">
+                <FeaturedFranchisePanel
+                  allFranchises={allFranchises}
+                  enabled={featuredFranchiseEnabled}
+                  franchise={featuredFranchiseName}
+                  label={featuredFranchiseLabel}
+                />
+              </div>
+              <div className="adm-block">
+                <ReviewsBannerPanel currentUrl={reviewsBannerUrl} />
+              </div>
+              <div className="adm-block">
+                <WishlistPanel entries={mostWantedGames} />
+              </div>
+            </div>
+          </section>
+        )}
+
+        {tab === 'config' && (
+          <section>
+            <div className="adm-section-head">
+              <div>
+                <h2>⚙️ Configurações</h2>
+                <p className="adm-help">Ajustes que você mexe de vez em quando.</p>
+              </div>
+            </div>
+            <div className="adm-stack">
+              <div className="adm-card">
+                <PaymentFeesForm initial={paymentFees} />
+              </div>
+              <div className="adm-card">
+                <h3>🧪 Outras páginas</h3>
+                <div className="adm-shortcuts">
+                  <a href="/admin/produtos-fisicos" className="btn ghost">
+                    📦 Produtos físicos
+                  </a>
+                  <a href="/admin/teste" className="btn ghost">
+                    🧪 Página de teste
+                  </a>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+      </main>
     </div>
   );
 }
+
 
 function AdminGameCard({
   game,
@@ -1084,20 +1193,18 @@ function OrdersPanel({
   stalledSplits: StalledSplit[];
   onDelete: (id: number) => void;
 }) {
+  const router = useRouter();
+  // Entregou por fora (ex: mandou a chave direto no direct)? Marca como
+  // concluída sem enviar nada.
+  async function conclude(o: Order) {
+    if (!confirm(`Marcar a venda de ${o.game_name} como concluída, sem enviar a chave por aqui?`)) return;
+    const r = await setSalesStatusAction([o.id], 'concluido');
+    if (!r.ok) alert(r.error);
+    router.refresh();
+  }
+
   return (
-    <div
-      className="admin-panel"
-      style={{
-        background: 'var(--panel)',
-        border: '1px solid rgba(164,99,255,.25)',
-        borderRadius: 14,
-        padding: 16,
-        marginBottom: 20
-      }}
-    >
-      <h4 style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--ink-dim)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
-        Pedidos gerados (mais recentes primeiro)
-      </h4>
+    <div className="adm-card admin-panel">
       {stalledSplits.length > 0 && (
         <div
           style={{
@@ -1125,9 +1232,7 @@ function OrdersPanel({
         </div>
       )}
       {orders.length === 0 ? (
-        <p style={{ color: 'var(--ink-dim)', fontSize: 14, padding: '6px 2px', margin: 0 }}>
-          Nenhum pedido registrado ainda.
-        </p>
+        <p className="adm-empty">🎉 Tudo entregue! Quando entrar uma venda nova no site, ela aparece aqui.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {orders.map((o) => (
@@ -1231,9 +1336,14 @@ function OrdersPanel({
                   </div>
                 )}
               </div>
-              <button className="btn ghost" onClick={() => onDelete(o.id)} style={{ flex: 'none' }}>
-                🗑
-              </button>
+              <div style={{ display: 'flex', gap: 8, flex: 'none' }}>
+                <button className="btn ghost" onClick={() => conclude(o)} title="Já entreguei por fora">
+                  ✅ Concluir
+                </button>
+                <button className="btn ghost" onClick={() => onDelete(o.id)} aria-label="Apagar pedido" title="Apagar pedido">
+                  🗑
+                </button>
+              </div>
               {o.customer_email && <DeliveryComposer order={o} />}
             </div>
           ))}
