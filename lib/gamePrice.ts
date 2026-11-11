@@ -5,12 +5,19 @@ import type { Game } from './db';
 // mostrar no catálogo (toItem em lib/catalogData.ts) quanto pra cobrar no
 // Pix do Mercado Pago (app/mercadoPagoActions.ts) — o servidor calcula o
 // valor da cobrança sozinho, nunca confia no preço que veio do navegador.
+//
+// Evento de promoção valendo (Black Friday etc. — g.promo_event, ver
+// lib/promoEvents.ts): o preço do evento ganha, já calculado em cima do
+// promocional.
 export function gamePrice(g: Game): { regularPrice: number; isOnSale: boolean; price: number } {
   const regularPrice = parseFloat(g.price);
   const promoPrice = g.promo_price ? parseFloat(g.promo_price) : null;
-  const isOnSale = promoPrice !== null && promoPrice > 0 && promoPrice < regularPrice;
-  const price = isOnSale ? (promoPrice as number) : regularPrice;
-  return { regularPrice, isOnSale, price };
+  const eventPrice = g.promo_event ? g.promo_event.price : null;
+  const best = [promoPrice, eventPrice].reduce<number | null>(
+    (min, p) => (p !== null && p > 0 && p < regularPrice && (min === null || p < min) ? p : min),
+    null
+  );
+  return { regularPrice, isOnSale: best !== null, price: best ?? regularPrice };
 }
 
 // Valor a cobrar pra receber `price` inteiro depois da taxa do Mercado

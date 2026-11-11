@@ -1,17 +1,22 @@
 /* Painel do admin (AdminClient.tsx e SalesPanel.tsx): menu lateral com as
    seções, cartões, controle de vendas. Usa as cores do site (globals.css). */
 
+/* Menu lateral fixo (position: fixed — o overflow do body em globals.css
+   impede o sticky), com o conteúdo deslocado pra direita. */
 .adm-shell {
-  display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
+  padding-left: 248px;
   min-height: 100vh;
   min-height: 100dvh;
 }
 
 /* ---------- Menu lateral ---------- */
 .adm-side {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  z-index: 40;
+  width: 248px;
+  overflow-y: auto;
   height: 100vh;
   height: 100dvh;
   display: flex;
@@ -713,7 +718,7 @@
 
 @media (max-width: 860px) {
   .adm-shell {
-    display: block;
+    padding-left: 0;
   }
   /* O menu vira uma barra fixa no topo que rola pro lado. (fixed e não
      sticky: o overflow do body em globals.css impede o sticky.) */
@@ -722,6 +727,8 @@
     top: 0;
     left: 0;
     right: 0;
+    width: auto;
+    overflow: visible;
     z-index: 50;
     height: auto;
     flex-direction: row;
@@ -828,4 +835,235 @@
   .adm-stat strong {
     font-size: 20px;
   }
+}
+
+/* ---------- Promoções e eventos (PromoEventsPanel.tsx) ---------- */
+.adm-event-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+.adm-event {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+}
+.adm-event.is-ativo {
+  border-color: rgba(78, 240, 95, 0.45);
+}
+.adm-event.is-encerrado,
+.adm-event.is-pausado {
+  opacity: 0.7;
+}
+.adm-event h3 {
+  margin: 4px 0 0;
+}
+.adm-event-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.adm-event-tag {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+.adm-event-tag.is-preview {
+  align-self: flex-start;
+  font-size: 13px;
+}
+.adm-event-status {
+  font-size: 13px;
+  font-weight: 700;
+}
+.adm-event-meta {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ink-dim);
+}
+.adm-event-meta strong {
+  color: var(--ink);
+}
+.adm-event-games {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--ink-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.adm-event-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.adm-event-actions .btn {
+  padding: 7px 11px;
+  font-size: 13px;
+}
+.adm-steps {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+.adm-steps h4 {
+  margin: 0 0 10px;
+  font-size: 15px;
+  color: var(--gold);
+}
+.adm-steps .adm-form-grid {
+  margin-top: 0;
+}
+.adm-steps .adm-help {
+  margin-top: 8px;
+  font-size: 13px;
+}
+.adm-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-dim);
+}
+.adm-color-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.adm-swatches {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.adm-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+}
+.adm-swatch.is-on {
+  outline: 3px solid var(--purple);
+  outline-offset: 2px;
+}
+.adm-swatch-custom {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-dim);
+  cursor: pointer;
+}
+.adm-swatch-custom input {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.adm-discount-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.adm-discount-row .adm-chips {
+  margin: 0;
+}
+.adm-discount-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 800;
+}
+.adm-discount-value input {
+  width: 110px;
+  padding: 9px 11px;
+  border: 1px solid rgba(164, 99, 255, 0.35);
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--ink);
+  font: inherit;
+  font-size: 18px;
+}
+.adm-event-filters {
+  margin-bottom: 10px;
+}
+.adm-game-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 6px;
+  max-height: 460px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid rgba(164, 99, 255, 0.2);
+  border-radius: 12px;
+}
+.adm-pick {
+  display: grid;
+  grid-template-columns: auto 40px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.adm-pick:hover {
+  background: rgba(164, 99, 255, 0.08);
+}
+.adm-pick.is-on {
+  border-color: rgba(164, 99, 255, 0.5);
+  background: rgba(164, 99, 255, 0.14);
+}
+.adm-pick input {
+  grid-row: 1 / 3;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--purple-2);
+}
+.adm-pick img {
+  grid-row: 1 / 3;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--bg-dark);
+}
+.adm-pick-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.adm-pick-price {
+  font-size: 12.5px;
+  color: var(--ink-dim);
+}
+.adm-pick-price s {
+  opacity: 0.7;
+}
+.adm-pick-price strong {
+  color: var(--green);
+}
+
+/* O site deixa todo <label> em caixa alta; nas listas de escolha não. */
+.adm-pick,
+.adm-check {
+  text-transform: none !important;
+  letter-spacing: normal !important;
 }

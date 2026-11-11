@@ -44,6 +44,8 @@ function toItem(g: Game): Item {
     originalPriceLabel: struckPrice !== null ? formatPriceBR(struckPrice) : null,
     isOnSale,
     salePercent: isOnSale && struckPrice !== null ? Math.round((1 - price / struckPrice) * 100) : null,
+    // Etiqueta do evento de promoção (ex: BLACK FRIDAY) no lugar de "PROMO".
+    eventTag: g.promo_event ? { text: g.promo_event.tagText, color: g.promo_event.tagColor } : null,
     imageUrl: g.image_url,
     bannerImageUrl: g.banner_image_url,
     hasBadge: g.has_badge,

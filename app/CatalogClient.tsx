@@ -86,6 +86,9 @@ export type Item = {
   // toItem em lib/catalogData.ts. salePercent é o desconto arredondado.
   isOnSale: boolean;
   salePercent: number | null;
+  // Evento de promoção valendo (ex: Black Friday): a etiqueta dele aparece
+  // no lugar de "PROMO". Ver lib/promoEvents.ts.
+  eventTag: { text: string; color: string } | null;
   imageUrl: string | null;
   // Imagem separada pros banners largos (Destaque da semana / Mais
   // aguardados) — quando vazia, esses banners usam imageUrl (a capa
@@ -1334,8 +1337,12 @@ function GameCard({
         )}
 
         {item.isOnSale && (
-          <div className="game-card-sale" title={`Em promoção: ${item.salePercent}% de desconto`}>
-            PROMO -{item.salePercent}%
+          <div
+            className="game-card-sale"
+            title={`Em promoção: ${item.salePercent}% de desconto`}
+            style={item.eventTag ? { background: item.eventTag.color, color: getContrastColor(item.eventTag.color) } : undefined}
+          >
+            {item.eventTag?.text || 'PROMO'} -{item.salePercent}%
           </div>
         )}
 
@@ -1426,7 +1433,14 @@ function ListRow({
           )}
           {!platformRedundant && <span className="tag tag-platform">{platformLabel}</span>}
           {typeLabel && <span className="tag tag-type">{typeLabel}</span>}
-          {item.isOnSale && <span className="tag tag-sale">PROMO -{item.salePercent}%</span>}
+          {item.isOnSale && (
+            <span
+              className="tag tag-sale"
+              style={item.eventTag ? { background: item.eventTag.color, color: getContrastColor(item.eventTag.color) } : undefined}
+            >
+              {item.eventTag?.text || 'PROMO'} -{item.salePercent}%
+            </span>
+          )}
         </div>
       </div>
       <span style={{ flex: 'none', textAlign: 'right' }}>

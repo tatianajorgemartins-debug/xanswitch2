@@ -13,6 +13,8 @@ import { buildDeliveryHtml, buildDeliverySubject, buildDeliveryWhatsAppText } fr
 import { formatWhatsApp } from '@/lib/validation';
 import { normalizeStatus, saleProfit } from '@/lib/sales';
 import SalesPanel from './SalesPanel';
+import PromoEventsPanel from './PromoEventsPanel';
+import type { PromoEventRow } from '@/lib/promoEvents';
 import { setSalesStatusAction } from './salesActions';
 import './admin.css';
 import {
@@ -42,7 +44,7 @@ import {
 
 const emptyFormState: GameFormState = { error: null };
 
-const TAB_IDS = ['inicio', 'pedidos', 'vendas', 'jogos', 'clientes', 'comentarios', 'divulgacao', 'config'] as const;
+const TAB_IDS = ['inicio', 'pedidos', 'vendas', 'jogos', 'promocoes', 'clientes', 'comentarios', 'divulgacao', 'config'] as const;
 type TabId = (typeof TAB_IDS)[number];
 
 export default function AdminClient({
@@ -60,7 +62,8 @@ export default function AdminClient({
   featuredFranchiseName,
   featuredFranchiseLabel,
   paymentFees,
-  privateOffers
+  privateOffers,
+  promoEvents
 }: {
   initialGames: Game[];
   visitCount: number;
@@ -77,6 +80,8 @@ export default function AdminClient({
   featuredFranchiseLabel: string;
   paymentFees: { card: number; pix: number };
   privateOffers: PrivateOfferRow[] | null;
+  // null = tabela ainda não existe (falta rodar db/migration-eventos-promocao.sql).
+  promoEvents: PromoEventRow[] | null;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -296,6 +301,7 @@ export default function AdminClient({
     { id: 'pedidos', icon: '📦', label: 'Pedidos a entregar', badge: pendingOrders.length },
     { id: 'vendas', icon: '📊', label: 'Controle de vendas' },
     { id: 'jogos', icon: '🎮', label: 'Jogos do catálogo' },
+    { id: 'promocoes', icon: '🏷️', label: 'Promoções e eventos' },
     { id: 'clientes', icon: '🎖️', label: 'Clientes e pontos' },
     { id: 'comentarios', icon: '💬', label: 'Comentários', badge: pendingReviewCount },
     { id: 'divulgacao', icon: '📣', label: 'Divulgação' },
@@ -398,6 +404,9 @@ export default function AdminClient({
               </button>
               <button type="button" className="btn ghost" onClick={() => goTo('vendas')}>
                 ＋ Lançar venda feita fora do site
+              </button>
+              <button type="button" className="btn ghost" onClick={() => goTo('promocoes')}>
+                🏷️ Criar promoção (Black Friday etc.)
               </button>
               <button type="button" className="btn ghost" onClick={() => goTo('divulgacao')}>
                 🔗 Criar link exclusivo pra um cliente
@@ -505,6 +514,8 @@ export default function AdminClient({
             )}
           </section>
         )}
+
+        {tab === 'promocoes' && <PromoEventsPanel games={games} events={promoEvents} />}
 
         {tab === 'clientes' && (
           <section>
@@ -784,6 +795,24 @@ function AdminGameCard({
             }}
           >
             🏷️ PROMO R$ {parseFloat(game.promo_price).toFixed(2).replace('.', ',')}
+          </p>
+        )}
+        {/* Evento de promoção valendo agora (🏷️ Promoções e eventos). */}
+        {game.promo_event && (
+          <p
+            style={{
+              display: 'inline-block',
+              margin: '6px 0 0',
+              padding: '3px 8px',
+              borderRadius: 6,
+              background: game.promo_event.tagColor,
+              color: getContrastColor(game.promo_event.tagColor),
+              boxShadow: '0 0 0 1px rgba(255,255,255,.2)',
+              fontSize: 12,
+              fontWeight: 800
+            }}
+          >
+            {game.promo_event.tagText} R$ {formatPriceBR(game.promo_event.price)}
           </p>
         )}
       </div>

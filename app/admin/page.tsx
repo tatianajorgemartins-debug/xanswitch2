@@ -6,6 +6,7 @@ import {
   getAllOrders,
   getStalledSplitPayments,
   getAllPrivateOffers,
+  getAllPromoEvents,
   getAllPointAdjustmentTotals,
   getAllAvailableDiscountCreditTotals,
   getSiteSetting,
@@ -74,6 +75,8 @@ export default async function AdminPage() {
       }))
     )
     .catch(() => null);
+  // null = tabela ainda não existe (falta rodar db/migration-eventos-promocao.sql).
+  const promoEvents = await getAllPromoEvents().catch(() => null);
   return (
     <AdminClient
       initialGames={games}
@@ -91,6 +94,7 @@ export default async function AdminPage() {
       featuredFranchiseLabel={featuredFranchiseLabel}
       paymentFees={paymentFees}
       privateOffers={privateOffers}
+      promoEvents={promoEvents}
     />
   );
 }

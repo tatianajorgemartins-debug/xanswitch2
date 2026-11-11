@@ -2,6 +2,8 @@
 // lib/physicalProducts.ts (catálogo de produtos físicos) — mesmo banco,
 // tabelas completamente separadas. Ver o comentário lá pra entender por quê.
 import { getSql } from './sql';
+import { gamePrice } from './gamePrice';
+import { priceWithEvent, type DiscountType, type GamePromoEvent, type PromoEventRow } from './promoEvents';
 
 export type Platform = 'switch1' | 'switch2' | 'both';
 export type GameType = 'base' | 'dlc' | 'update';
@@ -47,6 +49,10 @@ export type Game = {
   // esse é o valor cobrado (ver toItem em lib/catalogData.ts). Vem do
   // driver como string, igual a price.
   promo_price: string | null;
+  // Evento de promoção valendo agora pra esse jogo (Black Friday etc.) —
+  // não é coluna da tabela: preenchido por attachPromoEvents. Ver
+  // lib/promoEvents.ts.
+  promo_event?: GamePromoEvent | null;
   created_at: Date; // timestamptz comes back as a real Date, not a string
   updated_at: Date;
 };
@@ -66,19 +72,116 @@ export async function getActiveGames(): Promise<Game[]> {
   const rows = await getSql()`
     SELECT * FROM games WHERE archived = FALSE ORDER BY sort_name ASC
   `;
-  return rows as Game[];
+  return attachPromoEvents(rows as Game[]);
 }
 
 export async function getAllGames(): Promise<Game[]> {
   const rows = await getSql()`
     SELECT * FROM games ORDER BY archived ASC, sort_name ASC
   `;
-  return rows as Game[];
+  return attachPromoEvents(rows as Game[]);
 }
 
 export async function getGameById(id: number): Promise<Game | null> {
   const rows = await getSql()`SELECT * FROM games WHERE id = ${id}`;
-  return (rows[0] as Game) ?? null;
+  const game = (rows[0] as Game) ?? null;
+  return game ? (await attachPromoEvents([game]))[0] : null;
+}
+
+// ---------- Eventos de promoção (lib/promoEvents.ts) ----------
+
+export async function getAllPromoEvents(): Promise<PromoEventRow[]> {
+  const rows = await getSql()`
+    SELECT e.*, COALESCE(array_agg(g.game_id) FILTER (WHERE g.game_id IS NOT NULL), '{}') AS game_ids
+    FROM promo_events e
+    LEFT JOIN promo_event_games g ON g.event_id = e.id
+    GROUP BY e.id
+    ORDER BY e.starts_at DESC
+  `;
+  return rows as PromoEventRow[];
+}
+
+async function getRunningPromoEvents(): Promise<PromoEventRow[]> {
+  const rows = await getSql()`
+    SELECT e.*, COALESCE(array_agg(g.game_id) FILTER (WHERE g.game_id IS NOT NULL), '{}') AS game_ids
+    FROM promo_events e
+    JOIN promo_event_games g ON g.event_id = e.id
+    WHERE e.enabled AND e.starts_at <= now() AND (e.ends_at IS NULL OR e.ends_at > now())
+    GROUP BY e.id
+  `;
+  return rows as PromoEventRow[];
+}
+
+// Pendura em cada jogo o evento que está valendo agora (se um jogo estiver
+// em mais de um, vale o que deixa mais barato). O desconto é aplicado em
+// cima do preço que já valeria (o promocional, se houver). Antes de rodar
+// db/migration-eventos-promocao.sql a consulta falha — aí fica tudo como
+// antes, sem evento.
+async function attachPromoEvents(games: Game[]): Promise<Game[]> {
+  const events = await getRunningPromoEvents().catch(() => [] as PromoEventRow[]);
+  if (events.length === 0) return games;
+  return games.map((g) => {
+    const base = gamePrice({ ...g, promo_event: null }).price;
+    let best: GamePromoEvent | null = null;
+    for (const e of events) {
+      if (!e.game_ids.includes(g.id)) continue;
+      const price = priceWithEvent(base, e.discount_type, parseFloat(e.discount_value));
+      if (price < base && (!best || price < best.price)) {
+        best = { id: e.id, tagText: e.tag_text, tagColor: e.tag_color, price };
+      }
+    }
+    return best ? { ...g, promo_event: best } : g;
+  });
+}
+
+export type PromoEventFields = {
+  name: string;
+  tag_text: string;
+  tag_color: string;
+  discount_type: DiscountType;
+  discount_value: number;
+  starts_at: string; // ISO
+  ends_at: string | null;
+  enabled: boolean;
+  game_ids: number[];
+};
+
+export async function savePromoEvent(id: number | null, f: PromoEventFields): Promise<number> {
+  const sql = getSql();
+  let eventId = id;
+  if (eventId === null) {
+    const rows = await sql`
+      INSERT INTO promo_events (name, tag_text, tag_color, discount_type, discount_value, starts_at, ends_at, enabled)
+      VALUES (${f.name}, ${f.tag_text}, ${f.tag_color}, ${f.discount_type}, ${f.discount_value}, ${f.starts_at}, ${f.ends_at}, ${f.enabled})
+      RETURNING id
+    `;
+    eventId = (rows[0] as { id: number }).id;
+  } else {
+    await sql`
+      UPDATE promo_events SET
+        name = ${f.name}, tag_text = ${f.tag_text}, tag_color = ${f.tag_color},
+        discount_type = ${f.discount_type}, discount_value = ${f.discount_value},
+        starts_at = ${f.starts_at}, ends_at = ${f.ends_at}, enabled = ${f.enabled}
+      WHERE id = ${eventId}
+    `;
+  }
+  await sql`DELETE FROM promo_event_games WHERE event_id = ${eventId}`;
+  if (f.game_ids.length > 0) {
+    await sql`
+      INSERT INTO promo_event_games (event_id, game_id)
+      SELECT ${eventId}, unnest(${f.game_ids}::int[])
+      ON CONFLICT DO NOTHING
+    `;
+  }
+  return eventId;
+}
+
+export async function setPromoEventEnabled(id: number, enabled: boolean): Promise<void> {
+  await getSql()`UPDATE promo_events SET enabled = ${enabled} WHERE id = ${id}`;
+}
+
+export async function deletePromoEvent(id: number): Promise<void> {
+  await getSql()`DELETE FROM promo_events WHERE id = ${id}`;
 }
 
 export async function createGame(data: {

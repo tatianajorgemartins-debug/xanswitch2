@@ -52,6 +52,7 @@ export default async function OfferPage({ params }: { params: Promise<{ token: s
     originalPriceLabel: base.price > price ? base.priceLabel : null,
     isOnSale: base.price > price,
     salePercent: base.price > price ? Math.round((1 - price / base.price) * 100) : null,
+    eventTag: null,
     // Preço especial já é o desconto: sem fidelidade nem link de crédito
     // externo (que cobraria o preço normal).
     discountEligible: false,

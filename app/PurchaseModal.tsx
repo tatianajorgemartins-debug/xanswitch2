@@ -641,7 +641,14 @@ function StepSummary({
         <div className="product-price-row">
           {item.originalPriceLabel && <span className="product-price-old">R$ {item.originalPriceLabel}</span>}
           <span className="product-price">R$ {priceLabel}</span>
-          {item.isOnSale && <span className="product-sale-badge">PROMO -{item.salePercent}%</span>}
+          {item.isOnSale && (
+            <span
+              className="product-sale-badge"
+              style={item.eventTag ? { background: item.eventTag.color, color: getContrastColor(item.eventTag.color) } : undefined}
+            >
+              {item.eventTag?.text || 'PROMO'} -{item.salePercent}%
+            </span>
+          )}
         </div>
         <p className="product-installments">ou {installmentsLabel(item.price)}</p>
 
