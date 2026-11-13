@@ -91,7 +91,7 @@
   background: var(--accent-fill);
   transition: transform 0.5s cubic-bezier(0.34, 1.35, 0.5, 1);
 }
-.redesign .catalog-switcher[data-active='fisico'] .catalog-switcher-thumb {
+.redesign .catalog-switcher[data-active='testes'] .catalog-switcher-thumb {
   transform: translateX(100%);
 }
 .redesign .catalog-switcher-thumb.is-instant {
@@ -3717,9 +3717,9 @@ html:has(.legal-page) body {
   color: var(--hdr-text-on);
 }
 .redesign .catalog-switcher.has-thumb[data-active='digital'] a.catalog-switcher-option:nth-of-type(1),
-.redesign .catalog-switcher.has-thumb[data-active='fisico'] a.catalog-switcher-option:nth-of-type(2),
+.redesign .catalog-switcher.has-thumb[data-active='testes'] a.catalog-switcher-option:nth-of-type(2),
 :root[data-theme='light'] .redesign.theme-enabled .catalog-switcher.has-thumb[data-active='digital'] a.catalog-switcher-option:nth-of-type(1),
-:root[data-theme='light'] .redesign.theme-enabled .catalog-switcher.has-thumb[data-active='fisico'] a.catalog-switcher-option:nth-of-type(2) {
+:root[data-theme='light'] .redesign.theme-enabled .catalog-switcher.has-thumb[data-active='testes'] a.catalog-switcher-option:nth-of-type(2) {
   color: var(--hdr-pill-text);
 }
 /* Tema: a pílula é roxa, então o ícone ativo fica branco nos dois temas. */

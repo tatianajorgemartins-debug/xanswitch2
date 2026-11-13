@@ -1,0 +1,447 @@
+/* Página "Testes" (app/testes) — a sala de jogos da loja. Usa as cores do
+   site (variáveis de redesign.css), então acompanha o modo claro/escuro; a
+   arte de cada card tem fundo próprio e fica igual nos dois temas. */
+
+.redesign .testes-page {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+/* ---------- Abertura ---------- */
+.redesign .testes-hero {
+  position: relative;
+  padding: 28px 0 40px;
+}
+.redesign .testes-hero-glow {
+  position: absolute;
+  z-index: -1;
+  left: -140px;
+  top: -120px;
+  width: 620px;
+  height: 420px;
+  background: radial-gradient(closest-side, rgba(123, 47, 240, 0.34), rgba(123, 47, 240, 0));
+  pointer-events: none;
+}
+.redesign .testes-hero-seal {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 18px;
+  padding: 7px 14px 7px 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.28);
+  color: var(--muted);
+  font-size: var(--step-small);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.redesign .testes-hero-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--price);
+  box-shadow: 0 0 0 0 rgba(78, 240, 95, 0.6);
+  animation: testes-pulse 2s ease-out infinite;
+}
+@keyframes testes-pulse {
+  to {
+    box-shadow: 0 0 0 9px rgba(78, 240, 95, 0);
+  }
+}
+.redesign .testes-hero-title {
+  margin: 0;
+  font-size: var(--step-display);
+  font-weight: 800;
+  font-stretch: 112%;
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+.redesign .testes-hero-title em {
+  font-style: normal;
+  color: var(--accent);
+}
+.redesign .testes-hero-sub {
+  margin: 18px 0 0;
+  max-width: 52ch;
+  color: var(--muted);
+  font-size: var(--step-lead);
+  line-height: 1.45;
+}
+
+/* ---------- Grade ---------- */
+.redesign .testes-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+.redesign .testes-grid > li {
+  display: flex;
+  animation: testes-rise 0.6s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  animation-delay: calc(var(--i, 0) * 90ms + 80ms);
+}
+@keyframes testes-rise {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+}
+
+/* ---------- Card de jogo ---------- */
+.redesign .teste-card {
+  --glow: rgba(164, 99, 255, 0.5);
+  --tint: var(--accent);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.16);
+  transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.25, 1), box-shadow 0.35s ease;
+}
+.redesign .teste-card.theme-zelda {
+  --glow: rgba(232, 190, 92, 0.5);
+  --tint: #e8be5c;
+}
+.redesign .teste-card.theme-arcade {
+  --glow: rgba(255, 92, 168, 0.5);
+  --tint: #ff7ab8;
+}
+.redesign .teste-card:hover,
+.redesign .teste-card:focus-visible {
+  transform: translateY(-6px);
+  box-shadow: inset 0 0 0 1.5px var(--tint), 0 26px 50px -26px var(--glow);
+}
+.redesign .teste-card:active {
+  transform: translateY(-2px) scale(0.99);
+}
+
+.redesign .teste-card-art {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  isolation: isolate;
+}
+.redesign .teste-art {
+  position: absolute;
+  inset: 0;
+  display: block;
+  transition: transform 0.7s cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.redesign .teste-card:hover .teste-art,
+.redesign .teste-card:focus-visible .teste-art {
+  transform: scale(1.05);
+}
+.redesign .teste-card-number {
+  position: absolute;
+  left: 18px;
+  top: 12px;
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 800;
+  font-stretch: 112%;
+  line-height: 1;
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.5);
+}
+.redesign .teste-card-new {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: var(--promo);
+  color: var(--promo-ink);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Arte: Qual Link é você? */
+.redesign .teste-art-zelda {
+  background:
+    radial-gradient(ellipse 70% 80% at 62% 100%, rgba(255, 221, 130, 0.5), rgba(255, 221, 130, 0) 70%),
+    linear-gradient(160deg, #0d3b2c 0%, #14563b 45%, #0a2a22 100%);
+}
+.redesign .teste-art-triforce {
+  position: absolute;
+  right: 6%;
+  top: 8%;
+  width: 46%;
+  aspect-ratio: 1.1547;
+  background: rgba(255, 221, 130, 0.2);
+  clip-path: polygon(50% 0, 75% 50%, 25% 50%, 50% 0, 25% 50%, 50% 100%, 0 100%, 25% 50%, 75% 50%, 100% 100%, 50% 100%, 75% 50%);
+}
+.redesign .teste-art-zelda img {
+  position: absolute;
+  bottom: -6%;
+  height: 104%;
+  width: auto;
+  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.45));
+  transition: transform 0.6s cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.redesign .teste-art-zelda img.is-0 {
+  left: 30%;
+  height: 84%;
+  opacity: 0.9;
+}
+.redesign .teste-art-zelda img.is-2 {
+  right: -2%;
+  height: 84%;
+  opacity: 0.9;
+}
+.redesign .teste-art-zelda img.is-1 {
+  left: 50%;
+  translate: -18% 0;
+  z-index: 1;
+}
+.redesign .teste-card:hover .teste-art-zelda img.is-0 {
+  transform: translateX(-8px);
+}
+.redesign .teste-card:hover .teste-art-zelda img.is-2 {
+  transform: translateX(8px);
+}
+
+/* Arte: Qual será seu próximo jogo? */
+.redesign .teste-art-arcade {
+  background:
+    radial-gradient(ellipse 60% 70% at 50% 110%, rgba(255, 92, 168, 0.55), rgba(255, 92, 168, 0) 70%),
+    linear-gradient(150deg, #2a0f5c 0%, #4a1596 50%, #1a0a3d 100%);
+}
+.redesign .teste-art-ring {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  width: 78%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: repeating-conic-gradient(rgba(255, 255, 255, 0.07) 0 15deg, rgba(255, 255, 255, 0) 15deg 30deg);
+  animation: testes-spin 40s linear infinite;
+}
+@keyframes testes-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+.redesign .teste-art-fan {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+.redesign .teste-art-fan img {
+  position: absolute;
+  left: 50%;
+  bottom: 12%;
+  width: 27%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.5);
+  transform-origin: 50% 190%;
+  translate: -50% 0;
+  rotate: calc(var(--n) * 13deg);
+  z-index: calc(10 - max(var(--n), -1 * var(--n)));
+  transition: rotate 0.6s cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.redesign .teste-card:hover .teste-art-fan img,
+.redesign .teste-card:focus-visible .teste-art-fan img {
+  rotate: calc(var(--n) * 17deg);
+}
+
+/* Texto do card */
+.redesign .teste-card-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 10px;
+  padding: 20px 22px 22px;
+}
+.redesign .teste-card-kind {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.redesign .teste-card-kind > span {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.redesign .teste-card-kind > span:first-child {
+  background: var(--accent-fill);
+  color: var(--accent-ink);
+}
+.redesign .teste-card-title {
+  font-size: var(--step-head);
+  font-weight: 800;
+  font-stretch: 108%;
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.redesign .teste-card-desc {
+  color: var(--muted);
+  line-height: 1.45;
+}
+.redesign .teste-card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 10px;
+}
+.redesign .teste-card-reward {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+  font-size: var(--step-small);
+  font-weight: 700;
+}
+.redesign .teste-card-reward svg {
+  color: var(--promo);
+  flex: none;
+}
+:root[data-theme='light'] .redesign.theme-enabled .teste-card-reward svg {
+  color: var(--accent);
+}
+.redesign .teste-card-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  padding: 12px 20px;
+  border-radius: 999px;
+  background: var(--accent-fill);
+  color: var(--accent-ink);
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background 0.2s ease, gap 0.25s ease;
+}
+.redesign .teste-card:hover .teste-card-cta,
+.redesign .teste-card:focus-visible .teste-card-cta {
+  background: var(--accent-fill-hover);
+  gap: 12px;
+}
+
+/* ---------- Vaga "em breve" ---------- */
+.redesign .teste-soon {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 260px;
+  padding: 32px 24px;
+  border-radius: 20px;
+  border: 2px dashed rgba(164, 99, 255, 0.35);
+  text-align: center;
+}
+.redesign .teste-soon-number {
+  position: absolute;
+  left: 18px;
+  top: 12px;
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 800;
+  font-stretch: 112%;
+  line-height: 1;
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgba(164, 99, 255, 0.4);
+}
+.redesign .teste-soon-mark {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 8px;
+  border-radius: 18px;
+  background: var(--surface-2);
+  color: var(--accent);
+  font-size: 34px;
+  font-weight: 800;
+  animation: testes-float 3.2s ease-in-out infinite;
+}
+@keyframes testes-float {
+  50% {
+    transform: translateY(-7px) rotate(-5deg);
+  }
+}
+.redesign .teste-soon-title {
+  margin: 0;
+  font-size: var(--step-lead);
+  font-weight: 800;
+}
+.redesign .teste-soon-sub {
+  margin: 0;
+  max-width: 30ch;
+  color: var(--muted);
+  font-size: var(--step-small);
+}
+
+/* ---------- Celular ---------- */
+@media (max-width: 820px) {
+  .redesign .testes-grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .redesign .testes-hero {
+    padding: 12px 0 28px;
+  }
+  .redesign .teste-soon {
+    min-height: 190px;
+  }
+  /* No celular basta uma vaga de "em breve". */
+  .redesign .testes-grid > li.is-extra-soon {
+    display: none;
+  }
+}
+@media (max-width: 480px) {
+  .redesign .teste-card-body {
+    padding: 16px 16px 18px;
+  }
+  .redesign .teste-card-cta {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .redesign .testes-grid > li,
+  .redesign .testes-hero-dot,
+  .redesign .teste-art-ring,
+  .redesign .teste-soon-mark {
+    animation: none;
+  }
+  .redesign .teste-card,
+  .redesign .teste-art,
+  .redesign .teste-art-zelda img,
+  .redesign .teste-art-fan img {
+    transition: none;
+  }
+}

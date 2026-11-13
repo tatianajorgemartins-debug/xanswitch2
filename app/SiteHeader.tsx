@@ -8,6 +8,10 @@ import { beginCatalogSwitch } from '@/lib/catalogSwitch';
 
 const SWITCHER_FROM_KEY = 'xan-catalog-switch-from';
 
+type SiteSection = 'digital' | 'testes' | 'fisico';
+// As duas opções do seletor do cabeçalho, na ordem.
+type SwitcherSide = 'digital' | 'testes';
+
 function GamepadIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={16} height={16} aria-hidden="true">
@@ -39,6 +43,23 @@ function SunIcon() {
   );
 }
 
+// Ícone da aba "Testes": um dado.
+function DiceIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={16} height={16} aria-hidden="true">
+      <rect x="3.5" y="3.5" width="17" height="17" rx="4" strokeLinejoin="round" />
+      <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="15.5" cy="8.5" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="8.5" cy="15.5" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="15.5" cy="15.5" r="1.2" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+// Ícone de "Produtos físicos" — a aba está guardada (lib/siteSections.ts);
+// fica aqui pra quando ela voltar pro seletor.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function BoxIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={16} height={16} aria-hidden="true">
@@ -74,11 +95,12 @@ export default function SiteHeader({
   // Foto de perfil de quem está logado (enviada ou do Google) — aparece
   // no lugar do bonequinho, dentro do botão "Minha conta".
   accountAvatar?: string | null;
-  // Em qual dos dois catálogos esse header está sendo mostrado — controla
-  // qual lado do seletor fica "aceso" (ver .catalog-switcher em
-  // globals.css). 'digital' = jogos (app/CatalogClient.tsx), 'fisico' =
-  // produtos físicos (app/PhysicalCatalogClient.tsx).
-  activeCatalog: 'digital' | 'fisico';
+  // Em qual página esse header está sendo mostrado — controla qual lado do
+  // seletor fica "aceso" (ver .catalog-switcher em globals.css).
+  // 'digital' = jogos (app/CatalogClient.tsx), 'testes' = jogos interativos
+  // (app/testes). 'fisico' = produtos físicos (app/PhysicalCatalogClient.tsx),
+  // que está guardado e fora do seletor (ver lib/siteSections.ts).
+  activeCatalog: SiteSection;
 }) {
   const isRedesign = useDesignVariant() === 'redesign';
   const themeControl = useThemeToggle();
@@ -88,14 +110,14 @@ export default function SiteHeader({
   // cabeçalho é montado de novo na troca: o clique anota de onde a pessoa
   // veio, e a página nova desenha a pílula nesse lado e anima até o lado
   // certo (antes da primeira pintura, pra não piscar na posição final).
-  const [thumbAt, setThumbAt] = useState(activeCatalog);
+  const [thumbAt, setThumbAt] = useState<SiteSection>(activeCatalog);
   const [thumbInstant, setThumbInstant] = useState(false);
   useLayoutEffect(() => {
     let from: string | null = null;
     try {
       from = sessionStorage.getItem(SWITCHER_FROM_KEY);
     } catch {}
-    if ((from !== 'digital' && from !== 'fisico') || from === activeCatalog) {
+    if ((from !== 'digital' && from !== 'testes') || from === activeCatalog) {
       setThumbInstant(false);
       setThumbAt(activeCatalog);
       return;
@@ -121,7 +143,7 @@ export default function SiteHeader({
     };
   }, [activeCatalog]);
 
-  function rememberSwitchFrom(target: 'digital' | 'fisico', e: React.MouseEvent) {
+  function rememberSwitchFrom(target: SwitcherSide, e: React.MouseEvent) {
     if (target === activeCatalog) return;
     // Ctrl/Cmd+clique abre em outra aba: nada a fazer nesta.
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
@@ -140,7 +162,7 @@ export default function SiteHeader({
   // Pílula que segue o mouse (estilo Afterflix): passando o mouse numa
   // opção, ela desliza até lá; tirando o mouse do seletor, volta pro
   // catálogo atual. O texto da opção ativa continua marcado pelo .active.
-  const [hoverCatalog, setHoverCatalog] = useState<'digital' | 'fisico' | null>(null);
+  const [hoverCatalog, setHoverCatalog] = useState<SwitcherSide | null>(null);
 
   // Cabeçalho transparente no topo; rolando, ganha um fundo em degradê pra
   // logo e ícones não ficarem por cima dos cards (.site-header-bar.is-scrolled).
@@ -201,7 +223,8 @@ export default function SiteHeader({
         )}
       </div>
 
-      {/* Alterna entre os dois catálogos do site — sempre leva pra raiz de
+      {/* Alterna entre o catálogo de jogos e a página de testes (onde
+          antes ficavam os produtos físicos) — sempre leva pra raiz de
           cada um (não carrega filtros/estado de um catálogo no outro, que
           são páginas Next completamente separadas). Usa <Link> (navegação
           client-side), não <a>, de propósito: é isso que deixa a troca
@@ -212,7 +235,7 @@ export default function SiteHeader({
         className={`catalog-switcher${isRedesign ? ' has-thumb' : ''}`}
         data-active={hoverCatalog ?? shownCatalog}
         role="group"
-        aria-label="Escolher catálogo"
+        aria-label="Escolher seção do site"
         onMouseLeave={() => setHoverCatalog(null)}
       >
         {isRedesign && (
@@ -229,14 +252,14 @@ export default function SiteHeader({
           <span className="catalog-switcher-label">Jogos digitais</span>
         </Link>
         <Link
-          href="/beedle-games"
-          className={`catalog-switcher-option${shownCatalog === 'fisico' ? ' active' : ''}`}
-          aria-current={activeCatalog === 'fisico'}
-          onClick={(e) => rememberSwitchFrom('fisico', e)}
-          onMouseEnter={() => setHoverCatalog('fisico')}
+          href="/testes"
+          className={`catalog-switcher-option${shownCatalog === 'testes' ? ' active' : ''}`}
+          aria-current={activeCatalog === 'testes'}
+          onClick={(e) => rememberSwitchFrom('testes', e)}
+          onMouseEnter={() => setHoverCatalog('testes')}
         >
-          {isRedesign ? <BoxIcon /> : <span aria-hidden="true">📦</span>}
-          <span className="catalog-switcher-label">Produtos físicos</span>
+          {isRedesign ? <DiceIcon /> : <span aria-hidden="true">🎲</span>}
+          <span className="catalog-switcher-label">Testes</span>
         </Link>
       </div>
 

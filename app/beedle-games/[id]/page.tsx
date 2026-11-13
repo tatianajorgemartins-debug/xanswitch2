@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { ViewTransition } from 'react';
 import SiteShell from '@/app/SiteShell';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
+import { PHYSICAL_CATALOG_ENABLED } from '@/lib/siteSections';
 import { loadPhysicalCatalogData } from '@/lib/physicalCatalogData';
 import { buildWhatsAppContactLink } from '@/lib/whatsapp';
 import PhysicalCatalogClient from '@/app/PhysicalCatalogClient';
@@ -18,6 +19,7 @@ async function findProduct(id: string) {
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  if (!PHYSICAL_CATALOG_ENABLED) return {};
   const { id } = await params;
   const { item } = await findProduct(id);
   if (!item) return {};
@@ -39,6 +41,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 }
 
 export default async function PhysicalProductPage({ params }: { params: Promise<{ id: string }> }) {
+  // Seção guardada (lib/siteSections.ts): quem cair aqui vai pro catálogo.
+  if (!PHYSICAL_CATALOG_ENABLED) redirect('/');
   const { id } = await params;
   const { data, item } = await findProduct(id);
   if (!item) notFound();
