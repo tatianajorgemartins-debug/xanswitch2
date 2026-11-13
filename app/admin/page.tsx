@@ -19,6 +19,8 @@ import {
 import { isAuthenticated } from '@/lib/auth';
 import { getPaymentFees } from '@/lib/paymentFees';
 import { getWishlistCounts } from '@/lib/supabaseAdmin';
+import { isMercadoPagoEnabled } from '@/lib/mercadoPago';
+import { reconcilePendingMercadoPagoPayments } from '@/lib/mercadoPagoOrders';
 import AdminClient from './AdminClient';
 
 export const dynamic = 'force-dynamic';
@@ -29,6 +31,16 @@ export default async function AdminPage() {
   const authed = await isAuthenticated();
   if (!authed) {
     redirect('/admin/login');
+  }
+
+  // Antes de listar os pedidos: confere no Mercado Pago se algum Pix recente
+  // foi pago sem virar pedido (cliente fechou a tela, aviso automático
+  // falhou) e cria os que faltam. No máximo ~8s, pra nunca travar o painel.
+  if (isMercadoPagoEnabled()) {
+    await Promise.race([
+      reconcilePendingMercadoPagoPayments().catch((err) => console.error('[admin] Conferência de Pix falhou:', err)),
+      new Promise((resolve) => setTimeout(resolve, 8000))
+    ]);
   }
 
   const games = await getAllGames();

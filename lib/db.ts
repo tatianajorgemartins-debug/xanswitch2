@@ -598,6 +598,22 @@ export async function claimApprovedMpPayment(id: string): Promise<MpPaymentRecor
 // desistiu no meio): aparece no admin pra você devolver o Pix ou chamar o
 // cliente. Só os de mais de 30 minutos — antes disso ele ainda pode estar
 // digitando o cartão.
+// Cobranças dos últimos dias que ainda não viraram pedido e podem ter sido
+// pagas (sem as que já se sabe que não vão mais ser: expiradas,
+// canceladas, devolvidas, valor errado). Usadas pra conferir de novo no
+// Mercado Pago — ver reconcilePendingMercadoPagoPayments.
+export async function getUnprocessedMpPayments(): Promise<MpPaymentRecord[]> {
+  const rows = await getSql()`
+    SELECT * FROM mp_payments
+    WHERE processed_at IS NULL
+      AND created_at > now() - interval '5 days'
+      AND status NOT IN ('failed', 'canceled', 'expired', 'refunded', 'charged_back', 'amount_mismatch', 'paid_waiting_card')
+    ORDER BY created_at DESC
+    LIMIT 40
+  `;
+  return rows as MpPaymentRecord[];
+}
+
 export async function getStalledSplitPayments(): Promise<MpPaymentRecord[]> {
   const rows = await getSql()`
     SELECT * FROM mp_payments

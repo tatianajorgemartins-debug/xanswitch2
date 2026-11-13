@@ -11,6 +11,7 @@ import {
   claimApprovedMpPayment,
   createPaidMercadoPagoOrder,
   getMpPaymentRecord,
+  getUnprocessedMpPayments,
   incrementPrivateOfferUse,
   markDiscountCreditUsed,
   releaseMpPaymentClaim,
@@ -52,6 +53,28 @@ export async function syncMercadoPagoPayment(paymentId: string): Promise<PixChec
     await setMpPaymentStatus(paymentId, state.rawStatus);
   }
   return state.status;
+}
+
+// Rede de segurança: confere de novo no Mercado Pago as cobranças recentes
+// que ainda não viraram pedido e cria os pedidos das que foram pagas. Sem
+// isso, um Pix pago com a tela do cliente fechada (ele saiu pro app do
+// banco e não voltou) dependia só do aviso automático — se o aviso falhasse
+// ou atrasasse, o dinheiro caía mas o pedido nunca era criado. Roda ao
+// abrir o admin (app/admin/page.tsx) e no cron diário. Devolve quantas
+// cobranças viraram pedido agora.
+export async function reconcilePendingMercadoPagoPayments(): Promise<number> {
+  const pending = await getUnprocessedMpPayments();
+  let created = 0;
+  await Promise.all(
+    pending.map(async (p) => {
+      try {
+        if ((await syncMercadoPagoPayment(p.id)) === 'approved') created++;
+      } catch (err) {
+        console.error(`[mercadopago] Falha ao conferir a cobrança ${p.id}:`, err);
+      }
+    })
+  );
+  return created;
 }
 
 // Pix + cartão: são duas cobranças, e o pedido só nasce quando as duas

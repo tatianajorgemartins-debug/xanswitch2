@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { pingKeepAlive } from '@/lib/supabaseAdmin';
+import { isMercadoPagoEnabled } from '@/lib/mercadoPago';
+import { reconcilePendingMercadoPagoPayments } from '@/lib/mercadoPagoOrders';
 
 // Chamado uma vez por dia pela Vercel (veja "crons" em vercel.json). O
 // único trabalho dele é registrar uma linha bem pequena no banco do
@@ -16,6 +18,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
+  }
+
+  // De carona: confere os Pix recentes que foram pagos sem virar pedido
+  // (ver reconcilePendingMercadoPagoPayments). Não derruba o keepalive.
+  if (isMercadoPagoEnabled()) {
+    await reconcilePendingMercadoPagoPayments().catch((err) => console.error('[cron] Conferência de Pix falhou:', err));
   }
 
   try {
