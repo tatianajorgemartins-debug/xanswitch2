@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { User } from '@supabase/supabase-js';
 import { getContrastColor } from '@/lib/color';
@@ -15,6 +15,7 @@ import {
   getAvatarUrl
 } from '@/lib/wishlist';
 import SiteHeader from './SiteHeader';
+import { getFreshPricesAction, type FreshPrice } from './catalogActions';
 import PromoSection from './PromoSection';
 import ReviewsSection, { HomeReviews } from './ReviewsSection';
 import HowItWorks from './HowItWorks';
@@ -157,11 +158,11 @@ const INTRO_TITLE_WORDS = [
 ];
 
 export default function CatalogClient({
-  items,
-  featuredItems,
-  bestsellerItems,
-  upcomingItems,
-  mostWantedItems,
+  items: serverItems,
+  featuredItems: serverFeaturedItems,
+  bestsellerItems: serverBestsellerItems,
+  upcomingItems: serverUpcomingItems,
+  mostWantedItems: serverMostWantedItems,
   reviews,
   whatsappContactUrl,
   reviewsBannerUrl,
@@ -203,6 +204,51 @@ export default function CatalogClient({
   initialQualLink?: boolean;
 }) {
   const isRedesign = useDesignVariant() === 'redesign';
+
+  // Preços sempre atuais: a página traz os preços de quando foi carregada,
+  // e uma aba (ou o app) pode ficar aberta por dias. Ao abrir uma compra, a
+  // lista de desejos, ou voltar pra uma aba parada, busca o preço atual de
+  // todos os jogos (getFreshPricesAction) e aplica por cima — no catálogo,
+  // nos favoritos e na janela de compra.
+  const [freshPrices, setFreshPrices] = useState<Map<number, FreshPrice> | null>(null);
+  // Hora da última conferência (0 = ainda não conferiu nesta visita).
+  const lastPriceCheckRef = useRef(0);
+  const pageLoadedAtRef = useRef(Date.now());
+  const refreshPrices = useCallback((force = false) => {
+    if (!force && Date.now() - lastPriceCheckRef.current < 60_000) return;
+    lastPriceCheckRef.current = Date.now();
+    getFreshPricesAction()
+      .then((list) => setFreshPrices(new Map(list.map((p) => [p.id, p]))))
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    function onVisible() {
+      // Voltou pra aba depois de 10+ minutos: confere os preços.
+      if (document.visibilityState === 'visible' && Date.now() - Math.max(lastPriceCheckRef.current, pageLoadedAtRef.current) > 10 * 60_000) refreshPrices(true);
+    }
+    function onPageShow(e: PageTransitionEvent) {
+      // Página restaurada da memória do navegador (botão voltar, app reaberto).
+      if (e.persisted) refreshPrices(true);
+    }
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('pageshow', onPageShow);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('pageshow', onPageShow);
+    };
+  }, [refreshPrices]);
+  const freshen = useCallback(
+    (it: Item): Item => {
+      const p = freshPrices?.get(it.id);
+      return p ? { ...it, ...p } : it;
+    },
+    [freshPrices]
+  );
+  const items = useMemo(() => serverItems.map(freshen), [serverItems, freshen]);
+  const featuredItems = useMemo(() => serverFeaturedItems.map(freshen), [serverFeaturedItems, freshen]);
+  const bestsellerItems = useMemo(() => serverBestsellerItems.map(freshen), [serverBestsellerItems, freshen]);
+  const upcomingItems = useMemo(() => serverUpcomingItems.map(freshen), [serverUpcomingItems, freshen]);
+  const mostWantedItems = useMemo(() => serverMostWantedItems.map(freshen), [serverMostWantedItems, freshen]);
   const [query, setQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -317,6 +363,13 @@ export default function CatalogClient({
   // Jogos selecionados pra compra em lote (null = modal fechado) — disparado
   // a partir da lista de desejos, dentro do popup de conta.
   const [bulkPurchaseItems, setBulkPurchaseItems] = useState<Item[] | null>(null);
+
+  // Abriu uma compra, a compra em lote ou o popup de conta (com a lista de
+  // desejos): confere os preços atuais (no máximo uma vez por minuto).
+  const purchaseOpen = selectedItem !== null || bulkPurchaseItems !== null || accountModalOpen;
+  useEffect(() => {
+    if (purchaseOpen) refreshPrices();
+  }, [purchaseOpen, refreshPrices]);
   // Mensagem de erro ao favoritar/desfavoritar (ex: banco de dados da lista
   // de desejos ainda não configurado). Sem isso, um erro aqui ficava
   // completamente invisível — o coração só "piscava" e voltava, sem
@@ -1095,7 +1148,7 @@ export default function CatalogClient({
           então não bagunça o layout do catálogo por trás dele. */}
       {selectedItem && (
         <PurchaseModal
-          item={selectedItem}
+          item={freshen(selectedItem)}
           user={user}
           onClose={closeGame}
           onViewCollection={() => {
@@ -1143,7 +1196,7 @@ export default function CatalogClient({
           disparada de dentro do popup de conta (ver onBulkPurchase acima). */}
       {bulkPurchaseItems && (
         <BulkPurchaseModal
-          items={bulkPurchaseItems}
+          items={bulkPurchaseItems.map(freshen)}
           user={user}
           onClose={() => setBulkPurchaseItems(null)}
           onViewCollection={() => {

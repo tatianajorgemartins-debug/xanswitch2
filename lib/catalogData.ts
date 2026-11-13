@@ -24,7 +24,7 @@ import { gamePrice } from './gamePrice';
 import { getWishlistCounts } from './supabaseAdmin';
 import type { Item, ReviewItem } from '@/app/CatalogClient';
 
-function toItem(g: Game): Item {
+export function toItem(g: Game): Item {
   // Em promoção: o preço promocional vira O preço do jogo em todo o site
   // (card, janela, Pix, pedido, desconto de fidelidade). O preço riscado é
   // sempre o da eShop (o "preço original" do admin), com ou sem promoção;
