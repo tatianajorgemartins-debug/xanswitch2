@@ -101,6 +101,20 @@ export async function getAllPromoEvents(): Promise<PromoEventRow[]> {
   return rows as PromoEventRow[];
 }
 
+// Etiqueta e jogos de uma promoção (mesmo antes de começar) — usado pelo
+// clique do banner promocional (lib/promoBanner.ts). null se não existir.
+export async function getPromoEventGames(eventId: number): Promise<{ label: string; ids: number[] } | null> {
+  const rows = await getSql()`
+    SELECT e.tag_text, COALESCE(array_agg(g.game_id) FILTER (WHERE g.game_id IS NOT NULL), '{}') AS game_ids
+    FROM promo_events e
+    LEFT JOIN promo_event_games g ON g.event_id = e.id
+    WHERE e.id = ${eventId}
+    GROUP BY e.id
+  `;
+  const row = rows[0] as { tag_text: string; game_ids: number[] } | undefined;
+  return row ? { label: row.tag_text, ids: row.game_ids.map(Number) } : null;
+}
+
 async function getRunningPromoEvents(): Promise<PromoEventRow[]> {
   const rows = await getSql()`
     SELECT e.*, COALESCE(array_agg(g.game_id) FILTER (WHERE g.game_id IS NOT NULL), '{}') AS game_ids

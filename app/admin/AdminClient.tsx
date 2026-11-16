@@ -523,7 +523,7 @@ export default function AdminClient({
           <>
             <PromoEventsPanel games={games} events={promoEvents} />
             <div style={{ height: 32 }} />
-            <PromoBannerPanel banner={promoBanner} />
+            <PromoBannerPanel banner={promoBanner} events={promoEvents ?? []} />
           </>
         )}
 

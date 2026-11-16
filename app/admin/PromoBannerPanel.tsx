@@ -6,7 +6,7 @@
 // gravação em promoBannerActions.ts.
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { EVENT_STATUS_LABEL } from '@/lib/promoEvents';
+import { EVENT_STATUS_LABEL, eventStatus, type PromoEventRow } from '@/lib/promoEvents';
 import { promoBannerStatus, type PromoBannerSetting } from '@/lib/promoBanner';
 import { removePromoBannerAction, savePromoBannerAction, setPromoBannerEnabledAction } from './promoBannerActions';
 
@@ -19,7 +19,7 @@ function formatWhen(iso: string): string {
   return new Date(iso).toLocaleString('pt-BR', { timeZone: TZ, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-export default function PromoBannerPanel({ banner }: { banner: PromoBannerSetting | null }) {
+export default function PromoBannerPanel({ banner, events }: { banner: PromoBannerSetting | null; events: PromoEventRow[] }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -69,6 +69,7 @@ export default function PromoBannerPanel({ banner }: { banner: PromoBannerSettin
       {editing ? (
         <BannerEditor
           banner={banner}
+          events={events}
           onClose={() => setEditing(false)}
           onSaved={() => {
             setEditing(false);
@@ -88,7 +89,12 @@ export default function PromoBannerPanel({ banner }: { banner: PromoBannerSettin
             {banner.endsAt ? `sai em ${formatWhen(banner.endsAt)}` : 'sem data pra sair'}
           </p>
           <p className="adm-event-meta">
-            Ao clicar: {banner.action === 'sale' ? 'mostra só os jogos em promoção' : 'não faz nada (só imagem)'}
+            Ao clicar:{' '}
+            {banner.action === 'event'
+              ? `mostra os jogos da promoção “${events.find((e) => e.id === banner.eventId)?.name ?? 'apagada'}”`
+              : banner.action === 'sale'
+                ? 'mostra todos os jogos em promoção agora'
+                : 'não faz nada (só imagem)'}
             {banner.mobileImageUrl ? ' · com arte própria pro celular' : ''}
           </p>
           <div className="adm-event-actions">
@@ -114,10 +120,12 @@ export default function PromoBannerPanel({ banner }: { banner: PromoBannerSettin
 
 function BannerEditor({
   banner,
+  events,
   onClose,
   onSaved
 }: {
   banner: PromoBannerSetting | null;
+  events: PromoEventRow[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -125,7 +133,12 @@ function BannerEditor({
   const [mobilePreview, setMobilePreview] = useState<string | null>(banner?.mobileImageUrl ?? null);
   const [removeMobile, setRemoveMobile] = useState(false);
   const [alt, setAlt] = useState(banner?.alt ?? '');
-  const [action, setAction] = useState(banner?.action ?? 'sale');
+  // Promoções que ainda valem ou vão valer (as encerradas ficam no fim).
+  const eventOptions = [...events].sort(
+    (a, b) => Number(eventStatus(a) === 'encerrado') - Number(eventStatus(b) === 'encerrado')
+  );
+  const [action, setAction] = useState(banner?.action ?? (eventOptions.length > 0 ? 'event' : 'sale'));
+  const [eventId, setEventId] = useState<number | null>(banner?.eventId ?? eventOptions[0]?.id ?? null);
   const [startsAt, setStartsAt] = useState(banner ? toLocalInput(banner.startsAt) : '');
   const [hasEnd, setHasEnd] = useState(Boolean(banner?.endsAt));
   const [endsAt, setEndsAt] = useState(banner?.endsAt ? toLocalInput(banner.endsAt) : '');
@@ -146,6 +159,7 @@ function BannerEditor({
     if (removeMobile) data.set('removeMobile', '1');
     data.set('alt', alt);
     data.set('action', action);
+    if (action === 'event' && eventId !== null) data.set('eventId', String(eventId));
     data.set('startsAt', startsAt);
     data.set('endsAt', hasEnd ? endsAt : '');
     data.set('enabled', enabled ? '1' : '0');
@@ -225,13 +239,39 @@ function BannerEditor({
         <li>
           <h4>2. Ao clicar no banner</h4>
           <div className="adm-chips" role="group" aria-label="O que acontece ao clicar">
+            {eventOptions.length > 0 && (
+              <button type="button" className={`adm-chip${action === 'event' ? ' is-on' : ''}`} onClick={() => setAction('event')}>
+                Mostrar os jogos de uma promoção
+              </button>
+            )}
             <button type="button" className={`adm-chip${action === 'sale' ? ' is-on' : ''}`} onClick={() => setAction('sale')}>
-              Mostrar os jogos em promoção
+              Mostrar tudo que está em promoção
             </button>
             <button type="button" className={`adm-chip${action === 'none' ? ' is-on' : ''}`} onClick={() => setAction('none')}>
               Nada (só a imagem)
             </button>
           </div>
+          {action === 'event' && (
+            <div className="adm-form-grid" style={{ marginTop: 12 }}>
+              <label className="is-wide">
+                Qual promoção
+                <select value={eventId ?? ''} onChange={(e) => setEventId(Number(e.target.value))}>
+                  {eventOptions.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.name} — {e.game_ids.length} {e.game_ids.length === 1 ? 'jogo' : 'jogos'} ({EVENT_STATUS_LABEL[eventStatus(e)]})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
+          <p className="adm-help">
+            {action === 'event'
+              ? 'O cliente clica e vê só os jogos marcados nessa promoção — mesmo que o banner entre antes de ela começar.'
+              : action === 'sale'
+                ? 'O cliente clica e vê todos os jogos com preço promocional no momento.'
+                : 'O banner fica só como imagem, sem clique.'}
+          </p>
         </li>
 
         <li>

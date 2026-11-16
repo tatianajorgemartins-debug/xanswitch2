@@ -28,7 +28,8 @@ function refresh() {
 }
 
 // Campos do formulário: image, mobileImage (arquivos, opcionais ao editar),
-// removeMobile ('1' tira a arte do celular), alt, action, startsAt, endsAt
+// removeMobile ('1' tira a arte do celular), alt, action, eventId (com
+// action 'event': a promoção cujos jogos o clique mostra), startsAt, endsAt
 // (AAAA-MM-DDTHH:MM, Brasília; endsAt pode vir vazio) e enabled ('1'/'0').
 export async function savePromoBannerAction(formData: FormData): Promise<Result> {
   if (!(await isAuthenticated())) return { ok: false, error: 'Sua sessão do admin expirou. Entre de novo.' };
@@ -55,11 +56,19 @@ export async function savePromoBannerAction(formData: FormData): Promise<Result>
   const removeMobile = formData.get('removeMobile') === '1';
   const mobileImageUrl = newMobile ?? (removeMobile ? null : (previous?.mobileImageUrl ?? null));
 
+  const rawAction = String(formData.get('action') ?? '');
+  const action = rawAction === 'none' ? 'none' : rawAction === 'event' ? 'event' : 'sale';
+  const eventId = Number(formData.get('eventId'));
+  if (action === 'event' && !(Number.isInteger(eventId) && eventId > 0)) {
+    return { ok: false, error: 'Escolha a promoção cujos jogos o banner vai mostrar.' };
+  }
+
   const setting: PromoBannerSetting = {
     imageUrl,
     mobileImageUrl,
     alt: String(formData.get('alt') ?? '').trim().slice(0, 120),
-    action: formData.get('action') === 'none' ? 'none' : 'sale',
+    action,
+    eventId: action === 'event' ? eventId : null,
     startsAt,
     endsAt,
     enabled: formData.get('enabled') !== '0'

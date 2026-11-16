@@ -22,7 +22,8 @@ import {
 import { buildWhatsAppContactLink, formatPriceBR } from './whatsapp';
 import { gamePrice } from './gamePrice';
 import { getWishlistCounts } from './supabaseAdmin';
-import { activePromoBanner, PROMO_BANNER_KEY, type ActivePromoBanner } from './promoBanner';
+import { runningPromoBanner, PROMO_BANNER_KEY, type ActivePromoBanner } from './promoBanner';
+import { getPromoEventGames } from './db';
 import type { Item, ReviewItem } from '@/app/CatalogClient';
 
 export function toItem(g: Game): Item {
@@ -62,6 +63,23 @@ export function toItem(g: Game): Item {
     creditPaymentUrl: g.credit_payment_url,
     cardPoints: g.card_points,
     discountEligible: g.discount_eligible
+  };
+}
+
+// Banner promocional valendo agora, já com os jogos da promoção que o
+// clique mostra (ver lib/promoBanner.ts).
+async function loadPromoBanner(): Promise<ActivePromoBanner | null> {
+  const b = runningPromoBanner(await getSiteSetting(PROMO_BANNER_KEY).catch(() => null));
+  if (!b) return null;
+  const eventGames =
+    b.action === 'event' && b.eventId !== null ? await getPromoEventGames(b.eventId).catch(() => null) : null;
+  return {
+    imageUrl: b.imageUrl,
+    mobileImageUrl: b.mobileImageUrl,
+    alt: b.alt,
+    // Promoção apagada (ou sem jogos): o clique cai pra "jogos em promoção".
+    action: b.action === 'event' && !eventGames?.ids.length ? 'sale' : b.action,
+    eventGames: eventGames?.ids.length ? eventGames : null
   };
 }
 
@@ -118,7 +136,7 @@ export const loadCatalogData = cache(async (): Promise<CatalogData> => {
       ? { franchise: featuredFranchiseName, label: featuredFranchiseLabel || `🔥 Jogos de ${featuredFranchiseName}` }
       : null;
 
-  const promoBanner = activePromoBanner(await getSiteSetting(PROMO_BANNER_KEY).catch(() => null));
+  const promoBanner = await loadPromoBanner();
 
   const items = games.map(toItem);
   const featuredItems = byRecentFirst(games.filter((g) => g.is_featured)).map(toItem);

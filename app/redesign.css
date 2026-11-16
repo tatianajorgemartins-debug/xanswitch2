@@ -3741,3 +3741,79 @@ html:has(.legal-page) body {
     margin-left: -4px;
   }
 }
+
+/* ---------- Jogos em promoção: mais destaque ----------
+   Moldura dourada com brilho, selo maior com contorno dourado (a cor do
+   selo continua sendo a da etiqueta da promoção), preço maior e a linha
+   "Economize R$ X". Ver GameCard / ListRow em CatalogClient.tsx. */
+.redesign .game-card.is-on-sale .cover-frame {
+  box-shadow: 0 0 0 2px var(--promo), 0 14px 34px -14px rgba(255, 196, 46, 0.55);
+}
+.redesign .game-card.is-on-sale .cover-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 236, 170, 0.32) 50%, transparent 65%);
+  transform: translateX(-130%);
+  animation: sale-shine 4.5s ease-in-out infinite;
+}
+@keyframes sale-shine {
+  0%,
+  62% {
+    transform: translateX(-130%);
+  }
+  100% {
+    transform: translateX(130%);
+  }
+}
+.redesign .game-card.is-on-sale .game-card-sale {
+  z-index: 2;
+  right: 8px;
+  bottom: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: 0 0 0 2px var(--promo), 0 6px 16px rgba(0, 0, 0, 0.45);
+}
+.redesign .game-card.is-on-sale .game-card-price {
+  font-size: 21px;
+}
+.redesign .game-card-savings {
+  order: 3;
+  flex-basis: 100%;
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--promo);
+}
+:root[data-theme='light'] .redesign.theme-enabled .game-card-savings {
+  color: #b45309;
+}
+.redesign .game-card-installments {
+  order: 4;
+}
+@media (hover: hover) {
+  .redesign .game-card.is-on-sale:hover .cover-frame {
+    box-shadow: 0 0 0 2px var(--promo), 0 22px 44px -14px rgba(255, 196, 46, 0.7);
+  }
+}
+.redesign .list-row.is-on-sale {
+  box-shadow: inset 3px 0 0 var(--promo), 0 0 0 1px rgba(255, 210, 78, 0.35);
+}
+.redesign .catalog-count-event {
+  color: var(--promo);
+  font-weight: 800;
+}
+:root[data-theme='light'] .redesign.theme-enabled .catalog-count-event {
+  color: #b45309;
+}
+@media (prefers-reduced-motion: reduce) {
+  .redesign .game-card.is-on-sale .cover-frame::before {
+    animation: none;
+    display: none;
+  }
+}

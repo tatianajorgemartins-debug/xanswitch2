@@ -268,6 +268,9 @@ export default function CatalogClient({
   const [priceMin, setPriceMin] = useState('');
   const [priceMax, setPriceMax] = useState('');
   const [saleOnly, setSaleOnly] = useState(false);
+  // Clique no banner promocional: só os jogos marcados naquela promoção
+  // (ex: Black Friday). label = etiqueta da promoção, mostrada na contagem.
+  const [eventFilter, setEventFilter] = useState<{ label: string; ids: Set<number> } | null>(null);
   const [quickFilter, setQuickFilter] = useState<QuickFilter>(null);
   // "Outros" dos atalhos: jogos de franquias que não têm atalho próprio.
   const [otherFranchises, setOtherFranchises] = useState(false);
@@ -576,6 +579,7 @@ export default function CatalogClient({
       if (min !== null && !Number.isNaN(min) && it.price < min) return false;
       if (max !== null && !Number.isNaN(max) && it.price > max) return false;
       if (saleOnly && !it.isOnSale) return false;
+      if (eventFilter && !eventFilter.ids.has(it.id)) return false;
       if (quickFilter === 'bestseller' && !it.isBestseller) return false;
       if (quickFilter === 'upcoming' && !it.isUpcoming) return false;
       return true;
@@ -594,6 +598,7 @@ export default function CatalogClient({
     priceMin,
     priceMax,
     saleOnly,
+    eventFilter,
     quickFilter,
     sortMode
   ]);
@@ -606,6 +611,7 @@ export default function CatalogClient({
     (priceMin.trim() ? 1 : 0) +
     (priceMax.trim() ? 1 : 0) +
     (saleOnly ? 1 : 0) +
+    (eventFilter ? 1 : 0) +
     (otherFranchises ? 1 : 0) +
     (quickFilter ? 1 : 0);
 
@@ -656,6 +662,7 @@ export default function CatalogClient({
     setPriceMin('');
     setPriceMax('');
     setSaleOnly(false);
+    setEventFilter(null);
     setOtherFranchises(false);
     setQuickFilter(null);
   }
@@ -1005,11 +1012,17 @@ export default function CatalogClient({
         onOpenQualLink={() => setQualLink({ resume: false })}
         promoBanner={promoBanner}
         onPromoBannerClick={() => {
-          // Clique no banner promocional: mostra só os jogos em promoção.
-          // Se a promoção ainda não começou (banner de aviso), não tem jogo
-          // em promoção pra filtrar — aí só desce até o catálogo.
+          // Clique no banner promocional: mostra só os jogos da promoção
+          // escolhida no admin (mesmo antes de ela começar) — ou, sem
+          // promoção escolhida, todos os jogos em promoção agora. Os outros
+          // filtros saem, pra nenhum jogo da promoção ficar escondido.
           setQuery('');
-          if (items.some((it) => it.isOnSale)) setSaleOnly(true);
+          clearFilters();
+          if (promoBanner?.eventGames) {
+            setEventFilter({ label: promoBanner.eventGames.label, ids: new Set(promoBanner.eventGames.ids) });
+          } else if (items.some((it) => it.isOnSale)) {
+            setSaleOnly(true);
+          }
           scrollToGrid();
         }}
       />
@@ -1074,7 +1087,15 @@ export default function CatalogClient({
       <div className="catalog-count-row">
         <p className="catalog-count">
           <span className="catalog-count-number">{filtered.length}</span>{' '}
-          {filtered.length === 1 ? 'jogo disponível' : 'jogos disponíveis'}
+          {eventFilter ? (
+            <>
+              {filtered.length === 1 ? 'jogo na' : 'jogos na'} <strong className="catalog-count-event">{eventFilter.label}</strong>
+            </>
+          ) : filtered.length === 1 ? (
+            'jogo disponível'
+          ) : (
+            'jogos disponíveis'
+          )}
         </p>
         {isFiltering && (
           <button type="button" className="btn ghost catalog-clear-filter" onClick={clearAndScrollTop}>
@@ -1338,7 +1359,7 @@ function GameCard({
           onSelect();
         }
       }}
-      className="game-card"
+      className={`game-card${item.isOnSale ? ' is-on-sale' : ''}`}
     >
       <div className="cover-frame">
         <button
@@ -1425,6 +1446,7 @@ function GameCard({
         <p className="game-card-name">{item.name}</p>
         {item.originalPriceLabel && <p className="game-card-old-price">R$ {item.originalPriceLabel}</p>}
         <p className="game-card-price">R$ {item.priceLabel}</p>
+        {item.isOnSale && savingsLabel(item) && <p className="game-card-savings">Economize R$ {savingsLabel(item)}</p>}
         <p className="game-card-installments">{installmentsLabel(item.price)}</p>
       </div>
     </div>
@@ -1473,7 +1495,7 @@ function ListRow({
           onSelect();
         }
       }}
-      className="list-row"
+      className={`list-row${item.isOnSale ? ' is-on-sale' : ''}`}
     >
       <button
         type="button"
@@ -1515,4 +1537,13 @@ function ListRow({
       </span>
     </div>
   );
+}
+
+// Quanto a pessoa economiza num jogo em promoção (preço riscado − preço
+// atual), já formatado ("96,90"). null sem preço riscado.
+function savingsLabel(item: Item): string | null {
+  if (!item.originalPriceLabel) return null;
+  const struck = parseFloat(item.originalPriceLabel.replace(/\./g, '').replace(',', '.'));
+  const diff = Math.round((struck - item.price) * 100) / 100;
+  return diff >= 1 ? diff.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : null;
 }
