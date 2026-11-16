@@ -72,6 +72,28 @@ export const NIVEIS: Nivel[] = [
 // da 2ª tentativa deixaria só a resposta certa — com 6 sobram 2.
 export const OPCOES_FACIL = 6;
 
+// data/jogos/personagens.json → só o que o jogo usa (sem arquivo_original,
+// revisar etc.), ignorando itens incompletos.
+export function personagensDoJson(raw: Record<string, unknown>[]): Personagem[] {
+  return raw
+    .filter((p) => typeof p.id === 'string' && typeof p.nome === 'string' && typeof p.imagem === 'string')
+    .map((p) => ({
+      id: p.id as string,
+      nome: p.nome as string,
+      aceitos: Array.isArray(p.aceitos) ? (p.aceitos as string[]) : [],
+      franquia: typeof p.franquia === 'string' ? p.franquia : '',
+      jogo: typeof p.jogo === 'string' ? p.jogo : '',
+      estreia: typeof p.estreia === 'number' ? p.estreia : null,
+      ...(typeof p.tipo === 'string' && p.tipo ? { tipo: p.tipo } : {}),
+      niveis: Array.isArray(p.niveis) ? (p.niveis as string[]) : [],
+      imagem: p.imagem as string,
+      ...(p.ativo === false ? { ativo: false } : {}),
+      ...(typeof p.ativo_desde === 'string' ? { ativo_desde: p.ativo_desde } : {}),
+      ...(typeof p.inativo_desde === 'string' ? { inativo_desde: p.inativo_desde } : {}),
+      ...(typeof p.franquia_loja === 'string' ? { franquia_loja: p.franquia_loja } : {})
+    }));
+}
+
 export function imagemUrl(p: Personagem, tipo: 'silhueta' | 'cor'): string {
   return `/jogos/silhueta/${p.imagem}-${tipo === 'silhueta' ? 's' : 'c'}.webp`;
 }

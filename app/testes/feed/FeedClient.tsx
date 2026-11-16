@@ -11,6 +11,8 @@ import type { User } from '@supabase/supabase-js';
 import { getAccessToken, getCurrentUser, getInstagramHandle, onAuthChange } from '@/lib/wishlist';
 import { lerPublicaveis, marcarPublicado, type Publicavel } from '@/lib/jogos/registro';
 import { OCARINA_ENABLED } from '@/lib/siteSections';
+import { diaEm } from '@/lib/jogos/dia';
+import { resultadoDoDia } from '@/lib/jogos/progresso';
 import { apagarMeuPostAction, curtirAction, listarFeedAction, publicarResultadoAction, type PostFeed } from '../jogosActions';
 import './feed.css';
 
@@ -216,9 +218,12 @@ function Post({ post, curtido, onCurtir, onApagar }: { post: PostFeed; curtido: 
           </button>
         )}
       </header>
-      <div className="feed-placar">
-        <p className="feed-placar-titulo">{post.titulo}</p>
-        <p className="feed-placar-texto">{post.resultado}</p>
+      <div className={`feed-placar${post.imagem ? ' tem-imagem' : ''}`}>
+        {post.imagem && <ImagemDoPost post={post} />}
+        <div>
+          <p className="feed-placar-titulo">{post.titulo}</p>
+          <p className="feed-placar-texto">{post.resultado}</p>
+        </div>
       </div>
       {post.comentario && <p className="feed-comentario">{post.comentario}</p>}
       <footer className="feed-post-pe">
@@ -231,6 +236,30 @@ function Post({ post, curtido, onCurtir, onApagar }: { post: PostFeed; curtido: 
         </Link>
       </footer>
     </article>
+  );
+}
+
+// Imagem do jogo no post. Silhueta do Dia: o personagem só aparece colorido
+// pra quem já jogou aquele nível naquele dia (ou depois que o dia passou) —
+// pros outros, fica a silhueta, pra não estragar o desafio.
+function ImagemDoPost({ post }: { post: PostFeed }) {
+  const img = post.imagem;
+  if (!img) return null;
+  if (img.tipo === 'foto') {
+    return (
+      <span className={`feed-img is-${img.formato}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={img.url} alt={img.alt} loading="lazy" decoding="async" />
+      </span>
+    );
+  }
+  const revelar = post.meu || img.dia < diaEm() || Boolean(resultadoDoDia('silhueta', img.nivel, img.dia));
+  return (
+    <span className="feed-img is-silhueta" title={revelar ? img.nome : 'Jogue o desafio pra ver quem é'}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={revelar ? img.cor : img.silhueta} alt={revelar ? img.nome : 'Personagem misterioso'} loading="lazy" decoding="async" />
+      {!revelar && <span className="feed-img-selo">?</span>}
+    </span>
   );
 }
 

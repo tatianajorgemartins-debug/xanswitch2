@@ -323,6 +323,58 @@
   background: linear-gradient(135deg, color-mix(in srgb, var(--cor) 16%, transparent), color-mix(in srgb, var(--cor) 4%, transparent));
   box-shadow: inset 3px 0 0 var(--cor);
 }
+/* Post com imagem do jogo ao lado do placar */
+.redesign .feed-placar.tem-imagem {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.redesign .feed-img {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 92px;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.redesign .feed-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.redesign .feed-img.is-silhueta {
+  background: radial-gradient(circle at 50% 45%, #ffffff 0%, #f1e9ff 40%, #b99cff 100%);
+}
+.redesign .feed-img.is-silhueta img {
+  width: 84%;
+  height: 84%;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 6px rgba(40, 10, 90, 0.3));
+}
+.redesign .feed-img.is-capa {
+  box-shadow: 0 8px 18px -8px rgba(0, 0, 0, 0.6);
+}
+.redesign .feed-img.is-card img {
+  object-position: 50% 20%;
+}
+.redesign .feed-img-selo {
+  position: absolute;
+  right: 6px;
+  top: 4px;
+  color: #160d2e;
+  font-size: 22px;
+  font-weight: 900;
+  rotate: 12deg;
+}
+@media (max-width: 380px) {
+  .redesign .feed-img {
+    width: 76px;
+    height: 76px;
+  }
+}
+
 .redesign .feed-placar.is-previa {
   --cor: #a463ff;
   margin: 0 0 4px;

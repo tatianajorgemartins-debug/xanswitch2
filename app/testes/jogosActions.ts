@@ -21,6 +21,9 @@ import {
   type GamePostRow
 } from '@/lib/jogosDb';
 import { verifyAccessToken, verifyAccessTokenProfile } from '@/lib/supabaseAuthServer';
+import { loadCatalogData } from '@/lib/catalogData';
+import { normalizar } from '@/lib/jogos/respostas';
+import { imagemDoPost, type ImagemPost } from './feed/imagemPost';
 
 const JOGOS = ['silhueta', 'ocarina', 'qual-link', 'proximo-jogo'] as const;
 const ehJogo = (g: unknown): g is (typeof JOGOS)[number] => typeof g === 'string' && (JOGOS as readonly string[]).includes(g);
@@ -77,10 +80,19 @@ export type PostFeed = {
   curtidas: number;
   criadoEm: string;
   meu: boolean;
+  imagem: ImagemPost;
 };
 
-function paraFeed(r: GamePostRow, email: string | null): PostFeed {
+// Capas do catálogo por nome (pra imagem dos posts do "Próximo jogo").
+async function capasDoCatalogo(rows: GamePostRow[]): Promise<Map<string, string>> {
+  if (!rows.some((r) => r.game === 'proximo-jogo')) return new Map();
+  const data = await loadCatalogData().catch(() => null);
+  return new Map((data?.items ?? []).filter((it) => it.imageUrl).map((it) => [normalizar(it.name), it.imageUrl as string]));
+}
+
+function paraFeed(r: GamePostRow, email: string | null, capas: Map<string, string>): PostFeed {
   return {
+    imagem: imagemDoPost(r, capas),
     id: Number(r.id),
     jogo: r.game,
     modo: r.mode,
@@ -105,7 +117,8 @@ export async function listarFeedAction(accessToken: string | null, antesDe: numb
     const rows = await getVisiblePosts({ beforeId: antesDe, game: ehJogo(jogo) ? jogo : null, limit: POR_PAGINA + 1 });
     const pagina = rows.slice(0, POR_PAGINA);
     const curtidos = email ? await getLikedPostIds(email, pagina.map((r) => Number(r.id))) : [];
-    return { ok: true, posts: pagina.map((r) => paraFeed(r, email)), curtidos, temMais: rows.length > POR_PAGINA };
+    const capas = await capasDoCatalogo(pagina);
+    return { ok: true, posts: pagina.map((r) => paraFeed(r, email, capas)), curtidos, temMais: rows.length > POR_PAGINA };
   } catch (err) {
     console.error('[feed] Falha ao listar:', err);
     // 42P01 = tabela não existe (falta rodar db/migration-jogos-interativos.sql)
@@ -151,7 +164,7 @@ export async function publicarResultadoAction(
       authorAvatar: conta.avatar,
       email: conta.email
     });
-    return { ok: true, post: paraFeed(row, conta.email) };
+    return { ok: true, post: paraFeed(row, conta.email, await capasDoCatalogo([row])) };
   } catch (err) {
     console.error('[feed] Falha ao publicar:', err);
     return { ok: false, erro: 'Não deu pra publicar agora. Tente de novo em instantes.' };
