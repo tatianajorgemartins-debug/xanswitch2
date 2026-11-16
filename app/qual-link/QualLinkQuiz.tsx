@@ -13,6 +13,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { getAccessToken } from '@/lib/wishlist';
+import { guardarPublicavel, registrarJogada } from '@/lib/jogos/registro';
 import { CollectibleCard } from '../CollectibleCard';
 import { LINKS, LINK_ORDER, PERGUNTAS, cardImage, linkImage, type LinkId } from './quizData.ts';
 import { affinity, shuffledOrder, winner, type Answers } from './quizLogic.ts';
@@ -236,6 +237,16 @@ export default function QualLinkQuiz({
         savePending(list);
         setNeedsSave(true);
         track('quiz_complete', { result: winner(list) });
+        // Registro da partida (admin) e resultado pra publicar no feed.
+        const link = LINKS[winner(list)];
+        registrarJogada({ jogo: 'qual-link', modo: 'quiz', resumo: `${link.nome} (${link.jogo})`, detalhes: { resultado: winner(list) } });
+        guardarPublicavel({
+          id: `qual-link:${Date.now()}`,
+          jogo: 'qual-link',
+          modo: 'quiz',
+          titulo: 'Qual Link é você?',
+          resultado: `🗡️ Eu sou ${link.nome}!\n${link.jogo}`
+        });
         setScreen('result');
       }
     }, ADVANCE_MS);

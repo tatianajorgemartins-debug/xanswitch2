@@ -1,0 +1,664 @@
+/* "Ocarina Hero" (app/testes/ocarina-hero). Menu com as cores do site
+   (redesign.css); a partida ocupa a tela toda com fundo próprio, igual nos
+   dois temas. --dif = cor da dificuldade; --cor = cor da pista. */
+
+.redesign .oc-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-bottom: 64px;
+}
+.redesign .oc-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+}
+.redesign .oc-voltar,
+.redesign .oc-seq {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 14px 8px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: var(--step-small);
+  text-decoration: none;
+  box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.22);
+}
+.redesign .oc-seq strong {
+  font-size: 1.25em;
+  font-weight: 900;
+}
+.redesign .oc-seq > span:first-child {
+  filter: grayscale(1) opacity(0.55);
+}
+.redesign .oc-seq.is-acesa {
+  box-shadow: inset 0 0 0 1.5px rgba(255, 171, 46, 0.7);
+}
+.redesign .oc-seq.is-acesa > span:first-child {
+  filter: none;
+}
+.redesign .oc-seq-rotulo {
+  color: var(--muted);
+}
+
+.redesign .oc-cabeca {
+  position: relative;
+  padding: 20px 0 22px;
+  text-align: center;
+}
+.redesign .oc-cabeca::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: -40px;
+  width: 520px;
+  height: 260px;
+  translate: -50% 0;
+  background: radial-gradient(closest-side, rgba(255, 201, 60, 0.22), rgba(255, 201, 60, 0));
+  pointer-events: none;
+}
+.redesign .oc-kicker,
+.redesign .oc-dia-kicker,
+.redesign .oc-resultado-kicker {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: var(--step-small);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.redesign .oc-titulo {
+  margin: 0;
+  font-size: clamp(2rem, 9vw, 4rem);
+  font-weight: 900;
+  font-stretch: 115%;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+.redesign .oc-titulo em {
+  font-style: normal;
+  background: linear-gradient(180deg, #fff3b8, #ffc93c 55%, #f0a01e);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.redesign .oc-sub {
+  margin: 12px auto 0;
+  max-width: 46ch;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.redesign .oc-marco {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: rgba(255, 171, 46, 0.14);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 171, 46, 0.6);
+}
+
+/* Botões */
+.redesign .oc-botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 11px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1.5px rgba(164, 99, 255, 0.35);
+}
+.redesign .oc-botao.is-principal {
+  background: var(--accent-fill);
+  color: var(--accent-ink);
+  box-shadow: none;
+}
+.redesign .oc-botao.is-gravando {
+  background: #ff4d7d;
+  color: #fff;
+  box-shadow: none;
+}
+.redesign .oc-botao:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.redesign .oc-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+/* Destravar o som */
+.redesign .oc-tocar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  border: 0;
+  border-radius: 18px;
+  background: linear-gradient(120deg, #3d8bff, #7b2ff0);
+  color: #fff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 18px 40px -20px rgba(61, 139, 255, 0.9);
+}
+.redesign .oc-tocar strong {
+  display: block;
+  font-size: 1.3rem;
+  font-weight: 900;
+}
+.redesign .oc-tocar small {
+  opacity: 0.85;
+}
+.redesign .oc-tocar-icone {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 22px;
+  animation: oc-pulsa 1.6s ease-in-out infinite;
+}
+@keyframes oc-pulsa {
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* Música do Dia */
+.redesign .oc-dia {
+  position: relative;
+  overflow: hidden;
+  padding: 22px 20px;
+  border-radius: 22px;
+  background:
+    radial-gradient(80% 90% at 100% 0%, color-mix(in srgb, var(--dif) 22%, transparent), transparent 70%),
+    var(--surface);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--dif) 55%, transparent);
+  text-align: center;
+}
+.redesign .oc-dia h2 {
+  margin: 0;
+  font-size: clamp(1.6rem, 6vw, 2.4rem);
+  font-weight: 900;
+  font-stretch: 110%;
+}
+.redesign .oc-dia-info {
+  margin: 8px 0 16px;
+  color: var(--muted);
+}
+.redesign .oc-dif {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dif) 18%, transparent);
+  color: var(--dif);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.redesign .oc-dia-feito {
+  margin: 0 0 12px;
+  font-weight: 800;
+}
+.redesign .oc-dia-proxima {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: var(--step-small);
+}
+.redesign .oc-dia-proxima strong {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Modo livre */
+.redesign .oc-livre h2,
+.redesign .oc-config h2 {
+  margin: 26px 0 12px;
+  font-size: var(--step-lead);
+  font-weight: 900;
+}
+.redesign .oc-livre ul {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+}
+.redesign .oc-musica {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: inset 3px 0 0 var(--dif), inset 0 0 0 1px rgba(164, 99, 255, 0.16);
+  transition: transform 0.25s ease;
+}
+.redesign .oc-musica:hover,
+.redesign .oc-musica:focus-visible {
+  transform: translateY(-3px);
+}
+.redesign .oc-musica-titulo {
+  font-weight: 900;
+  font-size: 1.05rem;
+}
+.redesign .oc-musica-recorde {
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.redesign .oc-ajustes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+.redesign .oc-dica,
+.redesign .oc-detalhe {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: var(--step-small);
+  line-height: 1.45;
+  text-align: center;
+}
+
+/* ---------- Partida em tela cheia ---------- */
+.oc-jogo {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(60% 50% at 50% 0%, rgba(123, 47, 240, 0.45), transparent 70%),
+    linear-gradient(180deg, #0b0618, #160b33 70%, #1d0e44);
+  color: #fff;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.oc-jogo-barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: max(8px, env(safe-area-inset-top)) 12px 4px;
+  font-weight: 800;
+  font-size: 14px;
+}
+.oc-jogo-titulo {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.oc-jogo .oc-dif {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dif) 22%, transparent);
+  color: var(--dif);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.oc-jogo-pausa {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+.oc-canvas {
+  display: block;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}
+.oc-zonas {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  width: min(96%, 600px);
+  margin: 0 auto;
+  padding: 6px 0 max(10px, env(safe-area-inset-bottom));
+}
+.oc-zona {
+  height: 52px;
+  border: 0;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--cor) 20%, rgba(255, 255, 255, 0.04));
+  color: var(--cor);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 900;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--cor) 60%, transparent);
+  touch-action: none;
+  cursor: pointer;
+}
+.oc-zona:active {
+  background: color-mix(in srgb, var(--cor) 55%, transparent);
+  color: #120a26;
+}
+.oc-zonas.is-toque .oc-zona {
+  height: 84px;
+  font-size: 18px;
+}
+.oc-pausa {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(8, 4, 20, 0.82);
+  backdrop-filter: blur(6px);
+}
+.oc-pausa p {
+  margin: 0 0 8px;
+  font-size: 2rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.oc-pausa .oc-botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 220px;
+  min-height: 48px;
+  padding: 11px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.oc-pausa .oc-botao.is-principal {
+  background: #7b2ff0;
+}
+/* Celular deitado: botões menores pra pista caber. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .oc-zonas.is-toque .oc-zona {
+    height: 60px;
+  }
+  .oc-jogo-barra {
+    padding-top: 4px;
+  }
+}
+
+/* ---------- Resultado ---------- */
+.redesign .oc-resultado {
+  padding: 24px 18px;
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 201, 60, 0.45);
+  text-align: center;
+  animation: oc-entra 0.5s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+@keyframes oc-entra {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+}
+.redesign .oc-resultado h2 {
+  margin: 0;
+  font-size: clamp(1.8rem, 7vw, 2.6rem);
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.redesign .oc-resultado-musica {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+/* Nota em triforces (1 a 5). */
+.redesign .oc-triforces {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 18px 0 6px;
+}
+.redesign .oc-triforces svg {
+  width: 44px;
+  height: auto;
+  fill: rgba(255, 255, 255, 0.12);
+}
+.redesign .oc-triforces svg.is-on {
+  fill: #ffc93c;
+  filter: drop-shadow(0 0 8px rgba(255, 201, 60, 0.6));
+  animation: oc-triforce 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+  animation-delay: calc(var(--i) * 150ms + 300ms);
+}
+@keyframes oc-triforce {
+  from {
+    transform: scale(0) rotate(-30deg);
+  }
+}
+.redesign .oc-recorde {
+  margin: 4px 0 0;
+  color: #ffc93c;
+  font-weight: 900;
+}
+.redesign .oc-numeros {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 16px 0 0;
+}
+.redesign .oc-numeros div {
+  display: flex;
+  flex-direction: column-reverse;
+}
+.redesign .oc-numeros dd {
+  margin: 0;
+  font-size: 1.7rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.redesign .oc-numeros dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.redesign .oc-aviso {
+  margin: 10px 0 0;
+  color: var(--price);
+  font-weight: 700;
+  text-align: center;
+}
+.redesign .oc-loja {
+  display: inline-block;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: var(--step-small);
+  font-weight: 700;
+}
+
+/* ---------- Configurar / calibrar / editor ---------- */
+.redesign .oc-config {
+  padding: 4px 0;
+}
+.redesign .oc-config p {
+  color: var(--muted);
+  line-height: 1.45;
+}
+.redesign .oc-config ul {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+.redesign .oc-config li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.redesign .oc-config-pista {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--cor) 20%, transparent);
+  box-shadow: inset 0 0 0 2.5px var(--cor);
+  color: var(--cor);
+  font-weight: 900;
+}
+.redesign .oc-config li .oc-botao {
+  min-width: 150px;
+}
+.redesign .oc-config-alt {
+  color: var(--muted);
+  font-size: var(--step-small);
+}
+.redesign .oc-cal-alvo {
+  display: grid;
+  place-items: center;
+  width: min(260px, 70vw);
+  aspect-ratio: 1;
+  margin: 18px auto;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffd24e, #f0a01e);
+  color: #1d1200;
+  font: inherit;
+  font-size: 1.2rem;
+  font-weight: 900;
+  touch-action: none;
+  cursor: pointer;
+  box-shadow: 0 20px 50px -20px rgba(255, 171, 46, 0.9);
+}
+.redesign .oc-cal-alvo:disabled {
+  opacity: 0.45;
+}
+.redesign .oc-cal-alvo.is-batida {
+  animation: oc-batida 0.25s ease-out;
+}
+@keyframes oc-batida {
+  from {
+    transform: scale(1.06);
+  }
+}
+.redesign .oc-cal-resultado {
+  color: var(--ink) !important;
+  font-size: 1.3rem;
+  font-weight: 900;
+  text-align: center;
+}
+.redesign .oc-editor-campos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+.redesign .oc-editor-campos label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+.redesign .oc-editor-campos input,
+.redesign .oc-editor-campos select {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+  box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.3);
+}
+.redesign .oc-gravando {
+  color: #ff4d7d;
+  font-weight: 900;
+  text-align: center;
+  animation: oc-pulsa 1s ease-in-out infinite;
+}
+.redesign .oc-zonas.is-editor {
+  margin-top: 16px;
+}
+.redesign .oc-zonas.is-editor .oc-zona {
+  height: 72px;
+}
+.redesign .oc-editor-canvas {
+  height: 420px;
+  margin-top: 16px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #0b0618, #1d0e44);
+}
+.redesign .oc-editor-canvas.is-escondido {
+  display: none;
+}
+.redesign .oc-editor-json {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 13px/1.4 ui-monospace, monospace;
+}
+
+@media (max-width: 480px) {
+  .redesign .oc-livre ul,
+  .redesign .oc-editor-campos {
+    grid-template-columns: 1fr;
+  }
+  .redesign .oc-seq-rotulo {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .redesign .oc-tocar-icone,
+  .redesign .oc-resultado,
+  .redesign .oc-triforces svg.is-on,
+  .redesign .oc-gravando,
+  .redesign .oc-cal-alvo.is-batida {
+    animation: none;
+  }
+}

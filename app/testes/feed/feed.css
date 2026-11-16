@@ -1,0 +1,441 @@
+/* Feed dos jogadores (app/testes/feed). Usa as cores do site (variáveis de
+   redesign.css). Cada jogo tem uma cor no post: --cor. */
+
+.redesign .feed-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-bottom: 64px;
+}
+.redesign .feed-topo {
+  padding-top: 8px;
+}
+.redesign .feed-voltar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px 8px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: var(--step-small);
+  text-decoration: none;
+  box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.22);
+}
+.redesign .feed-cabeca {
+  position: relative;
+  padding: 20px 0 22px;
+  text-align: center;
+}
+.redesign .feed-cabeca::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: -40px;
+  width: 520px;
+  height: 260px;
+  translate: -50% 0;
+  background: radial-gradient(closest-side, rgba(255, 92, 168, 0.25), rgba(255, 92, 168, 0));
+  pointer-events: none;
+}
+.redesign .feed-kicker {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: var(--step-small);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.redesign .feed-titulo {
+  margin: 0;
+  font-size: clamp(1.9rem, 8vw, 3.4rem);
+  font-weight: 900;
+  font-stretch: 115%;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+.redesign .feed-titulo em {
+  font-style: normal;
+  color: var(--accent);
+}
+.redesign .feed-sub {
+  margin: 12px auto 0;
+  max-width: 42ch;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+/* ---------- Publicar ---------- */
+.redesign .feed-publicar {
+  margin-bottom: 22px;
+  padding: 18px;
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1.5px rgba(164, 99, 255, 0.3), 0 20px 40px -30px rgba(123, 47, 240, 0.8);
+}
+.redesign .feed-publicar h2 {
+  margin: 0 0 12px;
+  font-size: var(--step-lead);
+  font-weight: 900;
+}
+.redesign .feed-publicar p {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+.redesign .feed-publicar-jogos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.redesign .feed-escolher {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.redesign .feed-escolher button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  flex: none;
+  max-width: 230px;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+.redesign .feed-escolher button small {
+  color: var(--muted);
+  font-weight: 600;
+}
+.redesign .feed-escolher button.is-on {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.redesign .feed-form {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+}
+.redesign .feed-form label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+.redesign .feed-form input,
+.redesign .feed-form textarea {
+  padding: 11px 13px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+  resize: vertical;
+}
+.redesign .feed-form input:focus,
+.redesign .feed-form textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+}
+.redesign .feed-form small {
+  font-weight: 600;
+}
+.redesign .feed-botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 11px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+.redesign .feed-botao.is-principal {
+  width: 100%;
+  background: var(--accent-fill);
+  color: var(--accent-ink);
+}
+.redesign .feed-publicar-login .feed-botao.is-principal {
+  width: auto;
+}
+.redesign .feed-botao:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.redesign .feed-msg {
+  margin: 10px 0 0 !important;
+  font-weight: 700;
+}
+.redesign .feed-msg.is-ok {
+  color: var(--price) !important;
+}
+.redesign .feed-msg.is-erro,
+.redesign .feed-erro {
+  color: #ff7a9c !important;
+  font-weight: 700;
+}
+
+/* ---------- Filtros ---------- */
+.redesign .feed-filtros {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.redesign .feed-filtros button {
+  flex: none;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.22);
+}
+.redesign .feed-filtros button.is-on {
+  background: var(--accent-fill);
+  color: var(--accent-ink);
+  box-shadow: none;
+}
+
+/* ---------- Posts ---------- */
+.redesign .feed-lista {
+  list-style: none;
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+}
+.redesign .feed-lista > li {
+  animation: feed-entra 0.45s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  animation-delay: calc(var(--i, 0) * 50ms);
+}
+@keyframes feed-entra {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+.redesign .feed-post {
+  --cor: #a463ff;
+  padding: 16px;
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.16);
+}
+.redesign .feed-post.jogo-silhueta {
+  --cor: #b9a5ff;
+}
+.redesign .feed-post.jogo-ocarina {
+  --cor: #ffd24e;
+}
+.redesign .feed-post.jogo-qual-link {
+  --cor: #6fdc8c;
+}
+.redesign .feed-post.jogo-proximo-jogo {
+  --cor: #ff7ab8;
+}
+.redesign .feed-post.is-esqueleto {
+  height: 210px;
+  opacity: 0.5;
+}
+.redesign .feed-post-topo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.redesign .feed-avatar {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 2px var(--cor);
+}
+.redesign .feed-avatar.is-letra {
+  display: grid;
+  place-items: center;
+  background: var(--surface-2);
+  color: var(--cor);
+  font-weight: 900;
+  font-size: 18px;
+}
+.redesign .feed-post-quem {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.redesign .feed-post-quem strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.redesign .feed-post-quem span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.redesign .feed-post-quem a {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+.redesign .feed-post-quem a:hover {
+  color: var(--accent);
+}
+.redesign .feed-post-apagar {
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: pointer;
+}
+.redesign .feed-placar {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--cor) 16%, transparent), color-mix(in srgb, var(--cor) 4%, transparent));
+  box-shadow: inset 3px 0 0 var(--cor);
+}
+.redesign .feed-placar.is-previa {
+  --cor: #a463ff;
+  margin: 0 0 4px;
+}
+.redesign .feed-placar-titulo {
+  margin: 0 0 4px !important;
+  color: var(--ink) !important;
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
+.redesign .feed-placar-texto {
+  margin: 0 !important;
+  color: var(--ink) !important;
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.4;
+  white-space: pre-line;
+}
+.redesign .feed-comentario {
+  margin: 12px 2px 0;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.redesign .feed-post-pe {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+.redesign .feed-curtir {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 64px;
+  min-height: 40px;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+.redesign .feed-curtir span[aria-hidden] {
+  filter: grayscale(1) opacity(0.6);
+  transition: filter 0.2s ease, transform 0.3s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.redesign .feed-curtir.is-on {
+  background: rgba(255, 140, 30, 0.18);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 171, 46, 0.7);
+}
+.redesign .feed-curtir.is-on span[aria-hidden] {
+  filter: none;
+  transform: scale(1.25);
+}
+.redesign .feed-curtir:active {
+  transform: scale(0.94);
+}
+.redesign .feed-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.redesign .feed-jogar {
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.redesign .feed-jogar:hover {
+  color: var(--accent);
+}
+.redesign .feed-vazio {
+  padding: 36px 16px;
+  border-radius: 20px;
+  border: 2px dashed rgba(164, 99, 255, 0.3);
+  color: var(--muted);
+  text-align: center;
+}
+.redesign .feed-vazio p {
+  margin: 0 0 4px;
+}
+.redesign .feed-vazio strong {
+  color: var(--ink);
+}
+.redesign .feed-vazio-icone {
+  font-size: 40px;
+}
+.redesign .feed-mais {
+  display: block;
+  margin: 18px auto 0;
+  padding: 12px 24px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1.5px rgba(164, 99, 255, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .redesign .feed-lista > li {
+    animation: none;
+  }
+  .redesign .feed-curtir,
+  .redesign .feed-curtir span[aria-hidden] {
+    transition: none;
+  }
+}

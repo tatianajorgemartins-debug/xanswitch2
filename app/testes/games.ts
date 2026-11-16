@@ -6,7 +6,7 @@
 //   3. diga o que abre ao clicar em jogar (fim do TestesClient.tsx).
 // O resto (grade, numeração, contador, vagas de "em breve") se ajusta sozinho.
 
-export type TesteId = 'qual-link' | 'proximo-jogo';
+export type TesteId = 'qual-link' | 'proximo-jogo' | 'silhueta' | 'ocarina-hero' | 'feed';
 
 export type TesteGame = {
   id: TesteId;
@@ -20,12 +20,39 @@ export type TesteGame = {
   reward?: string;
   cta: string;
   // Cores do card — ver .teste-card.theme-* em testes.css.
-  theme: 'zelda' | 'arcade';
+  theme: 'zelda' | 'arcade' | 'silhueta' | 'ocarina' | 'feed';
+  // Jogo com página própria (ex: /testes/silhueta): o card vira um link.
+  // Sem href, o jogo abre por cima da página (ver o fim do TestesClient.tsx).
+  href?: string;
   // Selo "NOVO" no canto do card.
   isNew?: boolean;
 };
 
 export const TESTES: TesteGame[] = [
+  {
+    id: 'silhueta',
+    kind: 'Desafio diário',
+    title: 'Silhueta do Dia',
+    description: 'Quem é esse personagem? Adivinhe pela silhueta. Um desafio novo por dia, igual pra todo mundo.',
+    meta: ['4 níveis', '1 min'],
+    reward: 'Sequência de dias 🔥',
+    cta: 'Jogar o de hoje',
+    theme: 'silhueta',
+    href: '/testes/silhueta',
+    isNew: true
+  },
+  {
+    id: 'ocarina-hero',
+    kind: 'Ritmo',
+    title: 'Ocarina Hero',
+    description: 'As notas descem pela pista e você toca no tempo certo. Músicas originais e uma Música do Dia nova todo dia.',
+    meta: ['6 músicas', '1 min'],
+    reward: 'Recorde e triforces',
+    cta: 'Tocar agora',
+    theme: 'ocarina',
+    href: '/testes/ocarina-hero',
+    isNew: true
+  },
   {
     id: 'qual-link',
     kind: 'Quiz',
@@ -45,6 +72,16 @@ export const TESTES: TesteGame[] = [
     reward: 'Indicação sob medida',
     cta: 'Descobrir meu jogo',
     theme: 'arcade'
+  },
+  {
+    id: 'feed',
+    kind: 'Comunidade',
+    title: 'Feed dos jogadores',
+    description: 'Publique seus resultados, veja quem mandou bem hoje e solte um 🔥 nos melhores.',
+    meta: ['Resultados ao vivo'],
+    cta: 'Ver o feed',
+    theme: 'feed',
+    href: '/testes/feed'
   }
 ];
 

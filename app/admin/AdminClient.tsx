@@ -15,6 +15,7 @@ import { normalizeStatus, saleProfit } from '@/lib/sales';
 import SalesPanel from './SalesPanel';
 import PromoEventsPanel from './PromoEventsPanel';
 import PromoBannerPanel from './PromoBannerPanel';
+import JogosInterativosPanel, { type JogosInterativosData } from './JogosInterativosPanel';
 import type { PromoBannerSetting } from '@/lib/promoBanner';
 import type { PromoEventRow } from '@/lib/promoEvents';
 import { setSalesStatusAction } from './salesActions';
@@ -46,7 +47,7 @@ import {
 
 const emptyFormState: GameFormState = { error: null };
 
-const TAB_IDS = ['inicio', 'pedidos', 'vendas', 'jogos', 'promocoes', 'clientes', 'comentarios', 'divulgacao', 'config'] as const;
+const TAB_IDS = ['inicio', 'pedidos', 'vendas', 'jogos', 'promocoes', 'clientes', 'comentarios', 'interativos', 'divulgacao', 'config'] as const;
 type TabId = (typeof TAB_IDS)[number];
 
 export default function AdminClient({
@@ -66,7 +67,8 @@ export default function AdminClient({
   paymentFees,
   privateOffers,
   promoEvents,
-  promoBanner
+  promoBanner,
+  jogosInterativos
 }: {
   initialGames: Game[];
   visitCount: number;
@@ -86,6 +88,8 @@ export default function AdminClient({
   // null = tabela ainda não existe (falta rodar db/migration-eventos-promocao.sql).
   promoEvents: PromoEventRow[] | null;
   promoBanner: PromoBannerSetting | null;
+  // null = falta rodar db/migration-jogos-interativos.sql.
+  jogosInterativos: JogosInterativosData | null;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -308,6 +312,7 @@ export default function AdminClient({
     { id: 'promocoes', icon: '🏷️', label: 'Promoções e eventos' },
     { id: 'clientes', icon: '🎖️', label: 'Clientes e pontos' },
     { id: 'comentarios', icon: '💬', label: 'Comentários', badge: pendingReviewCount },
+    { id: 'interativos', icon: '🕹️', label: 'Jogos interativos' },
     { id: 'divulgacao', icon: '📣', label: 'Divulgação' },
     { id: 'config', icon: '⚙️', label: 'Configurações' }
   ];
@@ -564,6 +569,21 @@ export default function AdminClient({
               onDelete={handleDeleteReview}
               onToggleFeatured={handleToggleFeaturedReview}
             />
+          </section>
+        )}
+
+        {tab === 'interativos' && (
+          <section>
+            <div className="adm-section-head">
+              <div>
+                <h2>🕹️ Jogos interativos</h2>
+                <p className="adm-help">
+                  Quem jogou os jogos da página Testes e o resultado de cada partida. Em &quot;Feed de resultados&quot;
+                  você modera o que os clientes publicam.
+                </p>
+              </div>
+            </div>
+            <JogosInterativosPanel data={jogosInterativos} />
           </section>
         )}
 

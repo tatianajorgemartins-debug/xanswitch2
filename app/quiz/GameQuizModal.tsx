@@ -11,6 +11,7 @@ import { createPortal } from 'react-dom';
 import type { Item } from '../CatalogClient';
 import { fallbackToOriginal, imageSrcSet } from '@/lib/imageVariants';
 import { installmentsLabel } from '@/lib/installments';
+import { guardarPublicavel, registrarJogada } from '@/lib/jogos/registro';
 import './quiz-modal.css';
 import {
   buildReel,
@@ -94,8 +95,26 @@ export default function GameQuizModal({
       if (current + 1 < questions.length) {
         setCurrent(current + 1);
       } else {
-        setResult(recommend(items, nextAnswers));
+        const rec = recommend(items, nextAnswers);
+        setResult(rec);
         setStep('processing');
+        // Registro da partida (admin) e resultado pra publicar no feed.
+        if (rec) {
+          registrarJogada({
+            jogo: 'proximo-jogo',
+            modo: 'quiz',
+            pontos: rec.compatibility,
+            resumo: `${rec.item.name} (${rec.compatibility}% compatível)`,
+            detalhes: { jogoId: rec.item.id }
+          });
+          guardarPublicavel({
+            id: `proximo-jogo:${Date.now()}`,
+            jogo: 'proximo-jogo',
+            modo: 'quiz',
+            titulo: 'Qual será meu próximo jogo?',
+            resultado: `🎲 ${rec.item.name}\n${rec.compatibility}% de compatibilidade`
+          });
+        }
       }
     }, 320);
   }

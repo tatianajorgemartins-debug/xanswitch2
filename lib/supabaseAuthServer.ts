@@ -15,3 +15,21 @@ export async function verifyAccessToken(accessToken: string | null): Promise<str
   if (error || !data.user?.email) return null;
   return data.user.email;
 }
+
+// Igual ao de cima, mas devolve também o nome e a foto da conta (dos
+// metadados do próprio Supabase) — usado no feed dos jogos.
+export async function verifyAccessTokenProfile(
+  accessToken: string | null
+): Promise<{ email: string; name: string | null; avatar: string | null } | null> {
+  if (!accessToken) return null;
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+  const { data, error } = await supabase.auth.getUser(accessToken);
+  if (error || !data.user?.email) return null;
+  const meta = (data.user.user_metadata ?? {}) as Record<string, unknown>;
+  const text = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+  return {
+    email: data.user.email.toLowerCase(),
+    name: text(meta.full_name) ?? text(meta.name),
+    avatar: text(meta.photo_url) ?? text(meta.avatar_url) ?? text(meta.picture)
+  };
+}

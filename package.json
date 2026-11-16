@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test:jogos": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/jogos/",
+    "sincronizar-personagens": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/sincronizar-personagens.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",

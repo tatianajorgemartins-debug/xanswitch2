@@ -6,6 +6,7 @@
 // clica em jogar.
 import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { User } from '@supabase/supabase-js';
 import SiteHeader from '../SiteHeader';
@@ -18,6 +19,11 @@ import { linkImage, type LinkId } from '../qual-link/links';
 import { QUAL_LINK_LOGIN_FLAG } from '../qual-link/loginFlag';
 import { eligibleItems, variedCovers } from '../quiz/covers';
 import { TESTES, comingSoonSlots, type TesteGame, type TesteId } from './games';
+import { diaEm, formatarContador, msAteProximoDia } from '@/lib/jogos/dia';
+import { resultadoDoDia, sequenciaGeralHoje } from '@/lib/jogos/progresso';
+import { OCARINA_ENABLED } from '@/lib/siteSections';
+
+const NIVEIS_SILHUETA = ['facil', 'medio', 'dificil', 'insano'];
 import './testes.css';
 
 const QualLinkQuiz = dynamic(() => import('../qual-link/QualLinkQuiz'), { ssr: false });
@@ -62,8 +68,34 @@ export default function TestesClient({
     setCovers(variedCovers(items, COVER_COUNT));
   }, [items]);
 
+  // Desafios diários: sequência geral, o que já foi feito hoje e o contador.
+  // Só no navegador (vem do que está salvo no aparelho).
+  const [hoje, setHoje] = useState<{ seq: number; silhueta: number; ocarina: boolean; restante: number } | null>(null);
+  useEffect(() => {
+    const tick = () => {
+      const d = diaEm();
+      setHoje({
+        seq: sequenciaGeralHoje(d).atual,
+        silhueta: NIVEIS_SILHUETA.filter((n) => resultadoDoDia('silhueta', n, d)).length,
+        ocarina: Boolean(resultadoDoDia('ocarina', 'dia', d)),
+        restante: msAteProximoDia()
+      });
+    };
+    tick();
+    const t = window.setInterval(tick, 1000);
+    return () => window.clearInterval(t);
+  }, []);
+  const statusDoCard = (id: TesteId): string | null => {
+    if (!hoje) return null;
+    if (id === 'silhueta') return hoje.silhueta === NIVEIS_SILHUETA.length ? '✓ Feito hoje' : hoje.silhueta ? `${hoje.silhueta}/4 hoje` : null;
+    if (id === 'ocarina-hero') return hoje.ocarina ? '✓ Música do Dia' : null;
+    return null;
+  };
+
   // Sem jogos no catálogo o sorteio não tem o que sortear: o card nem aparece.
-  const games = TESTES.filter((g) => g.id !== 'proximo-jogo' || firstCovers.length > 0);
+  const games = TESTES.filter(
+    (g) => (g.id !== 'proximo-jogo' || firstCovers.length > 0) && (g.id !== 'ocarina-hero' || OCARINA_ENABLED)
+  );
   const slots = comingSoonSlots(games.length);
 
   return (
@@ -85,7 +117,7 @@ export default function TestesClient({
           <div className="testes-hero-glow" aria-hidden="true" />
           <p className="testes-hero-seal">
             <span className="testes-hero-dot" aria-hidden="true" />
-            Sala de jogos · {games.length} {games.length === 1 ? 'disponível' : 'disponíveis'}
+            Sala de jogos · {games.filter((g) => g.id !== 'feed').length} disponíveis
           </p>
           <h1 className="testes-hero-title">
             Escolha um jogo
@@ -94,12 +126,32 @@ export default function TestesClient({
           <p className="testes-hero-sub">
             Testes e jogos interativos da XAN Switch. É de graça, leva poucos minutos e alguns ainda rendem prêmio.
           </p>
+          <div className={`testes-hoje${hoje ? '' : ' is-carregando'}`} aria-live="polite">
+            <span className={`testes-hoje-seq${hoje && hoje.seq > 0 ? ' is-acesa' : ''}`}>
+              <span aria-hidden="true">🔥</span>
+              <strong>{hoje?.seq ?? 0}</strong> {hoje?.seq === 1 ? 'dia seguido' : 'dias seguidos'}
+            </span>
+            <span className="testes-hoje-item">
+              <span className={hoje && hoje.silhueta === NIVEIS_SILHUETA.length ? 'is-feito' : ''}>
+                {hoje && hoje.silhueta === NIVEIS_SILHUETA.length ? '✓' : '○'}
+              </span>{' '}
+              Silhueta do Dia {hoje ? `${hoje.silhueta}/${NIVEIS_SILHUETA.length}` : ''}
+            </span>
+            {OCARINA_ENABLED && (
+              <span className="testes-hoje-item">
+                <span className={hoje?.ocarina ? 'is-feito' : ''}>{hoje?.ocarina ? '✓' : '○'}</span> Música do Dia
+              </span>
+            )}
+            <span className="testes-hoje-item">
+              Novos desafios em <strong>{hoje ? formatarContador(hoje.restante) : '--:--:--'}</strong>
+            </span>
+          </div>
         </section>
 
         <ul className="testes-grid">
           {games.map((game, i) => (
             <li key={game.id} style={{ '--i': i } as React.CSSProperties}>
-              <TesteCard game={game} number={i + 1} covers={covers} onPlay={() => setPlaying(game.id)} />
+              <TesteCard game={game} number={i + 1} covers={covers} status={statusDoCard(game.id)} onPlay={() => setPlaying(game.id)} />
             </li>
           ))}
           {Array.from({ length: slots }, (_, i) => (
@@ -155,19 +207,25 @@ function TesteCard({
   game,
   number,
   covers,
+  status,
   onPlay
 }: {
   game: TesteGame;
   number: number;
   covers: Item[];
+  status: string | null;
   onPlay: () => void;
 }) {
-  return (
-    <button type="button" className={`teste-card theme-${game.theme}`} onClick={onPlay} aria-label={`Jogar: ${game.title}`}>
+  const conteudo = (
+    <>
       <span className="teste-card-art" aria-hidden="true" data-loader-skip>
         <TesteArt id={game.id} covers={covers} />
         <span className="teste-card-number">{String(number).padStart(2, '0')}</span>
-        {game.isNew && <span className="teste-card-new">Novo</span>}
+        {status ? (
+          <span className="teste-card-new is-status">{status}</span>
+        ) : (
+          game.isNew && <span className="teste-card-new">Novo</span>
+        )}
       </span>
       <span className="teste-card-body">
         <span className="teste-card-kind">
@@ -195,12 +253,73 @@ function TesteCard({
           </span>
         </span>
       </span>
+    </>
+  );
+  // Jogo com página própria: o card é um link.
+  if (game.href) {
+    return (
+      <Link href={game.href} className={`teste-card theme-${game.theme}`} aria-label={`Jogar: ${game.title}`}>
+        {conteudo}
+      </Link>
+    );
+  }
+  return (
+    <button type="button" className={`teste-card theme-${game.theme}`} onClick={onPlay} aria-label={`Jogar: ${game.title}`}>
+      {conteudo}
     </button>
   );
 }
 
+// Arte do card do Silhueta do Dia: três silhuetas no palco claro.
+const SILHUETAS_CARD = ['/jogos/silhueta/441c41a9ab53-s.webp', '/jogos/silhueta/3c24a0e802ad-s.webp', '/jogos/silhueta/445023d4f0f5-s.webp'];
+
 // A arte de cada card. Jogo novo: mais um "if" aqui.
 function TesteArt({ id, covers }: { id: TesteId; covers: Item[] }) {
+  if (id === 'ocarina-hero') {
+    // Pista em perspectiva com notas descendo.
+    return (
+      <span className="teste-art teste-art-ocarina">
+        <span className="teste-art-pista">
+          {['#3d8bff', '#ffc93c', '#ffc93c', '#ffc93c', '#ffc93c'].map((cor, i) => (
+            <span key={i} className="teste-art-raia" style={{ '--cor': cor, '--d': `${(i * 0.37) % 1}s` } as React.CSSProperties}>
+              <i />
+            </span>
+          ))}
+        </span>
+        <span className="teste-art-notas-musicais">♪ ♫</span>
+      </span>
+    );
+  }
+  if (id === 'feed') {
+    return (
+      <span className="teste-art teste-art-feed">
+        <span className="teste-art-post is-0">
+          <b>⬛⬛🟩 3/5</b>
+          <i>🔥 12</i>
+        </span>
+        <span className="teste-art-post is-1">
+          <b>⭐⭐⭐⭐☆ 92%</b>
+          <i>🔥 8</i>
+        </span>
+        <span className="teste-art-post is-2">
+          <b>🟩 1/3</b>
+          <i>🔥 21</i>
+        </span>
+      </span>
+    );
+  }
+  if (id === 'silhueta') {
+    return (
+      <span className="teste-art teste-art-silhueta">
+        <span className="teste-art-raios" />
+        {SILHUETAS_CARD.map((src, i) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={src} className={`is-${i}`} src={src} alt="" loading="lazy" decoding="async" />
+        ))}
+        <span className="teste-art-interrogacao">?</span>
+      </span>
+    );
+  }
   if (id === 'qual-link') {
     return (
       <span className="teste-art teste-art-zelda">

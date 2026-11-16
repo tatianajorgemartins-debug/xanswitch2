@@ -1098,3 +1098,77 @@
   background: rgba(255, 210, 78, 0.16);
   color: #ffd24e;
 }
+
+/* ---------- Jogos interativos (JogosInterativosPanel.tsx) ---------- */
+.adm-jogos-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.adm-jogos-busca {
+  flex: 1 1 260px;
+}
+.adm-jogos-lista {
+  overflow-x: auto;
+}
+.adm-jogos-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.adm-jogos-tabela th {
+  padding: 8px 10px;
+  color: var(--ink-dim);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.adm-jogos-tabela td {
+  padding: 9px 10px;
+  border-top: 1px solid rgba(164, 99, 255, 0.14);
+  vertical-align: top;
+}
+.adm-jogos-lista .btn {
+  margin-top: 12px;
+}
+.adm-jogos-posts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.adm-jogos-post {
+  margin: 0;
+}
+.adm-jogos-post.is-escondido {
+  opacity: 0.55;
+}
+.adm-jogos-post header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+.adm-jogos-post-titulo {
+  margin: 8px 0 4px;
+  font-weight: 800;
+}
+.adm-jogos-post pre {
+  margin: 0 0 8px;
+  font: inherit;
+  white-space: pre-wrap;
+}
+.adm-jogos-post footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.adm-jogos-post footer span {
+  margin-right: auto;
+}

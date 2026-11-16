@@ -23,6 +23,8 @@ import { isMercadoPagoEnabled } from '@/lib/mercadoPago';
 import { reconcilePendingMercadoPagoPayments } from '@/lib/mercadoPagoOrders';
 import AdminClient from './AdminClient';
 import { parsePromoBanner, PROMO_BANNER_KEY } from '@/lib/promoBanner';
+import { getAllPostsForAdmin, getGamePlayStats, getRecentGamePlays } from '@/lib/jogosDb';
+import type { JogosInterativosData } from './JogosInterativosPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,6 +93,37 @@ export default async function AdminPage() {
   // null = tabela ainda não existe (falta rodar db/migration-eventos-promocao.sql).
   const promoEvents = await getAllPromoEvents().catch(() => null);
   const promoBanner = parsePromoBanner(await getSiteSetting(PROMO_BANNER_KEY));
+  // Jogos interativos: partidas e feed. null = falta rodar
+  // db/migration-jogos-interativos.sql.
+  const jogosInterativos: JogosInterativosData | null = await Promise.all([getRecentGamePlays(), getGamePlayStats(), getAllPostsForAdmin()])
+    .then(([plays, stats, posts]) => ({
+      plays: plays.map((p) => ({
+        id: Number(p.id),
+        game: p.game,
+        mode: p.mode,
+        dailyDay: p.daily_day,
+        won: p.won,
+        score: p.score,
+        summary: p.summary,
+        email: p.customer_email,
+        visitor: p.visitor_id,
+        createdAt: new Date(p.created_at).toISOString()
+      })),
+      stats: stats.map((s) => ({ game: s.game, today: s.plays_today, week: s.plays_7d, total: s.plays_total, players7d: s.players_7d })),
+      posts: posts.map((p) => ({
+        id: Number(p.id),
+        game: p.game,
+        title: p.title,
+        resultText: p.result_text,
+        comment: p.comment,
+        authorName: p.author_name,
+        email: p.customer_email,
+        likes: p.likes,
+        hidden: p.hidden,
+        createdAt: new Date(p.created_at).toISOString()
+      }))
+    }))
+    .catch(() => null);
   return (
     <AdminClient
       initialGames={games}
@@ -110,6 +143,7 @@ export default async function AdminPage() {
       privateOffers={privateOffers}
       promoEvents={promoEvents}
       promoBanner={promoBanner}
+      jogosInterativos={jogosInterativos}
     />
   );
 }

@@ -1,0 +1,958 @@
+/* "Silhueta do Dia" (app/testes/silhueta). Usa as cores do site
+   (variáveis de redesign.css), então acompanha o modo claro/escuro. O palco
+   da silhueta tem fundo claro próprio (a silhueta é preta) e fica igual nos
+   dois temas. Cada nível tem uma cor: --nivel. */
+
+.redesign .sil-page {
+  --facil: #4ef05f;
+  --medio: #38c8ff;
+  --dificil: #ffab2e;
+  --insano: #ff4d7d;
+  max-width: 720px;
+  margin: 0 auto;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-bottom: 56px;
+}
+.redesign .nivel-facil {
+  --nivel: var(--facil);
+}
+.redesign .nivel-medio {
+  --nivel: var(--medio);
+}
+.redesign .nivel-dificil {
+  --nivel: var(--dificil);
+}
+.redesign .nivel-insano {
+  --nivel: var(--insano);
+}
+:root[data-theme='light'] .redesign.theme-enabled .sil-page {
+  --facil: #15a02a;
+  --medio: #0784c2;
+  --dificil: #c26a00;
+  --insano: #d61e52;
+}
+
+/* ---------- Topo: voltar + sequência geral ---------- */
+.redesign .sil-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 8px;
+}
+.redesign .sil-voltar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px 8px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: var(--step-small);
+  text-decoration: none;
+  box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.22);
+}
+.redesign .sil-voltar:hover {
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+.redesign .sil-seq {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  padding: 7px 14px 7px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: var(--step-small);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.22);
+}
+.redesign .sil-seq strong {
+  color: var(--ink);
+  font-size: 1.25em;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.redesign .sil-seq-fogo {
+  font-size: 1.2em;
+  filter: grayscale(1) opacity(0.55);
+}
+.redesign .sil-seq.is-acesa {
+  box-shadow: inset 0 0 0 1.5px rgba(255, 171, 46, 0.7), 0 8px 24px -10px rgba(255, 140, 30, 0.6);
+}
+.redesign .sil-seq.is-acesa .sil-seq-fogo {
+  filter: none;
+  animation: sil-chama 1.6s ease-in-out infinite;
+}
+@keyframes sil-chama {
+  50% {
+    transform: scale(1.15) rotate(-6deg);
+  }
+}
+
+/* ---------- Título ---------- */
+.redesign .sil-cabeca {
+  position: relative;
+  padding: 22px 0 22px;
+  text-align: center;
+}
+.redesign .sil-cabeca::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: -40px;
+  width: 520px;
+  height: 260px;
+  translate: -50% 0;
+  background: radial-gradient(closest-side, rgba(123, 47, 240, 0.34), rgba(123, 47, 240, 0));
+  pointer-events: none;
+}
+.redesign .sil-kicker {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: var(--step-small);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.redesign .sil-titulo {
+  margin: 0;
+  font-size: clamp(1.75rem, 8.4vw, 4rem);
+  font-weight: 900;
+  font-stretch: 115%;
+  white-space: nowrap;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+.redesign .sil-titulo em {
+  font-style: normal;
+  color: var(--accent);
+}
+.redesign .sil-sub {
+  margin: 12px auto 0;
+  max-width: 44ch;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+/* ---------- Marco da sequência ---------- */
+.redesign .sil-marco {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: linear-gradient(120deg, rgba(255, 171, 46, 0.2), rgba(255, 77, 125, 0.16));
+  box-shadow: inset 0 0 0 1.5px rgba(255, 171, 46, 0.6);
+  animation: sil-entra 0.5s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+.redesign .sil-marco-fogo {
+  font-size: 30px;
+  animation: sil-chama 1.2s ease-in-out infinite;
+}
+@keyframes sil-entra {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.97);
+  }
+}
+
+.redesign .sil-carregando {
+  height: 420px;
+  border-radius: 24px;
+  background: var(--surface);
+  opacity: 0.6;
+}
+
+/* ---------- Escolher o nível ---------- */
+.redesign .sil-niveis {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.redesign .sil-niveis > li {
+  display: flex;
+  animation: sil-entra 0.5s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+.redesign .sil-nivel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  padding: 18px 18px 16px;
+  border: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.16);
+  transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.25, 1), box-shadow 0.3s ease;
+}
+.redesign .sil-nivel::after {
+  content: '';
+  position: absolute;
+  right: -40px;
+  top: -40px;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--nivel) 30%, transparent), transparent);
+  pointer-events: none;
+}
+.redesign .sil-nivel:not(:disabled):hover,
+.redesign .sil-nivel:focus-visible {
+  transform: translateY(-4px);
+  box-shadow: inset 0 0 0 1.5px var(--nivel), 0 18px 36px -22px var(--nivel);
+}
+.redesign .sil-nivel:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.redesign .sil-nivel-marca {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.redesign .sil-nivel-marca span {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  rotate: 45deg;
+  background: var(--nivel);
+}
+.redesign .sil-nivel-nome {
+  font-size: var(--step-head);
+  font-weight: 900;
+  font-stretch: 110%;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.redesign .sil-nivel-resumo {
+  color: var(--muted);
+  font-size: var(--step-small);
+  line-height: 1.35;
+}
+.redesign .sil-nivel-pe {
+  margin-top: auto;
+  padding-top: 8px;
+  font-size: 13px;
+  font-weight: 800;
+}
+.redesign .sil-nivel-jogar,
+.redesign .sil-nivel-ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--nivel);
+}
+.redesign .sil-nivel-ok {
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--nivel) 16%, transparent);
+}
+.redesign .sil-nivel-breve {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.redesign .sil-proximo {
+  margin: 22px 0 0;
+  text-align: center;
+  color: var(--muted);
+}
+.redesign .sil-contador {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+}
+.redesign .sil-treino-link {
+  margin: 10px 0 0;
+  text-align: center;
+}
+.redesign .sil-treino-link button {
+  padding: 6px 4px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--step-small);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* ---------- Partida ---------- */
+.redesign .sil-partida-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.redesign .sil-chip-voltar {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 12px 7px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.22);
+}
+.redesign .sil-chip-nivel,
+.redesign .sil-chip-treino {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.redesign .sil-chip-nivel {
+  background: color-mix(in srgb, var(--nivel) 18%, transparent);
+  color: var(--nivel);
+}
+.redesign .sil-chip-treino {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.redesign .sil-vidas {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.redesign .sil-vidas span {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  rotate: 45deg;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--nivel) 70%, transparent);
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+.redesign .sil-vidas span.is-erro {
+  background: #1a1324;
+  box-shadow: inset 0 0 0 2px #574a6e;
+  transform: scale(0.85);
+}
+.redesign .sil-vidas span.is-acerto {
+  background: var(--nivel);
+  box-shadow: 0 0 12px var(--nivel);
+}
+
+/* O palco: fundo claro com raios girando, silhueta preta no meio. */
+.redesign .sil-palco {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1 / 0.86;
+  max-height: 440px;
+  width: 100%;
+  border-radius: 24px;
+  overflow: hidden;
+  isolation: isolate;
+  background: radial-gradient(circle at 50% 46%, #ffffff 0%, #f4edff 38%, #c9b2ff 78%, #9c7bf4 100%);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.4), 0 24px 50px -28px rgba(123, 47, 240, 0.8);
+}
+.redesign .sil-palco-raios {
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: 46%;
+  width: 180%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  background: repeating-conic-gradient(rgba(255, 255, 255, 0.55) 0 9deg, rgba(255, 255, 255, 0) 9deg 18deg);
+  mask-image: radial-gradient(closest-side, #000 30%, transparent 75%);
+  animation: sil-gira 50s linear infinite;
+}
+@keyframes sil-gira {
+  to {
+    rotate: 360deg;
+  }
+}
+/* Moldura quadrada no meio do palco. A figura inteira cabe nela com folga
+   (nada fica cortado); no Difícil/Insano ela mostra só um pedaço (recorte). */
+.redesign .sil-moldura {
+  position: relative;
+  height: 84%;
+  aspect-ratio: 1;
+  max-width: 92%;
+}
+.redesign .sil-moldura.is-recorte {
+  height: 90%;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 3px rgba(22, 13, 46, 0.18);
+}
+.redesign .sil-camada {
+  position: absolute;
+  inset: 0;
+  transition: transform 0.9s cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.redesign .sil-camada img {
+  position: absolute;
+  max-width: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  transition: width 0.8s cubic-bezier(0.2, 0.9, 0.25, 1), height 0.8s cubic-bezier(0.2, 0.9, 0.25, 1),
+    left 0.8s cubic-bezier(0.2, 0.9, 0.25, 1), top 0.8s cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.redesign .sil-img-sombra {
+  filter: drop-shadow(0 10px 14px rgba(40, 10, 90, 0.35));
+  animation: sil-respira 3.2s ease-in-out infinite;
+}
+.redesign .sil-moldura.is-recorte .sil-img-sombra {
+  animation: none;
+  filter: none;
+}
+.redesign .sil-moldura.is-embaralhado .sil-img-sombra img {
+  filter: blur(1.4px);
+}
+/* Ruído por cima do recorte do Insano. */
+.redesign .sil-ruido {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.4;
+  mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.4 -0.4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+@keyframes sil-respira {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.redesign .sil-palco.is-fim .sil-img-sombra {
+  animation: none;
+}
+/* Revelação: a imagem colorida aparece por cima com um clarão. */
+.redesign .sil-palco.is-fim .sil-img-cor {
+  opacity: 0;
+  filter: brightness(4) saturate(0);
+  transition: transform 0.9s cubic-bezier(0.2, 0.9, 0.25, 1), opacity 0.5s ease 0.35s, filter 0.9s ease 0.5s;
+}
+.redesign .sil-palco.is-revelado .sil-img-cor {
+  opacity: 1;
+  filter: brightness(1) saturate(1) drop-shadow(0 12px 18px rgba(40, 10, 90, 0.35));
+}
+.redesign .sil-palco.is-revelado .sil-img-sombra {
+  opacity: 0;
+  transition: transform 0.9s cubic-bezier(0.2, 0.9, 0.25, 1), opacity 0.4s ease 0.7s;
+}
+.redesign .sil-palco.is-fim .sil-moldura.is-recorte {
+  overflow: visible;
+  box-shadow: none;
+}
+.redesign .sil-palco-brilho {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 46%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 60%);
+  opacity: 0;
+}
+.redesign .sil-palco.is-revelado .sil-palco-brilho {
+  animation: sil-clarao 0.9s ease-out;
+}
+@keyframes sil-clarao {
+  15% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.redesign .sil-palco-pergunta {
+  position: absolute;
+  left: 16px;
+  top: 12px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #160d2e;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 900;
+  font-stretch: 112%;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  rotate: -3deg;
+}
+.redesign .sil-palco.is-venceu .sil-palco-pergunta {
+  background: var(--nivel);
+  color: #0b0716;
+}
+
+/* Dicas */
+.redesign .sil-dicas {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+}
+.redesign .sil-dicas li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nivel) 45%, transparent);
+  animation: sil-entra 0.4s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+.redesign .sil-dicas span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.redesign .sil-cronometro {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--nivel) 60%, transparent);
+}
+
+/* Tentativas erradas (níveis de digitar) */
+.redesign .sil-tentativas {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 0;
+}
+.redesign .sil-tentativas li {
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(255, 77, 125, 0.12);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: line-through;
+  animation: sil-treme 0.4s ease;
+}
+
+/* Campo de digitar + sugestões */
+.redesign .sil-campo {
+  position: relative;
+  margin-top: 14px;
+}
+.redesign .sil-campo-linha {
+  display: flex;
+  gap: 8px;
+}
+.redesign .sil-campo input {
+  flex: 1;
+  min-width: 0;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1.5px rgba(164, 99, 255, 0.3);
+}
+.redesign .sil-campo input:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--nivel), 0 0 0 4px color-mix(in srgb, var(--nivel) 20%, transparent);
+}
+.redesign .sil-campo .sil-botao {
+  min-height: 52px;
+  border-radius: 14px;
+}
+.redesign .sil-campo .sil-botao:disabled {
+  opacity: 0.5;
+  cursor: default;
+  transform: none;
+}
+.redesign .sil-sugestoes {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 6px);
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.3), 0 -16px 40px -12px rgba(0, 0, 0, 0.6);
+}
+.redesign .sil-sugestoes li {
+  padding: 11px 12px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.redesign .sil-sugestoes li:hover,
+.redesign .sil-sugestoes li.is-ativo {
+  background: var(--surface-2);
+  color: var(--nivel);
+}
+.redesign .sil-campo-erro {
+  margin: 8px 0 0;
+  color: #ff7a9c;
+  font-size: var(--step-small);
+  font-weight: 700;
+}
+:root[data-theme='light'] .redesign.theme-enabled .sil-campo-erro {
+  color: #c0164a;
+}
+
+/* Modo treino (tela de níveis) */
+.redesign .sil-treino {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1.5px dashed rgba(164, 99, 255, 0.35);
+  text-align: center;
+}
+.redesign .sil-treino p {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: var(--step-small);
+}
+.redesign .sil-treino p strong {
+  color: var(--ink);
+}
+.redesign .sil-treino-linha {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.redesign .sil-treino select {
+  min-height: 48px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1.5px rgba(164, 99, 255, 0.35);
+}
+a.sil-botao {
+  text-decoration: none;
+}
+
+/* Opções do Fácil */
+.redesign .sil-opcoes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.redesign .sil-opcao {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 54px;
+  padding: 10px 14px 10px 10px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  text-align: left;
+  line-height: 1.15;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.3s ease;
+}
+.redesign .sil-opcao:not(:disabled):hover,
+.redesign .sil-opcao:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: inset 0 0 0 2px var(--nivel), 0 10px 22px -14px var(--nivel);
+}
+.redesign .sil-opcao:not(:disabled):active {
+  transform: scale(0.98);
+}
+.redesign .sil-opcao-tecla {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+.redesign .sil-opcao.is-errada {
+  cursor: default;
+  color: var(--muted);
+  text-decoration: line-through;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 77, 125, 0.6);
+  animation: sil-treme 0.4s ease;
+}
+.redesign .sil-opcao.is-fora {
+  cursor: default;
+  opacity: 0.25;
+}
+@keyframes sil-treme {
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
+}
+
+/* Resultado */
+.redesign .sil-resultado {
+  margin-top: 18px;
+  text-align: center;
+  animation: sil-entra 0.5s cubic-bezier(0.2, 0.9, 0.25, 1) 0.4s both;
+}
+.redesign .sil-resultado-titulo {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: var(--step-small);
+}
+.redesign .sil-resultado-titulo.is-venceu {
+  color: var(--nivel);
+}
+.redesign .sil-resultado-nome {
+  margin: 4px 0 0;
+  font-size: clamp(2rem, 8vw, 3rem);
+  font-weight: 900;
+  font-stretch: 112%;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.redesign .sil-resultado-info {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+.redesign .sil-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+.redesign .sil-botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 12px 22px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1.5px rgba(164, 99, 255, 0.35);
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.redesign .sil-botao:hover {
+  transform: translateY(-2px);
+}
+.redesign .sil-botao.is-principal {
+  background: var(--accent-fill);
+  color: var(--accent-ink);
+  box-shadow: none;
+}
+.redesign .sil-botao.is-principal:hover {
+  background: var(--accent-fill-hover);
+}
+.redesign .sil-aviso {
+  margin: 10px 0 0;
+  color: var(--price);
+  font-weight: 700;
+  font-size: var(--step-small);
+}
+:root[data-theme='light'] .redesign.theme-enabled .sil-aviso {
+  color: #15803d;
+}
+.redesign .sil-loja {
+  display: inline-block;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: var(--step-small);
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+.redesign .sil-loja:hover {
+  color: var(--accent);
+}
+
+/* Estatísticas */
+.redesign .sil-stats {
+  margin-top: 24px;
+  padding: 18px 16px;
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.16);
+  text-align: left;
+}
+.redesign .sil-stats-titulo {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+}
+.redesign .sil-stats-numeros {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0 0 16px;
+  text-align: center;
+}
+.redesign .sil-stats-numeros div {
+  display: flex;
+  flex-direction: column-reverse;
+}
+.redesign .sil-stats-numeros dd {
+  margin: 0;
+  font-size: 1.9rem;
+  font-weight: 900;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.redesign .sil-stats-numeros dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.redesign .sil-stats-barras {
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+}
+.redesign .sil-stats-barras li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.redesign .sil-stats-k {
+  width: 14px;
+  color: var(--muted);
+  font-weight: 800;
+  text-align: center;
+}
+.redesign .sil-stats-barra {
+  width: var(--p);
+  min-width: 28px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: right;
+  transition: width 0.6s cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.redesign .sil-stats-barras li.is-hoje .sil-stats-barra {
+  background: var(--nivel);
+  color: #0b0716;
+}
+
+/* ---------- Celular ---------- */
+@media (max-width: 480px) {
+  .redesign .sil-niveis {
+    gap: 10px;
+  }
+  .redesign .sil-nivel {
+    padding: 14px 14px 12px;
+  }
+  .redesign .sil-nivel-resumo {
+    font-size: 12.5px;
+  }
+  .redesign .sil-opcao {
+    min-height: 50px;
+    padding: 8px 10px 8px 8px;
+    font-size: 15px;
+  }
+  .redesign .sil-opcao-tecla {
+    display: none;
+  }
+  .redesign .sil-seq-rotulo {
+    display: none;
+  }
+  .redesign .sil-palco {
+    aspect-ratio: 1 / 0.84;
+  }
+  .redesign .sil-cabeca {
+    padding: 14px 0 16px;
+  }
+  .redesign .sil-stats-numeros dd {
+    font-size: 1.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .redesign .sil-palco-raios,
+  .redesign .sil-img-sombra,
+  .redesign .sil-seq.is-acesa .sil-seq-fogo,
+  .redesign .sil-marco,
+  .redesign .sil-marco-fogo,
+  .redesign .sil-niveis > li,
+  .redesign .sil-dicas li,
+  .redesign .sil-opcao.is-errada,
+  .redesign .sil-resultado,
+  .redesign .sil-palco.is-revelado .sil-palco-brilho {
+    animation: none;
+  }
+  .redesign .sil-palco.is-fim .sil-img-cor,
+  .redesign .sil-camada,
+  .redesign .sil-camada img,
+  .redesign .sil-palco.is-revelado .sil-img-sombra,
+  .redesign .sil-nivel,
+  .redesign .sil-opcao {
+    transition: none;
+  }
+}
