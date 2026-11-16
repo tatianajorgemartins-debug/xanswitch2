@@ -14,6 +14,8 @@ import { formatWhatsApp } from '@/lib/validation';
 import { normalizeStatus, saleProfit } from '@/lib/sales';
 import SalesPanel from './SalesPanel';
 import PromoEventsPanel from './PromoEventsPanel';
+import PromoBannerPanel from './PromoBannerPanel';
+import type { PromoBannerSetting } from '@/lib/promoBanner';
 import type { PromoEventRow } from '@/lib/promoEvents';
 import { setSalesStatusAction } from './salesActions';
 import './admin.css';
@@ -63,7 +65,8 @@ export default function AdminClient({
   featuredFranchiseLabel,
   paymentFees,
   privateOffers,
-  promoEvents
+  promoEvents,
+  promoBanner
 }: {
   initialGames: Game[];
   visitCount: number;
@@ -82,6 +85,7 @@ export default function AdminClient({
   privateOffers: PrivateOfferRow[] | null;
   // null = tabela ainda não existe (falta rodar db/migration-eventos-promocao.sql).
   promoEvents: PromoEventRow[] | null;
+  promoBanner: PromoBannerSetting | null;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -515,7 +519,13 @@ export default function AdminClient({
           </section>
         )}
 
-        {tab === 'promocoes' && <PromoEventsPanel games={games} events={promoEvents} />}
+        {tab === 'promocoes' && (
+          <>
+            <PromoEventsPanel games={games} events={promoEvents} />
+            <div style={{ height: 32 }} />
+            <PromoBannerPanel banner={promoBanner} />
+          </>
+        )}
 
         {tab === 'clientes' && (
           <section>

@@ -22,6 +22,7 @@ import { getWishlistCounts } from '@/lib/supabaseAdmin';
 import { isMercadoPagoEnabled } from '@/lib/mercadoPago';
 import { reconcilePendingMercadoPagoPayments } from '@/lib/mercadoPagoOrders';
 import AdminClient from './AdminClient';
+import { parsePromoBanner, PROMO_BANNER_KEY } from '@/lib/promoBanner';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,6 +90,7 @@ export default async function AdminPage() {
     .catch(() => null);
   // null = tabela ainda não existe (falta rodar db/migration-eventos-promocao.sql).
   const promoEvents = await getAllPromoEvents().catch(() => null);
+  const promoBanner = parsePromoBanner(await getSiteSetting(PROMO_BANNER_KEY));
   return (
     <AdminClient
       initialGames={games}
@@ -107,6 +109,7 @@ export default async function AdminPage() {
       paymentFees={paymentFees}
       privateOffers={privateOffers}
       promoEvents={promoEvents}
+      promoBanner={promoBanner}
     />
   );
 }

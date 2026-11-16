@@ -1067,3 +1067,34 @@
   text-transform: none !important;
   letter-spacing: normal !important;
 }
+
+/* Banner promocional (PromoBannerPanel.tsx) */
+.adm-banner-thumb {
+  display: block;
+  width: 100%;
+  max-width: 520px;
+  aspect-ratio: 1600 / 870;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid rgba(164, 99, 255, 0.3);
+  margin: 10px 0;
+}
+.adm-banner-thumb.is-mobile {
+  max-width: 260px;
+  aspect-ratio: 1000 / 700;
+}
+.adm-pick-off {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(78, 240, 95, 0.16);
+  color: #4ef05f;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.adm-pick-off.is-site {
+  background: rgba(255, 210, 78, 0.16);
+  color: #ffd24e;
+}

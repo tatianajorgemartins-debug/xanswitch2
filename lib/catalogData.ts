@@ -22,6 +22,7 @@ import {
 import { buildWhatsAppContactLink, formatPriceBR } from './whatsapp';
 import { gamePrice } from './gamePrice';
 import { getWishlistCounts } from './supabaseAdmin';
+import { activePromoBanner, PROMO_BANNER_KEY, type ActivePromoBanner } from './promoBanner';
 import type { Item, ReviewItem } from '@/app/CatalogClient';
 
 export function toItem(g: Game): Item {
@@ -99,6 +100,9 @@ export type CatalogData = {
   // quando desativado no admin. Ver FeaturedFranchisePanel em
   // AdminClient.tsx e o botão em CatalogClient.tsx.
   featuredFranchise: { franchise: string; label: string } | null;
+  // Banner promocional que entra no lugar dos "Destaques da semana" — null
+  // fora do período marcado no admin (ver lib/promoBanner.ts).
+  promoBanner: ActivePromoBanner | null;
 };
 
 export const loadCatalogData = cache(async (): Promise<CatalogData> => {
@@ -113,6 +117,8 @@ export const loadCatalogData = cache(async (): Promise<CatalogData> => {
     featuredFranchiseEnabled && featuredFranchiseName
       ? { franchise: featuredFranchiseName, label: featuredFranchiseLabel || `🔥 Jogos de ${featuredFranchiseName}` }
       : null;
+
+  const promoBanner = activePromoBanner(await getSiteSetting(PROMO_BANNER_KEY).catch(() => null));
 
   const items = games.map(toItem);
   const featuredItems = byRecentFirst(games.filter((g) => g.is_featured)).map(toItem);
@@ -141,6 +147,7 @@ export const loadCatalogData = cache(async (): Promise<CatalogData> => {
     reviews: reviews.map(toReviewItem),
     whatsappContactUrl: buildWhatsAppContactLink(),
     reviewsBannerUrl,
-    featuredFranchise
+    featuredFranchise,
+    promoBanner
   };
 });

@@ -43,6 +43,19 @@ function basePrice(g: Game): number {
   return gamePrice({ ...g, promo_event: null }).price;
 }
 
+// A porcentagem que a etiqueta mostra no site pra um jogo que vai custar
+// `price` — a MESMA conta do catálogo (toItem em lib/catalogData.ts): em
+// cima do preço da eShop (o "preço original" do jogo). Só quando o jogo não
+// tem preço da eShop cadastrado é que cai pro preço normal do site.
+function tagPercent(g: Game, price: number): { percent: number; overEshop: boolean } | null {
+  const eshop = g.original_price ? parseFloat(g.original_price) : null;
+  const regular = gamePrice({ ...g, promo_event: null }).regularPrice;
+  const overEshop = eshop !== null && eshop > price;
+  const struck = overEshop ? eshop : price < regular ? regular : null;
+  if (struck === null) return null;
+  return { percent: Math.round((1 - price / struck) * 100), overEshop };
+}
+
 function blankInput(): PromoEventInput {
   const year = new Date().getFullYear();
   return {
@@ -241,7 +254,7 @@ function EventEditor({
     if (!g) return null;
     const base = basePrice(g);
     const p = priceWithEvent(base, type, validValue);
-    return p < base ? Math.round((1 - p / base) * 100) : null;
+    return p < base ? (tagPercent(g, p)?.percent ?? null) : null;
   }, [activeGames, selected, type, validValue]);
 
   function toggleGame(id: number) {
@@ -340,6 +353,12 @@ function EventEditor({
             O desconto entra em cima do preço que o jogo já tem (inclusive se ele já estiver em promoção). Nenhum jogo
             fica abaixo de R$ 1,00.
           </p>
+          <p className="adm-help">
+            A <strong>porcentagem da etiqueta</strong> no site é calculada em cima do <strong>preço da eShop</strong>{' '}
+            do jogo (o “preço original” do cadastro), não do preço do site — por isso ela fica maior que o desconto
+            que você digitou. Na lista de jogos abaixo dá pra ver a porcentagem de cada um; os marcados em amarelo
+            estão sem preço da eShop e usam o preço do site na conta.
+          </p>
         </li>
 
         <li>
@@ -404,6 +423,7 @@ function EventEditor({
                 const base = basePrice(g);
                 const after = priceWithEvent(base, type, validValue);
                 const on = selected.has(g.id);
+                const off = on && after < base ? tagPercent(g, after) : null;
                 return (
                   <label key={g.id} className={`adm-pick${on ? ' is-on' : ''}`}>
                     <input type="checkbox" checked={on} onChange={() => toggleGame(g.id)} />
@@ -414,6 +434,18 @@ function EventEditor({
                       {on && after < base ? (
                         <>
                           <s>R$ {formatPriceBR(base)}</s> <strong>R$ {formatPriceBR(after)}</strong>
+                          {off && (
+                            <span
+                              className={`adm-pick-off${off.overEshop ? '' : ' is-site'}`}
+                              title={
+                                off.overEshop
+                                  ? `Etiqueta no site: -${off.percent}% em cima do preço da eShop (R$ ${formatPriceBR(parseFloat(g.original_price!))})`
+                                  : 'Sem preço da eShop cadastrado: a porcentagem usa o preço normal do site. Cadastre o "preço original" do jogo pra ela ficar maior.'
+                              }
+                            >
+                              -{off.percent}%{off.overEshop ? ' eShop' : ' (sem eShop)'}
+                            </span>
+                          )}
                         </>
                       ) : (
                         <>R$ {formatPriceBR(base)}</>

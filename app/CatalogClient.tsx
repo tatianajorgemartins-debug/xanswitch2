@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { User } from '@supabase/supabase-js';
+import type { ActivePromoBanner } from '@/lib/promoBanner';
 import { getContrastColor } from '@/lib/color';
 import type { Platform, GameType } from '@/lib/db';
 import {
@@ -167,6 +168,7 @@ export default function CatalogClient({
   whatsappContactUrl,
   reviewsBannerUrl,
   featuredFranchise,
+  promoBanner = null,
   initialGameId,
   initialFranchiseFilter,
   initialQualLink
@@ -192,6 +194,8 @@ export default function CatalogClient({
   // ao clicar, filtra o catálogo pra essa franquia (ver
   // FeaturedFranchisePanel em AdminClient.tsx).
   featuredFranchise: { franchise: string; label: string } | null;
+  // Banner promocional no lugar dos "Destaques da semana" (lib/promoBanner.ts).
+  promoBanner?: ActivePromoBanner | null;
   // Só vem preenchido quando a página é acessada pelo link direto de um
   // jogo (app/jogo/[id]/page.tsx) — abre o modal de compra desse jogo
   // assim que a página carrega, sem precisar clicar em nada.
@@ -999,6 +1003,15 @@ export default function CatalogClient({
         onViewGame={handleViewGame}
         onOpenGame={openGame}
         onOpenQualLink={() => setQualLink({ resume: false })}
+        promoBanner={promoBanner}
+        onPromoBannerClick={() => {
+          // Clique no banner promocional: mostra só os jogos em promoção.
+          // Se a promoção ainda não começou (banner de aviso), não tem jogo
+          // em promoção pra filtrar — aí só desce até o catálogo.
+          setQuery('');
+          if (items.some((it) => it.isOnSale)) setSaleOnly(true);
+          scrollToGrid();
+        }}
       />
 
       {!isFiltering && <HomeReviews reviews={reviews} onSeeAll={() => setReviewsModalOpen(true)} />}

@@ -4109,3 +4109,11 @@ button.account-avatar {
 .account-quiz-empty p {
   margin: 0 0 12px;
 }
+
+/* Banner promocional do admin no lugar dos destaques (PromoSection.tsx). */
+.promo-image-banner.is-static {
+  cursor: default;
+}
+.promo-image-banner.is-static:hover .promo-banner-image {
+  transform: none;
+}
