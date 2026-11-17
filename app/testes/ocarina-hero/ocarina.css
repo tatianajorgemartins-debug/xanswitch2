@@ -348,7 +348,21 @@
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
+@media (orientation: portrait) {
+  .oc-jogo.is-deitado {
+    inset: auto;
+    top: 0;
+    left: 0;
+    width: 100vh;
+    width: 100dvh;
+    height: 100vw;
+    height: 100dvw;
+    transform: rotate(90deg) translateY(-100%);
+    transform-origin: top left;
+  }
+}
 .oc-palco {
+  container: palco / size;
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -410,7 +424,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  --hud: clamp(0.62rem, 0.42rem + 0.7vmin, 1.15rem);
+  --hud: clamp(0.62rem, 0.42rem + 0.7cqmin, 1.15rem);
   font-size: var(--hud);
 }
 
@@ -484,7 +498,7 @@
   top: max(8px, env(safe-area-inset-top));
   left: 50%;
   width: 17em;
-  max-width: 28vw;
+  max-width: 28cqw;
   transform: translateX(-50%);
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
 }
@@ -543,7 +557,7 @@
   padding: 0;
   border: 0;
   background: none;
-  font-size: clamp(0.62rem, 0.42rem + 0.7vmin, 1.15rem);
+  font-size: clamp(0.62rem, 0.42rem + 0.7cqmin, 1.15rem);
   cursor: pointer;
   filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5));
 }
@@ -692,9 +706,9 @@
 }
 
 /* Celular em pé: HUD em cima da pista */
-@media (orientation: portrait) {
+@container palco (orientation: portrait) {
   .oc-hud {
-    --hud: clamp(0.6rem, 2.4vw, 0.95rem);
+    --hud: clamp(0.6rem, 2.4cqw, 0.95rem);
   }
   .oc-hud-titulo {
     max-width: calc(100% - 6em);
@@ -717,9 +731,9 @@
   }
 }
 /* Celular deitado (pouca altura) */
-@media (orientation: landscape) and (max-height: 500px) {
+@container palco (orientation: landscape) and (max-height: 500px) {
   .oc-hud {
-    --hud: clamp(0.5rem, 2.2vh, 0.8rem);
+    --hud: clamp(0.5rem, 2.2cqh, 0.8rem);
   }
   .oc-palco .oc-hud-tri {
     display: none;

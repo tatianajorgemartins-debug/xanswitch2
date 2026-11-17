@@ -200,10 +200,11 @@ export class MotorOcarina {
   }
 
   private ajustarTamanho() {
-    const r = this.canvas.getBoundingClientRect();
+    // clientWidth/Height: tamanho real do layout, mesmo com o jogo girado
+    // por CSS (celular em pé no modo "deitado").
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
-    this.w = Math.max(1, r.width);
-    this.h = Math.max(1, r.height);
+    this.w = Math.max(1, this.canvas.clientWidth);
+    this.h = Math.max(1, this.canvas.clientHeight);
     this.canvas.width = Math.round(this.w * this.dpr);
     this.canvas.height = Math.round(this.h * this.dpr);
     // Encaixa a pista: embaixo, centralizada, deixando a faixa da barra de

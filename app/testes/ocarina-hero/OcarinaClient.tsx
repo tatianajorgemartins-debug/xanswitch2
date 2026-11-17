@@ -58,6 +58,34 @@ type Recordes = Record<string, ResultadoMusica>;
 export const CHAVE_TECLAS = 'ocarina_teclas';
 export const CHAVE_LATENCIA = 'ocarina_latencia';
 export const CHAVE_PRECISAO = 'ocarina_precisao';
+const CHAVE_DEITADO = 'ocarina_deitado';
+
+// Celular: tela cheia + trava na horizontal. Precisa ser chamado direto no
+// toque do jogador (o navegador só deixa assim). No iPhone nenhum dos dois
+// existe pra sites: aí o CSS gira o jogo (.oc-jogo.is-deitado).
+type TelaTravavel = ScreenOrientation & { lock?: (o: string) => Promise<void>; unlock?: () => void };
+function entrarTelaCheia() {
+  const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => void };
+  const travar = () => (screen.orientation as TelaTravavel | undefined)?.lock?.('landscape').catch(() => {});
+  try {
+    if (!document.fullscreenElement && el.requestFullscreen) {
+      el.requestFullscreen({ navigationUI: 'hide' }).then(travar, () => {});
+      return;
+    }
+    if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  } catch {
+    // sem tela cheia: o CSS gira o jogo
+  }
+  travar();
+}
+function sairTelaCheia() {
+  try {
+    (screen.orientation as TelaTravavel | undefined)?.unlock?.();
+  } catch {
+    // nada
+  }
+  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+}
 const CHAVE_RECORDES = 'ocarina_recordes';
 
 export function lerTeclas(): MapaTeclas {
@@ -73,6 +101,9 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
   const [teclas, setTeclas] = useState<MapaTeclas>(TECLAS_PADRAO);
   const [latencia, setLatencia] = useState(0); // ms
   const [precisaoJogo, setPrecisaoJogo] = useState<Precisao>(PRECISAO_PADRAO);
+  // celular: jogar deitado em tela cheia (padrão: ligado)
+  const [toque, setToque] = useState(false);
+  const [deitado, setDeitado] = useState(true);
   const [recordes, setRecordes] = useState<Recordes>({});
   const [versao, setVersao] = useState(0);
   const [marco, setMarco] = useState<number | null>(null);
@@ -85,6 +116,8 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
     setLatencia(ler<number>(CHAVE_LATENCIA, 0));
     const pr = ler<string>(CHAVE_PRECISAO, PRECISAO_PADRAO);
     if (ehPrecisao(pr)) setPrecisaoJogo(pr);
+    setToque(window.matchMedia('(pointer: coarse)').matches);
+    setDeitado(ler<boolean>(CHAVE_DEITADO, true));
     setRecordes(ler<Recordes>(CHAVE_RECORDES, {}));
     carregarImagensOcarina();
     const tick = () => {
@@ -132,6 +165,8 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
   const [carregando, setCarregando] = useState<string | null>(null);
   const [erroAudio, setErroAudio] = useState<string | null>(null);
   async function jogar(chart: Chart, diario: boolean) {
+    // antes de qualquer espera: o navegador só libera a tela cheia no toque
+    if (toque && deitado) entrarTelaCheia();
     const s = await liberar();
     let audio: AudioBuffer | null = null;
     if (chart.audio) {
@@ -147,6 +182,17 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
       setCarregando(null);
     }
     setTela((t) => ({ tipo: 'jogo', chart, diario, audio, rodada: (t.tipo === 'jogo' ? t.rodada : 0) + 1 }));
+  }
+
+  // Liga/desliga o "jogar deitado". Ligando no meio da partida (pausa),
+  // já entra em tela cheia (o clique no botão vale como toque).
+  function mudarDeitado(v: boolean) {
+    setDeitado(v);
+    gravar(CHAVE_DEITADO, v);
+    if (tela.tipo === 'jogo') {
+      if (v) entrarTelaCheia();
+      else sairTelaCheia();
+    }
   }
 
   function aoTerminar(chart: Chart, diario: boolean, r: ResultadoMusica) {
@@ -187,6 +233,7 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
         resultado: `${linhas[1]}\n${linhas[2]}`
       });
     }
+    sairTelaCheia();
     setTela({ tipo: 'resultado', chart, diario, r, recorde: recorde && Boolean(anterior) });
   }
 
@@ -253,6 +300,9 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
           liberado={liberado}
           teclas={teclas}
           latencia={latencia}
+          toque={toque}
+          deitado={deitado}
+          onDeitado={mudarDeitado}
           precisao={precisaoJogo}
           onPrecisao={(p) => {
             setPrecisaoJogo(p);
@@ -274,9 +324,15 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
           teclas={teclas}
           latencia={latencia / 1000}
           precisao={precisaoJogo}
+          toque={toque}
+          deitado={deitado}
+          onDeitado={mudarDeitado}
           onFim={(r) => aoTerminar(tela.chart, tela.diario, r)}
           onReiniciar={() => jogar(tela.chart, false)}
-          onSair={() => setTela({ tipo: 'menu' })}
+          onSair={() => {
+            sairTelaCheia();
+            setTela({ tipo: 'menu' });
+          }}
         />
       )}
 
@@ -336,6 +392,9 @@ function Menu({
   latencia,
   precisao,
   onPrecisao,
+  toque,
+  deitado,
+  onDeitado,
   onLiberar,
   onJogar,
   onTela
@@ -351,6 +410,9 @@ function Menu({
   latencia: number;
   precisao: Precisao;
   onPrecisao: (p: Precisao) => void;
+  toque: boolean;
+  deitado: boolean;
+  onDeitado: (v: boolean) => void;
   onLiberar: () => void;
   onJogar: (c: Chart, diario: boolean) => void;
   onTela: (t: 'teclas' | 'calibrar') => void;
@@ -414,6 +476,11 @@ function Menu({
       </section>
 
       <section className="oc-ajustes">
+        {toque && (
+          <button type="button" className={`oc-botao${deitado ? ' is-principal' : ''}`} aria-pressed={deitado} onClick={() => onDeitado(!deitado)}>
+            📱 Jogar deitado em tela cheia: {deitado ? 'ligado' : 'desligado'}
+          </button>
+        )}
         <button type="button" className="oc-botao" onClick={() => onTela('teclas')}>
           ⌨️ Teclas: {PISTAS.map((p) => nomeTecla(teclas[p.id])).join(' ')}
         </button>
@@ -521,6 +588,9 @@ function Partida({
   teclas,
   latencia,
   precisao,
+  toque,
+  deitado,
+  onDeitado,
   onFim,
   onReiniciar,
   onSair
@@ -532,6 +602,9 @@ function Partida({
   teclas: MapaTeclas;
   latencia: number;
   precisao: Precisao;
+  toque: boolean;
+  deitado: boolean;
+  onDeitado: (v: boolean) => void;
   onFim: (r: ResultadoMusica) => void;
   onReiniciar: () => void;
   onSair: () => void;
@@ -565,7 +638,7 @@ function Partida({
   }, [pausado, pausar]);
 
   return (
-    <div className={`oc-jogo ${OC_FONTES}`}>
+    <div className={`oc-jogo ${OC_FONTES}${toque && deitado ? ' is-deitado' : ''}`}>
       <Palco
         chart={chart}
         som={som}
@@ -587,6 +660,11 @@ function Partida({
           {!diario && (
             <button type="button" className="oc-botao" onClick={onReiniciar}>
               ↺ Recomeçar
+            </button>
+          )}
+          {toque && (
+            <button type="button" className="oc-botao" onClick={() => onDeitado(!deitado)}>
+              📱 {deitado ? 'Jogar em pé' : 'Jogar deitado (tela cheia)'}
             </button>
           )}
           <button type="button" className="oc-botao" onClick={onSair}>
