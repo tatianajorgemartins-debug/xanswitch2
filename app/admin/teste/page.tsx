@@ -8,13 +8,11 @@ import CatalogClient from '@/app/CatalogClient';
 import PhysicalCatalogClient from '@/app/PhysicalCatalogClient';
 import SiteShell from '@/app/SiteShell';
 import TestModeBar from './TestModeBar';
-import NovaHome from './novo/NovaHome';
 
 // Área de testes: só abre com o login de admin (o proxy já barra quem não
 // tem o cookie, e o isAuthenticated abaixo confere a assinatura de verdade).
 // Mostra os catálogos com o visual do site ou, com ?d=atual, com o visual
-// antigo, pra comparar antes de levar mudanças pro ar. Com ?d=novo, mostra o
-// novo layout da home em teste (app/admin/teste/novo).
+// antigo, pra comparar antes de levar mudanças pro ar.
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
@@ -33,16 +31,7 @@ export default async function TestPage({
 
   const { v, d } = await searchParams;
   const view = v === 'digital' ? 'digital' : 'fisico';
-  const design = d === 'atual' ? 'current' : d === 'novo' ? 'novo' : 'redesign';
-
-  if (design === 'novo') {
-    return (
-      <>
-        <NovaHome data={await loadCatalogData()} />
-        <TestModeBar view="digital" design="novo" />
-      </>
-    );
-  }
+  const design = d === 'atual' ? 'current' : 'redesign';
 
   return (
     <>

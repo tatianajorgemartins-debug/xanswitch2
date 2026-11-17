@@ -42,6 +42,9 @@ const BulkPurchaseModal = dynamic(() => import('./BulkPurchaseModal'), { ssr: fa
 // únicos que dá pra ver sem rolar); o resto entra logo depois que a página
 // aparece, em segundo plano. Deixa a página bem mais leve pra abrir.
 const INITIAL_CARDS = 12;
+// Sem busca nem filtro, o catálogo mostra só as primeiras linhas e um botão
+// "Ver todos os X jogos" (5 colunas no computador, 2 no celular).
+const HOME_CARDS = 20;
 
 // Os 5 jogos com mais favoritos (vitrine "Mais desejados"). Mesma conta
 // feita no servidor em lib/catalogData.ts.
@@ -602,7 +605,6 @@ export default function CatalogClient({
     quickFilter,
     sortMode
   ]);
-  const visibleItems = renderAllCards ? filtered : filtered.slice(0, INITIAL_CARDS);
 
   const activeFilterCount =
     (franchiseFilter ? 1 : 0) +
@@ -614,12 +616,19 @@ export default function CatalogClient({
     (eventFilter ? 1 : 0) +
     (otherFranchises ? 1 : 0) +
     (quickFilter ? 1 : 0);
+  const isFiltering = activeFilterCount > 0 || query.trim() !== '';
+  const [showAllGames, setShowAllGames] = useState(false);
+  const collapsed = !isFiltering && !showAllGames && filtered.length > HOME_CARDS;
+  const visibleItems = collapsed
+    ? filtered.slice(0, HOME_CARDS)
+    : renderAllCards
+      ? filtered
+      : filtered.slice(0, INITIAL_CARDS);
 
   // Verdadeiro sempre que a pessoa está filtrando ou buscando algo — usado
   // pra esconder a vitrine "Mais desejados" (que é uma sugestão pro
   // catálogo inteiro, não faz sentido junto de uma busca filtrada) e pra
   // decidir quando mostrar o botão de limpar tudo.
-  const isFiltering = activeFilterCount > 0 || query.trim() !== '';
 
   function scrollToGrid() {
     gridAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -764,6 +773,7 @@ export default function CatalogClient({
               Pague no Pix e receba o código do jogo. Cada compra vale um card colecionável e pontos pra trocar por
               desconto.
             </p>
+            <TrustLine reviews={reviews} />
           </section>
         )}
         {isRedesign && <HowItWorks gameCount={items.length} />}
@@ -1175,6 +1185,16 @@ export default function CatalogClient({
           ))}
         </div>
       )}
+
+      {collapsed && (
+        <div className="catalog-show-all">
+          <button type="button" className="btn ghost" onClick={() => setShowAllGames(true)}>
+            Ver todos os {filtered.length} jogos
+          </button>
+        </div>
+      )}
+
+      {isRedesign && !isFiltering && <HomeFaq />}
       </div>
 
       {/* O modal de compra só existe na tela quando um jogo foi clicado.
@@ -1546,4 +1566,74 @@ function savingsLabel(item: Item): string | null {
   const struck = parseFloat(item.originalPriceLabel.replace(/\./g, '').replace(',', '.'));
   const diff = Math.round((struck - item.price) * 100) / 100;
   return diff >= 1 ? diff.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : null;
+}
+
+// Linha de confiança embaixo do texto do topo: nota das avaliações,
+// tutorial de resgate e Pix na hora.
+function TrustLine({ reviews }: { reviews: ReviewItem[] }) {
+  const rated = reviews.filter((r) => r.rating > 0);
+  const average = rated.length ? rated.reduce((sum, r) => sum + r.rating, 0) / rated.length : 0;
+  return (
+    <ul className="trust-line">
+      {rated.length > 0 && (
+        <li>
+          <span aria-hidden="true" className="trust-line-stars">
+            ★★★★★
+          </span>
+          <strong>{average.toFixed(1).replace('.', ',')}</strong> em {rated.length} {rated.length === 1 ? 'avaliação' : 'avaliações'}
+        </li>
+      )}
+      <li>
+        <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6l-8-3Z" />
+        </svg>
+        Tutorial de resgate incluso
+      </li>
+      <li>
+        <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7v5l3 2" />
+        </svg>
+        Pix confirmado na hora
+      </li>
+    </ul>
+  );
+}
+
+// Perguntas frequentes no fim da página inicial. Pra mudar uma resposta,
+// é só editar o texto aqui.
+const HOME_FAQ: [string, string][] = [
+  [
+    'É seguro comprar jogo digital por código?',
+    'Sim. Você recebe um código oficial Nintendo pra resgatar na eShop, com tutorial passo a passo e suporte pelo WhatsApp.'
+  ],
+  ['Em quanto tempo recebo o código?', 'No mesmo dia, por e-mail ou WhatsApp. No Pix a confirmação do pagamento é na hora.'],
+  ['Funciona no Switch 2?', 'Sim. Os jogos marcados “Switch 2” são do console novo, e a maioria dos jogos de Switch também roda no Switch 2.'],
+  [
+    'Preciso de conta de outro país na eShop?',
+    'Os códigos são da eShop japonesa: pra resgatar, sua conta muda a região pra Japão por um momento, e a gente manda o passo a passo. A Nintendo só deixa trocar a região com o saldo da eShop zerado.'
+  ],
+  [
+    'Como funcionam os pontos e o card?',
+    'Cada compra vale um card colecionável, e cada card vale de 1 a 5 pontos. Os pontos viram desconto no próximo jogo (nos jogos participantes, pagando no Pix).'
+  ]
+];
+
+function HomeFaq() {
+  return (
+    <section className="home-faq" aria-labelledby="home-faq-title">
+      <h2 id="home-faq-title">Perguntas frequentes</h2>
+      {HOME_FAQ.map(([question, answer]) => (
+        <details key={question}>
+          <summary>
+            {question}
+            <svg aria-hidden="true" className="home-faq-chev" width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </summary>
+          <p>{answer}</p>
+        </details>
+      ))}
+    </section>
+  );
 }

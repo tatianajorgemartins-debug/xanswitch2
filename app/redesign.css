@@ -3817,3 +3817,115 @@ html:has(.legal-page) body {
     display: none;
   }
 }
+
+/* ---------- Linha de confiança (topo), "Ver todos os X jogos" e
+   perguntas frequentes da página inicial ---------- */
+.redesign .trust-line {
+  list-style: none;
+  margin: 22px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 26px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+.redesign .trust-line li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.redesign .trust-line svg {
+  flex: none;
+  color: var(--price);
+}
+.redesign .trust-line strong {
+  color: var(--ink);
+}
+.redesign .trust-line-stars {
+  color: var(--promo);
+  letter-spacing: 1px;
+}
+.redesign .catalog-show-all {
+  margin-top: 32px;
+  display: flex;
+  justify-content: center;
+}
+.redesign .catalog-show-all .btn {
+  min-height: 52px;
+  padding: 0 28px;
+  font-size: 1rem;
+}
+.redesign .home-faq {
+  max-width: 860px;
+  margin: 88px auto 0;
+  display: grid;
+  gap: 10px;
+}
+.redesign .home-faq h2 {
+  margin: 0 0 12px;
+  text-align: center;
+  font-size: var(--step-head);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+}
+.redesign .home-faq details {
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.18);
+}
+.redesign .home-faq summary {
+  list-style: none;
+  cursor: pointer;
+  min-height: 44px;
+  padding: 18px 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  font-weight: 700;
+  font-size: 1.0625rem;
+}
+.redesign .home-faq summary::-webkit-details-marker {
+  display: none;
+}
+.redesign .home-faq-chev {
+  flex: none;
+  color: var(--muted);
+}
+.redesign .home-faq details[open] .home-faq-chev {
+  rotate: 180deg;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .redesign .home-faq-chev {
+    transition: rotate 0.2s;
+  }
+}
+.redesign .home-faq details p {
+  margin: 0;
+  padding: 0 22px 20px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.redesign .home-faq summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 16px;
+}
+@media (max-width: 640px) {
+  .redesign .trust-line {
+    gap: 8px 18px;
+    font-size: 0.8125rem;
+  }
+  .redesign .home-faq {
+    margin-top: 64px;
+  }
+  .redesign .home-faq summary {
+    padding: 16px 18px;
+    font-size: 1rem;
+  }
+  .redesign .home-faq details p {
+    padding: 0 18px 18px;
+  }
+}

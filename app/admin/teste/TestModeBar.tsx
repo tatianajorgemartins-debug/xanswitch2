@@ -1,13 +1,10 @@
 import Link from 'next/link';
 
-type Design = 'current' | 'redesign' | 'novo';
-
-export default function TestModeBar({ view, design }: { view: 'digital' | 'fisico'; design: Design }) {
-  const href = (nextView: 'digital' | 'fisico', nextDesign: Design) => {
+export default function TestModeBar({ view, design }: { view: 'digital' | 'fisico'; design: 'current' | 'redesign' }) {
+  const href = (nextView: 'digital' | 'fisico', nextDesign: 'current' | 'redesign') => {
     const params = new URLSearchParams();
     if (nextView === 'digital') params.set('v', 'digital');
     if (nextDesign === 'current') params.set('d', 'atual');
-    if (nextDesign === 'novo') params.set('d', 'novo');
     const query = params.toString();
     return query ? `/admin/teste?${query}` : '/admin/teste';
   };
@@ -31,9 +28,6 @@ export default function TestModeBar({ view, design }: { view: 'digital' | 'fisic
         </Link>
         <Link href={href(view, 'current')} className={design === 'current' ? 'is-active' : ''}>
           Visual antigo
-        </Link>
-        <Link href={href('digital', 'novo')} className={design === 'novo' ? 'is-active' : ''}>
-          ✨ Novo layout
         </Link>
       </nav>
       <Link href="/admin" className="test-mode-bar-exit">
