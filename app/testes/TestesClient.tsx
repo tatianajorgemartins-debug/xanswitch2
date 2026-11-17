@@ -22,6 +22,7 @@ import { TESTES, comingSoonSlots, type TesteGame, type TesteId } from './games';
 import { diaEm, formatarContador, msAteProximoDia } from '@/lib/jogos/dia';
 import { resultadoDoDia, sequenciaGeralHoje } from '@/lib/jogos/progresso';
 import { OCARINA_ENABLED } from '@/lib/siteSections';
+import { OC_FONTES } from './ocarina-hero/fontes';
 
 const NIVEIS_SILHUETA = ['facil', 'medio', 'dificil', 'insano'];
 import './testes.css';
@@ -148,6 +149,8 @@ export default function TestesClient({
           </div>
         </section>
 
+        {!OCARINA_ENABLED && <OcarinaEmBreve />}
+
         <ul className="testes-grid">
           {games.map((game, i) => (
             <li key={game.id} style={{ '--i': i } as React.CSSProperties}>
@@ -267,6 +270,65 @@ function TesteCard({
     <button type="button" className={`teste-card theme-${game.theme}`} onClick={onPlay} aria-label={`Jogar: ${game.title}`}>
       {conteudo}
     </button>
+  );
+}
+
+// Banner do Ocarina Hero enquanto ele não abre (some sozinho quando
+// OCARINA_ENABLED, em lib/siteSections.ts, virar true). A pista é a mesma do
+// jogo, com notas descendo até os anéis.
+const OC_UI = '/jogos/ocarina/ui/';
+// pista (0–4), cor e atraso de cada nota que desce no banner
+const NOTAS_BANNER: [number, string, number][] = [
+  [0, '#38d96a', 0],
+  [2, '#ff4d5e', 0.45],
+  [4, '#3d8bff', 0.9],
+  [1, '#ffd23e', 1.35],
+  [3, '#b06bff', 1.8],
+  [2, '#ff4d5e', 2.25]
+];
+// centro de cada pista (% da imagem), lá no fundo e na linha dos anéis
+const PISTA_FUNDO = [38.9, 44.5, 50.1, 55.7, 61.3];
+const PISTA_ACERTO = [19.2, 34.7, 50.1, 65.6, 81];
+
+function OcarinaEmBreve() {
+  return (
+    <section className={`oc-breve ${OC_FONTES}`} aria-label="Ocarina Hero: em breve">
+      <div className="oc-breve-texto">
+        <p className="oc-breve-selo">
+          <span aria-hidden="true" />
+          Em breve
+        </p>
+        <h2 className="oc-breve-titulo">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`${OC_UI}brasao.webp`} alt="" width={220} height={131} decoding="async" />
+          Ocarina Hero
+        </h2>
+        <p className="oc-breve-sub">
+          O novo jogo de ritmo da XAN: as notas descem pela pista e você toca no tempo da música. Músicas de Zelda e uma Música do
+          Dia nova todo dia.
+        </p>
+        <ul className="oc-breve-info">
+          <li>🎵 Músicas de Zelda</li>
+          <li>📅 Música do Dia</li>
+          <li>📱 Celular e computador</li>
+        </ul>
+      </div>
+      <div className="oc-breve-pista" aria-hidden="true">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={`${OC_UI}banner-pista.webp`} alt="" width={820} height={443} decoding="async" />
+        {PISTA_ACERTO.map((x, i) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={i} className="oc-breve-anel" src={`${OC_UI}anel-vazio.webp`} alt="" style={{ left: `${x}%` }} decoding="async" />
+        ))}
+        {NOTAS_BANNER.map(([p, cor, d], i) => (
+          <i
+            key={i}
+            className="oc-breve-nota"
+            style={{ '--cor': cor, '--x0': `${PISTA_FUNDO[p]}%`, '--x1': `${PISTA_ACERTO[p]}%`, '--d': `${d}s` } as React.CSSProperties}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 

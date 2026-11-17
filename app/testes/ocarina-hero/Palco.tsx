@@ -75,6 +75,7 @@ export default function Palco({
     const coarse = window.matchMedia('(pointer: coarse)').matches;
     setToque(coarse);
     if (!canvas.current) return;
+    ultimo.current = {};
     const hud = (h: HudMotor) => {
       const u = ultimo.current;
       if (u.pontos !== h.pontos && pontosEl.current) pontosEl.current.textContent = String(h.pontos).padStart(6, '0').replace(/(\d{3})(\d{3})$/, '$1 $2');
@@ -103,7 +104,10 @@ export default function Palco({
       if (u.duracao !== h.duracao && progTotal.current) progTotal.current.textContent = formatarDuracao(h.duracao);
       const prog = Math.round(Math.max(0, Math.min(1, h.tempo / Math.max(1, h.duracao))) * 1000) / 10;
       if (u.prog !== prog && progBarra.current) progBarra.current.style.setProperty('--p', `${prog}%`);
-      ultimo.current = { ...h, seg, prog };
+      // guarda o que foi mostrado (copiando: o motor reaproveita o objeto)
+      Object.assign(u, h);
+      u.seg = seg;
+      u.prog = prog;
     };
     const m = new MotorOcarina(canvas.current, chart, som, {
       latencia,

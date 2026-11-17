@@ -361,15 +361,20 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
     // Forma de onda
     if (picos) {
       const meio = REGUA + ONDA / 2;
+      // todas as colunas num caminho só e um fill (bem mais leve que um
+      // fillRect por pixel, já que isso roda a cada quadro tocando)
       g.fillStyle = 'rgba(160, 120, 255, 0.55)';
+      g.beginPath();
       for (let x = ESQ; x < largura; x++) {
         const a = Math.floor(tDe(x) * PICOS_POR_SEG);
+        if (a >= picos.length) break;
         const b = Math.max(a + 1, Math.floor(tDe(x + 1) * PICOS_POR_SEG));
         let m = 0;
         for (let i = Math.max(0, a); i < Math.min(picos.length, b); i++) if (picos[i] > m) m = picos[i];
         const h = Math.max(1, m * (ONDA - 8));
-        g.fillRect(x, meio - h / 2, 1, h);
+        g.rect(x, meio - h / 2, 1, h);
       }
+      g.fill();
     } else {
       g.fillStyle = 'rgba(220,210,255,0.4)';
       g.font = '700 12px system-ui, sans-serif';
@@ -565,10 +570,12 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
         }
       }
       if (palmas && !gravandoVivo) {
-        const feitos = new Set<number>(); // acorde = um clique só
+        let feitos: Set<number> | null = null; // acorde = um clique só
         for (const n of notasRef.current) {
+          if (n.t < t.agendado || n.t >= ate) continue;
           const ms = Math.round(n.t * 1000);
-          if (n.t >= t.agendado && n.t < ate && !feitos.has(ms)) {
+          feitos ??= new Set<number>();
+          if (!feitos.has(ms)) {
             feitos.add(ms);
             clique(quando(n.t), false, 'palma');
           }

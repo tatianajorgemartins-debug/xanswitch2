@@ -95,7 +95,6 @@ export function lerTeclas(): MapaTeclas {
 
 export default function OcarinaClient({ charts }: { charts: Chart[] }) {
   const [dia, setDia] = useState<string | null>(null);
-  const [restante, setRestante] = useState(0);
   const [editor, setEditor] = useState(false);
   const [tela, setTela] = useState<Tela>({ tipo: 'menu' });
   const [teclas, setTeclas] = useState<MapaTeclas>(TECLAS_PADRAO);
@@ -123,7 +122,6 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
     const tick = () => {
       const d = diaEm();
       setDia((a) => (a === d ? a : d));
-      setRestante(msAteProximoDia());
     };
     tick();
     const t = window.setInterval(tick, 1000);
@@ -295,7 +293,6 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
           doDia={doDia}
           dia={dia}
           feitoHoje={feitoHoje}
-          restante={restante}
           recordes={recordes}
           liberado={liberado}
           teclas={teclas}
@@ -345,7 +342,6 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
           numero={dia ? numeroDoDia(dia, INICIO) : null}
           dia={dia}
           sequencia={geral.atual}
-          restante={restante}
           onDeNovo={() => jogar(tela.chart, false)}
           onMenu={() => setTela({ tipo: 'menu' })}
         />
@@ -378,6 +374,19 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
   );
 }
 
+// Contador até a próxima Música do Dia. Só ele atualiza a cada segundo
+// (antes a tela inteira do jogo re-renderizava junto).
+function Contador() {
+  const [ms, setMs] = useState<number | null>(null);
+  useEffect(() => {
+    const tick = () => setMs(msAteProximoDia());
+    tick();
+    const t = window.setInterval(tick, 1000);
+    return () => window.clearInterval(t);
+  }, []);
+  return <>{ms === null ? '--:--:--' : formatarContador(ms)}</>;
+}
+
 // ---------- Menu ----------
 
 function Menu({
@@ -385,7 +394,6 @@ function Menu({
   doDia,
   dia,
   feitoHoje,
-  restante,
   recordes,
   liberado,
   teclas,
@@ -403,7 +411,6 @@ function Menu({
   doDia: Chart | null;
   dia: string | null;
   feitoHoje: ReturnType<typeof resultadoDoDia>;
-  restante: number;
   recordes: Recordes;
   liberado: boolean;
   teclas: MapaTeclas;
@@ -454,7 +461,7 @@ function Menu({
             </button>
           )}
           <p className="oc-dia-proxima">
-            Próxima música em <strong>{formatarContador(restante)}</strong>
+            Próxima música em <strong><Contador /></strong>
           </p>
         </section>
       )}
@@ -686,7 +693,6 @@ function Resultado({
   numero,
   dia,
   sequencia,
-  restante,
   onDeNovo,
   onMenu
 }: {
@@ -697,7 +703,6 @@ function Resultado({
   numero: number | null;
   dia: string | null;
   sequencia: number;
-  restante: number;
   onDeNovo: () => void;
   onMenu: () => void;
 }) {
@@ -757,7 +762,7 @@ function Resultado({
       {aviso && <p className="oc-aviso">{aviso}</p>}
       {diario && (
         <p className="oc-dia-proxima">
-          Próxima Música do Dia em <strong>{formatarContador(restante)}</strong>
+          Próxima Música do Dia em <strong><Contador /></strong>
         </p>
       )}
       <Link className="oc-loja" href="/franquia/Legend%20Of%20Zelda">

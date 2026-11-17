@@ -79,6 +79,12 @@ Imagens em `public/jogos/ocarina/ui/` (geradas a partir de
 `Jogos interativos\OCARINA HERO\elementos`). A pista e as notas são desenhadas em
 `app/testes/ocarina-hero/motor.ts`; placar, combo, corações e progresso em `Palco.tsx`.
 
+## Abrir o Ocarina Hero pro público
+
+Enquanto `OCARINA_ENABLED` (em `lib/siteSections.ts`) estiver `false`, a página /testes mostra o
+banner "Em breve" e o jogo só abre no computador de teste. Mudou pra `true`: o banner some e
+entra o card do jogo, sozinho.
+
 ## Outras coisas
 
 - **Admin › 🕹️ Jogos interativos**: todas as partidas (com ou sem conta) e a moderação do feed
