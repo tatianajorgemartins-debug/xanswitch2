@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Só no "npm run dev": deixa abrir o site pelo celular na mesma rede Wi-Fi
+  // (http://IP-do-computador:3000). Não afeta o site publicado.
+  allowedDevOrigins: ['192.168.*.*', '*.lhr.life', '*.app.lhr.life'],
   experimental: {
     serverActions: {
       bodySizeLimit: '20mb'

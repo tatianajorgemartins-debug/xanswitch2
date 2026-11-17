@@ -285,6 +285,49 @@
   gap: 10px;
   margin-top: 22px;
 }
+/* Precisão (Folgada / Normal / Exata) */
+.redesign .oc-precisao {
+  margin-top: 22px;
+}
+.redesign .oc-precisao p {
+  margin: 0 0 8px;
+  font-weight: 800;
+}
+.redesign .oc-precisao p small {
+  color: var(--muted);
+  font-weight: 600;
+}
+.redesign .oc-precisao div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.redesign .oc-precisao button {
+  display: grid;
+  gap: 2px;
+  padding: 10px 8px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.22);
+}
+.redesign .oc-precisao button small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.redesign .oc-precisao button.is-on {
+  background: var(--accent-fill);
+  color: var(--accent-ink);
+  box-shadow: none;
+}
+.redesign .oc-precisao button.is-on small {
+  color: inherit;
+  opacity: 0.85;
+}
 .redesign .oc-dica,
 .redesign .oc-detalhe {
   margin: 14px 0 0;
@@ -294,71 +337,448 @@
   text-align: center;
 }
 
-/* ---------- Partida em tela cheia ---------- */
+/* ---------- Partida em tela cheia (palco da floresta) ---------- */
 .oc-jogo {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  background:
-    radial-gradient(60% 50% at 50% 0%, rgba(123, 47, 240, 0.45), transparent 70%),
-    linear-gradient(180deg, #0b0618, #160b33 70%, #1d0e44);
   color: #fff;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
-.oc-jogo-barra {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: max(8px, env(safe-area-inset-top)) 12px 4px;
-  font-weight: 800;
-  font-size: 14px;
-}
-.oc-jogo-titulo {
+.oc-palco {
+  position: absolute;
+  inset: 0;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.oc-jogo .oc-dif {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--dif) 22%, transparent);
-  color: var(--dif);
-  font-size: 11px;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-.oc-jogo-pausa {
-  flex: none;
-  width: 42px;
-  height: 42px;
-  border: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(180deg, rgba(4, 14, 8, 0.55), rgba(4, 14, 8, 0) 22%, rgba(4, 14, 8, 0) 70%, rgba(4, 14, 8, 0.6)),
+    url('/jogos/ocarina/ui/cenario.webp') center 40% / cover no-repeat,
+    #0d1f12;
   color: #fff;
-  font-size: 14px;
-  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.oc-palco img {
+  display: block;
+  pointer-events: none;
+  -webkit-user-drag: none;
 }
 .oc-canvas {
   display: block;
-  flex: 1;
   width: 100%;
-  min-height: 0;
+  height: 100%;
 }
+.oc-palco .oc-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+/* Texto dourado (Cinzel) */
+.oc-hud-jogo,
+.oc-hud-pontos span,
+.oc-hud-combo-num strong,
+.oc-hud-combo-txt,
+.oc-hud-mult span {
+  font-family: var(--oc-cinzel), Georgia, serif;
+  font-weight: 700;
+  background: linear-gradient(180deg, #fffbea 10%, #f1d389 55%, #c8952f);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.55));
+}
+
+/* O site força a fonte padrão com !important (.redesign *): aqui vence. */
+.oc-palco .oc-hud-jogo,
+.oc-palco .oc-hud-pontos span,
+.oc-palco .oc-hud-combo-num strong,
+.oc-palco .oc-hud-combo-txt,
+.oc-palco .oc-hud-mult span,
+.oc-jogo .oc-pausa p {
+  font-family: var(--oc-cinzel), Georgia, serif !important;
+}
+.oc-palco .oc-hud-musica,
+.oc-palco .oc-hud-prog,
+.oc-palco .oc-hud-prog span {
+  font-family: var(--oc-cormorant), Georgia, serif !important;
+}
+
+.oc-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  --hud: clamp(0.62rem, 0.42rem + 0.7vmin, 1.15rem);
+  font-size: var(--hud);
+}
+
+/* Brasão + nome do jogo + música */
+.oc-hud-titulo {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left));
+  display: flex;
+  align-items: center;
+  gap: 0.9em;
+  max-width: 44%;
+}
+.oc-hud-brasao {
+  width: 5.2em;
+  flex: none;
+  padding-right: 0.9em;
+  border-right: 1px solid rgba(232, 196, 110, 0.55);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+.oc-hud-titulo > div {
+  min-width: 0;
+}
+.oc-hud-titulo p {
+  margin: 0;
+}
+.oc-hud-jogo {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  font-size: 1.75em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  line-height: 1.1;
+}
+.oc-hud-dif {
+  padding: 0.2em 0.6em;
+  border: 1px solid color-mix(in srgb, var(--dif) 70%, transparent);
+  border-radius: 999px;
+  background: rgba(8, 20, 12, 0.6);
+  color: var(--dif);
+  -webkit-text-fill-color: var(--dif);
+  font-family: system-ui, sans-serif;
+  font-size: 0.42em;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+.oc-hud-etiqueta {
+  color: #e8c46e;
+  font-size: 0.8em;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.oc-hud-musica {
+  overflow: hidden;
+  color: #fbf1d6;
+  font-family: var(--oc-cormorant), Georgia, serif;
+  font-size: 1.75em;
+  font-style: italic;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+}
+
+/* Triforce no topo, ao centro */
+.oc-hud-tri {
+  position: absolute;
+  top: max(8px, env(safe-area-inset-top));
+  left: 50%;
+  width: 17em;
+  max-width: 28vw;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+
+/* Placar e corações (canto direito, ao lado da pausa) */
+.oc-hud-dir {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  right: calc(max(12px, env(safe-area-inset-right)) + 4.6em);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5em;
+}
+.oc-hud-pontos {
+  display: grid;
+  place-items: center;
+  width: 13em;
+  aspect-ratio: 520 / 120;
+  background: url('/jogos/ocarina/ui/placa-pontos.webp') center / 100% 100% no-repeat;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5));
+}
+.oc-hud-pontos span {
+  font-size: 2.05em;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.oc-hud-coracoes {
+  display: flex;
+  gap: 0.35em;
+}
+.oc-hud-coracao {
+  position: relative;
+  width: 2.3em;
+}
+.oc-hud-coracao img {
+  width: 100%;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
+}
+.oc-hud-coracao img.is-vazio {
+  filter: grayscale(1) brightness(0.35) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
+  opacity: 0.85;
+}
+.oc-hud-coracao > span {
+  position: absolute;
+  inset: 0;
+  transition: clip-path 0.25s ease;
+}
+.oc-hud-pausa {
+  position: absolute;
+  z-index: 3;
+  top: max(10px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  width: clamp(36px, 3.6em, 62px);
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: clamp(0.62rem, 0.42rem + 0.7vmin, 1.15rem);
+  cursor: pointer;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5));
+}
+.oc-hud-pausa img {
+  width: 100%;
+}
+.oc-hud-pausa:hover {
+  filter: drop-shadow(0 0 8px rgba(255, 214, 120, 0.6));
+}
+
+/* Combo + multiplicador (lado direito) */
+.oc-hud-combo {
+  position: absolute;
+  top: 26%;
+  right: max(14px, env(safe-area-inset-right));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 11em;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.oc-hud-combo.is-on {
+  opacity: 1;
+}
+.oc-hud-combo-num {
+  display: flex;
+  align-items: center;
+  gap: 0.2em;
+}
+.oc-hud-combo-num img {
+  width: 2.4em;
+  margin-top: 1.4em;
+}
+.oc-hud-combo-num strong {
+  display: inline-block;
+  min-width: 1.2em;
+  font-size: 4.4em;
+  line-height: 1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.oc-hud-combo-num strong.is-pulo {
+  animation: oc-pulo 0.18s ease-out;
+}
+@keyframes oc-pulo {
+  0% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.oc-hud-combo-txt {
+  margin-top: -0.1em;
+  font-size: 1.7em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.oc-hud-mult {
+  display: grid;
+  place-items: center;
+  width: 11em;
+  margin-top: 0.5em;
+  aspect-ratio: 520 / 137;
+  background: url('/jogos/ocarina/ui/placa-mult.webp') center / 100% 100% no-repeat;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5));
+}
+.oc-hud-mult span {
+  font-size: 1.8em;
+  line-height: 1;
+}
+.oc-hud-mult.is-alto {
+  filter: drop-shadow(0 0 10px rgba(255, 214, 120, 0.7));
+}
+
+/* Barra de progresso */
+.oc-hud-prog {
+  position: absolute;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(8px, env(safe-area-inset-bottom));
+  left: max(16px, env(safe-area-inset-left));
+  display: flex;
+  align-items: center;
+  gap: 1em;
+  color: #fbf1d6;
+  font-family: var(--oc-cormorant), Georgia, serif;
+  font-size: 1.35em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+.oc-hud-barra {
+  --p: 0%;
+  position: relative;
+  flex: 1;
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(30, 24, 10, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(232, 196, 110, 0.45);
+}
+.oc-hud-barra::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--p);
+  border-radius: 4px;
+  background: linear-gradient(90deg, #a87a26, #f6dd96);
+  box-shadow: 0 0 6px rgba(255, 214, 120, 0.6);
+}
+.oc-hud-barra::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: var(--p);
+  width: 12px;
+  height: 12px;
+  border: 1px solid #fff3cf;
+  background: linear-gradient(135deg, #fff3cf, #d6a43c);
+  transform: translate(-50%, -50%) rotate(45deg);
+  box-shadow: 0 0 8px rgba(255, 214, 120, 0.8);
+}
+
+/* Toques (invisíveis, em cima das pistas) */
+.oc-palco .oc-zonas {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  padding: 0;
+}
+.oc-palco .oc-zona {
+  height: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  touch-action: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.oc-palco .oc-zona:active {
+  background: transparent;
+}
+
+/* Celular em pé: HUD em cima da pista */
+@media (orientation: portrait) {
+  .oc-hud {
+    --hud: clamp(0.6rem, 2.4vw, 0.95rem);
+  }
+  .oc-hud-titulo {
+    max-width: calc(100% - 6em);
+  }
+  .oc-palco .oc-hud-tri {
+    display: none;
+  }
+  .oc-hud-dir {
+    top: calc(max(10px, env(safe-area-inset-top)) + 6.4em);
+    right: auto;
+    left: max(12px, env(safe-area-inset-left));
+    flex-direction: row;
+    gap: 1em;
+  }
+  .oc-hud-combo {
+    top: calc(max(10px, env(safe-area-inset-top)) + 5.6em);
+    right: max(10px, env(safe-area-inset-right));
+    width: 9em;
+    font-size: 0.85em;
+  }
+}
+/* Celular deitado (pouca altura) */
+@media (orientation: landscape) and (max-height: 500px) {
+  .oc-hud {
+    --hud: clamp(0.5rem, 2.2vh, 0.8rem);
+  }
+  .oc-palco .oc-hud-tri {
+    display: none;
+  }
+  .oc-hud-musica,
+  .oc-hud-jogo {
+    font-size: 1.4em;
+  }
+}
+
+/* Pausa */
+.oc-pausa {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(4, 14, 8, 0.78);
+  backdrop-filter: blur(6px);
+}
+.oc-pausa p {
+  margin: 0 0 8px;
+  color: #f6dd96;
+  font-family: var(--oc-cinzel), Georgia, serif;
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.oc-pausa .oc-botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 240px;
+  min-height: 48px;
+  padding: 11px 20px;
+  border: 1px solid rgba(232, 196, 110, 0.55);
+  border-radius: 12px;
+  background: rgba(14, 32, 18, 0.85);
+  color: #fbf1d6;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.oc-pausa .oc-botao.is-principal {
+  background: linear-gradient(180deg, #f6dd96, #c8952f);
+  color: #1e1606;
+}
+
+/* Botões do editor antigo (?editor=1) */
 .oc-zonas {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
   width: min(96%, 600px);
   margin: 0 auto;
-  padding: 6px 0 max(10px, env(safe-area-inset-bottom));
 }
 .oc-zona {
   height: 52px;
@@ -367,63 +787,9 @@
   background: color-mix(in srgb, var(--cor) 20%, rgba(255, 255, 255, 0.04));
   color: var(--cor);
   font: inherit;
-  font-size: 15px;
   font-weight: 900;
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--cor) 60%, transparent);
-  touch-action: none;
   cursor: pointer;
-}
-.oc-zona:active {
-  background: color-mix(in srgb, var(--cor) 55%, transparent);
-  color: #120a26;
-}
-.oc-zonas.is-toque .oc-zona {
-  height: 84px;
-  font-size: 18px;
-}
-.oc-pausa {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  background: rgba(8, 4, 20, 0.82);
-  backdrop-filter: blur(6px);
-}
-.oc-pausa p {
-  margin: 0 0 8px;
-  font-size: 2rem;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-.oc-pausa .oc-botao {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 220px;
-  min-height: 48px;
-  padding: 11px 20px;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  font: inherit;
-  font-weight: 800;
-  cursor: pointer;
-}
-.oc-pausa .oc-botao.is-principal {
-  background: #7b2ff0;
-}
-/* Celular deitado: botões menores pra pista caber. */
-@media (orientation: landscape) and (max-height: 500px) {
-  .oc-zonas.is-toque .oc-zona {
-    height: 60px;
-  }
-  .oc-jogo-barra {
-    padding-top: 4px;
-  }
 }
 
 /* ---------- Resultado ---------- */
@@ -661,4 +1027,123 @@
   .redesign .oc-cal-alvo.is-batida {
     animation: none;
   }
+}
+
+/* ---------- Painel de músicas (Todas / Novas / Por jogo) ---------- */
+.redesign .oc-livre-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 26px 0 12px;
+}
+.redesign .oc-livre-topo h2 {
+  margin: 0;
+}
+.redesign .oc-busca {
+  flex: 1 1 200px;
+  max-width: 300px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.3);
+}
+.redesign .oc-abas {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.redesign .oc-abas button {
+  flex: none;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.22);
+}
+.redesign .oc-abas button.is-on {
+  background: var(--accent-fill);
+  color: var(--accent-ink);
+  box-shadow: none;
+}
+.redesign .oc-grupo h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 10px;
+  font-size: 1rem;
+  font-weight: 900;
+}
+.redesign .oc-grupo h3 span {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+}
+.redesign .oc-musica-topo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+.redesign .oc-musica-dur {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.redesign .oc-nova {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--promo);
+  color: var(--promo-ink);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.redesign .oc-musica-jogo {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+.redesign .oc-carregando {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(8, 4, 20, 0.85);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+.redesign .oc-carregando-icone {
+  font-size: 2rem;
+  animation: oc-pulsa 1s ease-in-out infinite;
+}
+.redesign .oc-erro {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(255, 77, 94, 0.14);
+  color: #ff9ba5;
+  font-weight: 700;
 }

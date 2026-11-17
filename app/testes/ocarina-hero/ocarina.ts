@@ -8,28 +8,29 @@ export const INICIO = '2026-11-16';
 
 // ---------- Pistas e escala (o único lugar onde ficam as alturas) ----------
 
-export type PistaId = 'A' | 'C_baixo' | 'C_dir' | 'C_esq' | 'C_cima';
+export type PistaId = 'verde' | 'amarelo' | 'vermelho' | 'roxo' | 'azul';
 
 export type Pista = {
   id: PistaId;
   rotulo: string;
-  // seta desenhada na nota (null = botão A)
-  seta: 'baixo' | 'direita' | 'esquerda' | 'cima' | null;
   cor: string;
-  // nota da escala da ocarina (nome e frequência em Hz)
+  // nota da ocarina tocada ao acertar (só nas músicas sem áudio próprio)
   nota: string;
 };
 
-// Da esquerda pra direita na tela. A em azul; os botões C em dourado.
+// Da esquerda pra direita na tela: verde, amarelo, vermelho, roxo e azul.
 export const PISTAS: Pista[] = [
-  { id: 'A', rotulo: 'A', seta: null, cor: '#3d8bff', nota: 'D4' },
-  { id: 'C_baixo', rotulo: 'C↓', seta: 'baixo', cor: '#ffc93c', nota: 'F4' },
-  { id: 'C_dir', rotulo: 'C→', seta: 'direita', cor: '#ffc93c', nota: 'A4' },
-  { id: 'C_esq', rotulo: 'C←', seta: 'esquerda', cor: '#ffc93c', nota: 'B4' },
-  { id: 'C_cima', rotulo: 'C↑', seta: 'cima', cor: '#ffc93c', nota: 'D5' }
+  { id: 'verde', rotulo: 'Verde', cor: '#38d96a', nota: 'D4' },
+  { id: 'amarelo', rotulo: 'Amarelo', cor: '#ffd23e', nota: 'F4' },
+  { id: 'vermelho', rotulo: 'Vermelho', cor: '#ff4d5e', nota: 'A4' },
+  { id: 'roxo', rotulo: 'Roxo', cor: '#b06bff', nota: 'B4' },
+  { id: 'azul', rotulo: 'Azul', cor: '#3d8bff', nota: 'D5' }
 ];
 
-export const indicePista = (id: string) => PISTAS.findIndex((p) => p.id === id);
+// Nomes antigos das pistas (A e botões C) → cores, pra arquivos antigos.
+const PISTAS_ANTIGAS: Record<string, PistaId> = { A: 'verde', C_baixo: 'amarelo', C_dir: 'vermelho', C_esq: 'roxo', C_cima: 'azul' };
+
+export const indicePista = (id: string) => PISTAS.findIndex((p) => p.id === (PISTAS_ANTIGAS[id] ?? id));
 
 // "D4", "F#5", "Bb3" → Hz (lá 440).
 export function frequencia(nota: string): number {
@@ -62,8 +63,18 @@ export type NotaChart = {
 export type Chart = {
   id: string;
   titulo: string;
+  // De qual jogo é a música (agrupa a lista "Por jogo"). Ex: "Ocarina of Time".
+  jogo?: string;
   bpm: number;
+  // Onde cai o 1º tempo do 1º compasso, em segundos (grade do editor).
+  inicioBatida?: number;
   dificuldade: Dificuldade;
+  // Áudio da música (mp3/aac). Sem áudio, o jogo toca a ocarina em cada
+  // acerto com um metrônomo de fundo (as músicas originais da XAN).
+  audio?: string;
+  duracaoAudio?: number;
+  // Quando foi publicada (pra lista de "Novas").
+  publicadaEm?: string;
   // nota grave do acompanhamento (opcional, padrão D2)
   tom?: string;
   // "AAAA-MM-DD": só entra no sorteio da Música do Dia a partir desse dia
@@ -84,18 +95,25 @@ export function validarChart(raw: unknown): Chart | null {
     if (!n || typeof n.t !== 'number' || indicePista(String(n.pista)) < 0) continue;
     notas.push({
       t: n.t,
-      pista: n.pista as PistaId,
+      pista: PISTAS[indicePista(String(n.pista))].id,
       ...(typeof n.dur === 'number' && n.dur > 0.05 ? { dur: n.dur } : {}),
       ...(typeof n.nota === 'string' ? { nota: n.nota } : {})
     });
   }
   if (!notas.length) return null;
   notas.sort((a, b) => a.t - b.t);
+  const texto = (k: string) => (typeof c[k] === 'string' && c[k] ? { [k]: c[k] as string } : {});
+  const numero = (k: string) => (typeof c[k] === 'number' && Number.isFinite(c[k]) ? { [k]: c[k] as number } : {});
   return {
     id: c.id,
     titulo: c.titulo,
     bpm: c.bpm,
     dificuldade,
+    ...texto('jogo'),
+    ...texto('audio'),
+    ...texto('publicadaEm'),
+    ...numero('duracaoAudio'),
+    ...numero('inicioBatida'),
     ...(typeof c.tom === 'string' ? { tom: c.tom } : {}),
     ...(typeof c.ativo_desde === 'string' ? { ativo_desde: c.ativo_desde } : {}),
     ...(c.ativo === false ? { ativo: false } : {}),
@@ -107,10 +125,36 @@ export function duracaoChart(c: Chart): number {
   return Math.max(...c.notas.map((n) => n.t + (n.dur ?? 0)));
 }
 
+// Duração total pra mostrar na lista (o áudio, se tiver; senão as notas).
+export function duracaoMusica(c: Chart): number {
+  return c.duracaoAudio ?? duracaoChart(c) + 1;
+}
+
+export function formatarDuracao(s: number): string {
+  const t = Math.max(0, Math.round(s));
+  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+}
+
+// "Nova" = publicada nos últimos 14 dias.
+export function ehNova(c: Chart, agora = Date.now()): boolean {
+  return Boolean(c.publicadaEm) && agora - new Date(c.publicadaEm!).getTime() < 14 * 86_400_000;
+}
+
+// Músicas sem jogo definido (as originais) entram neste grupo.
+export const JOGO_ORIGINAIS = 'Originais XAN';
+
 // ---------- Pontuação ----------
 
-export const JANELA_PERFEITO = 0.045;
-export const JANELA_BOM = 0.09;
+// Precisão (escolhida pelo jogador no menu): quanto antes/depois do tempo
+// certo o toque ainda vale. "perfeito" e "bom" em segundos, pra cada lado.
+export type Precisao = 'folgada' | 'normal' | 'exata';
+export const PRECISOES: Record<Precisao, { nome: string; dica: string; perfeito: number; bom: number }> = {
+  folgada: { nome: 'Folgada', dica: 'mais fácil de acertar', perfeito: 0.075, bom: 0.16 },
+  normal: { nome: 'Normal', dica: 'o padrão', perfeito: 0.06, bom: 0.125 },
+  exata: { nome: 'Exata', dica: 'pra quem quer desafio', perfeito: 0.045, bom: 0.09 }
+};
+export const PRECISAO_PADRAO: Precisao = 'normal';
+export const ehPrecisao = (v: unknown): v is Precisao => typeof v === 'string' && v in PRECISOES;
 export const PONTOS_PERFEITO = 50;
 export const PONTOS_BOM = 30;
 
@@ -163,10 +207,20 @@ export function textoCompartilhar(o: { numero: number | null; chart: Chart; r: R
 
 export type MapaTeclas = Record<PistaId, string>;
 
-// Teclas padrão (event.code): A S J K L, da esquerda pra direita. As setas
-// e o espaço funcionam sempre, como alternativa.
-export const TECLAS_PADRAO: MapaTeclas = { A: 'KeyA', C_baixo: 'KeyS', C_dir: 'KeyJ', C_esq: 'KeyK', C_cima: 'KeyL' };
-export const TECLAS_ALTERNATIVAS: MapaTeclas = { A: 'Space', C_baixo: 'ArrowDown', C_dir: 'ArrowRight', C_esq: 'ArrowLeft', C_cima: 'ArrowUp' };
+// Teclas padrão (event.code): A S J K L, da esquerda pra direita. Os
+// números 1 a 5 funcionam sempre, como alternativa.
+export const TECLAS_PADRAO: MapaTeclas = { verde: 'KeyA', amarelo: 'KeyS', vermelho: 'KeyJ', roxo: 'KeyK', azul: 'KeyL' };
+export const TECLAS_ALTERNATIVAS: MapaTeclas = { verde: 'Digit1', amarelo: 'Digit2', vermelho: 'Digit3', roxo: 'Digit4', azul: 'Digit5' };
+
+// Teclas salvas no formato antigo (A/C) → cores.
+export function migrarTeclas(t: Record<string, string>): Partial<MapaTeclas> {
+  const r: Partial<MapaTeclas> = {};
+  for (const [k, v] of Object.entries(t)) {
+    const i = indicePista(k);
+    if (i >= 0 && typeof v === 'string') r[PISTAS[i].id] = v;
+  }
+  return r;
+}
 
 // Pista da tecla apertada (teclas escolhidas + setas/espaço); -1 se nenhuma.
 export function pistaDaTecla(code: string, teclas: MapaTeclas): number {

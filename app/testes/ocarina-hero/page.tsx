@@ -1,56 +1,61 @@
 import type { Metadata } from 'next';
-import fs from 'node:fs';
-import path from 'node:path';
 import { ViewTransition } from 'react';
 import { redirect } from 'next/navigation';
 import { OCARINA_ENABLED } from '@/lib/siteSections';
 import SiteShell from '@/app/SiteShell';
 import { buildWhatsAppContactLink } from '@/lib/whatsapp';
+import { getPublishedOcarinaSongs } from '@/lib/ocarinaDb';
 import JogoCabecalho from '../JogoCabecalho';
 import OcarinaClient from './OcarinaClient';
 import { validarChart, type Chart } from './ocarina';
+import { ORIGINAIS } from './originais';
 
-// "Ocarina Hero": jogo de ritmo com a ocarina. As músicas são os arquivos
-// .json de data/jogos/ocarina (crie novas pelo modo gravar:
-// /testes/ocarina-hero?editor=1). A página é gerada na publicação do site,
-// então música nova entra quando o site é publicado de novo.
-export const dynamic = 'force-static';
+// "Ocarina Hero": jogo de ritmo. Músicas = as 6 originais (originais.ts) +
+// as publicadas no admin (aba "Ocarina Hero", tabela ocarina_songs).
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: 'Ocarina Hero — XAN Switch',
-  description: 'Toque a ocarina no ritmo! Jogo de ritmo com músicas originais e uma Música do Dia nova todo dia.',
+  description: 'Jogo de ritmo da XAN Switch: toque as notas no tempo da música. Música do Dia nova todo dia.',
   openGraph: {
     title: 'Ocarina Hero — XAN Switch',
-    description: 'Toque a ocarina no ritmo. Música do Dia nova todo dia.',
+    description: 'Toque as notas no tempo da música. Música do Dia nova todo dia.',
     images: ['/opengraph-image.jpg']
   }
 };
 
-function lerCharts(): Chart[] {
-  const pasta = path.join(process.cwd(), 'data', 'jogos', 'ocarina');
-  const charts: Chart[] = [];
-  for (const arquivo of fs.readdirSync(pasta).filter((f) => f.endsWith('.json')).sort()) {
-    try {
-      const c = validarChart(JSON.parse(fs.readFileSync(path.join(pasta, arquivo), 'utf8')));
-      if (c) charts.push(c);
-      else console.warn(`[ocarina] Música inválida, ignorada: ${arquivo}`);
-    } catch (err) {
-      console.warn(`[ocarina] Não consegui ler ${arquivo}:`, err);
-    }
-  }
-  const ordem = { facil: 0, medio: 1, dificil: 2, insano: 3 };
-  return charts.sort((a, b) => ordem[a.dificuldade] - ordem[b.dificuldade] || a.titulo.localeCompare(b.titulo, 'pt-BR'));
+async function musicasDoAdmin(): Promise<Chart[]> {
+  const rows = await getPublishedOcarinaSongs().catch(() => []);
+  return rows
+    .map((m) =>
+      validarChart({
+        id: `m${m.id}`,
+        titulo: m.title,
+        jogo: m.game || 'Outros',
+        bpm: m.bpm,
+        inicioBatida: m.beat_offset,
+        dificuldade: m.difficulty,
+        audio: m.audio_url,
+        duracaoAudio: m.audio_duration ?? undefined,
+        publicadaEm: m.published_at ? new Date(m.published_at).toISOString() : undefined,
+        ativo_desde: m.active_from ?? undefined,
+        notas: m.notes
+      })
+    )
+    .filter((c): c is Chart => c !== null);
 }
 
-export default function OcarinaPage() {
-  // Guardado por enquanto (lib/siteSections.ts). No computador de teste
-  // (npm run dev) continua abrindo, pra dar pra refinar.
-  if (!OCARINA_ENABLED && process.env.NODE_ENV === 'production') redirect('/testes');
+export default async function OcarinaPage() {
+  // Guardado por enquanto (lib/siteSections.ts): só o site oficial (Vercel,
+  // produção) manda de volta pra /testes. No computador de teste (dev ou
+  // build local) continua abrindo, pra dar pra refinar.
+  if (!OCARINA_ENABLED && process.env.VERCEL_ENV === 'production') redirect('/testes');
+  const charts = [...(await musicasDoAdmin()), ...ORIGINAIS];
   return (
     <SiteShell>
       <ViewTransition>
         <JogoCabecalho whatsappContactUrl={buildWhatsAppContactLink()}>
-          <OcarinaClient charts={lerCharts()} />
+          <OcarinaClient charts={charts} />
         </JogoCabecalho>
       </ViewTransition>
     </SiteShell>

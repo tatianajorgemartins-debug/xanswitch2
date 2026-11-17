@@ -3,7 +3,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { estrelas, frequencia, multiplicador, pistaDaTecla, precisao, validarChart, TECLAS_PADRAO } from '../../app/testes/ocarina-hero/ocarina.ts';
+import { estrelas, frequencia, migrarTeclas, multiplicador, pistaDaTecla, precisao, validarChart, TECLAS_PADRAO } from '../../app/testes/ocarina-hero/ocarina.ts';
+
+test('pistas antigas (A/C) viram as cores', () => {
+  const c = validarChart({ id: 'x', titulo: 'X', bpm: 100, notas: [{ t: 1, pista: 'A' }, { t: 2, pista: 'C_cima', dur: 0.5 }] });
+  assert.deepEqual(
+    c?.notas.map((n) => n.pista),
+    ['verde', 'azul']
+  );
+});
 
 test('escala da ocarina', () => {
   assert.equal(Math.round(frequencia('A4')), 440);
@@ -24,8 +32,10 @@ test('pontuação: multiplicador, precisão e estrelas', () => {
 test('teclas padrão e alternativas', () => {
   assert.equal(pistaDaTecla('KeyA', TECLAS_PADRAO), 0);
   assert.equal(pistaDaTecla('KeyL', TECLAS_PADRAO), 4);
-  assert.equal(pistaDaTecla('Space', TECLAS_PADRAO), 0);
-  assert.equal(pistaDaTecla('ArrowUp', TECLAS_PADRAO), 4);
+  assert.equal(pistaDaTecla('Digit1', TECLAS_PADRAO), 0);
+  assert.equal(pistaDaTecla('Digit5', TECLAS_PADRAO), 4);
+  // teclas salvas no formato antigo (A/C) viram as cores
+  assert.deepEqual(migrarTeclas({ A: 'KeyQ', C_cima: 'KeyP' }), { verde: 'KeyQ', azul: 'KeyP' });
   assert.equal(pistaDaTecla('KeyZ', TECLAS_PADRAO), -1);
 });
 

@@ -45,3 +45,12 @@ export async function uploadToSignedTicket(path: string, token: string, file: Fi
     throw new Error(`Falha ao enviar imagem: ${error.message}`);
   }
 }
+
+// Mesmo esquema, pros áudios do Ocarina Hero (bucket próprio, ver
+// OCARINA_AUDIO_BUCKET em lib/supabaseAdmin.ts).
+export async function uploadAudioToSignedTicket(path: string, token: string, arquivo: Blob, contentType: string): Promise<void> {
+  const { error } = await (await getSupabaseBrowser())
+    .storage.from('ocarina-audio')
+    .uploadToSignedUrl(path, token, arquivo, { contentType });
+  if (error) throw new Error(`Falha ao enviar o áudio: ${error.message}`);
+}

@@ -12,31 +12,43 @@ import { ler, gravar } from '@/lib/jogos/armazenamento';
 import { registrarDiario, resultadoDoDia, sequenciaGeralHoje } from '@/lib/jogos/progresso';
 import { compartilharTexto } from '@/lib/jogos/compartilhar';
 import { guardarPublicavel, registrarJogada } from '@/lib/jogos/registro';
+import { normalizar } from '@/lib/jogos/respostas';
 import {
   DIFICULDADES,
   INICIO,
   JOGO,
+  JOGO_ORIGINAIS,
+  duracaoMusica,
+  ehNova,
+  formatarDuracao,
   PISTAS,
+  PRECISAO_PADRAO,
+  PRECISOES,
+  ehPrecisao,
   TECLAS_ALTERNATIVAS,
   TECLAS_PADRAO,
   desenhoEstrelas,
+  migrarTeclas,
   nomeTecla,
   pistaDaTecla,
   textoCompartilhar,
   type Chart,
   type MapaTeclas,
   type PistaId,
+  type Precisao,
   type ResultadoMusica
 } from './ocarina';
 import { SomOcarina } from './som';
-import { MotorOcarina } from './motor';
+import { MotorOcarina, carregarImagensOcarina } from './motor';
+import Palco from './Palco';
+import { OC_FONTES } from './fontes';
 import './ocarina.css';
 
 const Editor = dynamic(() => import('./Editor'), { ssr: false });
 
 type Tela =
   | { tipo: 'menu' }
-  | { tipo: 'jogo'; chart: Chart; diario: boolean; rodada: number }
+  | { tipo: 'jogo'; chart: Chart; diario: boolean; rodada: number; audio: AudioBuffer | null }
   | { tipo: 'resultado'; chart: Chart; diario: boolean; r: ResultadoMusica; recorde: boolean }
   | { tipo: 'teclas' }
   | { tipo: 'calibrar' };
@@ -45,11 +57,12 @@ type Recordes = Record<string, ResultadoMusica>;
 
 export const CHAVE_TECLAS = 'ocarina_teclas';
 export const CHAVE_LATENCIA = 'ocarina_latencia';
+export const CHAVE_PRECISAO = 'ocarina_precisao';
 const CHAVE_RECORDES = 'ocarina_recordes';
 
 export function lerTeclas(): MapaTeclas {
-  const t = ler<Partial<MapaTeclas>>(CHAVE_TECLAS, {});
-  return { ...TECLAS_PADRAO, ...t };
+  const t = ler<Record<string, string>>(CHAVE_TECLAS, {});
+  return { ...TECLAS_PADRAO, ...migrarTeclas(t) };
 }
 
 export default function OcarinaClient({ charts }: { charts: Chart[] }) {
@@ -59,6 +72,7 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
   const [tela, setTela] = useState<Tela>({ tipo: 'menu' });
   const [teclas, setTeclas] = useState<MapaTeclas>(TECLAS_PADRAO);
   const [latencia, setLatencia] = useState(0); // ms
+  const [precisaoJogo, setPrecisaoJogo] = useState<Precisao>(PRECISAO_PADRAO);
   const [recordes, setRecordes] = useState<Recordes>({});
   const [versao, setVersao] = useState(0);
   const [marco, setMarco] = useState<number | null>(null);
@@ -69,7 +83,10 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
     setEditor(new URLSearchParams(window.location.search).get('editor') === '1');
     setTeclas(lerTeclas());
     setLatencia(ler<number>(CHAVE_LATENCIA, 0));
+    const pr = ler<string>(CHAVE_PRECISAO, PRECISAO_PADRAO);
+    if (ehPrecisao(pr)) setPrecisaoJogo(pr);
     setRecordes(ler<Recordes>(CHAVE_RECORDES, {}));
+    carregarImagensOcarina();
     const tick = () => {
       const d = diaEm();
       setDia((a) => (a === d ? a : d));
@@ -111,9 +128,25 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const geral = useMemo(() => (dia ? sequenciaGeralHoje(dia) : { atual: 0, melhor: 0 }), [dia, versao]);
 
+  // Música com áudio: baixa e prepara antes de começar.
+  const [carregando, setCarregando] = useState<string | null>(null);
+  const [erroAudio, setErroAudio] = useState<string | null>(null);
   async function jogar(chart: Chart, diario: boolean) {
-    await liberar();
-    setTela((t) => ({ tipo: 'jogo', chart, diario, rodada: (t.tipo === 'jogo' ? t.rodada : 0) + 1 }));
+    const s = await liberar();
+    let audio: AudioBuffer | null = null;
+    if (chart.audio) {
+      setErroAudio(null);
+      setCarregando(chart.titulo);
+      try {
+        audio = await s.carregarAudio(chart.audio);
+      } catch {
+        setCarregando(null);
+        setErroAudio(`Não deu pra carregar "${chart.titulo}". Confira a internet e tente de novo.`);
+        return;
+      }
+      setCarregando(null);
+    }
+    setTela((t) => ({ tipo: 'jogo', chart, diario, audio, rodada: (t.tipo === 'jogo' ? t.rodada : 0) + 1 }));
   }
 
   function aoTerminar(chart: Chart, diario: boolean, r: ResultadoMusica) {
@@ -195,6 +228,20 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
         </div>
       )}
 
+      {carregando && (
+        <div className="oc-carregando" role="status">
+          <span className="oc-carregando-icone" aria-hidden="true">
+            ♪
+          </span>
+          Carregando “{carregando}”…
+        </div>
+      )}
+      {erroAudio && (
+        <p className="oc-erro" role="alert">
+          {erroAudio}
+        </p>
+      )}
+
       {tela.tipo === 'menu' && (
         <Menu
           charts={ativos}
@@ -206,6 +253,11 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
           liberado={liberado}
           teclas={teclas}
           latencia={latencia}
+          precisao={precisaoJogo}
+          onPrecisao={(p) => {
+            setPrecisaoJogo(p);
+            gravar(CHAVE_PRECISAO, p);
+          }}
           onLiberar={liberar}
           onJogar={jogar}
           onTela={(t) => setTela({ tipo: t })}
@@ -218,8 +270,10 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
           chart={tela.chart}
           diario={tela.diario}
           som={som.current}
+          audio={tela.audio}
           teclas={teclas}
           latencia={latencia / 1000}
+          precisao={precisaoJogo}
           onFim={(r) => aoTerminar(tela.chart, tela.diario, r)}
           onReiniciar={() => jogar(tela.chart, false)}
           onSair={() => setTela({ tipo: 'menu' })}
@@ -280,6 +334,8 @@ function Menu({
   liberado,
   teclas,
   latencia,
+  precisao,
+  onPrecisao,
   onLiberar,
   onJogar,
   onTela
@@ -293,6 +349,8 @@ function Menu({
   liberado: boolean;
   teclas: MapaTeclas;
   latencia: number;
+  precisao: Precisao;
+  onPrecisao: (p: Precisao) => void;
   onLiberar: () => void;
   onJogar: (c: Chart, diario: boolean) => void;
   onTela: (t: 'teclas' | 'calibrar') => void;
@@ -339,24 +397,20 @@ function Menu({
         </section>
       )}
 
-      <section className="oc-livre">
-        <h2>Modo livre</h2>
-        <ul>
-          {charts.map((c) => {
-            const rec = recordes[c.id];
-            return (
-              <li key={c.id}>
-                <button type="button" className="oc-musica" onClick={() => onJogar(c, false)} style={{ '--dif': DIFICULDADES[c.dificuldade].cor } as React.CSSProperties}>
-                  <span className="oc-musica-titulo">{c.titulo}</span>
-                  <span className="oc-dif">{DIFICULDADES[c.dificuldade].nome}</span>
-                  <span className="oc-musica-recorde">
-                    {rec ? `Recorde: ${rec.pontos.toLocaleString('pt-BR')} · ${desenhoEstrelas(rec.estrelas)}` : 'Ainda não jogada'}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+      <ListaMusicas charts={charts} recordes={recordes} onJogar={(c) => onJogar(c, false)} />
+
+      <section className="oc-precisao" aria-label="Precisão">
+        <p>
+          🎯 Precisão <small>— quanto o toque pode sair do tempo e ainda valer</small>
+        </p>
+        <div role="radiogroup">
+          {(Object.keys(PRECISOES) as Precisao[]).map((k) => (
+            <button key={k} type="button" role="radio" aria-checked={precisao === k} className={precisao === k ? 'is-on' : ''} onClick={() => onPrecisao(k)}>
+              <strong>{PRECISOES[k].nome}</strong>
+              <small>{PRECISOES[k].dica}</small>
+            </button>
+          ))}
+        </div>
       </section>
 
       <section className="oc-ajustes">
@@ -375,14 +429,98 @@ function Menu({
   );
 }
 
+// ---------- Lista de músicas (Todas / Novas / Por jogo) ----------
+
+type Aba = 'todas' | 'novas' | 'jogos';
+
+function ListaMusicas({ charts, recordes, onJogar }: { charts: Chart[]; recordes: Recordes; onJogar: (c: Chart) => void }) {
+  const [aba, setAba] = useState<Aba>('todas');
+  const [busca, setBusca] = useState('');
+  const [agora, setAgora] = useState(0);
+  useEffect(() => setAgora(Date.now()), []);
+  const novas = useMemo(() => (agora ? charts.filter((c) => ehNova(c, agora)) : []), [charts, agora]);
+  const filtradas = useMemo(() => {
+    const q = normalizar(busca);
+    const base = aba === 'novas' ? novas : charts;
+    return q ? base.filter((c) => normalizar(`${c.titulo} ${c.jogo ?? ''}`).includes(q)) : base;
+  }, [aba, busca, charts, novas]);
+  const porJogo = useMemo(() => {
+    const m = new Map<string, Chart[]>();
+    for (const c of filtradas) {
+      const j = c.jogo || JOGO_ORIGINAIS;
+      m.set(j, [...(m.get(j) ?? []), c]);
+    }
+    // Originais por último; o resto em ordem alfabética.
+    return [...m.entries()].sort(([a], [b]) => (a === JOGO_ORIGINAIS ? 1 : b === JOGO_ORIGINAIS ? -1 : a.localeCompare(b, 'pt-BR')));
+  }, [filtradas]);
+
+  const cartao = (c: Chart) => {
+    const rec = recordes[c.id];
+    return (
+      <li key={c.id}>
+        <button type="button" className="oc-musica" onClick={() => onJogar(c)} style={{ '--dif': DIFICULDADES[c.dificuldade].cor } as React.CSSProperties}>
+          <span className="oc-musica-topo">
+            <span className="oc-dif">{DIFICULDADES[c.dificuldade].nome}</span>
+            {agora > 0 && ehNova(c, agora) && <span className="oc-nova">Nova</span>}
+            <span className="oc-musica-dur">{formatarDuracao(duracaoMusica(c))}</span>
+          </span>
+          <span className="oc-musica-titulo">{c.titulo}</span>
+          <span className="oc-musica-jogo">{c.jogo || JOGO_ORIGINAIS}</span>
+          <span className="oc-musica-recorde">
+            {rec ? `🏆 ${rec.pontos.toLocaleString('pt-BR')} · ${desenhoEstrelas(rec.estrelas)}` : 'Ainda não jogada'}
+          </span>
+        </button>
+      </li>
+    );
+  };
+
+  return (
+    <section className="oc-livre">
+      <div className="oc-livre-topo">
+        <h2>Músicas</h2>
+        <input className="oc-busca" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar música ou jogo" aria-label="Buscar música" />
+      </div>
+      <div className="oc-abas" role="tablist">
+        {(
+          [
+            ['todas', `Todas (${charts.length})`],
+            ['novas', `Novas (${novas.length})`],
+            ['jogos', 'Por jogo']
+          ] as [Aba, string][]
+        ).map(([id, nome]) => (
+          <button key={id} type="button" role="tab" aria-selected={aba === id} className={aba === id ? 'is-on' : ''} onClick={() => setAba(id)}>
+            {nome}
+          </button>
+        ))}
+      </div>
+      {filtradas.length === 0 ? (
+        <p className="oc-dica">{aba === 'novas' && !busca ? 'Nenhuma música nova nos últimos 14 dias.' : 'Nenhuma música encontrada.'}</p>
+      ) : aba === 'jogos' ? (
+        porJogo.map(([j, lista]) => (
+          <div key={j} className="oc-grupo">
+            <h3>
+              {j} <span>{lista.length}</span>
+            </h3>
+            <ul>{lista.map(cartao)}</ul>
+          </div>
+        ))
+      ) : (
+        <ul>{filtradas.map(cartao)}</ul>
+      )}
+    </section>
+  );
+}
+
 // ---------- Partida (tela cheia) ----------
 
 function Partida({
   chart,
   diario,
   som,
+  audio,
   teclas,
   latencia,
+  precisao,
   onFim,
   onReiniciar,
   onSair
@@ -390,38 +528,16 @@ function Partida({
   chart: Chart;
   diario: boolean;
   som: SomOcarina;
+  audio: AudioBuffer | null;
   teclas: MapaTeclas;
   latencia: number;
+  precisao: Precisao;
   onFim: (r: ResultadoMusica) => void;
   onReiniciar: () => void;
   onSair: () => void;
 }) {
-  const canvas = useRef<HTMLCanvasElement>(null);
   const motor = useRef<MotorOcarina | null>(null);
   const [pausado, setPausado] = useState(false);
-  const [toque, setToque] = useState(false);
-  const fimRef = useRef(onFim);
-  fimRef.current = onFim;
-
-  useEffect(() => {
-    const coarse = window.matchMedia('(pointer: coarse)').matches;
-    setToque(coarse);
-    if (!canvas.current) return;
-    const m = new MotorOcarina(canvas.current, chart, som, {
-      latencia,
-      rotulos: coarse ? PISTAS.map(() => '') : PISTAS.map((p) => nomeTecla(teclas[p.id])),
-      onFim: (r) => fimRef.current(r)
-    });
-    motor.current = m;
-    m.iniciar();
-    // fps no console do teste (window.__ocarina.fps)
-    (window as unknown as { __ocarina?: MotorOcarina }).__ocarina = m;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      m.destruir();
-      document.body.style.overflow = '';
-    };
-  }, [chart, som, latencia, teclas]);
 
   const pausar = useCallback(() => {
     motor.current?.pausar();
@@ -432,75 +548,36 @@ function Partida({
     setPausado(false);
   }, []);
 
-  // Teclado + pausa automática quando a aba perde o foco.
+  // Pausa automática quando a aba perde o foco.
   useEffect(() => {
-    const desce = (e: KeyboardEvent) => {
-      if (e.code === 'Escape' || e.code === 'KeyP') {
-        if (pausado) continuar();
-        else pausar();
-        return;
-      }
-      const i = pistaDaTecla(e.code, teclas);
-      if (i < 0) return;
-      e.preventDefault();
-      if (!e.repeat) motor.current?.pressionar(i);
-    };
-    const sobe = (e: KeyboardEvent) => {
-      const i = pistaDaTecla(e.code, teclas);
-      if (i >= 0) motor.current?.soltar(i);
-    };
     const perdeuFoco = () => {
       if (!pausado) pausar();
     };
     const visibilidade = () => {
       if (document.hidden) perdeuFoco();
     };
-    window.addEventListener('keydown', desce);
-    window.addEventListener('keyup', sobe);
     window.addEventListener('blur', perdeuFoco);
     document.addEventListener('visibilitychange', visibilidade);
     return () => {
-      window.removeEventListener('keydown', desce);
-      window.removeEventListener('keyup', sobe);
       window.removeEventListener('blur', perdeuFoco);
       document.removeEventListener('visibilitychange', visibilidade);
     };
-  }, [teclas, pausado, pausar, continuar]);
+  }, [pausado, pausar]);
 
   return (
-    <div className="oc-jogo" role="application" aria-label={`Ocarina Hero: ${chart.titulo}`}>
-      <div className="oc-jogo-barra">
-        <span className="oc-jogo-titulo">
-          {diario ? '🎵 Música do Dia · ' : ''}
-          {chart.titulo} <span className="oc-dif" style={{ '--dif': DIFICULDADES[chart.dificuldade].cor } as React.CSSProperties}>{DIFICULDADES[chart.dificuldade].nome}</span>
-        </span>
-        <button type="button" className="oc-jogo-pausa" onClick={pausar} aria-label="Pausar">
-          ❚❚
-        </button>
-      </div>
-      <canvas ref={canvas} className="oc-canvas" />
-      <div className={`oc-zonas${toque ? ' is-toque' : ''}`}>
-        {PISTAS.map((p, i) => (
-          <button
-            key={p.id}
-            type="button"
-            className={`oc-zona pista-${p.id}`}
-            style={{ '--cor': p.cor } as React.CSSProperties}
-            aria-label={`Pista ${p.rotulo}`}
-            onPointerDown={(e) => {
-              e.preventDefault();
-              e.currentTarget.setPointerCapture?.(e.pointerId);
-              motor.current?.pressionar(i);
-            }}
-            onPointerUp={() => motor.current?.soltar(i)}
-            onPointerCancel={() => motor.current?.soltar(i)}
-            onLostPointerCapture={() => motor.current?.soltar(i)}
-            onContextMenu={(e) => e.preventDefault()}
-          >
-            {p.rotulo}
-          </button>
-        ))}
-      </div>
+    <div className={`oc-jogo ${OC_FONTES}`}>
+      <Palco
+        chart={chart}
+        som={som}
+        audio={audio}
+        teclas={teclas}
+        latencia={latencia}
+        precisao={precisao}
+        etiqueta={diario ? 'Música do Dia' : undefined}
+        motorRef={motor}
+        onFim={onFim}
+        onPausa={() => (pausado ? continuar() : pausar())}
+      />
       {pausado && (
         <div className="oc-pausa" role="dialog" aria-label="Pausado">
           <p>Pausado</p>
@@ -643,8 +720,8 @@ function ConfigTeclas({ teclas, onSalvar, onVoltar }: { teclas: MapaTeclas; onSa
       <ul>
         {PISTAS.map((p) => (
           <li key={p.id}>
-            <span className="oc-config-pista" style={{ '--cor': p.cor } as React.CSSProperties}>
-              {p.rotulo}
+            <span className="oc-config-pista" style={{ '--cor': p.cor } as React.CSSProperties} title={p.rotulo}>
+              {p.rotulo.charAt(0)}
             </span>
             <button type="button" className={`oc-botao${esperando === p.id ? ' is-principal' : ''}`} onClick={() => setEsperando(p.id)}>
               {esperando === p.id ? 'Aperte uma tecla…' : nomeTecla(teclas[p.id])}

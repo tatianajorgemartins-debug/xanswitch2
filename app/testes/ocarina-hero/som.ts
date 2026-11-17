@@ -189,6 +189,60 @@ export class SomOcarina {
     o.stop(quando + 0.06);
   }
 
+  // Clique seco e curtinho (referência de onde está cada nota).
+  clique(quando: number, volume = 0.5): void {
+    tocarClique(this.ctx, this.ctx.destination, quando, volume);
+  }
+
+  // ---------- Áudio da música (mp3/aac enviado pelo admin) ----------
+
+  private cacheAudio = new Map<string, Promise<AudioBuffer>>();
+
+  // Baixa e decodifica o áudio (fica guardado pra próxima partida).
+  carregarAudio(url: string): Promise<AudioBuffer> {
+    let p = this.cacheAudio.get(url);
+    if (!p) {
+      p = fetch(url)
+        .then((r) => {
+          if (!r.ok) throw new Error(`áudio não carregou (${r.status})`);
+          return r.arrayBuffer();
+        })
+        .then((b) => this.ctx.decodeAudioData(b));
+      p.catch(() => this.cacheAudio.delete(url));
+      this.cacheAudio.set(url, p);
+    }
+    return p;
+  }
+
+  // Toca o áudio a partir de `desde` (segundos da música), começando no
+  // instante `quando` do relógio. volume() abaixa/sobe (ex: errou uma nota).
+  faixa(buffer: AudioBuffer, quando: number, desde = 0): { parar: () => void; abafar: () => void } {
+    const ctx = this.ctx;
+    const fonte = ctx.createBufferSource();
+    fonte.buffer = buffer;
+    const ganho = ctx.createGain();
+    ganho.gain.value = 0.9;
+    fonte.connect(ganho).connect(ctx.destination);
+    fonte.start(Math.max(quando, ctx.currentTime), Math.max(0, desde));
+    return {
+      parar: () => {
+        try {
+          fonte.stop();
+        } catch {
+          // já parou
+        }
+      },
+      // Errou: a música "falha" por um instante, como no Guitar Hero.
+      abafar: () => {
+        const t = ctx.currentTime;
+        ganho.gain.cancelScheduledValues(t);
+        ganho.gain.setValueAtTime(ganho.gain.value, t);
+        ganho.gain.linearRampToValueAtTime(0.35, t + 0.03);
+        ganho.gain.linearRampToValueAtTime(0.9, t + 0.45);
+      }
+    };
+  }
+
   // Grave do acompanhamento (uma "harpa" bem baixinha).
   grave(freq: number, quando: number, dur: number): void {
     const ctx = this.ctx;
@@ -203,4 +257,34 @@ export class SomOcarina {
     o.start(quando);
     o.stop(quando + dur + 0.05);
   }
+}
+
+// Clique seco (sem eco): estalo de ruído agudo de ~12 ms + um "tic" de
+// 2,6 kHz. Corta bem por cima da música, então dá pra ouvir se a nota está
+// em cima do tempo. Usado no editor do admin e no "testar".
+let ruidoClique: AudioBuffer | null = null;
+export function tocarClique(ctx: BaseAudioContext, destino: AudioNode, quando: number, volume = 0.5): void {
+  if (!ruidoClique || ruidoClique.sampleRate !== ctx.sampleRate) {
+    const n = Math.round(ctx.sampleRate * 0.015);
+    ruidoClique = ctx.createBuffer(1, n, ctx.sampleRate);
+    const d = ruidoClique.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (n / 5));
+  }
+  const s = ctx.createBufferSource();
+  s.buffer = ruidoClique;
+  const f = ctx.createBiquadFilter();
+  f.type = 'highpass';
+  f.frequency.value = 2500;
+  const g = ctx.createGain();
+  g.gain.value = volume;
+  s.connect(f).connect(g).connect(destino);
+  s.start(quando);
+  const o = ctx.createOscillator();
+  o.frequency.value = 2600;
+  const og = ctx.createGain();
+  og.gain.setValueAtTime(volume * 0.5, quando);
+  og.gain.exponentialRampToValueAtTime(0.0005, quando + 0.025);
+  o.connect(og).connect(destino);
+  o.start(quando);
+  o.stop(quando + 0.03);
 }

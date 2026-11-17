@@ -16,6 +16,8 @@ import SalesPanel from './SalesPanel';
 import PromoEventsPanel from './PromoEventsPanel';
 import PromoBannerPanel from './PromoBannerPanel';
 import JogosInterativosPanel, { type JogosInterativosData } from './JogosInterativosPanel';
+import OcarinaAdminPanel, { type MusicaAdmin } from './OcarinaAdminPanel';
+import { OCARINA_ENABLED } from '@/lib/siteSections';
 import type { PromoBannerSetting } from '@/lib/promoBanner';
 import type { PromoEventRow } from '@/lib/promoEvents';
 import { setSalesStatusAction } from './salesActions';
@@ -47,7 +49,7 @@ import {
 
 const emptyFormState: GameFormState = { error: null };
 
-const TAB_IDS = ['inicio', 'pedidos', 'vendas', 'jogos', 'promocoes', 'clientes', 'comentarios', 'interativos', 'divulgacao', 'config'] as const;
+const TAB_IDS = ['inicio', 'pedidos', 'vendas', 'jogos', 'promocoes', 'clientes', 'comentarios', 'interativos', 'ocarina', 'divulgacao', 'config'] as const;
 type TabId = (typeof TAB_IDS)[number];
 
 export default function AdminClient({
@@ -68,7 +70,8 @@ export default function AdminClient({
   privateOffers,
   promoEvents,
   promoBanner,
-  jogosInterativos
+  jogosInterativos,
+  musicasOcarina
 }: {
   initialGames: Game[];
   visitCount: number;
@@ -90,6 +93,8 @@ export default function AdminClient({
   promoBanner: PromoBannerSetting | null;
   // null = falta rodar db/migration-jogos-interativos.sql.
   jogosInterativos: JogosInterativosData | null;
+  // null = falta rodar db/migration-ocarina-musicas.sql.
+  musicasOcarina: MusicaAdmin[] | null;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -313,6 +318,7 @@ export default function AdminClient({
     { id: 'clientes', icon: '🎖️', label: 'Clientes e pontos' },
     { id: 'comentarios', icon: '💬', label: 'Comentários', badge: pendingReviewCount },
     { id: 'interativos', icon: '🕹️', label: 'Jogos interativos' },
+    { id: 'ocarina', icon: '🎵', label: 'Ocarina Hero' },
     { id: 'divulgacao', icon: '📣', label: 'Divulgação' },
     { id: 'config', icon: '⚙️', label: 'Configurações' }
   ];
@@ -584,6 +590,18 @@ export default function AdminClient({
               </div>
             </div>
             <JogosInterativosPanel data={jogosInterativos} />
+          </section>
+        )}
+
+        {tab === 'ocarina' && (
+          <section>
+            <div className="adm-section-head">
+              <div>
+                <h2>🎵 Ocarina Hero</h2>
+                <p className="adm-help">As músicas do jogo de ritmo: envie o áudio e posicione as notas de cada uma.</p>
+              </div>
+            </div>
+            <OcarinaAdminPanel musicas={musicasOcarina} jogoLigado={OCARINA_ENABLED} />
           </section>
         )}
 

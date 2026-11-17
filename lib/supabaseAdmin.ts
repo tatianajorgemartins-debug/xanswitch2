@@ -113,6 +113,43 @@ export async function createSignedUploadTicket(
   return data;
 }
 
+// ---------- Áudio do Ocarina Hero ----------
+// Bucket público só pros áudios das músicas (o de imagens aceita só
+// imagem). Criado sozinho no primeiro envio.
+export const OCARINA_AUDIO_BUCKET = 'ocarina-audio';
+
+async function garantirBucketOcarina(): Promise<void> {
+  const c = getAdminClient();
+  const { data } = await c.storage.getBucket(OCARINA_AUDIO_BUCKET);
+  if (data) return;
+  const { error } = await c.storage.createBucket(OCARINA_AUDIO_BUCKET, {
+    public: true,
+    fileSizeLimit: '40MB',
+    allowedMimeTypes: ['audio/aac', 'audio/mpeg', 'audio/mp4', 'audio/x-m4a', 'audio/mp3']
+  });
+  if (error && !/exist/i.test(error.message)) throw new Error(`Falha ao criar o espaço dos áudios: ${error.message}`);
+}
+
+// Autorização pra o navegador enviar o áudio direto pro Storage.
+export async function createOcarinaAudioUploadTicket(
+  path: string
+): Promise<{ signedUrl: string; token: string; path: string; publicUrl: string }> {
+  await garantirBucketOcarina();
+  const c = getAdminClient();
+  const { data, error } = await c.storage.from(OCARINA_AUDIO_BUCKET).createSignedUploadUrl(path);
+  if (error || !data) throw new Error(`Falha ao autorizar o envio: ${error?.message ?? 'erro desconhecido'}`);
+  return { ...data, publicUrl: c.storage.from(OCARINA_AUDIO_BUCKET).getPublicUrl(path).data.publicUrl };
+}
+
+export async function deleteOcarinaAudioByUrl(url: string): Promise<void> {
+  const marker = `/object/public/${OCARINA_AUDIO_BUCKET}/`;
+  const i = url.indexOf(marker);
+  if (i < 0) return;
+  await getAdminClient()
+    .storage.from(OCARINA_AUDIO_BUCKET)
+    .remove([decodeURIComponent(url.slice(i + marker.length))]);
+}
+
 // Devolve quantas vezes cada jogo foi favoritado, dos mais pra menos
 // desejados. Usa a service role key de propósito, porque o Row Level
 // Security da tabela "wishlists" (db/migration-wishlist.sql) só deixa cada

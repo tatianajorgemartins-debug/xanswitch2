@@ -1172,3 +1172,17 @@
 .adm-jogos-post footer span {
   margin-right: auto;
 }
+
+/* ---------- Ocarina Hero (OcarinaAdminPanel.tsx) ---------- */
+.oc-adm-topo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.oc-adm-lista {
+  overflow-x: auto;
+}
+.oc-adm-lista .btn {
+  white-space: nowrap;
+}

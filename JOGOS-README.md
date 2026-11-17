@@ -27,25 +27,53 @@ o admin não registra as partidas e o feed fica "abre em breve".
   `"franquia_loja"` (ex.: `"Legend Of Zelda"`).
 - O script nunca apaga personagens nem muda o que você escreveu.
 
-## Ocarina Hero: criar uma música nova
+## Ocarina Hero: criar uma música nova (pelo admin)
 
-1. Abra **/testes/ocarina-hero?editor=1** (no computador).
-2. Escolha nome, andamento (bpm) e dificuldade. Clique em **Gravar**: o primeiro compasso é só
-   metrônomo; aí toque a melodia nas teclas A S J K L (segurar = nota longa). Clique em **Parar**.
-3. **Testar** toca a música no jogo. Gostou? **Baixar** e coloque o arquivo `.json` em
-   `data/jogos/ocarina/`. Publique o site.
-4. A música entra na lista na hora e no sorteio da Música do Dia a partir de amanhã
-   (`ativo_desde`, já vem preenchido).
+Antes, uma vez só: rode `db/migration-ocarina-musicas.sql` no Neon.
 
-Dá pra editar o `.json` à mão: cada nota é `{ "t": segundos, "pista": "A" | "C_baixo" | "C_dir" |
-"C_esq" | "C_cima" }`, com `"dur"` (segundos) pra nota longa e `"nota": "E5"` pra outra altura.
-As alturas de cada pista ficam em `app/testes/ocarina-hero/ocarina.ts` (`PISTAS`).
+1. **Admin › 🎵 Ocarina Hero › ＋ Nova música.**
+2. Preencha nome, **jogo** (agrupa a lista "Por jogo") e dificuldade.
+3. **Enviar o áudio (mp3)**: o navegador compacta (mono, 96 kbps, ~2 MB numa música de 3 min)
+   e sobe pro Supabase. Use Chrome ou Edge (outros navegadores sobem o arquivo original).
+4. **Acerte a grade**: BPM (ou o botão **Tap**, tocando no ritmo) e o **1º tempo** (coloque a
+   agulha no primeiro tempo forte e clique **Usar agulha**). Ligue o **Metrônomo** e toque: os
+   cliques têm que bater com a música.
+5. **Coloque as notas** nas 5 cores (verde, amarelo, vermelho, roxo, azul):
+   - clique = nota; clique e arraste pra direita = nota longa; arrastar a nota = mover;
+     puxar a ponta = mudar a duração; botão direito = apagar;
+   - várias cores no mesmo tempo = acorde (dá pra fazer com as teclas 1–5 com a agulha parada);
+   - **Gravar ao vivo**: toque a música e aperte as teclas no ritmo (segurar = nota longa);
+   - a **Grade** escolhe a precisão (1/4, 1/8, tercina…) e o ajuste fino em ms fica no quadro
+     da nota selecionada. Ctrl+Z desfaz.
+   - **🔊 Clique em cada nota**: ao tocar a prévia, cada nota faz um clique seco — se o clique
+     bate com a música, a nota está no lugar certo.
+   - **Repetir partes**: arraste na forma de onda pra selecionar um trecho (ou use a ferramenta
+     **⬚ Selecionar** / Shift+arrastar), depois **⧉ Repetir em seguida** (Ctrl+D) quantas vezes
+     precisar. Ou **Copiar** (Ctrl+C), ponha a agulha onde quer e **Colar na agulha** (Ctrl+V) —
+     cola no compasso da agulha, e colar de novo continua logo depois.
+6. **▶ Testar daqui** (tecla T) testa no jogo a partir da agulha ou da 1ª nota selecionada —
+   não precisa tocar do começo. Depois **Salvar**. Quando estiver bom: **Publicar no jogo**.
+   Ela aparece na lista na hora (aba "Novas" por 14 dias) e entra no sorteio da Música do Dia
+   a partir do dia seguinte.
+
+As 6 músicas originais (sem áudio, a ocarina toca em cada acerto) ficam em `data/jogos/ocarina/`.
 
 ## Trocar as teclas padrão
 
 Cada jogador troca as suas no menu do Ocarina Hero (⌨️ Teclas). O padrão do site fica em
 `TECLAS_PADRAO`, em `app/testes/ocarina-hero/ocarina.ts` (nomes de tecla do navegador:
-`KeyA`, `KeyS`, `Space`, `ArrowUp`...). Setas + espaço sempre funcionam também.
+`KeyA`, `KeyS`...). Os números 1 a 5 sempre funcionam também.
+
+## Precisão (quanto o toque pode sair do tempo)
+
+O jogador escolhe no menu do Ocarina Hero: **Folgada**, **Normal** (padrão) ou **Exata**. Os
+valores ficam em `PRECISOES`, em `app/testes/ocarina-hero/ocarina.ts`.
+
+## Visual da partida
+
+Imagens em `public/jogos/ocarina/ui/` (geradas a partir de
+`Jogos interativos\OCARINA HERO\elementos`). A pista e as notas são desenhadas em
+`app/testes/ocarina-hero/motor.ts`; placar, combo, corações e progresso em `Palco.tsx`.
 
 ## Outras coisas
 
