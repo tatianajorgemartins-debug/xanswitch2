@@ -37,6 +37,7 @@ async function musicasDoAdmin(): Promise<Chart[]> {
         dificuldade: m.difficulty,
         audio: m.audio_url,
         duracaoAudio: m.audio_duration ?? undefined,
+        fimEm: m.end_at ?? undefined,
         publicadaEm: m.published_at ? new Date(m.published_at).toISOString() : undefined,
         ativo_desde: m.active_from ?? undefined,
         notas: m.notes

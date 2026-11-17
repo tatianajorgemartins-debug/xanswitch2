@@ -73,6 +73,9 @@ export type Chart = {
   // acerto com um metrônomo de fundo (as músicas originais da XAN).
   audio?: string;
   duracaoAudio?: number;
+  // Onde a música termina no jogo (segundos), com fade nos últimos
+  // FADE_FIM segundos. Sem isso, toca o áudio até o fim.
+  fimEm?: number;
   // Quando foi publicada (pra lista de "Novas").
   publicadaEm?: string;
   // nota grave do acompanhamento (opcional, padrão D2)
@@ -113,6 +116,7 @@ export function validarChart(raw: unknown): Chart | null {
     ...texto('audio'),
     ...texto('publicadaEm'),
     ...numero('duracaoAudio'),
+    ...numero('fimEm'),
     ...numero('inicioBatida'),
     ...(typeof c.tom === 'string' ? { tom: c.tom } : {}),
     ...(typeof c.ativo_desde === 'string' ? { ativo_desde: c.ativo_desde } : {}),
@@ -127,8 +131,12 @@ export function duracaoChart(c: Chart): number {
 
 // Duração total pra mostrar na lista (o áudio, se tiver; senão as notas).
 export function duracaoMusica(c: Chart): number {
+  if (c.fimEm) return c.fimEm;
   return c.duracaoAudio ?? duracaoChart(c) + 1;
 }
+
+// Segundos de fade antes do fim definido no editor.
+export const FADE_FIM = 2;
 
 export function formatarDuracao(s: number): string {
   const t = Math.max(0, Math.round(s));

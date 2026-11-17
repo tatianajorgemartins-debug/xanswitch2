@@ -33,7 +33,8 @@ export default async function EditarMusicaPage({ params }: { params: Promise<{ i
         bytes: m.audio_bytes,
         notas: m.notes,
         publicada: m.published,
-        ativaDesde: m.active_from
+        ativaDesde: m.active_from,
+        fimEm: m.end_at
       }}
     />
   );

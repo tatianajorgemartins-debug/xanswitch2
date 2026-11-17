@@ -51,6 +51,10 @@ Antes, uma vez só: rode `db/migration-ocarina-musicas.sql` no Neon.
      **⬚ Selecionar** / Shift+arrastar), depois **⧉ Repetir em seguida** (Ctrl+D) quantas vezes
      precisar. Ou **Copiar** (Ctrl+C), ponha a agulha onde quer e **Colar na agulha** (Ctrl+V) —
      cola no compasso da agulha, e colar de novo continua logo depois.
+   - **Fim da música**: ponha a agulha onde a música deve acabar e clique **Usar agulha** (ou
+     digite os segundos). Ela para ali com fade de 2 s antes; **▶ Ouvir o final** confere e
+     **Até o fim do áudio** desfaz. Precisa da coluna `end_at` (rode de novo o
+     `db/migration-ocarina-musicas.sql`).
 6. **▶ Testar daqui** (tecla T) testa no jogo a partir da agulha ou da 1ª nota selecionada —
    não precisa tocar do começo. Depois **Salvar**. Quando estiver bom: **Publicar no jogo**.
    Ela aparece na lista na hora (aba "Novas" por 14 dias) e entra no sorteio da Música do Dia

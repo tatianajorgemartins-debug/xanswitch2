@@ -44,6 +44,8 @@ export type DadosMusica = {
   dificuldade: string;
   bpm: number;
   inicioBatida: number;
+  // onde a música termina no jogo (segundos); null = até o fim do áudio
+  fimEm: number | null;
   notas: OcarinaNota[];
 };
 
@@ -60,15 +62,19 @@ export async function salvarMusicaAction(id: number, d: DadosMusica): Promise<Re
   notas.sort((a, b) => a.t - b.t || PISTAS.indexOf(a.pista) - PISTAS.indexOf(b.pista));
   const bpm = Number(d.bpm);
   try {
-    await updateOcarinaSong(id, {
+    const fim = Number(d.fimEm);
+    const r = await updateOcarinaSong(id, {
       title: String(d.titulo ?? '').trim().slice(0, 80) || 'Sem título',
       game: String(d.jogo ?? '').trim().slice(0, 60),
       difficulty: DIFICULDADES.includes(d.dificuldade) ? d.dificuldade : 'medio',
       bpm: Number.isFinite(bpm) && bpm >= 30 && bpm <= 400 ? Math.round(bpm * 100) / 100 : 120,
       beatOffset: Number.isFinite(d.inicioBatida) ? Math.max(0, Math.round(d.inicioBatida * 1000) / 1000) : 0,
-      notes: notas
+      notes: notas,
+      endAt: d.fimEm !== null && Number.isFinite(fim) && fim > 0 ? Math.round(fim * 1000) / 1000 : null
     });
     atualizarPaginas(id);
+    if (!r.fimSalvo)
+      return { ok: false, erro: 'As notas foram salvas, mas o fim da música não: rode de novo o db/migration-ocarina-musicas.sql no Neon.' };
     return { ok: true };
   } catch (err) {
     console.error('[ocarina] salvar:', err);

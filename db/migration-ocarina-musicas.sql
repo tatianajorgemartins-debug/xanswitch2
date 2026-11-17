@@ -23,3 +23,7 @@ CREATE TABLE IF NOT EXISTS ocarina_songs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Onde a música termina no jogo (segundos). Vazio = toca o áudio até o fim.
+-- Os 2 últimos segundos antes desse ponto têm fade (o volume vai a zero).
+ALTER TABLE ocarina_songs ADD COLUMN IF NOT EXISTS end_at NUMERIC;

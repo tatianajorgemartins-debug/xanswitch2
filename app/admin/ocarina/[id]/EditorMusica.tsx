@@ -18,7 +18,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { DIFICULDADES, PISTAS, TECLAS_PADRAO, formatarDuracao, type Chart, type Dificuldade, type NotaChart } from '@/app/testes/ocarina-hero/ocarina';
+import { DIFICULDADES, FADE_FIM, PISTAS, TECLAS_PADRAO, formatarDuracao, type Chart, type Dificuldade, type NotaChart } from '@/app/testes/ocarina-hero/ocarina';
 import { type MotorOcarina } from '@/app/testes/ocarina-hero/motor';
 import { SomOcarina, tocarClique } from '@/app/testes/ocarina-hero/som';
 import Palco from '@/app/testes/ocarina-hero/Palco';
@@ -47,6 +47,8 @@ export type MusicaEditor = {
   notas: OcarinaNota[];
   publicada: boolean;
   ativaDesde: string | null;
+  // onde a música termina no jogo (null = até o fim do áudio)
+  fimEm: number | null;
 };
 
 type NotaEd = { id: number; t: number; p: number; d: number };
@@ -93,6 +95,9 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
   const [dificuldade, setDificuldade] = useState<Dificuldade>(musica.dificuldade);
   const [bpm, setBpm] = useState(musica.bpm);
   const [inicioBatida, setInicioBatida] = useState(musica.inicioBatida);
+  const [fimEm, setFimEm] = useState<number | null>(musica.fimEm);
+  const fimRef = useRef(fimEm);
+  fimRef.current = fimEm;
   const [notas, setNotas] = useState<NotaEd[]>(() =>
     musica.notas.map((n) => ({ id: novaId(), t: n.t, p: Math.max(0, PISTAS.findIndex((x) => x.id === n.pista)), d: n.dur ?? 0 }))
   );
@@ -258,8 +263,17 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
         fonte = ctx.createBufferSource();
         fonte.buffer = buffer.current;
         fonte.playbackRate.value = velocidade;
-        fonte.connect(ctx.destination);
-        fonte.start(ctx.currentTime + 0.03, Math.max(0, desde));
+        // fade nos últimos FADE_FIM s antes do fim marcado (igual no jogo)
+        const fade = ctx.createGain();
+        fonte.connect(fade).connect(ctx.destination);
+        const tIni = ctx.currentTime + 0.03;
+        const fim = fimRef.current;
+        if (fim && desde < fim) {
+          const tFim = tIni + (fim - desde) / velocidade;
+          fade.gain.setValueAtTime(1, Math.max(tIni, tFim - FADE_FIM / velocidade));
+          fade.gain.linearRampToValueAtTime(0, tFim);
+        }
+        fonte.start(tIni, Math.max(0, desde));
         fonte.onended = () => {
           if (tocar.current?.fonte === fonte) pararTocar();
         };
@@ -364,6 +378,41 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
     }
     g.fillStyle = 'rgba(255,255,255,0.06)';
     g.fillRect(0, REGUA + ONDA - 1, largura, 1);
+    // Fim marcado: faixa do fade (FADE_FIM s antes), linha vermelha e o
+    // resto escurecido
+    if (fimEm) {
+      const xf = xDe(fimEm);
+      const xa = xDe(fimEm - FADE_FIM);
+      if (xf > ESQ && xa < largura) {
+        const gr = g.createLinearGradient(xa, 0, xf, 0);
+        gr.addColorStop(0, 'rgba(255,77,94,0)');
+        gr.addColorStop(1, 'rgba(255,77,94,0.28)');
+        g.fillStyle = gr;
+        g.fillRect(Math.max(ESQ, xa), REGUA, xf - Math.max(ESQ, xa), ALTURA - REGUA);
+      }
+      if (xf < largura) {
+        g.fillStyle = 'rgba(0,0,0,0.55)';
+        g.fillRect(Math.max(ESQ, xf), REGUA, largura - Math.max(ESQ, xf), ALTURA - REGUA);
+      }
+      if (xf > ESQ && xf < largura) {
+        g.strokeStyle = '#ff4d5e';
+        g.lineWidth = 2;
+        g.beginPath();
+        g.moveTo(xf, 0);
+        g.lineTo(xf, ALTURA);
+        g.stroke();
+        g.fillStyle = '#ff4d5e';
+        g.font = '900 10px system-ui, sans-serif';
+        g.textBaseline = 'top';
+        g.fillText('FIM', xf + 4, REGUA + 3);
+      }
+      if (xa > ESQ && xa < largura) {
+        g.fillStyle = '#ff8a95';
+        g.font = '900 10px system-ui, sans-serif';
+        g.textBaseline = 'top';
+        g.fillText('fade', xa + 4, REGUA + 3);
+      }
+    }
     // Fim do áudio
     if (duracao) {
       const x = xDe(duracao);
@@ -480,7 +529,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
       g.fill();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [largura, vista, zoom, grade, batida, inicioBatida, picos, duracao, audioUrl, gravandoVivo, tocando, xDe, tDe, encaixar, notas, sel]);
+  }, [largura, vista, zoom, grade, batida, inicioBatida, picos, duracao, audioUrl, gravandoVivo, tocando, xDe, tDe, encaixar, notas, sel, fimEm]);
 
   useEffect(() => {
     desenhar();
@@ -534,6 +583,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
         ultimoTexto = agoraMs;
       }
       if (duracao && p > duracao + 0.5) pararTocar();
+      if (fimRef.current && p > fimRef.current + 0.3 && t.posInicio < fimRef.current) pararTocar();
       desenhar();
       raf = requestAnimationFrame(loop);
     };
@@ -989,7 +1039,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
 
   async function salvar() {
     setSalvando(true);
-    const r = await salvarMusicaAction(musica.id, { titulo, jogo, dificuldade, bpm, inicioBatida, notas: notasParaSalvar() }).catch(() => ({
+    const r = await salvarMusicaAction(musica.id, { titulo, jogo, dificuldade, bpm, inicioBatida, fimEm, notas: notasParaSalvar() }).catch(() => ({
       ok: false as const,
       erro: 'A conexão falhou.'
     }));
@@ -1089,7 +1139,8 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
       bpm,
       dificuldade,
       notas: notasParaSalvar() as NotaChart[],
-      ...(duracao ? { duracaoAudio: duracao } : {})
+      ...(duracao ? { duracaoAudio: duracao } : {}),
+      ...(fimEm ? { fimEm } : {})
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [testando]
@@ -1181,6 +1232,56 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
               }}
             />
           </label>
+          <h3>Fim da música</h3>
+          <p className="adm-help">
+            {fimEm
+              ? `Termina em ${formatarDuracao(Math.floor(fimEm))}.${String(Math.round((fimEm % 1) * 1000)).padStart(3, '0')}, com fade de ${FADE_FIM} s antes. Notas depois disso não entram.`
+              : 'Toca o áudio até o fim. Marque um ponto pra música parar antes (com fade de 2 s).'}
+          </p>
+          <div className="oc-ed-linha">
+            <label>
+              Termina em (s)
+              <input
+                type="number"
+                step="0.1"
+                min={0}
+                value={fimEm ?? ''}
+                placeholder={duracao ? String(Math.round(duracao * 10) / 10) : '—'}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  setFimEm(e.target.value === '' || !Number.isFinite(v) || v <= 0 ? null : v);
+                  setSujo(true);
+                }}
+              />
+            </label>
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={() => {
+                setFimEm(Math.round(pos.current * 1000) / 1000);
+                setSujo(true);
+              }}
+              title="A música termina onde está a agulha"
+            >
+              Usar agulha
+            </button>
+          </div>
+          <div className="oc-ed-linha">
+            <button type="button" className="btn ghost" disabled={!fimEm} onClick={() => fimEm && comecarTocar(Math.max(0, fimEm - FADE_FIM - 3))}>
+              ▶ Ouvir o final
+            </button>
+            <button
+              type="button"
+              className="btn ghost"
+              disabled={!fimEm}
+              onClick={() => {
+                setFimEm(null);
+                setSujo(true);
+              }}
+            >
+              Até o fim do áudio
+            </button>
+          </div>
           <h3>Ritmo (grade)</h3>
           <div className="oc-ed-linha">
             <label>

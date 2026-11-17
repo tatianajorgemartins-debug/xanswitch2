@@ -1,3 +1,4 @@
+import { FADE_FIM } from './ocarina';
 // Som do "Ocarina Hero", todo sintetizado com Web Audio (nenhum arquivo de
 // áudio): a ocarina (senoide + um pouco de triangular, vibrato leve, ataque
 // suave e eco), o metrônomo, o grave do acompanhamento e o "erro" abafado.
@@ -216,14 +217,24 @@ export class SomOcarina {
 
   // Toca o áudio a partir de `desde` (segundos da música), começando no
   // instante `quando` do relógio. volume() abaixa/sobe (ex: errou uma nota).
-  faixa(buffer: AudioBuffer, quando: number, desde = 0): { parar: () => void; abafar: () => void } {
+  // fim (segundos da música): para ali, com fade de FADE_FIM segundos antes.
+  faixa(buffer: AudioBuffer, quando: number, desde = 0, fim?: number): { parar: () => void; abafar: () => void } {
     const ctx = this.ctx;
     const fonte = ctx.createBufferSource();
     fonte.buffer = buffer;
     const ganho = ctx.createGain();
     ganho.gain.value = 0.9;
-    fonte.connect(ganho).connect(ctx.destination);
+    // ganho separado pro fade (o "abafar" mexe no outro)
+    const fade = ctx.createGain();
+    fonte.connect(ganho).connect(fade).connect(ctx.destination);
     fonte.start(Math.max(quando, ctx.currentTime), Math.max(0, desde));
+    if (fim && fim > desde) {
+      const tFim = quando + (fim - desde);
+      const tFade = Math.max(quando, tFim - FADE_FIM);
+      fade.gain.setValueAtTime(1, tFade);
+      fade.gain.linearRampToValueAtTime(0, tFim);
+      fonte.stop(tFim + 0.05);
+    }
     return {
       parar: () => {
         try {

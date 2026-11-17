@@ -15,6 +15,8 @@ export type OcarinaSongRow = {
   audio_duration: number | null;
   audio_bytes: number | null;
   notes: OcarinaNota[];
+  // onde a música termina no jogo (segundos); null = até o fim do áudio
+  end_at: number | null;
   published: boolean;
   published_at: Date | null;
   active_from: string | null;
@@ -32,6 +34,7 @@ function normalizar(r: Record<string, unknown>): OcarinaSongRow {
     beat_offset: Number(r.beat_offset),
     audio_duration: num(r.audio_duration),
     audio_bytes: num(r.audio_bytes),
+    end_at: r.end_at === null || r.end_at === undefined || r.end_at === '' ? null : Number(r.end_at),
     notes: Array.isArray(r.notes) ? (r.notes as OcarinaNota[]) : []
   };
 }
@@ -51,7 +54,8 @@ export async function getAllOcarinaSongs(): Promise<OcarinaSongResumo[]> {
 export async function getOcarinaSong(id: number): Promise<OcarinaSongRow | null> {
   const rows = await getSql()`
     SELECT id, title, game, difficulty, bpm, beat_offset, audio_url, audio_duration, audio_bytes, notes, published,
-      published_at, to_char(active_from, 'YYYY-MM-DD') AS active_from, created_at, updated_at
+      published_at, to_char(active_from, 'YYYY-MM-DD') AS active_from, created_at, updated_at,
+      to_jsonb(ocarina_songs) ->> 'end_at' AS end_at
     FROM ocarina_songs WHERE id = ${id}
   `;
   return rows[0] ? normalizar(rows[0] as Record<string, unknown>) : null;
@@ -61,7 +65,8 @@ export async function getOcarinaSong(id: number): Promise<OcarinaSongRow | null>
 export async function getPublishedOcarinaSongs(): Promise<OcarinaSongRow[]> {
   const rows = await getSql()`
     SELECT id, title, game, difficulty, bpm, beat_offset, audio_url, audio_duration, audio_bytes, notes, published,
-      published_at, to_char(active_from, 'YYYY-MM-DD') AS active_from, created_at, updated_at
+      published_at, to_char(active_from, 'YYYY-MM-DD') AS active_from, created_at, updated_at,
+      to_jsonb(ocarina_songs) ->> 'end_at' AS end_at
     FROM ocarina_songs WHERE published = TRUE AND audio_url IS NOT NULL AND jsonb_array_length(notes) > 0
     ORDER BY published_at DESC
   `;
@@ -75,13 +80,22 @@ export async function createOcarinaSong(title: string): Promise<number> {
 
 export async function updateOcarinaSong(
   id: number,
-  s: { title: string; game: string; difficulty: string; bpm: number; beatOffset: number; notes: OcarinaNota[] }
-): Promise<void> {
+  s: { title: string; game: string; difficulty: string; bpm: number; beatOffset: number; notes: OcarinaNota[]; endAt: number | null }
+): Promise<{ fimSalvo: boolean }> {
   await getSql()`
     UPDATE ocarina_songs SET title = ${s.title}, game = ${s.game}, difficulty = ${s.difficulty}, bpm = ${s.bpm},
       beat_offset = ${s.beatOffset}, notes = ${JSON.stringify(s.notes)}::jsonb, updated_at = now()
     WHERE id = ${id}
   `;
+  // Separado: se a coluna end_at ainda não existe (SQL não rodado), o resto
+  // já foi salvo e só o fim fica de fora.
+  try {
+    await getSql()`UPDATE ocarina_songs SET end_at = ${s.endAt} WHERE id = ${id}`;
+    return { fimSalvo: true };
+  } catch (err) {
+    if (s.endAt !== null) console.error('[ocarina] end_at (rode db/migration-ocarina-musicas.sql):', err);
+    return { fimSalvo: s.endAt === null };
+  }
 }
 
 export async function setOcarinaSongAudio(id: number, url: string, duration: number, bytes: number): Promise<void> {

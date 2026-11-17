@@ -172,11 +172,13 @@ export class MotorOcarina {
     const prec = PRECISOES[op.precisao ?? PRECISAO_PADRAO] ?? PRECISOES[PRECISAO_PADRAO];
     this.janelaPerfeito = prec.perfeito;
     this.janelaBom = prec.bom;
+    // notas depois do fim definido no editor não entram
+    const fim = chart.fimEm && op.audio ? chart.fimEm : Infinity;
     this.notas = chart.notas
-      .filter((n) => n.t >= this.comecarEm - 0.02)
+      .filter((n) => n.t >= this.comecarEm - 0.02 && n.t < fim)
       .map((n) => ({ n, pista: indicePista(n.pista), julgada: null, segurando: false, voz: null, fimSegurar: 0 }));
     // Com áudio, a partida vai até o fim da música; sem, até a última nota.
-    this.duracao = op.audio ? op.audio.duration : duracaoChart(chart);
+    this.duracao = op.audio ? Math.min(op.audio.duration, chart.fimEm ?? Infinity) : duracaoChart(chart);
     this.antecedencia = DIFICULDADES[chart.dificuldade].antecedencia;
     this.img = carregarImagensOcarina();
     const f = getComputedStyle(canvas).getPropertyValue('--oc-cinzel').trim();
@@ -260,7 +262,7 @@ export class MotorOcarina {
     const primeira = (this.notas[0]?.n.t ?? this.comecarEm) - this.comecarEm;
     const espera = Math.max(ESPERA_INICIAL, this.antecedencia - primeira + 0.4);
     this.inicio = this.som.agora + espera;
-    if (this.op.audio) this.faixa = this.som.faixa(this.op.audio, this.inicio, this.comecarEm);
+    if (this.op.audio) this.faixa = this.som.faixa(this.op.audio, this.inicio, this.comecarEm, this.chart.fimEm);
     this.rodando = true;
     this.raf = requestAnimationFrame(this.quadro);
   }
