@@ -124,7 +124,7 @@ export default function TestesClient({
             <br />e <em>aperte start</em>
           </h1>
           <p className="testes-hero-sub">
-            Testes e jogos interativos da XAN Switch. É de graça, leva poucos minutos e alguns ainda rendem prêmio.
+            Quizzes e jogos interativos da XAN Switch. É de graça, leva poucos minutos e alguns ainda rendem prêmio.
           </p>
           <div className={`testes-hoje${hoje ? '' : ' is-carregando'}`} aria-live="polite">
             <span className={`testes-hoje-seq${hoje && hoje.seq > 0 ? ' is-acesa' : ''}`}>

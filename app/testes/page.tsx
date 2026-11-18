@@ -11,11 +11,11 @@ import TestesClient from './TestesClient';
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: 'Testes e jogos — XAN Switch',
+  title: 'GAMES — XAN Switch',
   description:
     'Quizzes e jogos interativos da XAN Switch: descubra qual Link de Zelda é você, qual será seu próximo jogo e muito mais.',
   openGraph: {
-    title: 'Testes e jogos — XAN Switch',
+    title: 'GAMES — XAN Switch',
     description: 'Quizzes e jogos interativos da XAN Switch. Escolha um e jogue agora.',
     images: ['/opengraph-image.jpg']
   }

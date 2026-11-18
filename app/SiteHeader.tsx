@@ -259,7 +259,7 @@ export default function SiteHeader({
           onMouseEnter={() => setHoverCatalog('testes')}
         >
           {isRedesign ? <DiceIcon /> : <span aria-hidden="true">🎲</span>}
-          <span className="catalog-switcher-label">Testes</span>
+          <span className="catalog-switcher-label">GAMES</span>
         </Link>
       </div>
 

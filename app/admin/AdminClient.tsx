@@ -585,7 +585,7 @@ export default function AdminClient({
               <div>
                 <h2>🕹️ Jogos interativos</h2>
                 <p className="adm-help">
-                  Quem jogou os jogos da página Testes e o resultado de cada partida. Em &quot;Feed de resultados&quot;
+                  Quem jogou os jogos da página GAMES e o resultado de cada partida. Em &quot;Feed de resultados&quot;
                   você modera o que os clientes publicam.
                 </p>
               </div>

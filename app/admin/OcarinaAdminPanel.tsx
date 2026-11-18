@@ -33,7 +33,7 @@ export default function OcarinaAdminPanel({ musicas, jogoPublicado }: { musicas:
   async function publicarJogo() {
     const texto = jogoPublicado
       ? 'Tirar o Zelda Tour do ar? Ele some do site e volta o banner "Em breve".'
-      : 'Publicar o Zelda Tour? Ele fica aberto pra todo mundo na página Testes.';
+      : 'Publicar o Zelda Tour? Ele fica aberto pra todo mundo na página GAMES.';
     if (!window.confirm(texto)) return;
     setMudando('jogo');
     setErro(null);
@@ -81,7 +81,7 @@ export default function OcarinaAdminPanel({ musicas, jogoPublicado }: { musicas:
           <h3>{jogoPublicado ? '🟢 O jogo está no ar' : '⚪ O jogo está fora do ar'}</h3>
           <p className="adm-help">
             {jogoPublicado
-              ? 'Todo mundo pode jogar na página Testes, com as músicas publicadas abaixo.'
+              ? 'Todo mundo pode jogar na página GAMES, com as músicas publicadas abaixo.'
               : 'Só você vê as mudanças por aqui. No site aparece o banner "Em breve" até você publicar.'}
           </p>
         </div>
