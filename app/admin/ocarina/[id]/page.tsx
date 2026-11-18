@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
-import { getAllOcarinaSongs, getOcarinaSong } from '@/lib/ocarinaDb';
+import { dificuldadesDaMusica, getAllOcarinaSongs, getOcarinaSong } from '@/lib/ocarinaDb';
 import type { Dificuldade } from '@/app/testes/ocarina-hero/ocarina';
 import EditorMusica from './EditorMusica';
 import '../../admin.css';
@@ -18,6 +18,7 @@ export default async function EditarMusicaPage({ params }: { params: Promise<{ i
   const todas = await getAllOcarinaSongs().catch(() => []);
   const jogos = [...new Set(todas.map((s) => s.game).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   const dificuldade = (['facil', 'medio', 'dificil', 'insano'].includes(m.difficulty) ? m.difficulty : 'medio') as Dificuldade;
+  const { notas, liberadas } = dificuldadesDaMusica(m);
   return (
     <EditorMusica
       jogos={jogos}
@@ -31,7 +32,8 @@ export default async function EditarMusicaPage({ params }: { params: Promise<{ i
         audioUrl: m.audio_url,
         duracao: m.audio_duration,
         bytes: m.audio_bytes,
-        notas: m.notes,
+        charts: notas,
+        liberadas: liberadas as Dificuldade[],
         publicada: m.published,
         ativaDesde: m.active_from,
         fimEm: m.end_at

@@ -6,7 +6,8 @@
 //   3. diga o que abre ao clicar em jogar (fim do TestesClient.tsx).
 // O resto (grade, numeração, contador, vagas de "em breve") se ajusta sozinho.
 
-export type TesteId = 'qual-link' | 'proximo-jogo' | 'silhueta' | 'ocarina-hero' | 'feed';
+// O Zelda Tour não entra aqui: ele tem um banner próprio no topo da página.
+export type TesteId = 'qual-link' | 'proximo-jogo' | 'silhueta' | 'feed';
 
 export type TesteGame = {
   id: TesteId;
@@ -20,7 +21,7 @@ export type TesteGame = {
   reward?: string;
   cta: string;
   // Cores do card — ver .teste-card.theme-* em testes.css.
-  theme: 'zelda' | 'arcade' | 'silhueta' | 'ocarina' | 'feed';
+  theme: 'zelda' | 'arcade' | 'silhueta' | 'feed';
   // Jogo com página própria (ex: /testes/silhueta): o card vira um link.
   // Sem href, o jogo abre por cima da página (ver o fim do TestesClient.tsx).
   href?: string;
@@ -39,18 +40,6 @@ export const TESTES: TesteGame[] = [
     cta: 'Jogar o de hoje',
     theme: 'silhueta',
     href: '/testes/silhueta',
-    isNew: true
-  },
-  {
-    id: 'ocarina-hero',
-    kind: 'Ritmo',
-    title: 'Zelda Tour',
-    description: 'As notas descem pela pista e você toca no tempo certo. Complete as Triforces, ative o especial e dobre os pontos.',
-    meta: ['Música do Dia', 'Especial dourado'],
-    reward: 'Recorde e triforces',
-    cta: 'Tocar agora',
-    theme: 'ocarina',
-    href: '/testes/zelda-tour',
     isNew: true
   },
   {

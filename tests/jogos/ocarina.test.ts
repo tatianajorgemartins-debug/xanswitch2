@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { estrelas, frequencia, migrarTeclas, multiplicador, pistaDaTecla, precisao, sequenciasEstrela, validarChart, TECLAS_PADRAO } from '../../app/testes/ocarina-hero/ocarina.ts';
+import { chartNaDificuldade, dificuldadesDe, estrelas, frequencia, migrarTeclas, multiplicador, pistaDaTecla, precisao, sequenciasEstrela, validarChart, TECLAS_PADRAO } from '../../app/testes/ocarina-hero/ocarina.ts';
 
 const notasSeguidas = (total: number, passo = 0.5) => Array.from({ length: total }, (_, i) => ({ t: 2 + i * passo, pista: 'verde' as const }));
 
@@ -16,6 +16,23 @@ test('triforces: só as marcadas contam e uma nota comum separa sequências', ()
 test('estrelas: acorde conta como um passo da mesma sequência e passa pela validação', () => {
   const c = validarChart({ id: 'x', titulo: 'X', bpm: 100, notas: [{ t: 1, pista: 'verde', estrela: true }, { t: 1, pista: 'azul', estrela: true }, { t: 2, pista: 'roxo', estrela: true }] });
   assert.deepEqual(sequenciasEstrela(c!.notas), [0, 0, 0]);
+});
+
+test('dificuldades: cada uma tem as próprias notas e o próprio recorde', () => {
+  const c = validarChart({
+    id: 'm1',
+    titulo: 'X',
+    bpm: 100,
+    dificuldade: 'insano',
+    notas: [{ t: 1, pista: 'verde' }, { t: 2, pista: 'azul' }],
+    variantes: { dificil: [{ t: 1, pista: 'roxo', estrela: true }], facil: [] }
+  })!;
+  assert.deepEqual(dificuldadesDe(c), ['dificil', 'insano']);
+  const dificil = chartNaDificuldade(c, 'dificil');
+  assert.equal(dificil.id, 'm1:dificil');
+  assert.equal(dificil.dificuldade, 'dificil');
+  assert.deepEqual(dificil.notas, [{ t: 1, pista: 'roxo', estrela: true }]);
+  assert.equal(chartNaDificuldade(c, 'insano').notas.length, 2);
 });
 
 test('o espaço não fica mais numa pista salva', () => {

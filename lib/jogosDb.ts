@@ -53,6 +53,26 @@ export async function getRecentGamePlays(limit = 600): Promise<GamePlayRow[]> {
   return rows as GamePlayRow[];
 }
 
+// Melhor partida de cada jogador numa música e dificuldade, do maior pro menor.
+export type RecordeJogador = { customer_email: string; nome: string; score: number; precisao: string | null; estrelas: string | null };
+
+export async function getRecordesOcarina(chartId: string, limit = 100): Promise<RecordeJogador[]> {
+  const rows = await getSql()`
+    SELECT customer_email, nome, score, precisao, estrelas FROM (
+      SELECT DISTINCT ON (customer_email) customer_email, score, created_at,
+        details -> 'jogador' ->> 'nome' AS nome, details ->> 'precisao' AS precisao, details ->> 'estrelas' AS estrelas
+      FROM game_plays
+      WHERE game = 'ocarina' AND customer_email IS NOT NULL AND score IS NOT NULL
+        AND details ->> 'chartId' = ${chartId} AND details ->> 'completou' = 'true'
+        AND details -> 'jogador' ->> 'nome' IS NOT NULL
+      ORDER BY customer_email, score DESC, created_at ASC
+    ) melhores
+    ORDER BY score DESC, created_at ASC
+    LIMIT ${limit}
+  `;
+  return rows as RecordeJogador[];
+}
+
 export type GamePlayStats = { game: string; plays_today: number; plays_7d: number; plays_total: number; players_7d: number };
 
 // Totais por jogo (hoje = dia de Brasília).

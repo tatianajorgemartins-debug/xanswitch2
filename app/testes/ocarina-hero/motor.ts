@@ -62,7 +62,9 @@ export type HudMotor = {
 };
 
 // Onde ficam as pistas na tela (pra pôr os botões de toque em cima).
-export type GeometriaMotor = { esquerda: number; largura: number; topo: number; acerto: number; base: number };
+// bordaTopo e bordaAcerto: onde a borda direita da pista está no fundo e na
+// linha de acerto (entre os dois pontos ela é uma reta).
+export type GeometriaMotor = { esquerda: number; largura: number; topo: number; acerto: number; base: number; bordaTopo: number; bordaAcerto: number };
 
 export type OpcoesMotor = {
   latencia: number;
@@ -284,7 +286,9 @@ export class MotorOcarina {
       largura: larg,
       topo: this.Y(P_TOPO),
       acerto: this.Y(P_ACERTO),
-      base: this.ty + ph
+      base: this.ty + ph,
+      bordaTopo: this.xDe(4.8, 1),
+      bordaAcerto: this.xDe(4.8, 0)
     });
     this.camadasCom = '';
     if (!this.rodando) this.desenhar(this.tempo());
@@ -419,9 +423,7 @@ export class MotorOcarina {
     else this.meias = Math.min(2, this.meias + 1);
     this.mostrar(e.pista, 'Sequência!', '#ffe08a', t);
     for (let i = 0; i < PISTAS.length; i++) this.faisca(i, 6);
-    const agora = this.som.agora;
-    this.som.nota(frequencia('A5'), agora, 0.14, 0.2);
-    this.som.nota(frequencia('D6'), agora + 0.09, 0.24, 0.2);
+    this.som.sequencia();
   }
 
   // Espaço ou o botão do celular. Barra cheia: 10 s; pela metade: 5 s.
@@ -1066,7 +1068,7 @@ export class MotorOcarina {
   // com três triângulos dourados e contorno escuro por cima.
   private triforce(ctx: CanvasRenderingContext2D, r: number, corDisco: string) {
     this.nota(ctx, 0, 0, r, 0, false, corDisco);
-    const lado = r * 2.3;
+    const lado = r * 1.5;
     const alt = lado * 0.8;
     const topo = -alt / 2;
     const tri = (x: number, y: number, l: number, a: number) => {
@@ -1081,7 +1083,7 @@ export class MotorOcarina {
     ctx.shadowBlur = r * 0.4;
     ctx.beginPath();
     tri(0, topo, lado, alt);
-    ctx.lineWidth = r * 0.26;
+    ctx.lineWidth = r * 0.16;
     ctx.strokeStyle = '#241500';
     ctx.stroke();
     ctx.fillStyle = '#241500';

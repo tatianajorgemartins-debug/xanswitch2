@@ -14,6 +14,7 @@ import {
   deletePost,
   getLikedPostIds,
   getPostById,
+  getRecordesOcarina,
   getVisiblePosts,
   insertGamePlay,
   insertGamePost,
@@ -21,6 +22,7 @@ import {
   type GamePostRow
 } from '@/lib/jogosDb';
 import { verifyAccessToken, verifyAccessTokenProfile } from '@/lib/supabaseAuthServer';
+import { dificuldadesDaMusica, getOcarinaSong } from '@/lib/ocarinaDb';
 import { loadCatalogData } from '@/lib/catalogData';
 import { normalizar } from '@/lib/jogos/respostas';
 import { imagemDoPost, type ImagemPost } from './feed/imagemPost';
@@ -28,6 +30,58 @@ import { imagemDoPost, type ImagemPost } from './feed/imagemPost';
 const JOGOS = ['silhueta', 'ocarina', 'qual-link', 'proximo-jogo'] as const;
 const ehJogo = (g: unknown): g is (typeof JOGOS)[number] => typeof g === 'string' && (JOGOS as readonly string[]).includes(g);
 const texto = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+
+// ---------- Classificação do Zelda Tour ----------
+
+const ID_RANKING = /^m(\d{1,9}):(facil|medio|dificil|insano)$/;
+
+// Na classificação aparece só o primeiro nome e a inicial do sobrenome.
+function nomePublico(nome: string | null): string {
+  const partes = (nome ?? '').trim().split(/\s+/).filter(Boolean);
+  if (!partes.length) return 'Jogador XAN';
+  const primeiro = partes[0].slice(0, 18);
+  return partes.length > 1 ? `${primeiro} ${partes[partes.length - 1][0].toUpperCase()}.` : primeiro;
+}
+
+// A pontuação cabe no máximo que aquela música dá? (x4 de combo e x2 do especial)
+async function pontuacaoPossivel(d: Record<string, unknown>, pontos: unknown): Promise<boolean> {
+  const m = ID_RANKING.exec(String(d.chartId ?? ''));
+  if (!m || d.completou !== true || typeof pontos !== 'number' || pontos <= 0) return false;
+  const musica = await getOcarinaSong(Number(m[1]));
+  if (!musica?.published) return false;
+  const notas = dificuldadesDaMusica(musica).notas[m[2]] ?? [];
+  const acertos = Number(d.perfeitos) + Number(d.bons);
+  if (!notas.length || !Number.isFinite(acertos) || acertos > notas.length) return false;
+  const teto = notas.reduce((total, n) => total + 400 + (n.dur ?? 0) * 320, 0);
+  return pontos <= teto + 1;
+}
+
+export type LinhaClassificacao = { posicao: number; nome: string; pontos: number; precisao: number; estrelas: number; meu: boolean };
+export type Classificacao = { ok: true; linhas: LinhaClassificacao[]; logado: boolean } | { ok: false };
+
+export async function classificacaoAction(accessToken: string | null, chartId: string): Promise<Classificacao> {
+  if (!ID_RANKING.test(String(chartId))) return { ok: false };
+  try {
+    const email = (await verifyAccessToken(accessToken).catch(() => null))?.toLowerCase() ?? null;
+    const recordes = await getRecordesOcarina(chartId);
+    return {
+      ok: true,
+      logado: email !== null,
+      // o e-mail fica no servidor: o navegador só recebe se a linha é da pessoa
+      linhas: recordes.map((r, i) => ({
+        posicao: i + 1,
+        nome: r.nome,
+        pontos: r.score,
+        precisao: Number(r.precisao) || 0,
+        estrelas: Number(r.estrelas) || 0,
+        meu: email !== null && r.customer_email === email
+      }))
+    };
+  } catch (err) {
+    console.error('[jogos] Falha ao ler a classificação:', err);
+    return { ok: false };
+  }
+}
 
 // ---------- Registro de partidas ----------
 
@@ -44,10 +98,15 @@ export type Jogada = {
 export async function registrarJogadaAction(accessToken: string | null, visitante: string, j: Jogada): Promise<{ ok: boolean }> {
   try {
     if (!ehJogo(j?.jogo) || !/^[a-z0-9-]{8,40}$/.test(visitante)) return { ok: false };
-    const detalhes = j.detalhes && typeof j.detalhes === 'object' ? j.detalhes : {};
+    // "jogador" é preenchido só aqui no servidor, nunca pelo navegador
+    const { jogador: _ignorado, ...detalhes } = (j.detalhes && typeof j.detalhes === 'object' ? j.detalhes : {}) as Record<string, unknown>;
     if (JSON.stringify(detalhes).length > 3000) return { ok: false };
     if ((await countRecentPlaysByVisitor(visitante)) > 120) return { ok: false };
-    const email = await verifyAccessToken(accessToken).catch(() => null);
+    const conta = await verifyAccessTokenProfile(accessToken).catch(() => null);
+    const email = conta?.email ?? null;
+    if (conta && j.jogo === 'ocarina' && (await pontuacaoPossivel(detalhes, j.pontos).catch(() => false))) {
+      detalhes.jogador = { nome: nomePublico(conta.name) };
+    }
     await insertGamePlay({
       game: j.jogo,
       mode: texto(j.modo, 30) || '-',

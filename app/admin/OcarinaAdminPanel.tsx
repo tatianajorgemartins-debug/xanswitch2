@@ -12,7 +12,7 @@ export type MusicaAdmin = {
   id: number;
   titulo: string;
   jogo: string;
-  dificuldade: string;
+  dificuldades: string[];
   notas: number;
   duracao: number | null;
   temAudio: boolean;
@@ -118,7 +118,7 @@ export default function OcarinaAdminPanel({ musicas, jogoPublicado }: { musicas:
                     <strong>{m.titulo}</strong>
                   </td>
                   <td>{m.jogo || <span className="adm-muted">—</span>}</td>
-                  <td>{DIF[m.dificuldade] ?? m.dificuldade}</td>
+                  <td>{m.dificuldades.map((d) => DIF[d] ?? d).join(', ')}</td>
                   <td>{m.temAudio ? dur(m.duracao) : <span className="adm-muted">sem áudio</span>}</td>
                   <td>{m.notas}</td>
                   <td>{m.publicada ? '✅ Publicada' : <span className="adm-muted">Rascunho</span>}</td>

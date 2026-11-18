@@ -285,6 +285,257 @@
   gap: 10px;
   margin-top: 22px;
 }
+.redesign .oc-livre li:only-child {
+  grid-column: 1 / -1;
+}
+.redesign .oc-musica-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+.redesign .oc-musica-dur {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+/* Antes de jogar: dificuldade e posição do celular */
+.redesign .oc-preparar {
+  padding: 8px 0 12px;
+  text-align: center;
+}
+.redesign .oc-preparar-voltar {
+  display: block;
+  min-height: 44px;
+  margin: 0 0 6px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.redesign .oc-preparar h2 {
+  margin: 0;
+  font-size: clamp(1.6rem, 7vw, 2.4rem);
+  font-weight: 900;
+  font-stretch: 110%;
+  line-height: 1.05;
+}
+.redesign .oc-preparar-dur {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-weight: 700;
+}
+.redesign .oc-preparar h3 {
+  margin: 26px 0 10px;
+  font-size: var(--step-lead);
+  font-weight: 900;
+}
+.redesign .oc-escolhas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+.redesign .oc-escolhas.is-posicao {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.redesign .oc-escolhas button {
+  --dif: #a463ff;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 3px;
+  min-height: 72px;
+  padding: 12px 10px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1.5px rgba(164, 99, 255, 0.22);
+}
+.redesign .oc-escolhas button strong {
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+.redesign .oc-escolhas button small {
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.redesign .oc-escolhas button.is-on {
+  background: color-mix(in srgb, var(--dif) 20%, var(--surface));
+  box-shadow: inset 0 0 0 2.5px var(--dif);
+}
+.redesign .oc-preparar-aviso {
+  margin: 12px 0 0;
+  padding: 11px 14px;
+  border-radius: 12px;
+  background: rgba(255, 171, 46, 0.14);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 171, 46, 0.65);
+  color: var(--ink);
+  font-size: 0.8125rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+.redesign .oc-celular {
+  display: block;
+  width: 20px;
+  height: 34px;
+  margin-bottom: 5px;
+  border: 2.5px solid currentColor;
+  border-radius: 5px;
+}
+.redesign .oc-celular.is-deitado {
+  width: 34px;
+  height: 20px;
+  margin-top: 7px;
+  margin-bottom: 12px;
+}
+.redesign .oc-preparar-jogar {
+  width: 100%;
+  min-height: 56px;
+  margin-top: 26px;
+  font-size: 1.15rem;
+}
+
+/* Classificação dos jogadores */
+.redesign .oc-rank {
+  margin-top: 26px;
+  text-align: left;
+}
+.redesign .oc-rank h2 {
+  margin: 0 0 12px;
+  font-size: var(--step-lead);
+  font-weight: 900;
+}
+.redesign .oc-rank-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.redesign .oc-rank-filtros select {
+  flex: 1 1 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.28);
+}
+.redesign .oc-rank-filtros button {
+  flex: 1 1 0;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.22);
+}
+.redesign .oc-rank-filtros button.is-on {
+  color: var(--dif);
+  box-shadow: inset 0 0 0 2px var(--dif);
+}
+.redesign .oc-rank ol {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.redesign .oc-rank-linha {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 8px 14px 8px 10px;
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.16);
+}
+.redesign .oc-rank-pos {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--muted);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.redesign .oc-rank-nome {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.redesign .oc-rank-nome small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.redesign .oc-rank-pontos {
+  font-size: 1.05rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+/* Os 5 primeiros em destaque */
+.redesign .oc-rank-linha.is-top {
+  min-height: 66px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--medalha) 20%, var(--surface)), var(--surface) 70%);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--medalha) 65%, transparent);
+}
+.redesign .oc-rank-linha.is-top .oc-rank-pos {
+  background: var(--medalha);
+  color: #1d1403;
+}
+.redesign .oc-rank-linha.is-top .oc-rank-nome {
+  font-size: 1.05rem;
+}
+.redesign .oc-rank-linha.is-top .oc-rank-pontos {
+  font-size: 1.25rem;
+}
+.redesign .oc-rank-linha.is-meu {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.redesign .oc-rank-resto {
+  margin-top: 8px;
+}
+.redesign .oc-rank-mais {
+  width: 100%;
+  margin-top: 10px;
+}
+.redesign .oc-rank-aviso {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: var(--step-small);
+  text-align: center;
+}
+.redesign .oc-rank-aviso a {
+  color: var(--ink);
+  font-weight: 800;
+}
+
 /* Precisão (Folgada / Normal / Exata) */
 .redesign .oc-precisao {
   margin-top: 22px;
@@ -504,13 +755,14 @@
 }
 
 /* Placar e corações (canto direito, ao lado da pausa) */
+/* A posição ao lado da pista é calculada em Palco.tsx. */
 .oc-hud-dir {
   position: absolute;
   top: max(10px, env(safe-area-inset-top));
   right: calc(max(12px, env(safe-area-inset-right)) + 4.6em);
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.5em;
 }
 .oc-hud-pontos {
@@ -857,22 +1109,13 @@
   .oc-palco .oc-hud-tri {
     display: none;
   }
-  .oc-hud-dir {
-    top: calc(max(10px, env(safe-area-inset-top)) + 6.4em);
-    right: auto;
-    left: max(12px, env(safe-area-inset-left));
-    flex-direction: row;
-    gap: 1em;
-  }
   /* Em pé, as pistas ocupam a largura toda: o botão fica acima delas. */
   .oc-palco .oc-especial {
-    top: calc(var(--topo-zonas, 60cqh) - 84px);
+    top: calc(var(--topo-pista, 40cqh) - 84px);
     bottom: auto;
     right: max(8px, env(safe-area-inset-right));
   }
   .oc-hud-combo {
-    top: calc(max(10px, env(safe-area-inset-top)) + 5.6em);
-    right: max(10px, env(safe-area-inset-right));
     width: 9em;
     font-size: 0.85em;
   }

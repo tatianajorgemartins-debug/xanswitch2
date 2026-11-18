@@ -8,10 +8,14 @@ import { FADE_FIM } from './ocarina';
 
 export type Voz = { parar: (quando?: number) => void };
 
+// Som de completar uma sequência de Triforces (já cortado no início do som).
+const SOM_SEQUENCIA = '/jogos/ocarina/sons/sequencia.wav';
+
 export class SomOcarina {
   readonly ctx: AudioContext;
   private saida: GainNode;
   private ruido: AudioBuffer;
+  private bufferSequencia: AudioBuffer | null = null;
 
   constructor() {
     const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -38,6 +42,22 @@ export class SomOcarina {
     this.saida.connect(reverb);
     reverb.connect(molhado);
     molhado.connect(compressor);
+
+    // Baixa antes da partida, pra tocar na hora do acerto.
+    this.carregarAudio(SOM_SEQUENCIA)
+      .then((b) => (this.bufferSequencia = b))
+      .catch(() => {});
+  }
+
+  // Completou uma sequência de Triforces. Vai direto pra saída, sem eco.
+  sequencia(): void {
+    if (!this.bufferSequencia) return;
+    const fonte = this.ctx.createBufferSource();
+    fonte.buffer = this.bufferSequencia;
+    const ganho = this.ctx.createGain();
+    ganho.gain.value = 1.2;
+    fonte.connect(ganho).connect(this.ctx.destination);
+    fonte.start();
   }
 
   private impulso(segundos: number): AudioBuffer {

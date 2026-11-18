@@ -3,14 +3,13 @@ import { ViewTransition } from 'react';
 import { redirect } from 'next/navigation';
 import SiteShell from '@/app/SiteShell';
 import { buildWhatsAppContactLink } from '@/lib/whatsapp';
-import { getPublishedOcarinaSongs, jogoOcarinaPublicado } from '@/lib/ocarinaDb';
+import { dificuldadesDaMusica, getPublishedOcarinaSongs, jogoOcarinaPublicado } from '@/lib/ocarinaDb';
 import JogoCabecalho from '../JogoCabecalho';
 import OcarinaClient from './OcarinaClient';
 import { validarChart, type Chart } from './ocarina';
-import { ORIGINAIS } from './originais';
 
-// "Zelda Tour": jogo de ritmo. Músicas = as 6 originais (originais.ts) +
-// as publicadas no admin (aba "Zelda Tour", tabela ocarina_songs).
+// "Zelda Tour": jogo de ritmo. As músicas são as publicadas no admin (aba
+// "Zelda Tour", tabela ocarina_songs).
 export const revalidate = 60;
 
 export const metadata: Metadata = {
@@ -26,8 +25,9 @@ export const metadata: Metadata = {
 async function musicasDoAdmin(): Promise<Chart[]> {
   const rows = await getPublishedOcarinaSongs().catch(() => []);
   return rows
-    .map((m) =>
-      validarChart({
+    .map((m) => {
+      const { notas, liberadas } = dificuldadesDaMusica(m);
+      return validarChart({
         id: `m${m.id}`,
         titulo: m.title,
         jogo: m.game || 'Outros',
@@ -39,9 +39,10 @@ async function musicasDoAdmin(): Promise<Chart[]> {
         fimEm: m.end_at ?? undefined,
         publicadaEm: m.published_at ? new Date(m.published_at).toISOString() : undefined,
         ativo_desde: m.active_from ?? undefined,
-        notas: m.notes
-      })
-    )
+        notas: m.notes,
+        variantes: Object.fromEntries(liberadas.map((d) => [d, notas[d]]))
+      });
+    })
     .filter((c): c is Chart => c !== null);
 }
 
@@ -49,7 +50,7 @@ export default async function OcarinaPage() {
   // Fora do ar (admin > Zelda Tour): só o site oficial (Vercel, produção)
   // manda de volta pra /testes. No computador de teste continua abrindo.
   if (process.env.VERCEL_ENV === 'production' && !(await jogoOcarinaPublicado())) redirect('/testes');
-  const charts = [...(await musicasDoAdmin()), ...ORIGINAIS];
+  const charts = await musicasDoAdmin();
   return (
     <SiteShell>
       <ViewTransition>

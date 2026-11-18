@@ -55,6 +55,9 @@ export const DIFICULDADES: Record<Dificuldade, { nome: string; cor: string; ante
   insano: { nome: 'Insano', cor: '#ff4d7d', antecedencia: 1.25 }
 };
 
+// Da mais fácil pra mais difícil.
+export const ORDEM_DIFICULDADES: Dificuldade[] = ['facil', 'medio', 'dificil', 'insano'];
+
 export type NotaChart = {
   t: number; // segundos desde o início da música
   pista: PistaId;
@@ -88,7 +91,20 @@ export type Chart = {
   ativo_desde?: string;
   ativo?: boolean;
   notas: NotaChart[];
+  // Notas das dificuldades que o jogador pode escolher (com a principal).
+  variantes?: Partial<Record<Dificuldade, NotaChart[]>>;
 };
+
+// Dificuldades que o jogador pode escolher nesta música.
+export function dificuldadesDe(c: Chart): Dificuldade[] {
+  return ORDEM_DIFICULDADES.filter((d) => d === c.dificuldade || (c.variantes?.[d]?.length ?? 0) > 0);
+}
+
+// A música pronta pra jogar numa dificuldade (cada uma tem o próprio recorde).
+export function chartNaDificuldade(c: Chart, d: Dificuldade): Chart {
+  const { variantes, ...resto } = c;
+  return { ...resto, id: `${c.id}:${d}`, dificuldade: d, notas: variantes?.[d] ?? c.notas };
+}
 
 // Confere e arruma um chart lido do JSON. null se estiver inválido.
 export function validarChart(raw: unknown): Chart | null {
@@ -96,19 +112,28 @@ export function validarChart(raw: unknown): Chart | null {
   const c = raw as Record<string, unknown>;
   if (typeof c.id !== 'string' || typeof c.titulo !== 'string' || typeof c.bpm !== 'number' || !Array.isArray(c.notas)) return null;
   const dificuldade = (['facil', 'medio', 'dificil', 'insano'] as const).find((d) => d === c.dificuldade) ?? 'medio';
-  const notas: NotaChart[] = [];
-  for (const n of c.notas as Record<string, unknown>[]) {
-    if (!n || typeof n.t !== 'number' || indicePista(String(n.pista)) < 0) continue;
-    notas.push({
-      t: n.t,
-      pista: PISTAS[indicePista(String(n.pista))].id,
-      ...(typeof n.dur === 'number' && n.dur > 0.05 ? { dur: n.dur } : {}),
-      ...(typeof n.nota === 'string' ? { nota: n.nota } : {}),
-      ...(n.estrela === true ? { estrela: true } : {})
-    });
-  }
+  const lerNotas = (lista: unknown): NotaChart[] => {
+    const notas: NotaChart[] = [];
+    for (const n of (Array.isArray(lista) ? lista : []) as Record<string, unknown>[]) {
+      if (!n || typeof n.t !== 'number' || indicePista(String(n.pista)) < 0) continue;
+      notas.push({
+        t: n.t,
+        pista: PISTAS[indicePista(String(n.pista))].id,
+        ...(typeof n.dur === 'number' && n.dur > 0.05 ? { dur: n.dur } : {}),
+        ...(typeof n.nota === 'string' ? { nota: n.nota } : {}),
+        ...(n.estrela === true ? { estrela: true } : {})
+      });
+    }
+    return notas.sort((a, b) => a.t - b.t);
+  };
+  const notas = lerNotas(c.notas);
   if (!notas.length) return null;
-  notas.sort((a, b) => a.t - b.t);
+  const variantes: Partial<Record<Dificuldade, NotaChart[]>> = {};
+  const brutas = (c.variantes ?? {}) as Record<string, unknown>;
+  for (const d of ORDEM_DIFICULDADES) {
+    const lista = lerNotas(brutas[d]);
+    if (lista.length) variantes[d] = lista;
+  }
   const texto = (k: string) => (typeof c[k] === 'string' && c[k] ? { [k]: c[k] as string } : {});
   const numero = (k: string) => (typeof c[k] === 'number' && Number.isFinite(c[k]) ? { [k]: c[k] as number } : {});
   return {
@@ -125,6 +150,7 @@ export function validarChart(raw: unknown): Chart | null {
     ...(typeof c.tom === 'string' ? { tom: c.tom } : {}),
     ...(typeof c.ativo_desde === 'string' ? { ativo_desde: c.ativo_desde } : {}),
     ...(c.ativo === false ? { ativo: false } : {}),
+    ...(Object.keys(variantes).length ? { variantes } : {}),
     notas
   };
 }

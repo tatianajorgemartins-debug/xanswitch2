@@ -91,14 +91,11 @@ export default function TestesClient({
   const statusDoCard = (id: TesteId): string | null => {
     if (!hoje) return null;
     if (id === 'silhueta') return hoje.silhueta === NIVEIS_SILHUETA.length ? '✓ Feito hoje' : hoje.silhueta ? `${hoje.silhueta}/4 hoje` : null;
-    if (id === 'ocarina-hero') return hoje.ocarina ? '✓ Música do Dia' : null;
     return null;
   };
 
   // Sem jogos no catálogo o sorteio não tem o que sortear: o card nem aparece.
-  const games = TESTES.filter(
-    (g) => (g.id !== 'proximo-jogo' || firstCovers.length > 0) && (g.id !== 'ocarina-hero' || ocarinaPublicado)
-  );
+  const games = TESTES.filter((g) => g.id !== 'proximo-jogo' || firstCovers.length > 0);
   const slots = comingSoonSlots(games.length);
 
   return (
@@ -120,7 +117,7 @@ export default function TestesClient({
           <div className="testes-hero-glow" aria-hidden="true" />
           <p className="testes-hero-seal">
             <span className="testes-hero-dot" aria-hidden="true" />
-            Sala de jogos · {games.filter((g) => g.id !== 'feed').length} disponíveis
+            Sala de jogos · {games.filter((g) => g.id !== 'feed').length + (ocarinaPublicado ? 1 : 0)} disponíveis
           </p>
           <h1 className="testes-hero-title">
             Escolha um jogo
@@ -151,7 +148,7 @@ export default function TestesClient({
           </div>
         </section>
 
-        {!ocarinaPublicado && <OcarinaEmBreve />}
+        <BannerZeldaTour disponivel={ocarinaPublicado} />
 
         <ul className="testes-grid">
           {games.map((game, i) => (
@@ -275,9 +272,9 @@ function TesteCard({
   );
 }
 
-// Banner do Zelda Tour enquanto ele não abre (some sozinho quando o jogo é
-// publicado em /admin > Zelda Tour). A pista é a mesma do jogo, com notas
-// descendo até os anéis.
+// Banner do Zelda Tour: "Em breve" até o jogo ser publicado em /admin > Zelda
+// Tour e, depois disso, "Disponível para jogar". A pista é a mesma do jogo,
+// com notas descendo até os anéis.
 const OC_UI = '/jogos/ocarina/ui/';
 // pista (0–4), cor e atraso de cada nota que desce no banner
 const NOTAS_BANNER: [number, string, number][] = [
@@ -292,13 +289,13 @@ const NOTAS_BANNER: [number, string, number][] = [
 const PISTA_FUNDO = [38.9, 44.5, 50.1, 55.7, 61.3];
 const PISTA_ACERTO = [19.2, 34.7, 50.1, 65.6, 81];
 
-function OcarinaEmBreve() {
+function BannerZeldaTour({ disponivel }: { disponivel: boolean }) {
   return (
-    <section className={`oc-breve ${OC_FONTES}`} aria-label="Zelda Tour: em breve">
+    <section className={`oc-breve ${OC_FONTES}${disponivel ? ' is-disponivel' : ''}`} aria-label={`Zelda Tour: ${disponivel ? 'disponível para jogar' : 'em breve'}`}>
       <div className="oc-breve-texto">
         <p className="oc-breve-selo">
           <span aria-hidden="true" />
-          Em breve
+          {disponivel ? 'Disponível para jogar' : 'Em breve'}
         </p>
         <h2 className="oc-breve-titulo">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -306,14 +303,19 @@ function OcarinaEmBreve() {
           Zelda Tour
         </h2>
         <p className="oc-breve-sub">
-          O novo jogo de ritmo da XAN: as notas descem pela pista e você toca no tempo da música. Músicas de Zelda e uma Música do
-          Dia nova todo dia.
+          O jogo de ritmo da XAN: as notas descem pela pista e você toca no tempo da música. Acerte as Triforces, encha a barra e
+          ative o especial.
         </p>
         <ul className="oc-breve-info">
           <li>🎵 Músicas de Zelda</li>
-          <li>📅 Música do Dia</li>
+          <li>🔺 Especial dourado</li>
           <li>📱 Celular e computador</li>
         </ul>
+        {disponivel && (
+          <Link className="oc-breve-jogar" href="/testes/zelda-tour">
+            ▶ Jogar agora
+          </Link>
+        )}
       </div>
       <div className="oc-breve-pista" aria-hidden="true">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -339,21 +341,6 @@ const SILHUETAS_CARD = ['/jogos/silhueta/441c41a9ab53-s.webp', '/jogos/silhueta/
 
 // A arte de cada card. Jogo novo: mais um "if" aqui.
 function TesteArt({ id, covers }: { id: TesteId; covers: Item[] }) {
-  if (id === 'ocarina-hero') {
-    // Pista em perspectiva com notas descendo.
-    return (
-      <span className="teste-art teste-art-ocarina">
-        <span className="teste-art-pista">
-          {['#3d8bff', '#ffc93c', '#ffc93c', '#ffc93c', '#ffc93c'].map((cor, i) => (
-            <span key={i} className="teste-art-raia" style={{ '--cor': cor, '--d': `${(i * 0.37) % 1}s` } as React.CSSProperties}>
-              <i />
-            </span>
-          ))}
-        </span>
-        <span className="teste-art-notas-musicais">♪ ♫</span>
-      </span>
-    );
-  }
   if (id === 'feed') {
     return (
       <span className="teste-art teste-art-feed">

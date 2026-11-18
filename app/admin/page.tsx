@@ -133,7 +133,7 @@ export default async function AdminPage() {
         id: m.id,
         titulo: m.title,
         jogo: m.game,
-        dificuldade: m.difficulty,
+        dificuldades: m.charts?.liberadas.length ? m.charts.liberadas : [m.difficulty],
         notas: m.note_count,
         duracao: m.audio_duration,
         temAudio: Boolean(m.audio_url),

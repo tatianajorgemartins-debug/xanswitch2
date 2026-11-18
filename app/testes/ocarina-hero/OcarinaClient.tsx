@@ -20,6 +20,8 @@ import {
   JOGO_ORIGINAIS,
   NOME_JOGO,
   TECLA_ESPECIAL,
+  chartNaDificuldade,
+  dificuldadesDe,
   duracaoMusica,
   ehNova,
   formatarDuracao,
@@ -35,6 +37,7 @@ import {
   pistaDaTecla,
   textoCompartilhar,
   type Chart,
+  type Dificuldade,
   type MapaTeclas,
   type PistaId,
   type Precisao,
@@ -43,6 +46,7 @@ import {
 import { SomOcarina } from './som';
 import { MotorOcarina, carregarImagensOcarina } from './motor';
 import Palco from './Palco';
+import Classificacao from './Classificacao';
 import { OC_FONTES } from './fontes';
 import './ocarina.css';
 
@@ -50,6 +54,7 @@ const Editor = dynamic(() => import('./Editor'), { ssr: false });
 
 type Tela =
   | { tipo: 'menu' }
+  | { tipo: 'preparar'; chart: Chart; diario: boolean }
   | { tipo: 'jogo'; chart: Chart; diario: boolean; rodada: number; audio: AudioBuffer | null }
   | { tipo: 'resultado'; chart: Chart; diario: boolean; r: ResultadoMusica; recorde: boolean }
   | { tipo: 'teclas' }
@@ -61,6 +66,7 @@ export const CHAVE_TECLAS = 'ocarina_teclas';
 export const CHAVE_LATENCIA = 'ocarina_latencia';
 export const CHAVE_PRECISAO = 'ocarina_precisao';
 const CHAVE_DEITADO = 'ocarina_deitado';
+const CHAVE_DIFICULDADE = 'ocarina_dificuldade';
 
 // Celular: tela cheia + trava na horizontal. Precisa ser chamado direto no
 // toque do jogador (o navegador só deixa assim). No iPhone nenhum dos dois
@@ -108,8 +114,9 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
   const [recordes, setRecordes] = useState<Recordes>({});
   const [versao, setVersao] = useState(0);
   const [marco, setMarco] = useState<number | null>(null);
+  // sobe quando a partida termina de ser gravada: atualiza a classificação
+  const [versaoRanking, setVersaoRanking] = useState(0);
   const som = useRef<SomOcarina | null>(null);
-  const [liberado, setLiberado] = useState(false);
 
   useEffect(() => {
     setEditor(new URLSearchParams(window.location.search).get('editor') === '1');
@@ -143,7 +150,6 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
   const liberar = useCallback(async () => {
     if (!som.current) som.current = new SomOcarina();
     await som.current.destravar();
-    setLiberado(true);
     return som.current;
   }, []);
 
@@ -163,9 +169,9 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
   // Música com áudio: baixa e prepara antes de começar.
   const [carregando, setCarregando] = useState<string | null>(null);
   const [erroAudio, setErroAudio] = useState<string | null>(null);
-  async function jogar(chart: Chart, diario: boolean) {
+  async function jogar(chart: Chart, diario: boolean, jogarDeitado = deitado) {
     // antes de qualquer espera: o navegador só libera a tela cheia no toque
-    if (toque && deitado) entrarTelaCheia();
+    if (toque && jogarDeitado) entrarTelaCheia();
     const s = await liberar();
     let audio: AudioBuffer | null = null;
     if (chart.audio) {
@@ -203,7 +209,7 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
       gravar(CHAVE_RECORDES, novos);
     }
     const nomeDif = DIFICULDADES[chart.dificuldade].nome;
-    registrarJogada({
+    const registro = registrarJogada({
       jogo: JOGO,
       modo: diario ? 'dia' : 'livre',
       dia: diario ? dia : null,
@@ -234,6 +240,7 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
     }
     sairTelaCheia();
     setTela({ tipo: 'resultado', chart, diario, r, recorde: recorde && Boolean(anterior) });
+    registro.finally(() => setVersaoRanking((v) => v + 1));
   }
 
   if (editor) {
@@ -260,13 +267,13 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
         </p>
       </div>
 
-      <header className="oc-cabeca">
+      {tela.tipo !== 'preparar' && <header className="oc-cabeca">
         <p className="oc-kicker">Jogo de ritmo</p>
         <h1 className="oc-titulo">
           Zelda <em>Tour</em>
         </h1>
         <p className="oc-sub">As notas descem pela pista: toque no momento em que elas cruzam o círculo. Acerte as Triforces, encha a barra e ative o especial.</p>
-      </header>
+      </header>}
 
       {marco !== null && (
         <div className="oc-marco" role="status">
@@ -295,20 +302,37 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
           dia={dia}
           feitoHoje={feitoHoje}
           recordes={recordes}
-          liberado={liberado}
           teclas={teclas}
           latencia={latencia}
           toque={toque}
-          deitado={deitado}
-          onDeitado={mudarDeitado}
           precisao={precisaoJogo}
           onPrecisao={(p) => {
             setPrecisaoJogo(p);
             gravar(CHAVE_PRECISAO, p);
           }}
-          onLiberar={liberar}
-          onJogar={jogar}
+          onJogar={(chart, diario) => {
+            setErroAudio(null);
+            setTela({ tipo: 'preparar', chart, diario });
+            window.scrollTo(0, 0);
+          }}
           onTela={(t) => setTela({ tipo: t })}
+        />
+      )}
+
+      {tela.tipo === 'preparar' && (
+        <Preparar
+          chart={tela.chart}
+          recordes={recordes}
+          toque={toque}
+          deitado={deitado}
+          carregando={carregando !== null}
+          onVoltar={() => setTela({ tipo: 'menu' })}
+          onJogar={(d, jogarDeitado) => {
+            setDeitado(jogarDeitado);
+            gravar(CHAVE_DEITADO, jogarDeitado);
+            gravar(CHAVE_DIFICULDADE, d);
+            jogar(chartNaDificuldade(tela.chart, d), tela.diario, jogarDeitado);
+          }}
         />
       )}
 
@@ -343,6 +367,7 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
           numero={dia ? numeroDoDia(dia, INICIO) : null}
           dia={dia}
           sequencia={geral.atual}
+          versaoRanking={versaoRanking}
           onDeNovo={() => jogar(tela.chart, false)}
           onMenu={() => setTela({ tipo: 'menu' })}
         />
@@ -396,15 +421,11 @@ function Menu({
   dia,
   feitoHoje,
   recordes,
-  liberado,
   teclas,
   latencia,
   precisao,
   onPrecisao,
   toque,
-  deitado,
-  onDeitado,
-  onLiberar,
   onJogar,
   onTela
 }: {
@@ -413,39 +434,23 @@ function Menu({
   dia: string | null;
   feitoHoje: ReturnType<typeof resultadoDoDia>;
   recordes: Recordes;
-  liberado: boolean;
   teclas: MapaTeclas;
   latencia: number;
   precisao: Precisao;
   onPrecisao: (p: Precisao) => void;
   toque: boolean;
-  deitado: boolean;
-  onDeitado: (v: boolean) => void;
-  onLiberar: () => void;
   onJogar: (c: Chart, diario: boolean) => void;
   onTela: (t: 'teclas' | 'calibrar') => void;
 }) {
   const r = feitoHoje?.detalhe as Partial<ResultadoMusica> | undefined;
   return (
     <>
-      {!liberado && (
-        <button type="button" className="oc-tocar" onClick={onLiberar}>
-          <span className="oc-tocar-icone" aria-hidden="true">
-            ▶
-          </span>
-          <span>
-            <strong>Tocar</strong>
-            <small>Liga o som da ocarina (precisa de um toque no celular)</small>
-          </span>
-        </button>
-      )}
-
       {doDia && dia && (
         <section className="oc-dia" style={{ '--dif': DIFICULDADES[doDia.dificuldade].cor } as React.CSSProperties}>
           <p className="oc-dia-kicker">Música do Dia · #{numeroDoDia(dia, INICIO)}</p>
           <h2>{doDia.titulo}</h2>
           <p className="oc-dia-info">
-            <span className="oc-dif">{DIFICULDADES[doDia.dificuldade].nome}</span> {doDia.bpm} bpm · {doDia.notas.length} notas
+            {dificuldadesDe(doDia).map((d) => DIFICULDADES[d].nome).join(' · ')}
           </p>
           {feitoHoje ? (
             <>
@@ -469,6 +474,8 @@ function Menu({
 
       <ListaMusicas charts={charts} recordes={recordes} onJogar={(c) => onJogar(c, false)} />
 
+      <Classificacao charts={charts} />
+
       <section className="oc-precisao" aria-label="Precisão">
         <p>
           🎯 Precisão <small>— quanto o toque pode sair do tempo e ainda valer</small>
@@ -484,28 +491,117 @@ function Menu({
       </section>
 
       <section className="oc-ajustes">
-        {toque && (
-          <button type="button" className={`oc-botao${deitado ? ' is-principal' : ''}`} aria-pressed={deitado} onClick={() => onDeitado(!deitado)}>
-            📱 Jogar deitado em tela cheia: {deitado ? 'ligado' : 'desligado'}
+        {!toque && (
+          <button type="button" className="oc-botao" onClick={() => onTela('teclas')}>
+            ⌨️ Teclas: {PISTAS.map((p) => nomeTecla(teclas[p.id])).join(' ')}
           </button>
         )}
-        <button type="button" className="oc-botao" onClick={() => onTela('teclas')}>
-          ⌨️ Teclas: {PISTAS.map((p) => nomeTecla(teclas[p.id])).join(' ')}
-        </button>
         <button type="button" className="oc-botao" onClick={() => onTela('calibrar')}>
           🎚️ Calibrar atraso do som ({latencia} ms)
         </button>
       </section>
       <p className="oc-dica">
-        No computador: teclas {PISTAS.map((p) => nomeTecla(teclas[p.id])).join(' ')} (ou 1 a 5). No celular: toque nos
-        botões embaixo da pista — dá pra apertar dois de uma vez. Jogar com o celular deitado fica melhor.
+        {toque
+          ? 'Toque nas pistas quando as notas chegarem nos círculos. Dá pra apertar duas de uma vez.'
+          : `Teclas ${PISTAS.map((p) => nomeTecla(teclas[p.id])).join(' ')} ou 1 a 5.`}
       </p>
       <p className="oc-dica">
-        🔺 Acerte todas as Triforces douradas de uma sequência pra encher meia barra verde. Com ela pela metade ou cheia,
-        aperte <strong>Espaço</strong> (no celular, o botão <strong>Especial</strong>): as notas ficam douradas e valem o dobro por 5
-        ou 10 segundos.
+        🔺 Acerte todas as Triforces douradas de uma sequência pra encher meia barra verde. Com ela pela metade ou cheia, aperte{' '}
+        <strong>{toque ? 'o botão Especial' : 'Espaço'}</strong>: as notas ficam douradas e valem o dobro por 5 ou 10 segundos.
       </p>
     </>
+  );
+}
+
+// ---------- Antes de jogar: dificuldade e posição do celular ----------
+
+function Preparar({
+  chart,
+  recordes,
+  toque,
+  deitado,
+  carregando,
+  onVoltar,
+  onJogar
+}: {
+  chart: Chart;
+  recordes: Recordes;
+  toque: boolean;
+  deitado: boolean;
+  carregando: boolean;
+  onVoltar: () => void;
+  onJogar: (d: Dificuldade, deitado: boolean) => void;
+}) {
+  const opcoes = dificuldadesDe(chart);
+  const [dif, setDif] = useState<Dificuldade>(opcoes[0]);
+  const [posicao, setPosicao] = useState(deitado);
+  // A última dificuldade jogada já vem marcada.
+  useEffect(() => {
+    const salva = ler<string>(CHAVE_DIFICULDADE, '');
+    const achou = opcoes.find((d) => d === salva);
+    if (achou) setDif(achou);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chart.id]);
+  const notas = (d: Dificuldade) => chartNaDificuldade(chart, d).notas.length;
+
+  return (
+    <section className="oc-preparar">
+      <button type="button" className="oc-preparar-voltar" onClick={onVoltar}>
+        ‹ Músicas
+      </button>
+      <p className="oc-kicker">{chart.jogo || 'Prepare-se'}</p>
+      <h2>{chart.titulo}</h2>
+      <p className="oc-preparar-dur">{formatarDuracao(duracaoMusica(chart))}</p>
+
+      <h3 id="oc-escolha-dif">Dificuldade</h3>
+      <div className="oc-escolhas" role="radiogroup" aria-labelledby="oc-escolha-dif">
+        {opcoes.map((d) => {
+          const rec = recordes[`${chart.id}:${d}`];
+          return (
+            <button
+              key={d}
+              type="button"
+              role="radio"
+              aria-checked={dif === d}
+              className={dif === d ? 'is-on' : ''}
+              style={{ '--dif': DIFICULDADES[d].cor } as React.CSSProperties}
+              onClick={() => setDif(d)}
+            >
+              <strong>{DIFICULDADES[d].nome}</strong>
+              <small>{rec ? `🏆 ${rec.pontos.toLocaleString('pt-BR')}` : `${notas(d)} notas`}</small>
+            </button>
+          );
+        })}
+      </div>
+
+      {toque && (dif === 'dificil' || dif === 'insano') && (
+        <p className="oc-preparar-aviso" role="status">
+          ⌨️ Recomendado jogar esta dificuldade no teclado
+        </p>
+      )}
+
+      {toque && (
+        <>
+          <h3 id="oc-escolha-pos">Como você quer jogar?</h3>
+          <div className="oc-escolhas is-posicao" role="radiogroup" aria-labelledby="oc-escolha-pos">
+            {[
+              { v: true, nome: 'Deitado', dica: 'Tela cheia' },
+              { v: false, nome: 'Em pé', dica: 'Uma mão só' }
+            ].map((p) => (
+              <button key={p.nome} type="button" role="radio" aria-checked={posicao === p.v} className={posicao === p.v ? 'is-on' : ''} onClick={() => setPosicao(p.v)}>
+                <i className={`oc-celular${p.v ? ' is-deitado' : ''}`} aria-hidden="true" />
+                <strong>{p.nome}</strong>
+                <small>{p.dica}</small>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      <button type="button" className="oc-botao is-principal oc-preparar-jogar" disabled={carregando} onClick={() => onJogar(dif, posicao)}>
+        {carregando ? 'Carregando…' : '▶ Jogar'}
+      </button>
+    </section>
   );
 }
 
@@ -534,13 +630,24 @@ function ListaMusicas({ charts, recordes, onJogar }: { charts: Chart[]; recordes
     return [...m.entries()].sort(([a], [b]) => (a === JOGO_ORIGINAIS ? 1 : b === JOGO_ORIGINAIS ? -1 : a.localeCompare(b, 'pt-BR')));
   }, [filtradas]);
 
+  // Com poucas músicas, busca e abas só atrapalham.
+  const poucas = charts.length < 4;
+
   const cartao = (c: Chart) => {
-    const rec = recordes[c.id];
+    // melhor recorde entre as dificuldades
+    const rec = dificuldadesDe(c)
+      .map((d) => recordes[`${c.id}:${d}`])
+      .filter(Boolean)
+      .sort((a, b) => b.pontos - a.pontos)[0];
     return (
       <li key={c.id}>
         <button type="button" className="oc-musica" onClick={() => onJogar(c)} style={{ '--dif': DIFICULDADES[c.dificuldade].cor } as React.CSSProperties}>
           <span className="oc-musica-topo">
-            <span className="oc-dif">{DIFICULDADES[c.dificuldade].nome}</span>
+            {dificuldadesDe(c).map((d) => (
+              <span key={d} className="oc-dif" style={{ '--dif': DIFICULDADES[d].cor } as React.CSSProperties}>
+                {DIFICULDADES[d].nome}
+              </span>
+            ))}
             {agora > 0 && ehNova(c, agora) && <span className="oc-nova">Nova</span>}
             <span className="oc-musica-dur">{formatarDuracao(duracaoMusica(c))}</span>
           </span>
@@ -557,10 +664,10 @@ function ListaMusicas({ charts, recordes, onJogar }: { charts: Chart[]; recordes
   return (
     <section className="oc-livre">
       <div className="oc-livre-topo">
-        <h2>Músicas</h2>
-        <input className="oc-busca" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar música ou jogo" aria-label="Buscar música" />
+        <h2>{charts.length === 1 ? 'Música' : 'Músicas'}</h2>
+        {poucas ? null : <input className="oc-busca" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar música ou jogo" aria-label="Buscar música" />}
       </div>
-      <div className="oc-abas" role="tablist">
+      {!poucas && <div className="oc-abas" role="tablist">
         {(
           [
             ['todas', `Todas (${charts.length})`],
@@ -572,7 +679,7 @@ function ListaMusicas({ charts, recordes, onJogar }: { charts: Chart[]; recordes
             {nome}
           </button>
         ))}
-      </div>
+      </div>}
       {filtradas.length === 0 ? (
         <p className="oc-dica">{aba === 'novas' && !busca ? 'Nenhuma música nova nos últimos 14 dias.' : 'Nenhuma música encontrada.'}</p>
       ) : aba === 'jogos' ? (
@@ -699,6 +806,7 @@ function Resultado({
   numero,
   dia,
   sequencia,
+  versaoRanking,
   onDeNovo,
   onMenu
 }: {
@@ -709,6 +817,7 @@ function Resultado({
   numero: number | null;
   dia: string | null;
   sequencia: number;
+  versaoRanking: number;
   onDeNovo: () => void;
   onMenu: () => void;
 }) {
@@ -771,6 +880,7 @@ function Resultado({
           Próxima Música do Dia em <strong><Contador /></strong>
         </p>
       )}
+      <Classificacao chartId={chart.id} titulo={DIFICULDADES[chart.dificuldade].nome} versao={versaoRanking} />
       <Link className="oc-loja" href="/franquia/Legend%20Of%20Zelda">
         Ver jogos de Zelda na loja →
       </Link>

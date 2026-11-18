@@ -18,10 +18,11 @@ export function visitante(): string {
 }
 
 // Manda a partida pro servidor sem esperar (se falhar, o jogo nem percebe).
-export function registrarJogada(j: Jogada): void {
-  getAccessToken()
+export function registrarJogada(j: Jogada): Promise<void> {
+  return getAccessToken()
     .catch(() => null)
     .then((token) => registrarJogadaAction(token, visitante(), j))
+    .then(() => {})
     .catch(() => {});
 }
 

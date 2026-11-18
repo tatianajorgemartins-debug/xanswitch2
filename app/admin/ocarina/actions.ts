@@ -42,41 +42,53 @@ export async function criarMusicaAction(): Promise<{ ok: true; id: number } | { 
 export type DadosMusica = {
   titulo: string;
   jogo: string;
-  dificuldade: string;
   bpm: number;
   inicioBatida: number;
   // onde a música termina no jogo (segundos); null = até o fim do áudio
   fimEm: number | null;
-  notas: OcarinaNota[];
+  // notas de cada dificuldade e as que aparecem pros jogadores
+  charts: Record<string, OcarinaNota[]>;
+  liberadas: string[];
 };
 
-export async function salvarMusicaAction(id: number, d: DadosMusica): Promise<Resultado> {
-  if (!(await isAuthenticated())) return { ok: false, erro: 'Entre no admin de novo.' };
-  if (!Array.isArray(d?.notas) || d.notas.length > 8000) return { ok: false, erro: 'Notas demais (máximo 8000).' };
+function limparNotas(lista: OcarinaNota[]): OcarinaNota[] {
   const notas: OcarinaNota[] = [];
-  for (const n of d.notas) {
+  for (const n of lista) {
     if (!n || !Number.isFinite(n.t) || n.t < 0 || !PISTAS.includes(n.pista)) continue;
     const nota: OcarinaNota = { t: Math.round(n.t * 1000) / 1000, pista: n.pista };
     if (Number.isFinite(n.dur) && (n.dur ?? 0) > 0.05) nota.dur = Math.round((n.dur as number) * 1000) / 1000;
     if (n.estrela === true) nota.estrela = true;
     notas.push(nota);
   }
-  notas.sort((a, b) => a.t - b.t || PISTAS.indexOf(a.pista) - PISTAS.indexOf(b.pista));
+  return notas.sort((a, b) => a.t - b.t || PISTAS.indexOf(a.pista) - PISTAS.indexOf(b.pista));
+}
+
+export async function salvarMusicaAction(id: number, d: DadosMusica): Promise<Resultado> {
+  if (!(await isAuthenticated())) return { ok: false, erro: 'Entre no admin de novo.' };
+  const charts: Record<string, OcarinaNota[]> = {};
+  for (const dif of DIFICULDADES) {
+    const lista = d?.charts?.[dif] ?? [];
+    if (!Array.isArray(lista) || lista.length > 8000) return { ok: false, erro: 'Notas demais (máximo 8000 por dificuldade).' };
+    charts[dif] = limparNotas(lista);
+  }
+  const liberadas = DIFICULDADES.filter((dif) => d?.liberadas?.includes(dif) && charts[dif].length > 0);
+  // A principal (a mais difícil liberada) fica nas colunas de sempre.
+  const dosMaisDificeis = [...DIFICULDADES].reverse();
+  const principal = dosMaisDificeis.find((dif) => liberadas.includes(dif)) ?? dosMaisDificeis.find((dif) => charts[dif].length > 0) ?? 'medio';
   const bpm = Number(d.bpm);
   try {
     const fim = Number(d.fimEm);
-    const r = await updateOcarinaSong(id, {
+    await updateOcarinaSong(id, {
       title: String(d.titulo ?? '').trim().slice(0, 80) || 'Sem título',
       game: String(d.jogo ?? '').trim().slice(0, 60),
-      difficulty: DIFICULDADES.includes(d.dificuldade) ? d.dificuldade : 'medio',
+      difficulty: principal,
       bpm: Number.isFinite(bpm) && bpm >= 30 && bpm <= 400 ? Math.round(bpm * 100) / 100 : 120,
       beatOffset: Number.isFinite(d.inicioBatida) ? Math.max(0, Math.round(d.inicioBatida * 1000) / 1000) : 0,
-      notes: notas,
+      notes: charts[principal],
+      charts: { notas: charts, liberadas },
       endAt: d.fimEm !== null && Number.isFinite(fim) && fim > 0 ? Math.round(fim * 1000) / 1000 : null
     });
     atualizarPaginas(id);
-    if (!r.fimSalvo)
-      return { ok: false, erro: 'As notas foram salvas, mas o fim da música não: rode de novo o db/migration-ocarina-musicas.sql no Neon.' };
     return { ok: true };
   } catch (err) {
     console.error('[ocarina] salvar:', err);

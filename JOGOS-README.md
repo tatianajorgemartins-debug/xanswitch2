@@ -32,7 +32,9 @@ o admin não registra as partidas e o feed fica "abre em breve".
 Antes, uma vez só: rode `db/migration-ocarina-musicas.sql` no Neon.
 
 1. **Admin › 🎵 Zelda Tour › ＋ Nova música.**
-2. Preencha nome, **jogo** (agrupa a lista "Por jogo") e dificuldade.
+2. Preencha nome e **jogo** (agrupa a lista "Por jogo"). As dificuldades ficam nas abas em cima da
+   linha do tempo: cada uma tem as próprias notas. **Copiar notas de** traz as notas de outra
+   dificuldade pra você editar, e **Mostrar no jogo** libera aquela dificuldade pros jogadores.
 3. **Enviar o áudio (mp3)**: o navegador compacta (mono, 96 kbps, ~2 MB numa música de 3 min)
    e sobe pro Supabase. Use Chrome ou Edge (outros navegadores sobem o arquivo original).
 4. **Acerte a grade**: BPM (ou o botão **Tap**, tocando no ritmo) e o **1º tempo** (coloque a
@@ -53,8 +55,7 @@ Antes, uma vez só: rode `db/migration-ocarina-musicas.sql` no Neon.
      cola no compasso da agulha, e colar de novo continua logo depois.
    - **Fim da música**: ponha a agulha onde a música deve acabar e clique **Usar agulha** (ou
      digite os segundos). Ela para ali com fade de 2 s antes; **▶ Ouvir o final** confere e
-     **Até o fim do áudio** desfaz. Precisa da coluna `end_at` (rode de novo o
-     `db/migration-ocarina-musicas.sql`).
+     **Até o fim do áudio** desfaz.
    - **Notas Triforce**: selecione as notas e aperte **E** (Triforces seguidas formam uma
      sequência). Só viram Triforce as notas marcadas aqui.
 6. **▶ Testar daqui** (tecla T) testa no jogo a partir da agulha ou da 1ª nota selecionada —
@@ -87,6 +88,12 @@ Acertar todas as Triforces de uma sequência enche meia barra. Com a barra pela 
 (10 s), **Espaço** ou o botão **Especial** do celular ativa: as notas ficam douradas e valem o dobro.
 Completar outra sequência com o especial ligado soma 5 s (até 10 s). Os tempos ficam em
 `ESPECIAL_CHEIO` e `ESPECIAL_METADE`, em `app/testes/ocarina-hero/ocarina.ts`.
+
+## Classificação
+
+O menu do Zelda Tour e a tela de resultado mostram o recorde de cada jogador, por música e
+dificuldade, do maior pro menor: os 5 primeiros em destaque e o resto em **Ver mais**. Entra quem
+terminou a música logado na conta. Aparece só o primeiro nome e a inicial do sobrenome.
 
 ## Abrir o Zelda Tour pro público
 

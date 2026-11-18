@@ -5,7 +5,7 @@
 // HUD em HTML por cima — brasão + nome da música, placar, pausa, corações
 // (energia), combo com multiplicador e a barra de progresso. Usado no jogo
 // (OcarinaClient) e no "Testar no jogo" do editor do admin.
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { DIFICULDADES, NOME_JOGO, PISTAS, TECLA_ESPECIAL, formatarDuracao, nomeTecla, pistaDaTecla, type Chart, type MapaTeclas, type Precisao, type ResultadoMusica } from './ocarina';
 import { MotorOcarina, type GeometriaMotor, type HudMotor } from './motor';
 import type { SomOcarina } from './som';
@@ -53,6 +53,7 @@ export default function Palco({
 }: PropsPalco) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const palco = useRef<HTMLDivElement>(null);
+  const painel = useRef<HTMLDivElement>(null);
   const magia = useRef<HTMLDivElement>(null);
   const magiaFill = useRef<HTMLElement>(null);
   const botaoEspecial = useRef<HTMLButtonElement>(null);
@@ -148,6 +149,31 @@ export default function Palco({
     };
   }, [chart, som, audio, latencia, teclas, comecarEm, clique, precisao, motorRef]);
 
+  // Placar, vida, barra e combo sempre encostados na pista.
+  useLayoutEffect(() => {
+    const p = palco.current;
+    const d = painel.current;
+    const c = comboEl.current;
+    if (!geo || !p || !d || !c) return;
+    const colocar = (el: HTMLElement, left: number, top: number) => {
+      el.style.right = 'auto';
+      el.style.left = `${Math.round(left)}px`;
+      el.style.top = `${Math.round(top)}px`;
+    };
+    const largura = p.clientWidth;
+    if (p.clientHeight > largura) {
+      // Em pé: numa linha logo acima da pista, com o botão do especial à direita.
+      colocar(d, 12, Math.max(56, geo.topo - d.offsetHeight - 10));
+      colocar(c, Math.max(d.offsetWidth + 18, largura - c.offsetWidth - 92), Math.max(56, geo.topo - c.offsetHeight - 6));
+      return;
+    }
+    const borda = (y: number) => geo.bordaTopo + ((geo.bordaAcerto - geo.bordaTopo) * (y - geo.topo)) / (geo.acerto - geo.topo);
+    const topo = Math.max(10, geo.topo);
+    colocar(d, Math.min(borda(topo + d.offsetHeight) + 14, largura - d.offsetWidth - 72), topo);
+    const topoCombo = topo + d.offsetHeight + 12;
+    colocar(c, Math.min(borda(topoCombo + c.offsetHeight) + 14, largura - c.offsetWidth - 10), topoCombo);
+  }, [geo, toque]);
+
   // Teclado
   useEffect(() => {
     const desce = (e: KeyboardEvent) => {
@@ -213,7 +239,7 @@ export default function Palco({
 
         <img src={`${UI}triforce.webp`} alt="" className="oc-hud-tri" />
 
-        <div className="oc-hud-dir">
+        <div className="oc-hud-dir" ref={painel}>
           <div className="oc-hud-linha">
             <div className="oc-hud-pontos">
               <span ref={pontosEl}>000 000</span>
@@ -265,7 +291,7 @@ export default function Palco({
           ref={botaoEspecial}
           type="button"
           className="oc-especial"
-          style={{ '--topo-zonas': `${topoZonas}px` } as React.CSSProperties}
+          style={{ '--topo-pista': `${geo?.topo ?? 0}px` } as React.CSSProperties}
           aria-label="Ativar o especial"
           aria-disabled="true"
           onPointerDown={(e) => {

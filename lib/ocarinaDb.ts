@@ -17,6 +17,9 @@ export async function setJogoOcarinaPublicado(publicado: boolean): Promise<void>
 
 export type OcarinaNota = { t: number; pista: string; dur?: number; estrela?: boolean };
 
+// As notas de cada dificuldade e quais delas os jogadores podem escolher.
+export type OcarinaCharts = { notas: Record<string, OcarinaNota[]>; liberadas: string[] };
+
 export type OcarinaSongRow = {
   id: number;
   title: string;
@@ -30,6 +33,8 @@ export type OcarinaSongRow = {
   notes: OcarinaNota[];
   // onde a música termina no jogo (segundos); null = até o fim do áudio
   end_at: number | null;
+  // null = só tem a dificuldade principal (difficulty + notes)
+  charts: OcarinaCharts | null;
   published: boolean;
   published_at: Date | null;
   active_from: string | null;
@@ -38,6 +43,50 @@ export type OcarinaSongRow = {
 };
 
 // NUMERIC volta como texto no driver do Neon: converte aqui.
+function lerCharts(v: unknown): OcarinaCharts | null {
+  if (!v || typeof v !== 'object') return null;
+  const c = v as Partial<OcarinaCharts>;
+  return {
+    notas: c.notas && typeof c.notas === 'object' ? c.notas : {},
+    liberadas: Array.isArray(c.liberadas) ? c.liberadas.filter((d) => typeof d === 'string') : []
+  };
+}
+
+// Fim da música e dificuldades ficam em site_settings (uma chave por música):
+// assim valem no jogo publicado sem depender de coluna nova no banco.
+const PREFIXO_EXTRA = 'ocarina_extra_';
+type ExtraMusica = { fimEm: number | null; charts: OcarinaCharts };
+
+async function lerExtras(): Promise<Map<number, ExtraMusica>> {
+  const mapa = new Map<number, ExtraMusica>();
+  const rows = await getSql()`SELECT key, value FROM site_settings WHERE key LIKE ${PREFIXO_EXTRA + '%'}`.catch(() => []);
+  for (const r of rows as { key: string; value: string | null }[]) {
+    try {
+      const v = JSON.parse(r.value ?? 'null') as Partial<ExtraMusica> | null;
+      if (!v) continue;
+      mapa.set(Number(r.key.slice(PREFIXO_EXTRA.length)), {
+        fimEm: typeof v.fimEm === 'number' && v.fimEm > 0 ? v.fimEm : null,
+        charts: lerCharts(v.charts) ?? { notas: {}, liberadas: [] }
+      });
+    } catch {
+      // valor quebrado: fica como se não tivesse
+    }
+  }
+  return mapa;
+}
+
+function comExtra<T extends { id: number; end_at: number | null; charts: OcarinaCharts | null }>(m: T, extras: Map<number, ExtraMusica>): T {
+  const e = extras.get(m.id);
+  return e ? { ...m, end_at: e.fimEm, charts: e.charts } : m;
+}
+
+// As notas de cada dificuldade e as liberadas. A principal sempre vale.
+export function dificuldadesDaMusica(m: Pick<OcarinaSongRow, 'difficulty' | 'notes' | 'charts'>): OcarinaCharts {
+  const notas = { ...(m.charts?.notas ?? {}), [m.difficulty]: m.notes };
+  const liberadas = [...new Set([...(m.charts?.liberadas ?? []), m.difficulty])].filter((d) => (notas[d]?.length ?? 0) > 0);
+  return { notas, liberadas };
+}
+
 function normalizar(r: Record<string, unknown>): OcarinaSongRow {
   const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
   return {
@@ -48,7 +97,8 @@ function normalizar(r: Record<string, unknown>): OcarinaSongRow {
     audio_duration: num(r.audio_duration),
     audio_bytes: num(r.audio_bytes),
     end_at: r.end_at === null || r.end_at === undefined || r.end_at === '' ? null : Number(r.end_at),
-    notes: Array.isArray(r.notes) ? (r.notes as OcarinaNota[]) : []
+    notes: Array.isArray(r.notes) ? (r.notes as OcarinaNota[]) : [],
+    charts: null
   };
 }
 
@@ -61,7 +111,8 @@ export async function getAllOcarinaSongs(): Promise<OcarinaSongResumo[]> {
       created_at, updated_at
     FROM ocarina_songs ORDER BY updated_at DESC
   `;
-  return (rows as Record<string, unknown>[]).map((r) => ({ ...normalizar(r), note_count: Number(r.note_count) }));
+  const extras = await lerExtras();
+  return (rows as Record<string, unknown>[]).map((r) => ({ ...comExtra(normalizar(r), extras), note_count: Number(r.note_count) }));
 }
 
 export async function getOcarinaSong(id: number): Promise<OcarinaSongRow | null> {
@@ -71,7 +122,7 @@ export async function getOcarinaSong(id: number): Promise<OcarinaSongRow | null>
       to_jsonb(ocarina_songs) ->> 'end_at' AS end_at
     FROM ocarina_songs WHERE id = ${id}
   `;
-  return rows[0] ? normalizar(rows[0] as Record<string, unknown>) : null;
+  return rows[0] ? comExtra(normalizar(rows[0] as Record<string, unknown>), await lerExtras()) : null;
 }
 
 // As publicadas, completas (pro jogo).
@@ -83,7 +134,8 @@ export async function getPublishedOcarinaSongs(): Promise<OcarinaSongRow[]> {
     FROM ocarina_songs WHERE published = TRUE AND audio_url IS NOT NULL AND jsonb_array_length(notes) > 0
     ORDER BY published_at DESC
   `;
-  return (rows as Record<string, unknown>[]).map(normalizar);
+  const extras = await lerExtras();
+  return (rows as Record<string, unknown>[]).map((r) => comExtra(normalizar(r), extras));
 }
 
 export async function createOcarinaSong(title: string): Promise<number> {
@@ -93,22 +145,15 @@ export async function createOcarinaSong(title: string): Promise<number> {
 
 export async function updateOcarinaSong(
   id: number,
-  s: { title: string; game: string; difficulty: string; bpm: number; beatOffset: number; notes: OcarinaNota[]; endAt: number | null }
-): Promise<{ fimSalvo: boolean }> {
+  s: { title: string; game: string; difficulty: string; bpm: number; beatOffset: number; notes: OcarinaNota[]; endAt: number | null; charts: OcarinaCharts }
+): Promise<void> {
   await getSql()`
     UPDATE ocarina_songs SET title = ${s.title}, game = ${s.game}, difficulty = ${s.difficulty}, bpm = ${s.bpm},
       beat_offset = ${s.beatOffset}, notes = ${JSON.stringify(s.notes)}::jsonb, updated_at = now()
     WHERE id = ${id}
   `;
-  // Separado: se a coluna end_at ainda não existe (SQL não rodado), o resto
-  // já foi salvo e só o fim fica de fora.
-  try {
-    await getSql()`UPDATE ocarina_songs SET end_at = ${s.endAt} WHERE id = ${id}`;
-    return { fimSalvo: true };
-  } catch (err) {
-    if (s.endAt !== null) console.error('[ocarina] end_at (rode db/migration-ocarina-musicas.sql):', err);
-    return { fimSalvo: s.endAt === null };
-  }
+  const extra: ExtraMusica = { fimEm: s.endAt, charts: s.charts };
+  await setSiteSetting(PREFIXO_EXTRA + id, JSON.stringify(extra));
 }
 
 export async function setOcarinaSongAudio(id: number, url: string, duration: number, bytes: number): Promise<void> {
@@ -131,6 +176,7 @@ export async function setOcarinaSongPublished(id: number, published: boolean, ac
 }
 
 export async function deleteOcarinaSong(id: number): Promise<string | null> {
+  await getSql()`DELETE FROM site_settings WHERE key = ${PREFIXO_EXTRA + id}`;
   const rows = await getSql()`DELETE FROM ocarina_songs WHERE id = ${id} RETURNING audio_url`;
   return (rows[0] as { audio_url: string | null } | undefined)?.audio_url ?? null;
 }

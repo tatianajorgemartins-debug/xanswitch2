@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { DIFICULDADES, FADE_FIM, PISTAS, TECLAS_PADRAO, formatarDuracao, sequenciasEstrela, type Chart, type Dificuldade, type NotaChart } from '@/app/testes/ocarina-hero/ocarina';
+import { DIFICULDADES, FADE_FIM, ORDEM_DIFICULDADES, PISTAS, TECLAS_PADRAO, formatarDuracao, sequenciasEstrela, type Chart, type Dificuldade, type NotaChart } from '@/app/testes/ocarina-hero/ocarina';
 import { type MotorOcarina } from '@/app/testes/ocarina-hero/motor';
 import { SomOcarina, tocarClique } from '@/app/testes/ocarina-hero/som';
 import Palco from '@/app/testes/ocarina-hero/Palco';
@@ -39,13 +39,16 @@ export type MusicaEditor = {
   id: number;
   titulo: string;
   jogo: string;
+  // a dificuldade aberta primeiro
   dificuldade: Dificuldade;
   bpm: number;
   inicioBatida: number;
   audioUrl: string | null;
   duracao: number | null;
   bytes: number | null;
-  notas: OcarinaNota[];
+  // notas de cada dificuldade e as que aparecem pros jogadores
+  charts: Record<string, OcarinaNota[]>;
+  liberadas: Dificuldade[];
   publicada: boolean;
   ativaDesde: string | null;
   // onde a música termina no jogo (null = até o fim do áudio)
@@ -88,6 +91,14 @@ const TECLAS_PISTA: Record<string, number> = {
 let proximoId = 1;
 const novaId = () => proximoId++;
 
+const paraEditor = (lista: OcarinaNota[] = []): NotaEd[] =>
+  lista.map((n) => ({ id: novaId(), t: n.t, p: Math.max(0, PISTAS.findIndex((x) => x.id === n.pista)), d: n.dur ?? 0, e: n.estrela === true }));
+
+const paraSalvar = (lista: NotaEd[]): OcarinaNota[] =>
+  [...lista]
+    .sort((a, b) => a.t - b.t || a.p - b.p)
+    .map((n) => ({ t: Math.round(n.t * 1000) / 1000, pista: PISTAS[n.p].id, ...(n.d > 0 ? { dur: Math.round(n.d * 1000) / 1000 } : {}), ...(n.e ? { estrela: true } : {}) }));
+
 export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; jogos: string[] }) {
   const router = useRouter();
   // ---------- Dados ----------
@@ -99,9 +110,13 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
   const [fimEm, setFimEm] = useState<number | null>(musica.fimEm);
   const fimRef = useRef(fimEm);
   fimRef.current = fimEm;
-  const [notas, setNotas] = useState<NotaEd[]>(() =>
-    musica.notas.map((n) => ({ id: novaId(), t: n.t, p: Math.max(0, PISTAS.findIndex((x) => x.id === n.pista)), d: n.dur ?? 0, e: n.estrela === true }))
+  const [notas, setNotas] = useState<NotaEd[]>(() => paraEditor(musica.charts[musica.dificuldade]));
+  // Notas das outras dificuldades, enquanto não estão abertas.
+  const outras = useRef<Partial<Record<Dificuldade, NotaEd[]>>>(
+    Object.fromEntries(ORDEM_DIFICULDADES.filter((d) => d !== musica.dificuldade).map((d) => [d, paraEditor(musica.charts[d])]))
   );
+  const [liberadas, setLiberadas] = useState<Dificuldade[]>(musica.liberadas);
+  const [origemCopia, setOrigemCopia] = useState<Dificuldade>(musica.dificuldade);
   const [sel, setSel] = useState<Set<number>>(new Set());
   const [sujo, setSujo] = useState(false);
   const passado = useRef<NotaEd[][]>([]);
@@ -852,6 +867,44 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
     if (copiar()) apagarSelecionadas();
   }
 
+  // ---------- Dificuldades ----------
+  const notasDe = (d: Dificuldade) => (d === dificuldade ? notas : (outras.current[d] ?? []));
+
+  function trocarDificuldade(d: Dificuldade) {
+    if (d === dificuldade) return;
+    pararTocar();
+    outras.current[dificuldade] = notasRef.current;
+    const proximas = outras.current[d] ?? [];
+    passado.current = [];
+    futuro.current = [];
+    notasRef.current = proximas;
+    setNotas(proximas);
+    setSel(new Set());
+    setOrigemCopia(dificuldade);
+    setDificuldade(d);
+  }
+
+  // Traz as notas (com as Triforces) de outra dificuldade pra aberta agora.
+  // Ctrl+Z desfaz.
+  function copiarDeOutraDificuldade() {
+    const fonte = notasDe(origemCopia);
+    if (origemCopia === dificuldade || !fonte.length) {
+      setAviso({ tipo: 'info', texto: 'Escolha uma dificuldade que já tenha notas.' });
+      return;
+    }
+    const nomeOrigem = DIFICULDADES[origemCopia].nome;
+    const nomeDestino = DIFICULDADES[dificuldade].nome;
+    if (notasRef.current.length && !window.confirm(`Trocar as ${notasRef.current.length} notas do ${nomeDestino} pelas ${fonte.length} notas do ${nomeOrigem}?`)) return;
+    mudar(() => fonte.map((n) => ({ ...n, id: novaId() })));
+    setSel(new Set());
+    setAviso({ tipo: 'ok', texto: `${fonte.length} notas copiadas do ${nomeOrigem} pro ${nomeDestino}. Edite e clique em Salvar.` });
+  }
+
+  function alternarLiberada() {
+    setLiberadas((l) => (l.includes(dificuldade) ? l.filter((d) => d !== dificuldade) : [...l, dificuldade]));
+    setSujo(true);
+  }
+
   // ---------- Notas Triforce ----------
   // Liga nas selecionadas; se todas já forem Triforce, desliga.
   function alternarEstrela() {
@@ -1068,17 +1121,12 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
   }, [aviso]);
 
   // ---------- Ações ----------
-  const notasParaSalvar = useCallback(
-    (): OcarinaNota[] =>
-      [...notasRef.current]
-        .sort((a, b) => a.t - b.t || a.p - b.p)
-        .map((n) => ({ t: Math.round(n.t * 1000) / 1000, pista: PISTAS[n.p].id, ...(n.d > 0 ? { dur: Math.round(n.d * 1000) / 1000 } : {}), ...(n.e ? { estrela: true } : {}) })),
-    []
-  );
+  const notasParaSalvar = useCallback((): OcarinaNota[] => paraSalvar(notasRef.current), []);
 
   async function salvar() {
     setSalvando(true);
-    const r = await salvarMusicaAction(musica.id, { titulo, jogo, dificuldade, bpm, inicioBatida, fimEm, notas: notasParaSalvar() }).catch(() => ({
+    const charts = Object.fromEntries(ORDEM_DIFICULDADES.map((d) => [d, d === dificuldade ? notasParaSalvar() : paraSalvar(outras.current[d] ?? [])]));
+    const r = await salvarMusicaAction(musica.id, { titulo, jogo, bpm, inicioBatida, fimEm, charts, liberadas }).catch(() => ({
       ok: false as const,
       erro: 'A conexão falhou.'
     }));
@@ -1239,22 +1287,6 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
               ))}
             </datalist>
           </label>
-          <label>
-            Dificuldade
-            <select
-              value={dificuldade}
-              onChange={(e) => {
-                setDificuldade(e.target.value as Dificuldade);
-                setSujo(true);
-              }}
-            >
-              {(Object.keys(DIFICULDADES) as Dificuldade[]).map((d) => (
-                <option key={d} value={d}>
-                  {DIFICULDADES[d].nome}
-                </option>
-              ))}
-            </select>
-          </label>
           <h3>Áudio</h3>
           <p className="adm-help">
             {audioUrl ? `${formatarDuracao(duracao)} · ${formatarBytes(bytes)}` : 'Nenhum áudio ainda.'} Envie um mp3: ele é
@@ -1389,6 +1421,44 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
         </section>
 
         <section className="oc-ed-palco">
+          <div className="oc-ed-difs">
+            <div className="oc-ed-difs-abas" role="tablist" aria-label="Dificuldade que está sendo editada">
+              {ORDEM_DIFICULDADES.map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  role="tab"
+                  aria-selected={d === dificuldade}
+                  className={d === dificuldade ? 'is-on' : ''}
+                  style={{ '--dif': DIFICULDADES[d].cor } as React.CSSProperties}
+                  onClick={() => trocarDificuldade(d)}
+                >
+                  <strong>{DIFICULDADES[d].nome}</strong>
+                  <small>
+                    {notasDe(d).length} notas{liberadas.includes(d) && notasDe(d).length ? ' · no jogo' : ''}
+                  </small>
+                </button>
+              ))}
+            </div>
+            <div className="oc-ed-difs-acoes">
+              <label>
+                Copiar notas de
+                <select value={origemCopia} onChange={(e) => setOrigemCopia(e.target.value as Dificuldade)}>
+                  {ORDEM_DIFICULDADES.filter((d) => d !== dificuldade).map((d) => (
+                    <option key={d} value={d} disabled={!notasDe(d).length}>
+                      {DIFICULDADES[d].nome} ({notasDe(d).length})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button type="button" className="btn primary" onClick={copiarDeOutraDificuldade} disabled={origemCopia === dificuldade || !notasDe(origemCopia).length}>
+                ⧉ Copiar para {DIFICULDADES[dificuldade].nome}
+              </button>
+              <label className="oc-ed-check">
+                <input type="checkbox" checked={liberadas.includes(dificuldade)} onChange={alternarLiberada} disabled={!notas.length} /> Mostrar {DIFICULDADES[dificuldade].nome} no jogo
+              </label>
+            </div>
+          </div>
           <div className="oc-ed-barra">
             <button type="button" className="btn primary" onClick={() => (tocando ? pararTocar() : comecarTocar(pos.current))}>
               {tocando ? '❚❚ Pausar' : '▶ Tocar'}
