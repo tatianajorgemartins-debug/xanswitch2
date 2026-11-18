@@ -110,10 +110,12 @@ export default function Classificacao({
   if (!id) return null;
   return (
     <section className="oc-rank" aria-label="Classificação dos jogadores">
-      <h2>🏆 Classificação{titulo ? ` · ${titulo}` : ''}</h2>
-      {!chartId && (charts.length > 1 || opcoes.length > 1) && (
+      <h2>🏆 Classificação</h2>
+      {chartId ? (
+        <p className="oc-rank-musica">{titulo}</p>
+      ) : (
         <div className="oc-rank-filtros">
-          {charts.length > 1 && (
+          {charts.length > 1 ? (
             <select value={musica?.id} onChange={(e) => setMusicaId(e.target.value)} aria-label="Música da classificação">
               {charts.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -121,20 +123,21 @@ export default function Classificacao({
                 </option>
               ))}
             </select>
+          ) : (
+            <p className="oc-rank-musica">{musica?.titulo}</p>
           )}
-          {opcoes.length > 1 &&
-            opcoes.map((d) => (
-              <button
-                key={d}
-                type="button"
-                aria-pressed={d === dif}
-                className={d === dif ? 'is-on' : ''}
-                style={{ '--dif': DIFICULDADES[d].cor } as React.CSSProperties}
-                onClick={() => setEscolhida(d)}
-              >
-                {DIFICULDADES[d].nome}
-              </button>
-            ))}
+          {opcoes.map((d) => (
+            <button
+              key={d}
+              type="button"
+              aria-pressed={d === dif}
+              className={d === dif ? 'is-on' : ''}
+              style={{ '--dif': DIFICULDADES[d].cor } as React.CSSProperties}
+              onClick={() => setEscolhida(d)}
+            >
+              {DIFICULDADES[d].nome}
+            </button>
+          ))}
         </div>
       )}
       {erro ? (

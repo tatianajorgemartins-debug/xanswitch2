@@ -423,6 +423,15 @@
   gap: 8px;
   margin-bottom: 12px;
 }
+.redesign .oc-rank-musica {
+  flex: 1 1 100%;
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-weight: 800;
+}
+.redesign .oc-rank-filtros .oc-rank-musica {
+  margin: 0;
+}
 .redesign .oc-rank-filtros select {
   flex: 1 1 100%;
   min-height: 44px;

@@ -880,7 +880,7 @@ function Resultado({
           Próxima Música do Dia em <strong><Contador /></strong>
         </p>
       )}
-      <Classificacao chartId={chart.id} titulo={DIFICULDADES[chart.dificuldade].nome} versao={versaoRanking} />
+      <Classificacao chartId={chart.id} titulo={`${chart.titulo} · ${DIFICULDADES[chart.dificuldade].nome}`} versao={versaoRanking} />
       <Link className="oc-loja" href="/franquia/Legend%20Of%20Zelda">
         Ver jogos de Zelda na loja →
       </Link>
