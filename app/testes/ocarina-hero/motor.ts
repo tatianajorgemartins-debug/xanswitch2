@@ -1,4 +1,4 @@
-// Motor do "Ocarina Hero": desenha a pista no <canvas> (requestAnimationFrame)
+// Motor do "Zelda Tour": desenha a pista no <canvas> (requestAnimationFrame)
 // e julga os toques. O tempo vem SEMPRE do relógio de áudio
 // (AudioContext.currentTime, via SomOcarina) — assim notas, metrônomo e
 // toques ficam sincronizados, e pausar o áudio pausa o jogo.
@@ -16,6 +16,8 @@ import {
   ENERGIA_ERRO,
   ENERGIA_INICIAL,
   ENERGIA_TOQUE_VAZIO,
+  ESPECIAL_CHEIO,
+  ESPECIAL_METADE,
   PISTAS,
   PRECISAO_PADRAO,
   PRECISOES,
@@ -27,6 +29,7 @@ import {
   indicePista,
   multiplicador,
   precisao,
+  sequenciasEstrela,
   type Chart,
   type NotaChart,
   type Precisao,
@@ -43,6 +46,7 @@ type EstadoNota = {
   segurando: boolean;
   voz: Voz | null;
   fimSegurar: number; // até quando segurou (nota longa)
+  seq: number; // sequência de estrelas da nota (-1 = nota comum)
 };
 
 export type HudMotor = {
@@ -52,6 +56,9 @@ export type HudMotor = {
   energia: number; // 0 a 1
   tempo: number; // segundos da música
   duracao: number;
+  barra: number; // barra de especial, de 0 a 1
+  especial: boolean; // especial ligado agora
+  pronta: boolean; // dá pra ativar o especial
 };
 
 // Onde ficam as pistas na tela (pra pôr os botões de toque em cima).
@@ -119,6 +126,15 @@ const ANTECEDENCIA_SOM = 0.25;
 const ESPERA_INICIAL = 1.2;
 
 type Particula = { x: number; y: number; vx: number; vy: number; vida: number; cor: string; r: number };
+// Partículas do cenário (vaga-lumes e folhas), em frações da tela.
+type Ambiente = { x: number; y: number; v: number; queda: number; fase: number; tam: number; alfa: number; folha: boolean };
+
+const OURO = '#ffd23e';
+// Índices dos desenhos prontos das notas
+const SPRITE_APAGADA = 5;
+const SPRITE_OURO = 6;
+const SPRITE_ESTRELA = 7; // 7 a 11: uma Triforce por pista
+const SPRITE_ESTRELA_OURO = 12;
 
 export class MotorOcarina {
   private notas: EstadoNota[];
@@ -150,6 +166,16 @@ export class MotorOcarina {
   private brilho = PISTAS.map(() => -10);
   private feedback = PISTAS.map(() => ({ texto: '', cor: '', t: -10 }));
   private particulas: Particula[] = [];
+  private ambiente: Ambiente[] = [];
+  private relogio = 0; // segundos de jogo, pro balanço das partículas
+  private spriteLuz: HTMLCanvasElement | null = null;
+  private spriteFolha: HTMLCanvasElement | null = null;
+
+  // Especial: meias barras guardadas (0, 1 ou 2) e até quando ele vale.
+  private meias = 0;
+  private especialAte = -Infinity;
+  private seqFaltam: number[] = [];
+  private seqFalhou: boolean[] = [];
 
   private w = 0;
   private h = 0;
@@ -170,7 +196,7 @@ export class MotorOcarina {
   private spritesNotas: HTMLCanvasElement[] = [];
   private spriteRaio = 0; // raio (px de tela) com que os sprites foram feitos
   private camadasCom = ''; // o que estava pronto quando as camadas foram feitas
-  private hud: HudMotor = { pontos: 0, combo: 0, mult: 1, energia: 1, tempo: 0, duracao: 0 };
+  private hud: HudMotor = { pontos: 0, combo: 0, mult: 1, energia: 1, tempo: 0, duracao: 0, barra: 0, especial: false, pronta: false };
   private obs: ResizeObserver | null = null;
   private ultimoQuadro = 0;
   private quadros: number[] = [];
@@ -187,9 +213,14 @@ export class MotorOcarina {
     this.janelaBom = prec.bom;
     // notas depois do fim definido no editor não entram
     const fim = chart.fimEm && op.audio ? chart.fimEm : Infinity;
-    this.notas = chart.notas
-      .filter((n) => n.t >= this.comecarEm - 0.02 && n.t < fim)
-      .map((n) => ({ n, pista: indicePista(n.pista), julgada: null, segurando: false, voz: null, fimSegurar: 0 }));
+    const notas = chart.notas.filter((n) => n.t >= this.comecarEm - 0.02 && n.t < fim);
+    const seqs = sequenciasEstrela(notas);
+    this.notas = notas.map((n, i) => ({ n, pista: indicePista(n.pista), julgada: null, segurando: false, voz: null, fimSegurar: 0, seq: seqs[i] }));
+    for (const s of seqs) {
+      if (s < 0) continue;
+      this.seqFaltam[s] = (this.seqFaltam[s] ?? 0) + 1;
+      this.seqFalhou[s] = false;
+    }
     // Com áudio, a partida vai até o fim da música; sem, até a última nota.
     this.duracao = op.audio ? Math.min(op.audio.duration, chart.fimEm ?? Infinity) : duracaoChart(chart);
     this.antecedencia = DIFICULDADES[chart.dificuldade].antecedencia;
@@ -199,6 +230,7 @@ export class MotorOcarina {
     if (f) this.fonte = `${f}, Georgia, serif`;
     // a fonte das letras chegou: refaz os anéis
     document.fonts?.ready.then(() => (this.camadasCom = '')).catch(() => {});
+    this.criarAmbiente();
     this.ajustarTamanho();
     if (typeof ResizeObserver !== 'undefined') {
       this.obs = new ResizeObserver(() => this.ajustarTamanho());
@@ -208,6 +240,11 @@ export class MotorOcarina {
 
   get terminou(): boolean {
     return this.acabou;
+  }
+
+  // Partida correndo (não pausada nem encerrada).
+  get emJogo(): boolean {
+    return this.rodando && !this.acabou;
   }
 
   // Quadros por segundo da última fração de segundo (pra conferir desempenho).
@@ -342,11 +379,12 @@ export class MotorOcarina {
     else this.bons++;
     this.combo++;
     this.maiorCombo = Math.max(this.maiorCombo, this.combo);
-    this.pontos += (perfeito ? PONTOS_PERFEITO : PONTOS_BOM) * multiplicador(this.combo);
+    this.pontos += (perfeito ? PONTOS_PERFEITO : PONTOS_BOM) * multiplicador(this.combo) * this.bonus(t);
     this.energia = Math.min(1, this.energia + ENERGIA_ACERTO);
     this.brilho[pista] = t;
     this.mostrar(pista, perfeito ? 'Perfeito!' : 'Bom', perfeito ? '#ffe9a8' : '#c8f7c5', t);
     this.faisca(pista, perfeito ? 8 : 5);
+    this.acertouEstrela(alvo, t);
     // Com áudio próprio, a música já está tocando: o acerto não faz som.
     const freq = frequencia(alvo.n.nota ?? PISTAS[pista].nota);
     if (alvo.n.dur) {
@@ -364,6 +402,39 @@ export class MotorOcarina {
       const e = this.notas[i];
       if (e.pista === pista && e.segurando) this.soltarNota(e);
     }
+  }
+
+  // ---------- Especial ----------
+
+  private bonus(t: number) {
+    return t < this.especialAte ? 2 : 1;
+  }
+
+  // Última estrela da sequência, sem errar nenhuma: enche meia barra. Com o
+  // especial ligado, vira mais 5 segundos dele.
+  private acertouEstrela(e: EstadoNota, t: number) {
+    if (e.seq < 0 || this.seqFalhou[e.seq]) return;
+    if (--this.seqFaltam[e.seq] > 0) return;
+    if (t < this.especialAte) this.especialAte = Math.min(t + ESPECIAL_CHEIO, this.especialAte + ESPECIAL_METADE);
+    else this.meias = Math.min(2, this.meias + 1);
+    this.mostrar(e.pista, 'Sequência!', '#ffe08a', t);
+    for (let i = 0; i < PISTAS.length; i++) this.faisca(i, 6);
+    const agora = this.som.agora;
+    this.som.nota(frequencia('A5'), agora, 0.14, 0.2);
+    this.som.nota(frequencia('D6'), agora + 0.09, 0.24, 0.2);
+  }
+
+  // Espaço ou o botão do celular. Barra cheia: 10 s; pela metade: 5 s.
+  ativarEspecial(): boolean {
+    if (!this.emJogo || this.meias === 0) return false;
+    const t = this.tempo();
+    if (t < this.especialAte) return false;
+    this.especialAte = t + (this.meias === 2 ? ESPECIAL_CHEIO : ESPECIAL_METADE);
+    this.meias = 0;
+    for (let i = 0; i < PISTAS.length; i++) this.faisca(i, 14);
+    const agora = this.som.agora;
+    ['D5', 'F5', 'A5', 'D6'].forEach((n, i) => this.som.nota(frequencia(n), agora + i * 0.08, 0.26, 0.24));
+    return true;
   }
 
   private soltarNota(e: EstadoNota) {
@@ -390,7 +461,7 @@ export class MotorOcarina {
         vx: Math.cos(ang) * v,
         vy: Math.sin(ang) * v,
         vida: 0.45 + Math.random() * 0.35,
-        cor: i % 3 === 0 ? PISTAS[pista].cor : '#ffe08a',
+        cor: i % 3 === 0 && this.tempo() >= this.especialAte ? PISTAS[pista].cor : '#ffe08a',
         r: (1.5 + Math.random() * 2.5) * Math.max(0.6, esc * 0.5)
       });
     }
@@ -407,6 +478,7 @@ export class MotorOcarina {
     if (this.quadros.length > 61) this.quadros.shift();
 
     const t = this.tempo();
+    this.moverAmbiente(dtQuadro, t < this.especialAte);
     if (!this.op.audio) this.agendarAcompanhamento(t);
     if (this.op.clique) this.agendarCliques();
 
@@ -427,13 +499,14 @@ export class MotorOcarina {
         this.faixa?.abafar();
         this.erros++;
         this.combo = 0;
+        if (e.seq >= 0) this.seqFalhou[e.seq] = true;
         this.energia -= ENERGIA_ERRO;
         this.mostrar(e.pista, 'Errou', '#ff8a8a', t);
       }
       // Notas longas: pontos enquanto segura; acaba sozinha no fim.
       if (e.segurando && e.n.dur) {
         const fim = e.n.t + e.n.dur;
-        this.pontos += dtQuadro * 40 * multiplicador(this.combo);
+        this.pontos += dtQuadro * 40 * multiplicador(this.combo) * this.bonus(t);
         e.fimSegurar = Math.min(t, fim);
         if (Math.random() < dtQuadro * 14) this.faisca(e.pista, 2);
         if (t >= fim) this.soltarNota(e);
@@ -595,18 +668,128 @@ export class MotorOcarina {
     // aparece; no quadro só se copia a imagem, em vez de desenhar gradiente
     // e quatro contornos por nota.
     const raio = P_LARG * sx * 0.34 * this.r(Z_MIN);
-    const meiaL = raio * 1.12;
-    const meiaA = raio * ACHATAMENTO * 1.3;
+    const meiaL = raio * 1.5;
+    const meiaA = raio * 1.1;
     this.spriteRaio = raio;
-    this.spritesNotas = [0, 1, 2, 3, 4, 5].map((i) => {
+    this.spritesNotas = Array.from({ length: SPRITE_ESTRELA_OURO + 1 }, (_, i) => {
       const s = this.spritesNotas[i] ?? document.createElement('canvas');
       s.width = Math.ceil(meiaL * 2 * dpr);
       s.height = Math.ceil(meiaA * 2 * dpr);
       const sg = s.getContext('2d')!;
       sg.setTransform(dpr, 0, 0, dpr, (s.width / 2) | 0, (s.height / 2) | 0);
-      this.nota(sg, 0, 0, raio, Math.min(i, 4), i === 5);
+      sg.clearRect(-s.width, -s.height, s.width * 2, s.height * 2);
+      // No especial as notas comuns ficam douradas: a Triforce ganha disco
+      // branco pra continuar diferente delas.
+      if (i === SPRITE_ESTRELA_OURO) this.triforce(sg, raio, '#ffffff');
+      else if (i >= SPRITE_ESTRELA) this.triforce(sg, raio, PISTAS[i - SPRITE_ESTRELA].cor);
+      else if (i === SPRITE_OURO) {
+        sg.shadowColor = OURO;
+        sg.shadowBlur = raio * 0.45;
+        this.nota(sg, 0, 0, raio, 0, false, OURO);
+        sg.shadowBlur = 0;
+        sg.shadowColor = 'transparent';
+      } else this.nota(sg, 0, 0, raio, Math.min(i, 4), i === SPRITE_APAGADA);
       return s;
     });
+    this.montarSpritesAmbiente();
+  }
+
+  // ---------- Partículas do cenário ----------
+
+  private criarAmbiente() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const total = this.canvas.clientWidth < 700 ? 16 : 30;
+    this.ambiente = Array.from({ length: total }, (_, i) => {
+      const folha = i % 3 === 0;
+      return {
+        x: Math.random(),
+        y: Math.random(),
+        v: (folha ? 0.035 : 0.014) + Math.random() * 0.02,
+        queda: folha ? 0.025 + Math.random() * 0.03 : -0.006 - Math.random() * 0.01,
+        fase: Math.random() * Math.PI * 2,
+        tam: folha ? 8 + Math.random() * 8 : 12 + Math.random() * 20,
+        alfa: folha ? 0.55 + Math.random() * 0.3 : 0.45 + Math.random() * 0.5,
+        folha
+      };
+    });
+  }
+
+  private moverAmbiente(dt: number, especial: boolean) {
+    this.relogio += dt;
+    const ritmo = especial ? 2.4 : 1;
+    for (const p of this.ambiente) {
+      p.x += p.v * ritmo * dt;
+      p.y += p.queda * ritmo * dt;
+      if (p.x > 1.06) p.x = -0.06;
+      if (p.y > 1.05) p.y = -0.05;
+      if (p.y < -0.05) p.y = 1.05;
+    }
+  }
+
+  private montarSpritesAmbiente() {
+    if (this.spriteLuz) return;
+    const luz = document.createElement('canvas');
+    luz.width = luz.height = 64;
+    const gl = luz.getContext('2d')!;
+    const rad = gl.createRadialGradient(32, 32, 0, 32, 32, 32);
+    rad.addColorStop(0, 'rgba(255, 255, 220, 1)');
+    rad.addColorStop(0.18, 'rgba(226, 255, 140, 0.85)');
+    rad.addColorStop(0.5, 'rgba(170, 240, 90, 0.2)');
+    rad.addColorStop(1, 'rgba(170, 240, 90, 0)');
+    gl.fillStyle = rad;
+    gl.fillRect(0, 0, 64, 64);
+    this.spriteLuz = luz;
+
+    const folha = document.createElement('canvas');
+    folha.width = 48;
+    folha.height = 28;
+    const gf = folha.getContext('2d')!;
+    gf.beginPath();
+    gf.moveTo(3, 14);
+    gf.quadraticCurveTo(22, -6, 45, 14);
+    gf.quadraticCurveTo(22, 34, 3, 14);
+    const verde = gf.createLinearGradient(0, 0, 48, 28);
+    verde.addColorStop(0, '#9bd85a');
+    verde.addColorStop(1, '#3f8f3a');
+    gf.fillStyle = verde;
+    gf.fill();
+    gf.strokeStyle = 'rgba(20, 60, 24, 0.7)';
+    gf.lineWidth = 1.5;
+    gf.beginPath();
+    gf.moveTo(5, 14);
+    gf.lineTo(42, 14);
+    gf.stroke();
+    this.spriteFolha = folha;
+  }
+
+  private desenharAmbiente(ctx: CanvasRenderingContext2D, especial: boolean) {
+    const { spriteLuz, spriteFolha, w, h, relogio } = this;
+    if (!spriteLuz || !spriteFolha) return;
+    const esc = Math.max(0.7, Math.min(1.4, Math.min(w, h) / 700));
+    for (const p of this.ambiente) {
+      if (!p.folha) continue;
+      const x = (p.x + Math.sin(relogio * 0.8 + p.fase) * 0.012) * w;
+      const y = p.y * h;
+      const giro = p.fase + relogio * 1.1;
+      const l = p.tam * esc * 1.7;
+      const a = l * 0.58 * (0.45 + 0.55 * Math.abs(Math.cos(giro * 0.7)));
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(giro);
+      ctx.globalAlpha = p.alfa;
+      ctx.drawImage(spriteFolha, -l / 2, -a / 2, l, a);
+      ctx.restore();
+    }
+    ctx.globalCompositeOperation = 'lighter';
+    for (const p of this.ambiente) {
+      if (p.folha) continue;
+      const pisca = 0.55 + 0.45 * Math.sin(relogio * 2.2 + p.fase);
+      const l = p.tam * esc * (especial ? 1.35 : 1);
+      ctx.globalAlpha = Math.min(1, p.alfa * pisca * (especial ? 1.3 : 1));
+      ctx.drawImage(spriteLuz, p.x * w + Math.sin(relogio * 0.9 + p.fase) * 14 - l / 2, p.y * h + Math.cos(relogio * 0.7 + p.fase) * 10 - l / 2, l, l);
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
   }
 
   private tamAnel() {
@@ -633,6 +816,9 @@ export class MotorOcarina {
     const tVis = t + this.antecedencia * 1.05;
     while (fimVis < this.notas.length && this.notas[fimVis].n.t <= tVis) fimVis++;
 
+    const especial = t < this.especialAte;
+    this.desenharAmbiente(ctx, especial);
+
     // Pista de pedra
     if (this.camadaPista) {
       ctx.drawImage(this.camadaPista, 0, 0, w, h);
@@ -655,6 +841,16 @@ export class MotorOcarina {
     ctx.lineTo(this.xDe(-0.5, Z_CAMPO), this.yDe(Z_CAMPO));
     ctx.closePath();
     ctx.clip();
+
+    // Especial: a pista inteira ganha uma luz dourada que pulsa
+    if (especial) {
+      const luz = ctx.createLinearGradient(0, this.yDe(1), 0, yAcerto);
+      const forca = 0.26 + 0.08 * Math.sin(t * 7);
+      luz.addColorStop(0, 'rgba(255, 196, 60, 0.04)');
+      luz.addColorStop(1, `rgba(255, 196, 60, ${forca.toFixed(3)})`);
+      ctx.fillStyle = luz;
+      ctx.fillRect(0, this.yDe(1), w, h);
+    }
 
     // Pista apertada / acerto: luz subindo da cor da pista
     for (let i = 0; i < PISTAS.length; i++) {
@@ -700,7 +896,7 @@ export class MotorOcarina {
       if (e.julgada && e.julgada !== 'erro' && !e.segurando) continue; // soltou antes
       const zIni = e.segurando ? 0 : Math.max(Z_MIN, z0);
       const zFim = Math.min(1, zDe(fim));
-      if (zFim > zIni) this.rastro(ctx, e.pista, zIni, zFim, e.julgada === 'erro' ? 'apagado' : e.segurando ? 'aceso' : 'normal');
+      if (zFim > zIni) this.rastro(ctx, e.pista, zIni, zFim, e.julgada === 'erro' ? 'apagado' : e.segurando ? 'aceso' : 'normal', especial);
     }
     ctx.restore();
 
@@ -751,8 +947,21 @@ export class MotorOcarina {
       if (alfa <= 0.01) continue;
       ctx.globalAlpha = alfa;
       const raio = largPista * 0.34 * s;
-      const sprite = this.spritesNotas[apagada ? 5 : e.pista];
-      if (sprite) ctx.drawImage(sprite, x - (sl * raio) / 2, y - (sa * raio) / 2, sl * raio, sa * raio);
+      const estrela = !apagada && e.seq >= 0 && !this.seqFalhou[e.seq];
+      const qual = apagada
+        ? SPRITE_APAGADA
+        : estrela
+          ? especial
+            ? SPRITE_ESTRELA_OURO
+            : SPRITE_ESTRELA + e.pista
+          : especial
+            ? SPRITE_OURO
+            : e.pista;
+      const sprite = this.spritesNotas[qual];
+      const pulso = estrela ? 1 + 0.07 * Math.sin(t * 8) : 1;
+      const sw = sl * raio * pulso;
+      const sh = sa * raio * pulso;
+      if (sprite) ctx.drawImage(sprite, x - sw / 2, y - sh / 2, sw, sh);
       else this.nota(ctx, x, y, raio, e.pista, apagada);
       ctx.globalAlpha = 1;
     }
@@ -809,18 +1018,21 @@ export class MotorOcarina {
       const hud = this.hud; // o mesmo objeto todo quadro
       hud.pontos = Math.round(this.pontos);
       hud.combo = this.combo;
-      hud.mult = multiplicador(this.combo);
+      hud.mult = multiplicador(this.combo) * this.bonus(t);
       hud.energia = Math.max(0, this.energia);
       hud.tempo = Math.max(0, t);
       hud.duracao = this.duracao;
+      hud.especial = especial;
+      hud.barra = especial ? Math.min(1, (this.especialAte - t) / ESPECIAL_CHEIO) : this.meias / 2;
+      hud.pronta = !especial && this.meias > 0;
       this.op.onHud(hud);
     }
   }
 
   // Nota: oval da cor da pista (achatada como os anéis, pra dar a
   // perspectiva), com brilho em cima e um anel claro.
-  private nota(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, pista: number, apagada: boolean) {
-    const cor = apagada ? '#5f5a66' : PISTAS[pista].cor;
+  private nota(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, pista: number, apagada: boolean, corFixa?: string) {
+    const cor = apagada ? '#5f5a66' : (corFixa ?? PISTAS[pista].cor);
     const ry = r * ACHATAMENTO;
     ctx.beginPath();
     ctx.ellipse(x, y + ry * 0.18, r * 1.04, ry * 1.06, 0, 0, Math.PI * 2);
@@ -850,9 +1062,48 @@ export class MotorOcarina {
     ctx.stroke();
   }
 
+  // Nota Triforce: o disco da pista (o centro dele é o tempo certo do toque)
+  // com três triângulos dourados e contorno escuro por cima.
+  private triforce(ctx: CanvasRenderingContext2D, r: number, corDisco: string) {
+    this.nota(ctx, 0, 0, r, 0, false, corDisco);
+    const lado = r * 2.3;
+    const alt = lado * 0.8;
+    const topo = -alt / 2;
+    const tri = (x: number, y: number, l: number, a: number) => {
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + l / 2, y + a);
+      ctx.lineTo(x - l / 2, y + a);
+      ctx.closePath();
+    };
+    ctx.save();
+    ctx.lineJoin = 'round';
+    ctx.shadowColor = '#fff4c2';
+    ctx.shadowBlur = r * 0.4;
+    ctx.beginPath();
+    tri(0, topo, lado, alt);
+    ctx.lineWidth = r * 0.26;
+    ctx.strokeStyle = '#241500';
+    ctx.stroke();
+    ctx.fillStyle = '#241500';
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
+    const ouro = ctx.createLinearGradient(0, topo, 0, topo + alt);
+    ouro.addColorStop(0, '#fff6bf');
+    ouro.addColorStop(0.5, '#ffd23e');
+    ouro.addColorStop(1, '#e79a12');
+    ctx.fillStyle = ouro;
+    ctx.beginPath();
+    tri(0, topo, lado / 2, alt / 2);
+    tri(-lado / 4, topo + alt / 2, lado / 2, alt / 2);
+    tri(lado / 4, topo + alt / 2, lado / 2, alt / 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   // Rastro luminoso da nota longa, em perspectiva (vários pedaços).
-  private rastro(ctx: CanvasRenderingContext2D, pista: number, zIni: number, zFim: number, estado: 'normal' | 'aceso' | 'apagado') {
-    const cor = estado === 'apagado' ? '#7d7a86' : PISTAS[pista].cor;
+  private rastro(ctx: CanvasRenderingContext2D, pista: number, zIni: number, zFim: number, estado: 'normal' | 'aceso' | 'apagado', especial: boolean) {
+    const cor = estado === 'apagado' ? '#7d7a86' : especial ? OURO : PISTAS[pista].cor;
     const base = P_LARG * this.sx * 0.12;
     const camadas: [number, string, number][] =
       estado === 'apagado'

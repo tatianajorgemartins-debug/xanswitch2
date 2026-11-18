@@ -1,6 +1,6 @@
 # Jogos interativos — como cuidar
 
-Página de jogos: **/testes** (Silhueta do Dia, Ocarina Hero, Qual Link, Próximo jogo e o Feed).
+Página de jogos: **/testes** (Silhueta do Dia, Zelda Tour, Qual Link, Próximo jogo e o Feed).
 
 ## Antes de tudo (uma vez só)
 
@@ -27,11 +27,11 @@ o admin não registra as partidas e o feed fica "abre em breve".
   `"franquia_loja"` (ex.: `"Legend Of Zelda"`).
 - O script nunca apaga personagens nem muda o que você escreveu.
 
-## Ocarina Hero: criar uma música nova (pelo admin)
+## Zelda Tour (antigo Ocarina Hero): criar uma música nova (pelo admin)
 
 Antes, uma vez só: rode `db/migration-ocarina-musicas.sql` no Neon.
 
-1. **Admin › 🎵 Ocarina Hero › ＋ Nova música.**
+1. **Admin › 🎵 Zelda Tour › ＋ Nova música.**
 2. Preencha nome, **jogo** (agrupa a lista "Por jogo") e dificuldade.
 3. **Enviar o áudio (mp3)**: o navegador compacta (mono, 96 kbps, ~2 MB numa música de 3 min)
    e sobe pro Supabase. Use Chrome ou Edge (outros navegadores sobem o arquivo original).
@@ -55,6 +55,8 @@ Antes, uma vez só: rode `db/migration-ocarina-musicas.sql` no Neon.
      digite os segundos). Ela para ali com fade de 2 s antes; **▶ Ouvir o final** confere e
      **Até o fim do áudio** desfaz. Precisa da coluna `end_at` (rode de novo o
      `db/migration-ocarina-musicas.sql`).
+   - **Notas Triforce**: selecione as notas e aperte **E** (Triforces seguidas formam uma
+     sequência). Só viram Triforce as notas marcadas aqui.
 6. **▶ Testar daqui** (tecla T) testa no jogo a partir da agulha ou da 1ª nota selecionada —
    não precisa tocar do começo. Depois **Salvar**. Quando estiver bom: **Publicar no jogo**.
    Ela aparece na lista na hora (aba "Novas" por 14 dias) e entra no sorteio da Música do Dia
@@ -64,13 +66,13 @@ As 6 músicas originais (sem áudio, a ocarina toca em cada acerto) ficam em `da
 
 ## Trocar as teclas padrão
 
-Cada jogador troca as suas no menu do Ocarina Hero (⌨️ Teclas). O padrão do site fica em
+Cada jogador troca as suas no menu do Zelda Tour (⌨️ Teclas). O padrão do site fica em
 `TECLAS_PADRAO`, em `app/testes/ocarina-hero/ocarina.ts` (nomes de tecla do navegador:
 `KeyA`, `KeyS`...). Os números 1 a 5 sempre funcionam também.
 
 ## Precisão (quanto o toque pode sair do tempo)
 
-O jogador escolhe no menu do Ocarina Hero: **Folgada**, **Normal** (padrão) ou **Exata**. Os
+O jogador escolhe no menu do Zelda Tour: **Folgada**, **Normal** (padrão) ou **Exata**. Os
 valores ficam em `PRECISOES`, em `app/testes/ocarina-hero/ocarina.ts`.
 
 ## Visual da partida
@@ -79,11 +81,18 @@ Imagens em `public/jogos/ocarina/ui/` (geradas a partir de
 `Jogos interativos\OCARINA HERO\elementos`). A pista e as notas são desenhadas em
 `app/testes/ocarina-hero/motor.ts`; placar, combo, corações e progresso em `Palco.tsx`.
 
-## Abrir o Ocarina Hero pro público
+## Especial
 
-Enquanto `OCARINA_ENABLED` (em `lib/siteSections.ts`) estiver `false`, a página /testes mostra o
-banner "Em breve" e o jogo só abre no computador de teste. Mudou pra `true`: o banner some e
-entra o card do jogo, sozinho.
+Acertar todas as Triforces de uma sequência enche meia barra. Com a barra pela metade (5 s) ou cheia
+(10 s), **Espaço** ou o botão **Especial** do celular ativa: as notas ficam douradas e valem o dobro.
+Completar outra sequência com o especial ligado soma 5 s (até 10 s). Os tempos ficam em
+`ESPECIAL_CHEIO` e `ESPECIAL_METADE`, em `app/testes/ocarina-hero/ocarina.ts`.
+
+## Abrir o Zelda Tour pro público
+
+**Admin › 🎵 Zelda Tour › Publicar o jogo.** Enquanto estiver fora do ar, a página /testes mostra o
+banner "Em breve" e o jogo só abre no computador de teste. Cada música tem o próprio botão
+**Publicar** na lista.
 
 ## Outras coisas
 

@@ -1,6 +1,6 @@
 'use client';
 
-// Editor de músicas do Ocarina Hero (admin). Linha do tempo na horizontal:
+// Editor de músicas do Zelda Tour (admin). Linha do tempo na horizontal:
 // em cima a régua (compassos) e a forma de onda do áudio; embaixo as 5
 // pistas coloridas. Como usar (também aparece na tela, em "Atalhos"):
 //  - clicar numa pista: põe uma nota (no tempo da grade);
@@ -14,11 +14,12 @@
 //    compasso da agulha e duplicar logo em seguida (pra repetir partes);
 //  - Espaço toca/pausa; com "Gravar ao vivo" ligado, as teclas 1–5 (ou
 //    A S J K L) gravam as notas no ritmo enquanto a música toca;
+//  - E: liga/desliga a Triforce nas notas selecionadas;
 //  - T: testa no jogo a partir da agulha (ou da seleção).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { DIFICULDADES, FADE_FIM, PISTAS, TECLAS_PADRAO, formatarDuracao, type Chart, type Dificuldade, type NotaChart } from '@/app/testes/ocarina-hero/ocarina';
+import { DIFICULDADES, FADE_FIM, PISTAS, TECLAS_PADRAO, formatarDuracao, sequenciasEstrela, type Chart, type Dificuldade, type NotaChart } from '@/app/testes/ocarina-hero/ocarina';
 import { type MotorOcarina } from '@/app/testes/ocarina-hero/motor';
 import { SomOcarina, tocarClique } from '@/app/testes/ocarina-hero/som';
 import Palco from '@/app/testes/ocarina-hero/Palco';
@@ -51,10 +52,10 @@ export type MusicaEditor = {
   fimEm: number | null;
 };
 
-type NotaEd = { id: number; t: number; p: number; d: number };
+type NotaEd = { id: number; t: number; p: number; d: number; e?: boolean };
 // Trecho copiado: notas com o tempo relativo ao começo do trecho, e o
 // tamanho do trecho (inteiro, em compassos ou batidas).
-type Copia = { notas: { t: number; p: number; d: number }[]; tam: number; unidade: number };
+type Copia = { notas: { t: number; p: number; d: number; e?: boolean }[]; tam: number; unidade: number };
 
 // Geometria da linha do tempo (px)
 const ESQ = 74;
@@ -99,7 +100,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
   const fimRef = useRef(fimEm);
   fimRef.current = fimEm;
   const [notas, setNotas] = useState<NotaEd[]>(() =>
-    musica.notas.map((n) => ({ id: novaId(), t: n.t, p: Math.max(0, PISTAS.findIndex((x) => x.id === n.pista)), d: n.dur ?? 0 }))
+    musica.notas.map((n) => ({ id: novaId(), t: n.t, p: Math.max(0, PISTAS.findIndex((x) => x.id === n.pista)), d: n.dur ?? 0, e: n.estrela === true }))
   );
   const [sel, setSel] = useState<Set<number>>(new Set());
   const [sujo, setSujo] = useState(false);
@@ -464,6 +465,19 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
       g.strokeStyle = 'rgba(255,255,255,0.8)';
       g.lineWidth = 2;
       g.stroke();
+      if (n.e) {
+        // nota Triforce
+        g.beginPath();
+        g.moveTo(x, y - RAIO - 3);
+        g.lineTo(x + RAIO + 3, y + RAIO);
+        g.lineTo(x - RAIO - 3, y + RAIO);
+        g.closePath();
+        g.fillStyle = '#ffd23e';
+        g.fill();
+        g.lineWidth = 1.5;
+        g.strokeStyle = '#3a2a00';
+        g.stroke();
+      }
     }
 
     // Fantasma (onde o clique vai pôr a nota)
@@ -799,7 +813,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
       return null;
     }
     const { ini, tam, unidade } = trechoDe(lista);
-    const c: Copia = { notas: lista.map((n) => ({ t: n.t - ini, p: n.p, d: n.d })), tam, unidade };
+    const c: Copia = { notas: lista.map((n) => ({ t: n.t - ini, p: n.p, d: n.d, e: n.e })), tam, unidade };
     setCopia(c);
     copiaRef.current = c;
     setAviso({ tipo: 'info', texto: `Copiadas ${lista.length} notas (${nomeTrecho(c)}). Ponha a agulha onde quer e aperte Ctrl+V (ou "Colar na agulha").` });
@@ -811,7 +825,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
   function colar(em: number, c: Copia | null = copiaRef.current) {
     if (!c || !c.notas.length) return;
     const destino = Math.max(0, inicioBatida + Math.round((em - inicioBatida) / c.unidade) * c.unidade);
-    const novas = c.notas.map((n) => ({ id: novaId(), t: Math.round((destino + n.t) * 1000) / 1000, p: n.p, d: n.d }));
+    const novas = c.notas.map((n) => ({ id: novaId(), t: Math.round((destino + n.t) * 1000) / 1000, p: n.p, d: n.d, e: n.e }));
     const ocupa = new Set(novas.map((n) => `${n.p}:${Math.round(n.t * 1000)}`));
     mudar((l) => [...l.filter((o) => !ocupa.has(`${o.p}:${Math.round(o.t * 1000)}`)), ...novas]);
     setSel(new Set(novas.map((n) => n.id)));
@@ -836,6 +850,19 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
 
   function recortar() {
     if (copiar()) apagarSelecionadas();
+  }
+
+  // ---------- Notas Triforce ----------
+  // Liga nas selecionadas; se todas já forem Triforce, desliga.
+  function alternarEstrela() {
+    const s = selRef.current;
+    const lista = notasRef.current.filter((n) => s.has(n.id));
+    if (!lista.length) {
+      setAviso({ tipo: 'info', texto: 'Selecione as notas que vão virar Triforce.' });
+      return;
+    }
+    const ligar = lista.some((n) => !n.e);
+    mudar((l) => l.map((n) => (s.has(n.id) ? { ...n, e: ligar } : n)));
   }
 
   // ---------- Testar no jogo ----------
@@ -928,6 +955,11 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
       if (!ctrl && !e.altKey && e.code === 'KeyT') {
         e.preventDefault();
         if (notasRef.current.length) testarDaqui();
+        return;
+      }
+      if (!ctrl && !e.altKey && e.code === 'KeyE') {
+        e.preventDefault();
+        alternarEstrela();
         return;
       }
       if (!ctrl && !e.altKey && e.code === 'KeyQ') {
@@ -1040,7 +1072,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
     (): OcarinaNota[] =>
       [...notasRef.current]
         .sort((a, b) => a.t - b.t || a.p - b.p)
-        .map((n) => ({ t: Math.round(n.t * 1000) / 1000, pista: PISTAS[n.p].id, ...(n.d > 0 ? { dur: Math.round(n.d * 1000) / 1000 } : {}) })),
+        .map((n) => ({ t: Math.round(n.t * 1000) / 1000, pista: PISTAS[n.p].id, ...(n.d > 0 ? { dur: Math.round(n.d * 1000) / 1000 } : {}), ...(n.e ? { estrela: true } : {}) })),
     []
   );
 
@@ -1134,7 +1166,9 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
     const ultima = Math.max(0, ...notas.map((n) => n.t));
     const primeira = notas.length ? Math.min(...notas.map((n) => n.t)) : 0;
     const nps = notas.length > 1 ? notas.length / Math.max(1, ultima - primeira) : 0;
-    return { acordes, longas, nps };
+    const marcadas = notas.map((n) => ({ t: n.t, pista: PISTAS[n.p].id, estrela: n.e }));
+    const sequencias = new Set(sequenciasEstrela(marcadas).filter((s) => s >= 0)).size;
+    return { acordes, longas, nps, sequencias };
   }, [notas]);
 
   // ---------- Testar no jogo ----------
@@ -1343,6 +1377,12 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
             {notas.length} notas · {estatisticas.longas} longas · {estatisticas.acordes} acordes · {estatisticas.nps.toFixed(1).replace('.', ',')}{' '}
             notas/s
           </p>
+          <h3>Notas Triforce</h3>
+          <p className="adm-help">
+            {estatisticas.sequencias
+              ? `${estatisticas.sequencias} sequência${estatisticas.sequencias > 1 ? 's' : ''} de Triforces. Cada uma enche meia barra de especial.`
+              : 'Nenhuma marcada: esta música fica sem Triforces. Selecione as notas e aperte E.'}
+          </p>
           <button type="button" className="btn ghost adm-danger" onClick={apagar}>
             Apagar música
           </button>
@@ -1504,6 +1544,9 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
                   >
                     Longa ⇄ normal
                   </button>
+                  <button type="button" className="btn ghost" onClick={alternarEstrela} title="E">
+                    🔺 Triforce
+                  </button>
                   <button type="button" className="btn ghost" onClick={() => mudar((l) => l.map((n) => (sel.has(n.id) ? { ...n, t: encaixar(n.t) } : n)))}>
                     Encaixar na grade
                   </button>
@@ -1535,6 +1578,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
                 <li><b>Botão direito</b>: apaga · <b>Shift+arrastar</b> ou ferramenta <b>Selecionar</b> (Q): seleciona várias</li>
                 <li><b>Arrastar na forma de onda</b>: seleciona o trecho inteiro (todas as cores)</li>
                 <li><b>Ctrl+C / X / V</b>: copiar, recortar, colar no compasso da agulha · <b>Ctrl+D</b>: repetir logo em seguida</li>
+                <li><b>E</b>: liga/desliga a Triforce nas selecionadas (Triforces seguidas formam uma sequência)</li>
                 <li><b>Espaço</b>: toca/pausa · <b>← →</b>: anda 1 passo (Shift: 1 compasso) · <b>T</b>: testar no jogo daqui</li>
                 <li><b>1 a 5</b> (ou A S J K L): parado, põe/tira nota na agulha (várias = acorde); com <b>Gravar ao vivo</b>, grava tocando (segurar = longa)</li>
                 <li><b>Alt+← → ↑ ↓</b>: move as selecionadas · <b>Delete</b>: apaga · <b>Ctrl+Z / Y</b>: desfazer/refazer</li>
@@ -1628,7 +1672,7 @@ function TesteNoJogo({
         <p className="oc-ed-teste-msg">Carregando o áudio…</p>
       )}
       <div className="oc-ed-teste-barra">
-        <span>A S J K L ou 1–5 · Esc fecha</span>
+        <span>A S J K L ou 1–5 · Espaço: especial · Esc fecha</span>
         <label className="oc-ed-check">
           <input type="checkbox" checked={comCliques} onChange={(e) => setComCliques(e.target.checked)} /> 🔊 Clique em cada nota
         </label>

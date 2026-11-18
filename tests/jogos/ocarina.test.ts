@@ -1,9 +1,26 @@
-// Testes das regras do Ocarina Hero. Rodar: npm run test:jogos
+// Testes das regras do Zelda Tour. Rodar: npm run test:jogos
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { estrelas, frequencia, migrarTeclas, multiplicador, pistaDaTecla, precisao, validarChart, TECLAS_PADRAO } from '../../app/testes/ocarina-hero/ocarina.ts';
+import { estrelas, frequencia, migrarTeclas, multiplicador, pistaDaTecla, precisao, sequenciasEstrela, validarChart, TECLAS_PADRAO } from '../../app/testes/ocarina-hero/ocarina.ts';
+
+const notasSeguidas = (total: number, passo = 0.5) => Array.from({ length: total }, (_, i) => ({ t: 2 + i * passo, pista: 'verde' as const }));
+
+test('triforces: só as marcadas contam e uma nota comum separa sequências', () => {
+  const notas = notasSeguidas(8).map((n, i) => ({ ...n, estrela: [0, 1, 3, 4].includes(i) }));
+  assert.deepEqual(sequenciasEstrela(notasSeguidas(8)), Array(8).fill(-1));
+  assert.deepEqual(sequenciasEstrela(notas), [0, 0, -1, 1, 1, -1, -1, -1]);
+});
+
+test('estrelas: acorde conta como um passo da mesma sequência e passa pela validação', () => {
+  const c = validarChart({ id: 'x', titulo: 'X', bpm: 100, notas: [{ t: 1, pista: 'verde', estrela: true }, { t: 1, pista: 'azul', estrela: true }, { t: 2, pista: 'roxo', estrela: true }] });
+  assert.deepEqual(sequenciasEstrela(c!.notas), [0, 0, 0]);
+});
+
+test('o espaço não fica mais numa pista salva', () => {
+  assert.deepEqual(migrarTeclas({ verde: 'Space', azul: 'KeyP' }), { azul: 'KeyP' });
+});
 
 test('pistas antigas (A/C) viram as cores', () => {
   const c = validarChart({ id: 'x', titulo: 'X', bpm: 100, notas: [{ t: 1, pista: 'A' }, { t: 2, pista: 'C_cima', dur: 0.5 }] });

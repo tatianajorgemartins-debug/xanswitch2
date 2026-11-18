@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { ViewTransition } from 'react';
 import SiteShell from '@/app/SiteShell';
 import { loadCatalogData } from '@/lib/catalogData';
+import { jogoOcarinaPublicado } from '@/lib/ocarinaDb';
 import TestesClient from './TestesClient';
 
 // Página "Testes": a área de jogos interativos da loja (quizzes e o que
@@ -21,12 +22,12 @@ export const metadata: Metadata = {
 };
 
 export default async function TestesPage() {
-  const data = await loadCatalogData();
+  const [data, ocarinaPublicado] = await Promise.all([loadCatalogData(), jogoOcarinaPublicado()]);
   // Ver o comentário em app/page.tsx sobre o <ViewTransition>.
   return (
     <SiteShell>
       <ViewTransition>
-        <TestesClient items={data.items} whatsappContactUrl={data.whatsappContactUrl} />
+        <TestesClient items={data.items} whatsappContactUrl={data.whatsappContactUrl} ocarinaPublicado={ocarinaPublicado} />
       </ViewTransition>
     </SiteShell>
   );

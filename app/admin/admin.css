@@ -1173,7 +1173,27 @@
   margin-right: auto;
 }
 
-/* ---------- Ocarina Hero (OcarinaAdminPanel.tsx) ---------- */
+/* ---------- Zelda Tour (OcarinaAdminPanel.tsx) ---------- */
+.oc-adm-jogo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin-bottom: 16px;
+}
+.oc-adm-jogo h3,
+.oc-adm-jogo p {
+  margin: 0;
+}
+.oc-adm-jogo h3 {
+  margin-bottom: 4px;
+}
+.oc-adm-acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
 .oc-adm-topo {
   display: flex;
   align-items: center;

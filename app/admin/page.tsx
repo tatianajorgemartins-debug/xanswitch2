@@ -25,7 +25,7 @@ import AdminClient from './AdminClient';
 import { parsePromoBanner, PROMO_BANNER_KEY } from '@/lib/promoBanner';
 import { getAllPostsForAdmin, getGamePlayStats, getRecentGamePlays } from '@/lib/jogosDb';
 import type { JogosInterativosData } from './JogosInterativosPanel';
-import { getAllOcarinaSongs } from '@/lib/ocarinaDb';
+import { getAllOcarinaSongs, jogoOcarinaPublicado } from '@/lib/ocarinaDb';
 
 export const dynamic = 'force-dynamic';
 
@@ -125,7 +125,8 @@ export default async function AdminPage() {
       }))
     }))
     .catch(() => null);
-  // Músicas do Ocarina Hero. null = falta rodar db/migration-ocarina-musicas.sql.
+  const ocarinaPublicado = await jogoOcarinaPublicado();
+  // Músicas do Zelda Tour. null = falta rodar db/migration-ocarina-musicas.sql.
   const musicasOcarina = await getAllOcarinaSongs()
     .then((l) =>
       l.map((m) => ({
@@ -162,6 +163,7 @@ export default async function AdminPage() {
       promoBanner={promoBanner}
       jogosInterativos={jogosInterativos}
       musicasOcarina={musicasOcarina}
+      ocarinaPublicado={ocarinaPublicado}
     />
   );
 }

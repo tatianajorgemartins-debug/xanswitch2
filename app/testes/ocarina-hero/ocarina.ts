@@ -1,8 +1,10 @@
-// Regras e dados do "Ocarina Hero" (sem tela e sem som): pistas, escala,
+// Regras e dados do "Zelda Tour" (sem tela e sem som): pistas, escala,
 // formato das músicas, pontuação, estrelas e o texto de compartilhar.
 // O motor (canvas + tempo) fica em motor.ts; o som, em som.ts.
 
 export const JOGO = 'ocarina';
+// Nome que aparece pro jogador (o código e os dados continuam como "ocarina").
+export const NOME_JOGO = 'Zelda Tour';
 // Dia #1 da Música do Dia (mesmo lançamento do Silhueta do Dia).
 export const INICIO = '2026-11-16';
 
@@ -58,6 +60,7 @@ export type NotaChart = {
   pista: PistaId;
   dur?: number; // nota longa (segurar), em segundos
   nota?: string; // altura diferente da pista (opcional), ex: "E5"
+  estrela?: boolean; // nota Triforce: ver "Notas Triforce" abaixo
 };
 
 export type Chart = {
@@ -100,7 +103,8 @@ export function validarChart(raw: unknown): Chart | null {
       t: n.t,
       pista: PISTAS[indicePista(String(n.pista))].id,
       ...(typeof n.dur === 'number' && n.dur > 0.05 ? { dur: n.dur } : {}),
-      ...(typeof n.nota === 'string' ? { nota: n.nota } : {})
+      ...(typeof n.nota === 'string' ? { nota: n.nota } : {}),
+      ...(n.estrela === true ? { estrela: true } : {})
     });
   }
   if (!notas.length) return null;
@@ -150,6 +154,46 @@ export function ehNova(c: Chart, agora = Date.now()): boolean {
 
 // Músicas sem jogo definido (as originais) entram neste grupo.
 export const JOGO_ORIGINAIS = 'Originais XAN';
+
+// ---------- Notas Triforce e especial ----------
+// Na tela são triângulos dourados; nos dados, o campo se chama "estrela".
+// Quem escolhe as notas é o admin, no editor da música. Triforces seguidas
+// formam uma sequência. Acertar todas enche meia barra.
+// Com a barra pela metade ou cheia, o jogador ativa o especial: todas as
+// notas ficam douradas e valem o dobro enquanto ele durar.
+export const ESPECIAL_CHEIO = 10; // segundos com a barra cheia
+export const ESPECIAL_METADE = 5; // segundos com a barra pela metade
+export const TECLA_ESPECIAL = 'Space';
+
+// Índices das notas agrupados por tempo (acorde = um grupo só).
+function gruposDeTempo(notas: NotaChart[]): number[][] {
+  const ordem = notas.map((_, i) => i).sort((a, b) => notas[a].t - notas[b].t);
+  const grupos: number[][] = [];
+  for (const i of ordem) {
+    const g = grupos[grupos.length - 1];
+    if (g && notas[i].t - notas[g[0]].t < 0.02) g.push(i);
+    else grupos.push([i]);
+  }
+  return grupos;
+}
+
+// Número da sequência de cada nota (-1 = não é estrela). Uma nota comum no
+// meio separa duas sequências.
+export function sequenciasEstrela(notas: NotaChart[]): number[] {
+  const seq = notas.map(() => -1);
+  let atual = -1;
+  let dentro = false;
+  for (const g of gruposDeTempo(notas)) {
+    if (!g.some((i) => notas[i].estrela)) {
+      dentro = false;
+      continue;
+    }
+    if (!dentro) atual++;
+    dentro = true;
+    for (const i of g) if (notas[i].estrela) seq[i] = atual;
+  }
+  return seq;
+}
 
 // ---------- Pontuação ----------
 
@@ -202,7 +246,7 @@ export const desenhoEstrelas = (n: number) => '⭐'.repeat(n) + '☆'.repeat(5 -
 
 export function textoCompartilhar(o: { numero: number | null; chart: Chart; r: ResultadoMusica; sequencia: number }): string {
   const linhas = [
-    o.numero ? `Ocarina Hero · Música do Dia #${o.numero}` : 'Ocarina Hero',
+    o.numero ? `${NOME_JOGO} · Música do Dia #${o.numero}` : NOME_JOGO,
     `🎵 ${o.chart.titulo} (${DIFICULDADES[o.chart.dificuldade].nome})`,
     o.r.completou ? `${desenhoEstrelas(o.r.estrelas)} ${o.r.precisao}% · Combo ${o.r.maiorCombo}` : `💔 Não completou · ${o.r.precisao}%`
   ];
@@ -225,12 +269,13 @@ export function migrarTeclas(t: Record<string, string>): Partial<MapaTeclas> {
   const r: Partial<MapaTeclas> = {};
   for (const [k, v] of Object.entries(t)) {
     const i = indicePista(k);
-    if (i >= 0 && typeof v === 'string') r[PISTAS[i].id] = v;
+    // o espaço agora é só do especial
+    if (i >= 0 && typeof v === 'string' && v !== TECLA_ESPECIAL) r[PISTAS[i].id] = v;
   }
   return r;
 }
 
-// Pista da tecla apertada (teclas escolhidas + setas/espaço); -1 se nenhuma.
+// Pista da tecla apertada (teclas escolhidas + números 1 a 5); -1 se nenhuma.
 export function pistaDaTecla(code: string, teclas: MapaTeclas): number {
   const i = PISTAS.findIndex((p) => teclas[p.id] === code);
   return i >= 0 ? i : PISTAS.findIndex((p) => TECLAS_ALTERNATIVAS[p.id] === code);

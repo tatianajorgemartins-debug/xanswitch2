@@ -17,7 +17,6 @@ import PromoEventsPanel from './PromoEventsPanel';
 import PromoBannerPanel from './PromoBannerPanel';
 import JogosInterativosPanel, { type JogosInterativosData } from './JogosInterativosPanel';
 import OcarinaAdminPanel, { type MusicaAdmin } from './OcarinaAdminPanel';
-import { OCARINA_ENABLED } from '@/lib/siteSections';
 import type { PromoBannerSetting } from '@/lib/promoBanner';
 import type { PromoEventRow } from '@/lib/promoEvents';
 import { setSalesStatusAction } from './salesActions';
@@ -71,7 +70,8 @@ export default function AdminClient({
   promoEvents,
   promoBanner,
   jogosInterativos,
-  musicasOcarina
+  musicasOcarina,
+  ocarinaPublicado
 }: {
   initialGames: Game[];
   visitCount: number;
@@ -95,6 +95,7 @@ export default function AdminClient({
   jogosInterativos: JogosInterativosData | null;
   // null = falta rodar db/migration-ocarina-musicas.sql.
   musicasOcarina: MusicaAdmin[] | null;
+  ocarinaPublicado: boolean;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -318,7 +319,7 @@ export default function AdminClient({
     { id: 'clientes', icon: '🎖️', label: 'Clientes e pontos' },
     { id: 'comentarios', icon: '💬', label: 'Comentários', badge: pendingReviewCount },
     { id: 'interativos', icon: '🕹️', label: 'Jogos interativos' },
-    { id: 'ocarina', icon: '🎵', label: 'Ocarina Hero' },
+    { id: 'ocarina', icon: '🎵', label: 'Zelda Tour' },
     { id: 'divulgacao', icon: '📣', label: 'Divulgação' },
     { id: 'config', icon: '⚙️', label: 'Configurações' }
   ];
@@ -597,11 +598,11 @@ export default function AdminClient({
           <section>
             <div className="adm-section-head">
               <div>
-                <h2>🎵 Ocarina Hero</h2>
-                <p className="adm-help">As músicas do jogo de ritmo: envie o áudio e posicione as notas de cada uma.</p>
+                <h2>🎵 Zelda Tour</h2>
+                <p className="adm-help">O jogo de ritmo: publique o jogo e as músicas, envie o áudio e posicione as notas.</p>
               </div>
             </div>
-            <OcarinaAdminPanel musicas={musicasOcarina} jogoLigado={OCARINA_ENABLED} />
+            <OcarinaAdminPanel musicas={musicasOcarina} jogoPublicado={ocarinaPublicado} />
           </section>
         )}
 

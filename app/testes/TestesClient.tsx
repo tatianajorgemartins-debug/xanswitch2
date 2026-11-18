@@ -21,7 +21,6 @@ import { eligibleItems, variedCovers } from '../quiz/covers';
 import { TESTES, comingSoonSlots, type TesteGame, type TesteId } from './games';
 import { diaEm, formatarContador, msAteProximoDia } from '@/lib/jogos/dia';
 import { resultadoDoDia, sequenciaGeralHoje } from '@/lib/jogos/progresso';
-import { OCARINA_ENABLED } from '@/lib/siteSections';
 import { OC_FONTES } from './ocarina-hero/fontes';
 
 const NIVEIS_SILHUETA = ['facil', 'medio', 'dificil', 'insano'];
@@ -35,10 +34,13 @@ const COVER_COUNT = 5;
 
 export default function TestesClient({
   items,
-  whatsappContactUrl
+  whatsappContactUrl,
+  ocarinaPublicado
 }: {
   items: Item[];
   whatsappContactUrl: string | null;
+  // Zelda Tour aberto pro público (admin > Zelda Tour)
+  ocarinaPublicado: boolean;
 }) {
   const router = useRouter();
   const [playing, setPlaying] = useState<TesteId | null>(null);
@@ -95,7 +97,7 @@ export default function TestesClient({
 
   // Sem jogos no catálogo o sorteio não tem o que sortear: o card nem aparece.
   const games = TESTES.filter(
-    (g) => (g.id !== 'proximo-jogo' || firstCovers.length > 0) && (g.id !== 'ocarina-hero' || OCARINA_ENABLED)
+    (g) => (g.id !== 'proximo-jogo' || firstCovers.length > 0) && (g.id !== 'ocarina-hero' || ocarinaPublicado)
   );
   const slots = comingSoonSlots(games.length);
 
@@ -138,7 +140,7 @@ export default function TestesClient({
               </span>{' '}
               Silhueta do Dia {hoje ? `${hoje.silhueta}/${NIVEIS_SILHUETA.length}` : ''}
             </span>
-            {OCARINA_ENABLED && (
+            {ocarinaPublicado && (
               <span className="testes-hoje-item">
                 <span className={hoje?.ocarina ? 'is-feito' : ''}>{hoje?.ocarina ? '✓' : '○'}</span> Música do Dia
               </span>
@@ -149,7 +151,7 @@ export default function TestesClient({
           </div>
         </section>
 
-        {!OCARINA_ENABLED && <OcarinaEmBreve />}
+        {!ocarinaPublicado && <OcarinaEmBreve />}
 
         <ul className="testes-grid">
           {games.map((game, i) => (
@@ -273,9 +275,9 @@ function TesteCard({
   );
 }
 
-// Banner do Ocarina Hero enquanto ele não abre (some sozinho quando
-// OCARINA_ENABLED, em lib/siteSections.ts, virar true). A pista é a mesma do
-// jogo, com notas descendo até os anéis.
+// Banner do Zelda Tour enquanto ele não abre (some sozinho quando o jogo é
+// publicado em /admin > Zelda Tour). A pista é a mesma do jogo, com notas
+// descendo até os anéis.
 const OC_UI = '/jogos/ocarina/ui/';
 // pista (0–4), cor e atraso de cada nota que desce no banner
 const NOTAS_BANNER: [number, string, number][] = [
@@ -292,7 +294,7 @@ const PISTA_ACERTO = [19.2, 34.7, 50.1, 65.6, 81];
 
 function OcarinaEmBreve() {
   return (
-    <section className={`oc-breve ${OC_FONTES}`} aria-label="Ocarina Hero: em breve">
+    <section className={`oc-breve ${OC_FONTES}`} aria-label="Zelda Tour: em breve">
       <div className="oc-breve-texto">
         <p className="oc-breve-selo">
           <span aria-hidden="true" />
@@ -301,7 +303,7 @@ function OcarinaEmBreve() {
         <h2 className="oc-breve-titulo">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={`${OC_UI}brasao.webp`} alt="" width={220} height={131} decoding="async" />
-          Ocarina Hero
+          Zelda Tour
         </h2>
         <p className="oc-breve-sub">
           O novo jogo de ritmo da XAN: as notas descem pela pista e você toca no tempo da música. Músicas de Zelda e uma Música do

@@ -6,7 +6,7 @@ import EditorMusica from './EditorMusica';
 import '../../admin.css';
 import '../editor.css';
 
-// Editor de uma música do Ocarina Hero (admin > Ocarina Hero > Editar).
+// Editor de uma música do Zelda Tour (admin > Zelda Tour > Editar).
 export const dynamic = 'force-dynamic';
 
 export default async function EditarMusicaPage({ params }: { params: Promise<{ id: string }> }) {

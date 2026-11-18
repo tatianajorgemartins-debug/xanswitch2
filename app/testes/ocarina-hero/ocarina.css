@@ -1,4 +1,4 @@
-/* "Ocarina Hero" (app/testes/ocarina-hero). Menu com as cores do site
+/* "Zelda Tour" (app/testes/ocarina-hero). Menu com as cores do site
    (redesign.css); a partida ocupa a tela toda com fundo próprio, igual nos
    dois temas. --dif = cor da dificuldade; --cor = cor da pista. */
 
@@ -568,6 +568,147 @@
   filter: drop-shadow(0 0 8px rgba(255, 214, 120, 0.6));
 }
 
+/* Barra de especial, no estilo da barra de magia: moldura clara, fundo
+   preto e enchimento verde. Fica amarela enquanto o especial gasta. */
+.oc-hud-magia {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  margin-top: 0.15em;
+}
+.oc-hud-magia-barra {
+  position: relative;
+  display: block;
+  width: 13em;
+  height: 1.15em;
+  padding: 0.16em;
+  border-radius: 0.34em;
+  background: #070806;
+  box-shadow:
+    0 0 0 0.15em #ece6cf,
+    0 0 0 0.27em rgba(0, 0, 0, 0.6),
+    0 3px 6px rgba(0, 0, 0, 0.55);
+}
+.oc-hud-magia-barra i {
+  display: block;
+  height: 100%;
+  border-radius: 0.14em;
+  background: linear-gradient(180deg, #a6ff8c 0%, #34e03d 32%, #10a925 72%, #0a7f1c 100%);
+  box-shadow: inset 0 0.06em 0 rgba(255, 255, 255, 0.45);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.25s ease;
+}
+/* Marca da metade da barra */
+.oc-hud-magia-barra::after {
+  content: '';
+  position: absolute;
+  top: 0.16em;
+  bottom: 0.16em;
+  left: calc(50% - 0.06em);
+  width: 0.12em;
+  background: rgba(236, 230, 207, 0.75);
+}
+.oc-hud-magia.is-gastando .oc-hud-magia-barra i {
+  background: linear-gradient(180deg, #fff3a6 0%, #ffd83e 38%, #e6a312 100%);
+  transition: none;
+}
+.oc-hud-magia.is-pronta .oc-hud-magia-barra {
+  box-shadow:
+    0 0 0 0.15em #f7ffd8,
+    0 0 0 0.27em rgba(0, 0, 0, 0.6),
+    0 0 1em 0.15em rgba(90, 255, 100, 0.75);
+}
+.oc-palco .oc-hud-magia-tecla {
+  padding: 0.28em 0.6em;
+  border: 1px solid rgba(236, 230, 207, 0.7);
+  border-radius: 0.4em;
+  background: rgba(7, 8, 6, 0.72);
+  color: #ece6cf;
+  font-family: system-ui, sans-serif !important;
+  font-size: 0.82em;
+  font-weight: 800;
+  line-height: 1;
+  opacity: 0.45;
+}
+.oc-hud-magia.is-pronta .oc-hud-magia-tecla {
+  border-color: #9dff8a;
+  color: #d7ffcb;
+  opacity: 1;
+}
+
+/* Especial ligado: moldura dourada em volta da tela */
+.oc-palco::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  box-shadow: inset 0 0 12cqmin rgba(255, 196, 60, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.oc-palco.is-especial::after {
+  opacity: 1;
+}
+.oc-palco.is-especial .oc-hud-mult {
+  filter: drop-shadow(0 0 12px rgba(255, 214, 90, 0.95));
+}
+
+/* Botão do especial no celular */
+.oc-palco .oc-especial {
+  position: absolute;
+  z-index: 3;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: calc(max(8px, env(safe-area-inset-bottom)) + 34px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 76px;
+  height: 76px;
+  padding: 0;
+  border: 3px solid rgba(236, 230, 207, 0.55);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #1b2a1d, #08110a);
+  color: #829083;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.55);
+  touch-action: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.oc-palco .oc-especial span {
+  font-family: system-ui, sans-serif !important;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.oc-palco .oc-especial.is-pronto {
+  border-color: #f7ffd8;
+  background: radial-gradient(circle at 50% 35%, #5dff63, #0f9a25);
+  color: #06230b;
+  box-shadow: 0 0 22px 4px rgba(90, 255, 100, 0.75);
+}
+.oc-palco .oc-especial.is-ativo {
+  border-color: #fff3c0;
+  background: radial-gradient(circle at 50% 35%, #ffe680, #d9920f);
+  color: #2f1d00;
+  box-shadow: 0 0 24px 5px rgba(255, 205, 70, 0.85);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .oc-hud-magia.is-pronta .oc-hud-magia-barra,
+  .oc-palco .oc-especial.is-pronto {
+    animation: oc-especial-pronto 1.1s ease-in-out infinite alternate;
+  }
+}
+@keyframes oc-especial-pronto {
+  to {
+    filter: brightness(1.28);
+  }
+}
+
 /* Combo + multiplicador (lado direito) */
 .oc-hud-combo {
   position: absolute;
@@ -722,6 +863,12 @@
     left: max(12px, env(safe-area-inset-left));
     flex-direction: row;
     gap: 1em;
+  }
+  /* Em pé, as pistas ocupam a largura toda: o botão fica acima delas. */
+  .oc-palco .oc-especial {
+    top: calc(var(--topo-zonas, 60cqh) - 84px);
+    bottom: auto;
+    right: max(8px, env(safe-area-inset-right));
   }
   .oc-hud-combo {
     top: calc(max(10px, env(safe-area-inset-top)) + 5.6em);

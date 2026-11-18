@@ -6,7 +6,7 @@
 // (energia), combo com multiplicador e a barra de progresso. Usado no jogo
 // (OcarinaClient) e no "Testar no jogo" do editor do admin.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { DIFICULDADES, PISTAS, formatarDuracao, nomeTecla, pistaDaTecla, type Chart, type MapaTeclas, type Precisao, type ResultadoMusica } from './ocarina';
+import { DIFICULDADES, NOME_JOGO, PISTAS, TECLA_ESPECIAL, formatarDuracao, nomeTecla, pistaDaTecla, type Chart, type MapaTeclas, type Precisao, type ResultadoMusica } from './ocarina';
 import { MotorOcarina, type GeometriaMotor, type HudMotor } from './motor';
 import type { SomOcarina } from './som';
 import { OC_FONTES } from './fontes';
@@ -52,6 +52,10 @@ export default function Palco({
   children
 }: PropsPalco) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const palco = useRef<HTMLDivElement>(null);
+  const magia = useRef<HTMLDivElement>(null);
+  const magiaFill = useRef<HTMLElement>(null);
+  const botaoEspecial = useRef<HTMLButtonElement>(null);
   const motor = useRef<MotorOcarina | null>(null);
   const [toque, setToque] = useState(false);
   const [geo, setGeo] = useState<GeometriaMotor | null>(null);
@@ -99,6 +103,17 @@ export default function Palco({
           c.style.clipPath = `inset(${((1 - cheio) * 100).toFixed(1)}% 0 0 0)`;
         });
       }
+      if (u.barra !== h.barra && magiaFill.current) magiaFill.current.style.transform = `scaleX(${h.barra.toFixed(3)})`;
+      if (u.especial !== h.especial) {
+        palco.current?.classList.toggle('is-especial', h.especial);
+        magia.current?.classList.toggle('is-gastando', h.especial);
+        botaoEspecial.current?.classList.toggle('is-ativo', h.especial);
+      }
+      if (u.pronta !== h.pronta) {
+        magia.current?.classList.toggle('is-pronta', h.pronta);
+        botaoEspecial.current?.classList.toggle('is-pronto', h.pronta);
+        botaoEspecial.current?.setAttribute('aria-disabled', String(!h.pronta));
+      }
       const seg = Math.floor(h.tempo);
       if (u.seg !== seg && progTempo.current) progTempo.current.textContent = formatarDuracao(Math.min(seg, h.duracao));
       if (u.duracao !== h.duracao && progTotal.current) progTotal.current.textContent = formatarDuracao(h.duracao);
@@ -142,6 +157,12 @@ export default function Palco({
         pausaRef.current();
         return;
       }
+      if (e.code === TECLA_ESPECIAL && motor.current?.emJogo) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!e.repeat) motor.current.ativarEspecial();
+        return;
+      }
       const i = pistaDaTecla(e.code, teclas);
       if (i >= 0) {
         e.preventDefault();
@@ -150,6 +171,11 @@ export default function Palco({
       } else if (capturarTeclado) e.stopPropagation();
     };
     const sobe = (e: KeyboardEvent) => {
+      if (e.code === TECLA_ESPECIAL && motor.current?.emJogo) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       const i = pistaDaTecla(e.code, teclas);
       if (i >= 0) {
         motor.current?.soltar(i);
@@ -165,8 +191,9 @@ export default function Palco({
   }, [teclas, capturarTeclado]);
 
   const dif = DIFICULDADES[chart.dificuldade];
+  const topoZonas = geo ? geo.acerto - (geo.acerto - geo.topo) * 0.45 : 0;
   return (
-    <div className={`oc-palco ${OC_FONTES}`} role="application" aria-label={`Ocarina Hero: ${chart.titulo}`}>
+    <div ref={palco} className={`oc-palco ${OC_FONTES}`} role="application" aria-label={`${NOME_JOGO}: ${chart.titulo}`}>
       <canvas ref={canvas} className="oc-canvas" />
 
       <div className="oc-hud" aria-hidden="true">
@@ -174,7 +201,7 @@ export default function Palco({
           <img src={`${UI}brasao.webp`} alt="" className="oc-hud-brasao" />
           <div>
             <p className="oc-hud-jogo">
-              Ocarina Hero
+              {NOME_JOGO}
               <span className="oc-hud-dif" style={{ '--dif': dif.cor } as React.CSSProperties}>
                 {dif.nome}
               </span>
@@ -202,6 +229,12 @@ export default function Palco({
               </span>
             ))}
           </div>
+          <div className="oc-hud-magia" ref={magia}>
+            <span className="oc-hud-magia-barra">
+              <i ref={magiaFill} />
+            </span>
+            {!toque && <span className="oc-hud-magia-tecla">Espaço</span>}
+          </div>
         </div>
 
         <div className="oc-hud-combo" ref={comboEl}>
@@ -227,14 +260,36 @@ export default function Palco({
         <img src={`${UI}pausa.webp`} alt="" />
       </button>
 
+      {toque && (
+        <button
+          ref={botaoEspecial}
+          type="button"
+          className="oc-especial"
+          style={{ '--topo-zonas': `${topoZonas}px` } as React.CSSProperties}
+          aria-label="Ativar o especial"
+          aria-disabled="true"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            motor.current?.ativarEspecial();
+          }}
+          onClick={() => motor.current?.ativarEspecial()}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          <svg viewBox="0 0 24 24" width={26} height={26} aria-hidden="true">
+            <path d="M12 3l4.5 8h-9zM7.5 11l4.5 8H3zM16.5 11l4.5 8h-9z" fill="currentColor" />
+          </svg>
+          <span>Especial</span>
+        </button>
+      )}
+
       {geo && (
         <div
           className={`oc-zonas${toque ? ' is-toque' : ''}`}
           style={{
             left: geo.esquerda,
             width: geo.largura,
-            top: geo.acerto - (geo.acerto - geo.topo) * 0.45,
-            height: geo.base - (geo.acerto - (geo.acerto - geo.topo) * 0.45)
+            top: topoZonas,
+            height: geo.base - topoZonas
           }}
         >
           {PISTAS.map((p, i) => (

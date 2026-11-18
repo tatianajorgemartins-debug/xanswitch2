@@ -10,7 +10,6 @@ import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
 import { getAccessToken, getCurrentUser, getInstagramHandle, onAuthChange } from '@/lib/wishlist';
 import { lerPublicaveis, marcarPublicado, type Publicavel } from '@/lib/jogos/registro';
-import { OCARINA_ENABLED } from '@/lib/siteSections';
 import { diaEm } from '@/lib/jogos/dia';
 import { resultadoDoDia } from '@/lib/jogos/progresso';
 import { apagarMeuPostAction, curtirAction, listarFeedAction, publicarResultadoAction, type PostFeed } from '../jogosActions';
@@ -18,12 +17,10 @@ import './feed.css';
 
 const TODOS_JOGOS: { id: string; nome: string; icone: string; href: string }[] = [
   { id: 'silhueta', nome: 'Silhueta do Dia', icone: '👤', href: '/testes/silhueta' },
-  { id: 'ocarina', nome: 'Ocarina Hero', icone: '🎵', href: '/testes/ocarina-hero' },
+  { id: 'ocarina', nome: 'Zelda Tour', icone: '🎵', href: '/testes/zelda-tour' },
   { id: 'qual-link', nome: 'Qual Link é você?', icone: '🗡️', href: '/testes' },
   { id: 'proximo-jogo', nome: 'Próximo jogo', icone: '🎲', href: '/testes' }
 ];
-// Ocarina Hero guardado (lib/siteSections.ts): fora dos filtros e atalhos.
-const JOGOS = TODOS_JOGOS.filter((j) => j.id !== 'ocarina' || OCARINA_ENABLED);
 const jogoInfo = (id: string) => TODOS_JOGOS.find((j) => j.id === id) ?? { id, nome: id, icone: '🎮', href: '/testes' };
 
 function tempoAtras(iso: string): string {
@@ -36,7 +33,9 @@ function tempoAtras(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' });
 }
 
-export default function FeedClient() {
+export default function FeedClient({ ocarinaPublicado }: { ocarinaPublicado: boolean }) {
+  // Zelda Tour fora do ar (admin): fica fora dos filtros e atalhos.
+  const JOGOS = TODOS_JOGOS.filter((j) => j.id !== 'ocarina' || ocarinaPublicado);
   const [user, setUser] = useState<User | null>(null);
   const [userPronto, setUserPronto] = useState(false);
   useEffect(() => {
@@ -128,6 +127,7 @@ export default function FeedClient() {
       </header>
 
       <Publicar
+        jogos={JOGOS}
         user={user}
         userPronto={userPronto}
         onPublicado={(p) => {
@@ -265,7 +265,17 @@ function ImagemDoPost({ post }: { post: PostFeed }) {
 
 // ---------- Publicar ----------
 
-function Publicar({ user, userPronto, onPublicado }: { user: User | null; userPronto: boolean; onPublicado: (p: PostFeed) => void }) {
+function Publicar({
+  jogos,
+  user,
+  userPronto,
+  onPublicado
+}: {
+  jogos: typeof TODOS_JOGOS;
+  user: User | null;
+  userPronto: boolean;
+  onPublicado: (p: PostFeed) => void;
+}) {
   const [lista, setLista] = useState<Publicavel[]>([]);
   const [escolhido, setEscolhido] = useState<string | null>(null);
   const [nome, setNome] = useState('');
@@ -338,7 +348,7 @@ function Publicar({ user, userPronto, onPublicado }: { user: User | null; userPr
             {lista.length ? 'Você já publicou todos os seus resultados. ' : ''}Termine um jogo e o resultado aparece aqui pra publicar.
           </p>
           <div className="feed-publicar-jogos">
-            {JOGOS.slice(0, 2).map((j) => (
+            {jogos.slice(0, 2).map((j) => (
               <Link key={j.id} className="feed-botao" href={j.href}>
                 {j.icone} {j.nome}
               </Link>

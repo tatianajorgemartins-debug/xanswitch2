@@ -335,7 +335,7 @@
   color: #08210c;
 }
 
-/* Arte: Ocarina Hero */
+/* Arte: Zelda Tour */
 .redesign .teste-card.theme-ocarina {
   --glow: rgba(255, 201, 60, 0.55);
   --tint: #ffc93c;
@@ -679,9 +679,9 @@
   }
 }
 
-/* ---------- Banner "Ocarina Hero — em breve" ----------
+/* ---------- Banner "Zelda Tour — em breve" ----------
    Arte própria (floresta escura), igual nos dois temas. Some quando o jogo
-   abrir (OCARINA_ENABLED em lib/siteSections.ts). */
+   abrir (publicado em /admin > Zelda Tour). */
 .redesign .oc-breve {
   position: relative;
   display: grid;

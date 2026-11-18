@@ -1,6 +1,6 @@
 'use client';
 
-// Tela do "Ocarina Hero": menu (Música do Dia + modo livre), a partida em
+// Tela do "Zelda Tour": menu (Música do Dia + modo livre), a partida em
 // tela cheia, o resultado, configurar teclas e calibrar o atraso do som.
 // ?editor=1 abre o modo gravar (Editor.tsx).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -18,6 +18,8 @@ import {
   INICIO,
   JOGO,
   JOGO_ORIGINAIS,
+  NOME_JOGO,
+  TECLA_ESPECIAL,
   duracaoMusica,
   ehNova,
   formatarDuracao,
@@ -145,10 +147,9 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
     return som.current;
   }, []);
 
-  const ativos = useMemo(
-    () => (dia ? charts.filter((c) => c.ativo !== false && (!c.ativo_desde || c.ativo_desde <= dia)) : charts),
-    [charts, dia]
-  );
+  // ativo_desde só vale pro sorteio da Música do Dia: publicada, a música já
+  // aparece na lista.
+  const ativos = useMemo(() => charts.filter((c) => c.ativo !== false), [charts]);
   const doDia = useMemo(() => {
     if (!dia) return null;
     const id = sortearDoDia(charts.map((c) => ({ id: c.id, ativo: c.ativo, ativo_desde: c.ativo_desde })), null, dia, INICIO, JOGO)?.id;
@@ -227,7 +228,7 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
         id: `${JOGO}:${chart.id}:${Date.now()}`,
         jogo: JOGO,
         modo: 'livre',
-        titulo: `Ocarina Hero · ${chart.titulo}`,
+        titulo: `${NOME_JOGO} · ${chart.titulo}`,
         resultado: `${linhas[1]}\n${linhas[2]}`
       });
     }
@@ -262,9 +263,9 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
       <header className="oc-cabeca">
         <p className="oc-kicker">Jogo de ritmo</p>
         <h1 className="oc-titulo">
-          Ocarina <em>Hero</em>
+          Zelda <em>Tour</em>
         </h1>
-        <p className="oc-sub">As notas descem pela pista: toque no momento em que elas cruzam o círculo. Músicas originais, som de ocarina.</p>
+        <p className="oc-sub">As notas descem pela pista: toque no momento em que elas cruzam o círculo. Acerte as Triforces, encha a barra e ative o especial.</p>
       </header>
 
       {marco !== null && (
@@ -496,8 +497,13 @@ function Menu({
         </button>
       </section>
       <p className="oc-dica">
-        No computador: teclas {PISTAS.map((p) => nomeTecla(teclas[p.id])).join(' ')} (ou setas + espaço). No celular: toque nos
+        No computador: teclas {PISTAS.map((p) => nomeTecla(teclas[p.id])).join(' ')} (ou 1 a 5). No celular: toque nos
         botões embaixo da pista — dá pra apertar dois de uma vez. Jogar com o celular deitado fica melhor.
+      </p>
+      <p className="oc-dica">
+        🔺 Acerte todas as Triforces douradas de uma sequência pra encher meia barra verde. Com ela pela metade ou cheia,
+        aperte <strong>Espaço</strong> (no celular, o botão <strong>Especial</strong>): as notas ficam douradas e valem o dobro por 5
+        ou 10 segundos.
       </p>
     </>
   );
@@ -784,6 +790,8 @@ function ConfigTeclas({ teclas, onSalvar, onVoltar }: { teclas: MapaTeclas; onSa
         setEsperando(null);
         return;
       }
+      // o espaço é a tecla do especial
+      if (e.code === TECLA_ESPECIAL) return;
       // Se a tecla já era de outra pista, as duas trocam.
       const novo = { ...teclas };
       const dono = (Object.keys(novo) as PistaId[]).find((k) => novo[k] === e.code);
@@ -799,7 +807,7 @@ function ConfigTeclas({ teclas, onSalvar, onVoltar }: { teclas: MapaTeclas; onSa
   return (
     <section className="oc-config">
       <h2>Configurar teclas</h2>
-      <p>Clique numa pista e aperte a tecla que você quer usar. As setas e o espaço sempre funcionam também.</p>
+      <p>Clique numa pista e aperte a tecla que você quer usar. Os números 1 a 5 sempre funcionam também. O espaço fica reservado pro especial.</p>
       <ul>
         {PISTAS.map((p) => (
           <li key={p.id}>

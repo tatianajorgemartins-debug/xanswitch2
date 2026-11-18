@@ -1,7 +1,7 @@
 'use client';
 
 // Aba "Jogos interativos" do admin: quem jogou os jogos da página Testes
-// (Silhueta do Dia, Ocarina Hero, Qual Link, Próximo jogo), com o resultado
+// (Silhueta do Dia, Zelda Tour, Qual Link, Próximo jogo), com o resultado
 // de cada partida, e a moderação do feed de resultados (/testes/feed).
 // Dados de lib/jogosDb.ts; tabelas de db/migration-jogos-interativos.sql.
 import { useMemo, useState, useTransition } from 'react';
@@ -36,7 +36,7 @@ export type JogosInterativosData = { plays: JogadaAdmin[]; stats: StatsJogoAdmin
 
 export const NOMES_JOGOS: Record<string, string> = {
   silhueta: '👤 Silhueta do Dia',
-  ocarina: '🎵 Ocarina Hero',
+  ocarina: '🎵 Zelda Tour',
   'qual-link': '🗡️ Qual Link é você?',
   'proximo-jogo': '🎲 Próximo jogo'
 };

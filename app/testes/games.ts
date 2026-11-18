@@ -44,13 +44,13 @@ export const TESTES: TesteGame[] = [
   {
     id: 'ocarina-hero',
     kind: 'Ritmo',
-    title: 'Ocarina Hero',
-    description: 'As notas descem pela pista e você toca no tempo certo. Músicas originais e uma Música do Dia nova todo dia.',
-    meta: ['6 músicas', '1 min'],
+    title: 'Zelda Tour',
+    description: 'As notas descem pela pista e você toca no tempo certo. Complete as Triforces, ative o especial e dobre os pontos.',
+    meta: ['Música do Dia', 'Especial dourado'],
     reward: 'Recorde e triforces',
     cta: 'Tocar agora',
     theme: 'ocarina',
-    href: '/testes/ocarina-hero',
+    href: '/testes/zelda-tour',
     isNew: true
   },
   {

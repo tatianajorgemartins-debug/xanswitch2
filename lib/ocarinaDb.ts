@@ -1,8 +1,21 @@
-// Músicas do Ocarina Hero montadas no admin (tabela ocarina_songs, de
+// Músicas do Zelda Tour montadas no admin (tabela ocarina_songs, de
 // db/migration-ocarina-musicas.sql). Só roda no servidor.
 import { getSql } from './sql';
+import { getSiteSetting, setSiteSetting } from './db';
 
-export type OcarinaNota = { t: number; pista: string; dur?: number };
+// O jogo está aberto pro público? Ligado em /admin > Zelda Tour. Enquanto
+// estiver fora do ar, a página Testes mostra o banner "Em breve".
+const JOGO_PUBLICADO_KEY = 'ocarina_publicado';
+
+export async function jogoOcarinaPublicado(): Promise<boolean> {
+  return (await getSiteSetting(JOGO_PUBLICADO_KEY).catch(() => null)) === 'true';
+}
+
+export async function setJogoOcarinaPublicado(publicado: boolean): Promise<void> {
+  await setSiteSetting(JOGO_PUBLICADO_KEY, publicado ? 'true' : 'false');
+}
+
+export type OcarinaNota = { t: number; pista: string; dur?: number; estrela?: boolean };
 
 export type OcarinaSongRow = {
   id: number;

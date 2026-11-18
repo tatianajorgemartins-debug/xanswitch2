@@ -1,11 +1,12 @@
 'use client';
 
-// Aba "Ocarina Hero" do admin: as músicas montadas por você (áudio +
-// notas). Cada uma abre no editor (/admin/ocarina/[id]).
+// Aba "Zelda Tour" do admin: abre o jogo pro público, publica as músicas e
+// lista as montadas por você (áudio + notas). Cada uma abre no editor
+// (/admin/ocarina/[id]).
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { criarMusicaAction } from './ocarina/actions';
+import { criarMusicaAction, publicarJogoAction, publicarMusicaAction } from './ocarina/actions';
 
 export type MusicaAdmin = {
   id: number;
@@ -22,10 +23,34 @@ export type MusicaAdmin = {
 const DIF: Record<string, string> = { facil: 'Fácil', medio: 'Médio', dificil: 'Difícil', insano: 'Insano' };
 const dur = (s: number | null) => (s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}` : '—');
 
-export default function OcarinaAdminPanel({ musicas, jogoLigado }: { musicas: MusicaAdmin[] | null; jogoLigado: boolean }) {
+export default function OcarinaAdminPanel({ musicas, jogoPublicado }: { musicas: MusicaAdmin[] | null; jogoPublicado: boolean }) {
   const router = useRouter();
   const [criando, setCriando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // O que está sendo publicado agora: 'jogo' ou o id da música.
+  const [mudando, setMudando] = useState<'jogo' | number | null>(null);
+
+  async function publicarJogo() {
+    const texto = jogoPublicado
+      ? 'Tirar o Zelda Tour do ar? Ele some do site e volta o banner "Em breve".'
+      : 'Publicar o Zelda Tour? Ele fica aberto pra todo mundo na página Testes.';
+    if (!window.confirm(texto)) return;
+    setMudando('jogo');
+    setErro(null);
+    const r = await publicarJogoAction(!jogoPublicado).catch(() => ({ ok: false as const, erro: 'A conexão falhou.' }));
+    if (r.ok) router.refresh();
+    else setErro(r.erro);
+    setMudando(null);
+  }
+
+  async function publicarMusica(m: MusicaAdmin) {
+    setMudando(m.id);
+    setErro(null);
+    const r = await publicarMusicaAction(m.id, !m.publicada).catch(() => ({ ok: false as const, erro: 'A conexão falhou.' }));
+    if (r.ok) router.refresh();
+    else setErro(r.erro);
+    setMudando(null);
+  }
 
   async function criar() {
     setCriando(true);
@@ -51,11 +76,19 @@ export default function OcarinaAdminPanel({ musicas, jogoLigado }: { musicas: Mu
 
   return (
     <>
-      {!jogoLigado && (
-        <p className="adm-help">
-          ⚠️ O Ocarina Hero ainda está desligado no site — as músicas publicadas aparecem lá quando ele for ligado.
-        </p>
-      )}
+      <div className={`adm-card oc-adm-jogo${jogoPublicado ? ' is-no-ar' : ''}`}>
+        <div>
+          <h3>{jogoPublicado ? '🟢 O jogo está no ar' : '⚪ O jogo está fora do ar'}</h3>
+          <p className="adm-help">
+            {jogoPublicado
+              ? 'Todo mundo pode jogar na página Testes, com as músicas publicadas abaixo.'
+              : 'Só você vê as mudanças por aqui. No site aparece o banner "Em breve" até você publicar.'}
+          </p>
+        </div>
+        <button type="button" className={`btn ${jogoPublicado ? 'ghost' : 'primary'}`} onClick={publicarJogo} disabled={mudando !== null}>
+          {mudando === 'jogo' ? 'Salvando…' : jogoPublicado ? 'Tirar o jogo do ar' : 'Publicar o jogo'}
+        </button>
+      </div>
       <div className="oc-adm-topo">
         <button type="button" className="btn primary" onClick={criar} disabled={criando}>
           {criando ? 'Criando…' : '＋ Nova música'}
@@ -89,7 +122,16 @@ export default function OcarinaAdminPanel({ musicas, jogoLigado }: { musicas: Mu
                   <td>{m.temAudio ? dur(m.duracao) : <span className="adm-muted">sem áudio</span>}</td>
                   <td>{m.notas}</td>
                   <td>{m.publicada ? '✅ Publicada' : <span className="adm-muted">Rascunho</span>}</td>
-                  <td>
+                  <td className="oc-adm-acoes">
+                    <button
+                      type="button"
+                      className={`btn ${m.publicada ? 'ghost' : 'primary'}`}
+                      onClick={() => publicarMusica(m)}
+                      disabled={mudando !== null || (!m.publicada && (!m.temAudio || m.notas < 10))}
+                      title={!m.publicada && (!m.temAudio || m.notas < 10) ? 'Precisa de áudio e de pelo menos 10 notas' : undefined}
+                    >
+                      {mudando === m.id ? 'Salvando…' : m.publicada ? 'Despublicar' : 'Publicar'}
+                    </button>
                     <Link className="btn ghost" href={`/admin/ocarina/${m.id}`}>
                       Editar
                     </Link>
@@ -102,7 +144,7 @@ export default function OcarinaAdminPanel({ musicas, jogoLigado }: { musicas: Mu
       )}
       <p className="adm-help">
         Como fazer: crie a música, envie o mp3 (ele é compactado no seu navegador), acerte o BPM e o 1º tempo pra grade bater
-        com a música e coloque as notas nas 5 cores. Use &quot;Testar no jogo&quot; e, quando estiver bom, &quot;Publicar no jogo&quot;.
+        com a música e coloque as notas nas 5 cores. Marque as notas Triforce, use &quot;Testar no jogo&quot; e, quando estiver bom, publique a música aqui na lista.
       </p>
     </>
   );

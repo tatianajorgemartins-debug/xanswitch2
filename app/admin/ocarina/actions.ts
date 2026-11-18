@@ -1,6 +1,6 @@
 'use server';
 
-// Ações do admin do Ocarina Hero (aba "Ocarina Hero" e o editor em
+// Ações do admin do Zelda Tour (aba "Zelda Tour" e o editor em
 // /admin/ocarina/[id]). Tudo confere o login do admin.
 import { revalidatePath } from 'next/cache';
 import { isAuthenticated } from '@/lib/auth';
@@ -9,6 +9,7 @@ import {
   deleteOcarinaSong,
   getOcarinaSong,
   setOcarinaSongAudio,
+  setJogoOcarinaPublicado,
   setOcarinaSongPublished,
   updateOcarinaSong,
   type OcarinaNota
@@ -57,6 +58,7 @@ export async function salvarMusicaAction(id: number, d: DadosMusica): Promise<Re
     if (!n || !Number.isFinite(n.t) || n.t < 0 || !PISTAS.includes(n.pista)) continue;
     const nota: OcarinaNota = { t: Math.round(n.t * 1000) / 1000, pista: n.pista };
     if (Number.isFinite(n.dur) && (n.dur ?? 0) > 0.05) nota.dur = Math.round((n.dur as number) * 1000) / 1000;
+    if (n.estrela === true) nota.estrela = true;
     notas.push(nota);
   }
   notas.sort((a, b) => a.t - b.t || PISTAS.indexOf(a.pista) - PISTAS.indexOf(b.pista));
@@ -127,6 +129,21 @@ export async function publicarMusicaAction(id: number, publicar: boolean): Promi
     return { ok: true };
   } catch (err) {
     console.error('[ocarina] publicar:', err);
+    return { ok: false, erro: 'Não deu pra mudar agora. Tente de novo.' };
+  }
+}
+
+// Abre ou tira do ar o jogo inteiro pro público.
+export async function publicarJogoAction(publicar: boolean): Promise<Resultado> {
+  if (!(await isAuthenticated())) return { ok: false, erro: 'Entre no admin de novo.' };
+  try {
+    await setJogoOcarinaPublicado(publicar === true);
+    atualizarPaginas();
+    revalidatePath('/testes');
+    revalidatePath('/testes/feed');
+    return { ok: true };
+  } catch (err) {
+    console.error('[ocarina] publicar o jogo:', err);
     return { ok: false, erro: 'Não deu pra mudar agora. Tente de novo.' };
   }
 }
