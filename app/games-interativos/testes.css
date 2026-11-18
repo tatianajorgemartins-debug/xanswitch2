@@ -1,4 +1,4 @@
-/* Página "Testes" (app/testes) — a sala de jogos da loja. Usa as cores do
+/* Página "Testes" (app/games-interativos) — a sala de jogos da loja. Usa as cores do
    site (variáveis de redesign.css), então acompanha o modo claro/escuro; a
    arte de cada card tem fundo próprio e fica igual nos dois temas. */
 
@@ -173,61 +173,65 @@
   text-transform: uppercase;
 }
 
-/* Arte: Qual Link é você? */
+/* Arte: Qual Link é você? Três Links inteiros, lado a lado, na floresta. */
 .redesign .teste-art-zelda {
   background:
-    radial-gradient(ellipse 70% 80% at 62% 100%, rgba(255, 221, 130, 0.5), rgba(255, 221, 130, 0) 70%),
-    linear-gradient(160deg, #0d3b2c 0%, #14563b 45%, #0a2a22 100%);
+    radial-gradient(ellipse 46% 62% at 50% 56%, rgba(255, 214, 110, 0.5), rgba(255, 214, 110, 0) 72%),
+    linear-gradient(180deg, rgba(5, 26, 20, 0.5) 0%, rgba(6, 34, 25, 0.28) 45%, rgba(3, 16, 12, 0.88) 100%),
+    url('/jogos/ocarina/ui/banner-cenario.webp') center 35% / cover no-repeat,
+    #0d3b2c;
 }
 .redesign .teste-art-triforce {
   position: absolute;
-  right: 6%;
-  top: 8%;
-  width: 46%;
+  left: 50%;
+  top: 7%;
+  width: 50%;
   aspect-ratio: 1.1547;
-  background: rgba(255, 221, 130, 0.2);
+  translate: -50% 0;
+  background: linear-gradient(180deg, rgba(255, 236, 170, 0.62), rgba(226, 164, 48, 0.3));
   clip-path: polygon(50% 0, 75% 50%, 25% 50%, 50% 0, 25% 50%, 50% 100%, 0 100%, 25% 50%, 75% 50%, 100% 100%, 50% 100%, 75% 50%);
 }
 .redesign .teste-art-zelda img {
   position: absolute;
-  bottom: -6%;
-  height: 104%;
+  bottom: 4%;
   width: auto;
-  filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.55));
   transition: transform 0.6s cubic-bezier(0.2, 0.9, 0.25, 1);
 }
 .redesign .teste-art-zelda img.is-0 {
-  left: 30%;
-  height: 84%;
-  opacity: 0.9;
-}
-.redesign .teste-art-zelda img.is-2 {
-  right: -2%;
-  height: 84%;
-  opacity: 0.9;
+  left: 1%;
+  height: 62%;
 }
 .redesign .teste-art-zelda img.is-1 {
   left: 50%;
-  translate: -18% 0;
   z-index: 1;
+  height: 82%;
+  translate: -50% 0;
+}
+.redesign .teste-art-zelda img.is-2 {
+  right: 4%;
+  height: 68%;
 }
 .redesign .teste-card:hover .teste-art-zelda img.is-0 {
-  transform: translateX(-8px);
+  transform: translateX(-6px);
+}
+.redesign .teste-card:hover .teste-art-zelda img.is-1 {
+  transform: translateY(-5px) scale(1.03);
 }
 .redesign .teste-card:hover .teste-art-zelda img.is-2 {
-  transform: translateX(8px);
+  transform: translateX(6px);
 }
 
 /* Arte: Qual será seu próximo jogo? */
 .redesign .teste-art-arcade {
   background:
-    radial-gradient(ellipse 60% 70% at 50% 110%, rgba(255, 92, 168, 0.55), rgba(255, 92, 168, 0) 70%),
+    radial-gradient(ellipse 58% 72% at 50% 62%, rgba(255, 92, 168, 0.5), rgba(255, 92, 168, 0) 70%),
     linear-gradient(150deg, #2a0f5c 0%, #4a1596 50%, #1a0a3d 100%);
 }
 .redesign .teste-art-ring {
   position: absolute;
   left: 50%;
-  top: 58%;
+  top: 50%;
   width: 78%;
   aspect-ratio: 1;
   translate: -50% -50%;
@@ -248,7 +252,7 @@
 .redesign .teste-art-fan img {
   position: absolute;
   left: 50%;
-  bottom: 12%;
+  bottom: 30%;
   width: 27%;
   aspect-ratio: 1;
   object-fit: cover;

@@ -98,7 +98,7 @@ export default function SiteHeader({
   // Em qual página esse header está sendo mostrado — controla qual lado do
   // seletor fica "aceso" (ver .catalog-switcher em globals.css).
   // 'digital' = jogos (app/CatalogClient.tsx), 'testes' = jogos interativos
-  // (app/testes). 'fisico' = produtos físicos (app/PhysicalCatalogClient.tsx),
+  // (app/games-interativos). 'fisico' = produtos físicos (app/PhysicalCatalogClient.tsx),
   // que está guardado e fora do seletor (ver lib/siteSections.ts).
   activeCatalog: SiteSection;
 }) {
@@ -252,7 +252,7 @@ export default function SiteHeader({
           <span className="catalog-switcher-label">Jogos digitais</span>
         </Link>
         <Link
-          href="/testes"
+          href="/games-interativos"
           className={`catalog-switcher-option${shownCatalog === 'testes' ? ' active' : ''}`}
           aria-current={activeCatalog === 'testes'}
           onClick={(e) => rememberSwitchFrom('testes', e)}

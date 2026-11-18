@@ -48,8 +48,8 @@ async function musicasDoAdmin(): Promise<Chart[]> {
 
 export default async function OcarinaPage() {
   // Fora do ar (admin > Zelda Tour): só o site oficial (Vercel, produção)
-  // manda de volta pra /testes. No computador de teste continua abrindo.
-  if (process.env.VERCEL_ENV === 'production' && !(await jogoOcarinaPublicado())) redirect('/testes');
+  // manda de volta pra /games-interativos. No computador de teste continua abrindo.
+  if (process.env.VERCEL_ENV === 'production' && !(await jogoOcarinaPublicado())) redirect('/games-interativos');
   const charts = await musicasDoAdmin();
   return (
     <SiteShell>

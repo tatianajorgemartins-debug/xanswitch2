@@ -19,11 +19,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { DIFICULDADES, FADE_FIM, ORDEM_DIFICULDADES, PISTAS, TECLAS_PADRAO, formatarDuracao, sequenciasEstrela, type Chart, type Dificuldade, type NotaChart } from '@/app/testes/ocarina-hero/ocarina';
-import { type MotorOcarina } from '@/app/testes/ocarina-hero/motor';
-import { SomOcarina, tocarClique } from '@/app/testes/ocarina-hero/som';
-import Palco from '@/app/testes/ocarina-hero/Palco';
-import '@/app/testes/ocarina-hero/ocarina.css';
+import { DIFICULDADES, FADE_FIM, ORDEM_DIFICULDADES, PISTAS, TECLAS_PADRAO, formatarDuracao, sequenciasEstrela, type Chart, type Dificuldade, type NotaChart } from '@/app/games-interativos/ocarina-hero/ocarina';
+import { type MotorOcarina } from '@/app/games-interativos/ocarina-hero/motor';
+import { SomOcarina, tocarClique } from '@/app/games-interativos/ocarina-hero/som';
+import Palco from '@/app/games-interativos/ocarina-hero/Palco';
+import '@/app/games-interativos/ocarina-hero/ocarina.css';
 import { uploadAudioToSignedTicket } from '@/lib/supabaseBrowser';
 import {
   apagarMusicaAction,

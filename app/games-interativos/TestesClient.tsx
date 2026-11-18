@@ -29,7 +29,7 @@ import './testes.css';
 const QualLinkQuiz = dynamic(() => import('../qual-link/QualLinkQuiz'), { ssr: false });
 const GameQuizModal = dynamic(() => import('../quiz/GameQuizModal'), { ssr: false });
 
-const ZELDA_LINKS: LinkId[] = ['ww', 'botw', 'oot'];
+const ZELDA_LINKS: LinkId[] = ['ww', 'totk', 'oot'];
 const COVER_COUNT = 5;
 
 export default function TestesClient({
@@ -312,7 +312,7 @@ function BannerZeldaTour({ disponivel }: { disponivel: boolean }) {
           <li>📱 Celular e computador</li>
         </ul>
         {disponivel && (
-          <Link className="oc-breve-jogar" href="/testes/zelda-tour">
+          <Link className="oc-breve-jogar" href="/games-interativos/zelda-tour">
             ▶ Jogar agora
           </Link>
         )}

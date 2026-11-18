@@ -15,12 +15,16 @@ const nextConfig = {
     return [
       { source: '/produtos-fisicos', destination: '/beedle-games', permanent: true },
       { source: '/produtos-fisicos/:id', destination: '/beedle-games/:id', permanent: true },
+      // A página de jogos mudou de /testes pra /games-interativos: links antigos
+      // (já compartilhados ou no Google) levam pro endereço novo.
+      { source: '/testes/ocarina-hero', destination: '/games-interativos/zelda-tour', permanent: true },
+      { source: '/testes/:path*', destination: '/games-interativos/:path*', permanent: true },
       // O Ocarina Hero virou Zelda Tour: o endereço novo abre a mesma página.
-      { source: '/testes/ocarina-hero', destination: '/testes/zelda-tour', permanent: true }
+      { source: '/games-interativos/ocarina-hero', destination: '/games-interativos/zelda-tour', permanent: true }
     ];
   },
   rewrites() {
-    return [{ source: '/testes/zelda-tour', destination: '/testes/ocarina-hero' }];
+    return [{ source: '/games-interativos/zelda-tour', destination: '/games-interativos/ocarina-hero' }];
   },
   // O site não usa o componente <Image> do Next hoje (usa <img> comum em
   // todo lugar), mas essa configuração fica pronta caso isso mude no

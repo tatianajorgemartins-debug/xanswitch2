@@ -75,7 +75,7 @@ export default function SilhuetaClient({
     return () => window.clearInterval(t);
   }, []);
 
-  // Só no computador de teste (npm run dev): /testes/silhueta?ver=toad&nivel=dificil
+  // Só no computador de teste (npm run dev): /games-interativos/silhueta?ver=toad&nivel=dificil
   // abre um treino com esse personagem, pra conferir a imagem.
   useEffect(() => {
     if (process.env.NODE_ENV === 'production' || !dia) return;
@@ -105,7 +105,7 @@ export default function SilhuetaClient({
   return (
     <main className="page-content sil-page">
       <div className="sil-topo">
-        <Link href="/testes" className="sil-voltar">
+        <Link href="/games-interativos" className="sil-voltar">
           <svg viewBox="0 0 24 24" width={16} height={16} aria-hidden="true">
             <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -579,7 +579,7 @@ function Partida({
               </button>
             )}
             {!treino && (
-              <Link className="sil-botao" href={`/testes/feed?publicar=${encodeURIComponent(`${JOGO}:${nivel.id}:${dia}`)}`}>
+              <Link className="sil-botao" href={`/games-interativos/feed?publicar=${encodeURIComponent(`${JOGO}:${nivel.id}:${dia}`)}`}>
                 📣 Publicar no feed
               </Link>
             )}

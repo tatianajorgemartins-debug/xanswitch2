@@ -1,4 +1,4 @@
-// Lista dos jogos interativos da página "Testes" (app/testes).
+// Lista dos jogos interativos da página "Testes" (app/games-interativos).
 //
 // PRA ADICIONAR UM JOGO NOVO:
 //   1. coloque uma entrada aqui (a ordem da lista é a ordem na página);
@@ -22,7 +22,7 @@ export type TesteGame = {
   cta: string;
   // Cores do card — ver .teste-card.theme-* em testes.css.
   theme: 'zelda' | 'arcade' | 'silhueta' | 'feed';
-  // Jogo com página própria (ex: /testes/silhueta): o card vira um link.
+  // Jogo com página própria (ex: /games-interativos/silhueta): o card vira um link.
   // Sem href, o jogo abre por cima da página (ver o fim do TestesClient.tsx).
   href?: string;
   // Selo "NOVO" no canto do card.
@@ -39,7 +39,7 @@ export const TESTES: TesteGame[] = [
     reward: 'Sequência de dias 🔥',
     cta: 'Jogar o de hoje',
     theme: 'silhueta',
-    href: '/testes/silhueta',
+    href: '/games-interativos/silhueta',
     isNew: true
   },
   {
@@ -70,7 +70,7 @@ export const TESTES: TesteGame[] = [
     meta: ['Resultados ao vivo'],
     cta: 'Ver o feed',
     theme: 'feed',
-    href: '/testes/feed'
+    href: '/games-interativos/feed'
   }
 ];
 

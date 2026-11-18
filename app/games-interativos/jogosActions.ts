@@ -3,7 +3,7 @@
 // Ações dos jogos interativos chamadas pelo navegador:
 //  - registrar cada partida terminada (vai pro admin, aba "Jogos
 //    interativos");
-//  - o feed de resultados (/testes/feed): publicar, listar, curtir, apagar.
+//  - o feed de resultados (/games-interativos/feed): publicar, listar, curtir, apagar.
 // Quem está logado é conferido com o próprio Supabase (o navegador manda o
 // token, nunca o e-mail). Se a tabela ainda não existe (falta rodar
 // db/migration-jogos-interativos.sql), registrar falha em silêncio e o feed
@@ -26,6 +26,7 @@ import { dificuldadesDaMusica, getOcarinaSong } from '@/lib/ocarinaDb';
 import { loadCatalogData } from '@/lib/catalogData';
 import { normalizar } from '@/lib/jogos/respostas';
 import { imagemDoPost, type ImagemPost } from './feed/imagemPost';
+import { ehPrecisao, type Precisao } from './ocarina-hero/ocarina';
 
 const JOGOS = ['silhueta', 'ocarina', 'qual-link', 'proximo-jogo'] as const;
 const ehJogo = (g: unknown): g is (typeof JOGOS)[number] => typeof g === 'string' && (JOGOS as readonly string[]).includes(g);
@@ -56,7 +57,16 @@ async function pontuacaoPossivel(d: Record<string, unknown>, pontos: unknown): P
   return pontos <= teto + 1;
 }
 
-export type LinhaClassificacao = { posicao: number; nome: string; pontos: number; precisao: number; estrelas: number; meu: boolean };
+export type LinhaClassificacao = {
+  posicao: number;
+  nome: string;
+  pontos: number;
+  precisao: number;
+  estrelas: number;
+  // Folgada, Normal ou Exata (partidas antigas não têm)
+  modo: Precisao | null;
+  meu: boolean;
+};
 export type Classificacao = { ok: true; linhas: LinhaClassificacao[]; logado: boolean } | { ok: false };
 
 export async function classificacaoAction(accessToken: string | null, chartId: string): Promise<Classificacao> {
@@ -74,6 +84,7 @@ export async function classificacaoAction(accessToken: string | null, chartId: s
         pontos: r.score,
         precisao: Number(r.precisao) || 0,
         estrelas: Number(r.estrelas) || 0,
+        modo: ehPrecisao(r.modo) ? r.modo : null,
         meu: email !== null && r.customer_email === email
       }))
     };

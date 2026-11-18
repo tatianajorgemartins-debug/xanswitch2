@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getAccessToken } from '@/lib/wishlist';
 import { classificacaoAction, type LinhaClassificacao } from '../jogosActions';
-import { DIFICULDADES, chartNaDificuldade, dificuldadesDe, type Chart, type Dificuldade } from './ocarina';
+import { DIFICULDADES, PRECISOES, chartNaDificuldade, dificuldadesDe, type Chart, type Dificuldade } from './ocarina';
 
 const DESTAQUES = 5;
 const MEDALHAS = ['#ffd23e', '#d7dde6', '#e49a5b', '#b98cff', '#b98cff'];
@@ -23,7 +23,7 @@ function Linha({ l }: { l: LinhaClassificacao }) {
       <span className="oc-rank-nome">
         {l.nome}
         {l.meu ? ' (você)' : ''}
-        <small>{l.precisao}% de precisão</small>
+        <small>{l.modo ? `Precisão ${PRECISOES[l.modo].nome} · ${l.precisao}%` : `${l.precisao}% de precisão`}</small>
       </span>
       <span className="oc-rank-pontos">{l.pontos.toLocaleString('pt-BR')}</span>
     </li>

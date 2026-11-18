@@ -1,6 +1,6 @@
 'use server';
 
-// Moderação do feed de resultados dos jogos (/testes/feed), pela aba
+// Moderação do feed de resultados dos jogos (/games-interativos/feed), pela aba
 // "Jogos interativos" do admin.
 import { revalidatePath } from 'next/cache';
 import { isAuthenticated } from '@/lib/auth';
@@ -10,7 +10,7 @@ export async function setGamePostHiddenAction(id: number, hidden: boolean): Prom
   if (!(await isAuthenticated())) return { ok: false };
   try {
     await setPostHidden(id, hidden);
-    revalidatePath('/testes/feed');
+    revalidatePath('/games-interativos/feed');
     return { ok: true };
   } catch {
     return { ok: false };
@@ -21,7 +21,7 @@ export async function deleteGamePostAction(id: number): Promise<{ ok: boolean }>
   if (!(await isAuthenticated())) return { ok: false };
   try {
     await deletePost(id);
-    revalidatePath('/testes/feed');
+    revalidatePath('/games-interativos/feed');
     return { ok: true };
   } catch {
     return { ok: false };

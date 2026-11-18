@@ -2,7 +2,7 @@
 
 // Aba "Jogos interativos" do admin: quem jogou os jogos da página Testes
 // (Silhueta do Dia, Zelda Tour, Qual Link, Próximo jogo), com o resultado
-// de cada partida, e a moderação do feed de resultados (/testes/feed).
+// de cada partida, e a moderação do feed de resultados (/games-interativos/feed).
 // Dados de lib/jogosDb.ts; tabelas de db/migration-jogos-interativos.sql.
 import { useMemo, useState, useTransition } from 'react';
 import { deleteGamePostAction, setGamePostHiddenAction } from './jogosInterativosActions';
@@ -250,7 +250,7 @@ function Feed({ posts: iniciais }: { posts: PostAdmin[] }) {
   return (
     <>
       <p className="adm-help">
-        O que os clientes publicaram em <a href="/testes/feed" target="_blank" rel="noreferrer">/testes/feed</a>.
+        O que os clientes publicaram em <a href="/games-interativos/feed" target="_blank" rel="noreferrer">/games-interativos/feed</a>.
         <strong> Esconder</strong> tira do feed sem apagar; <strong>Apagar</strong> remove de vez.
       </p>
       <div className="adm-jogos-posts">

@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { chartNaDificuldade, dificuldadesDe, estrelas, frequencia, migrarTeclas, multiplicador, pistaDaTecla, precisao, sequenciasEstrela, validarChart, TECLAS_PADRAO } from '../../app/testes/ocarina-hero/ocarina.ts';
+import { chartNaDificuldade, dificuldadesDe, estrelas, frequencia, migrarTeclas, multiplicador, pistaDaTecla, precisao, sequenciasEstrela, validarChart, TECLAS_PADRAO } from '../../app/games-interativos/ocarina-hero/ocarina.ts';
 
 const notasSeguidas = (total: number, passo = 0.5) => Array.from({ length: total }, (_, i) => ({ t: 2 + i * passo, pista: 'verde' as const }));
 

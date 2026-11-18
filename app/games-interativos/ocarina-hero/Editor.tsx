@@ -1,6 +1,6 @@
 'use client';
 
-// Modo gravar do Ocarina Hero (/testes/ocarina-hero?editor=1): você toca a
+// Modo gravar do Ocarina Hero (/games-interativos/ocarina-hero?editor=1): você toca a
 // melodia no teclado (ou nos botões) junto com o metrônomo e o jogo monta o
 // arquivo da música (.json) pra você salvar em data/jogos/ocarina/.
 // Segurar a tecla vira nota longa. Ver JOGOS-README.md.

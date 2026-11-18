@@ -1,7 +1,7 @@
 // Do lado do navegador: registra cada partida terminada (pro admin) e guarda
-// os resultados que a pessoa pode publicar no feed (/testes/feed).
+// os resultados que a pessoa pode publicar no feed (/games-interativos/feed).
 import { getAccessToken } from '@/lib/wishlist';
-import { registrarJogadaAction, type Jogada } from '@/app/testes/jogosActions';
+import { registrarJogadaAction, type Jogada } from '@/app/games-interativos/jogosActions';
 import { ler, gravar } from './armazenamento';
 
 // Código aleatório do aparelho, pra separar quem joga sem conta.

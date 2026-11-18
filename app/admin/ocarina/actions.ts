@@ -22,7 +22,7 @@ const DIFICULDADES = ['facil', 'medio', 'dificil', 'insano'];
 type Resultado = { ok: true } | { ok: false; erro: string };
 
 function atualizarPaginas(id?: number) {
-  revalidatePath('/testes/ocarina-hero');
+  revalidatePath('/games-interativos/ocarina-hero');
   revalidatePath('/admin');
   if (id) revalidatePath(`/admin/ocarina/${id}`);
 }
@@ -151,8 +151,8 @@ export async function publicarJogoAction(publicar: boolean): Promise<Resultado> 
   try {
     await setJogoOcarinaPublicado(publicar === true);
     atualizarPaginas();
-    revalidatePath('/testes');
-    revalidatePath('/testes/feed');
+    revalidatePath('/games-interativos');
+    revalidatePath('/games-interativos/feed');
     return { ok: true };
   } catch (err) {
     console.error('[ocarina] publicar o jogo:', err);

@@ -1,6 +1,6 @@
 'use client';
 
-// Feed dos jogadores (/testes/feed): publicar o próprio resultado e ver,
+// Feed dos jogadores (/games-interativos/feed): publicar o próprio resultado e ver,
 // curtir (🔥) os dos outros. Publicar e curtir exigem conta; ver, não.
 // Os resultados publicáveis ficam guardados no aparelho quando a pessoa
 // termina um jogo (lib/jogos/registro.ts). ?publicar=<id> já abre com um
@@ -16,12 +16,12 @@ import { apagarMeuPostAction, curtirAction, listarFeedAction, publicarResultadoA
 import './feed.css';
 
 const TODOS_JOGOS: { id: string; nome: string; icone: string; href: string }[] = [
-  { id: 'silhueta', nome: 'Silhueta do Dia', icone: '👤', href: '/testes/silhueta' },
-  { id: 'ocarina', nome: 'Zelda Tour', icone: '🎵', href: '/testes/zelda-tour' },
-  { id: 'qual-link', nome: 'Qual Link é você?', icone: '🗡️', href: '/testes' },
-  { id: 'proximo-jogo', nome: 'Próximo jogo', icone: '🎲', href: '/testes' }
+  { id: 'silhueta', nome: 'Silhueta do Dia', icone: '👤', href: '/games-interativos/silhueta' },
+  { id: 'ocarina', nome: 'Zelda Tour', icone: '🎵', href: '/games-interativos/zelda-tour' },
+  { id: 'qual-link', nome: 'Qual Link é você?', icone: '🗡️', href: '/games-interativos' },
+  { id: 'proximo-jogo', nome: 'Próximo jogo', icone: '🎲', href: '/games-interativos' }
 ];
-const jogoInfo = (id: string) => TODOS_JOGOS.find((j) => j.id === id) ?? { id, nome: id, icone: '🎮', href: '/testes' };
+const jogoInfo = (id: string) => TODOS_JOGOS.find((j) => j.id === id) ?? { id, nome: id, icone: '🎮', href: '/games-interativos' };
 
 function tempoAtras(iso: string): string {
   const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
@@ -111,7 +111,7 @@ export default function FeedClient({ ocarinaPublicado }: { ocarinaPublicado: boo
   return (
     <main className="page-content feed-page">
       <div className="feed-topo">
-        <Link href="/testes" className="feed-voltar">
+        <Link href="/games-interativos" className="feed-voltar">
           <svg viewBox="0 0 24 24" width={16} height={16} aria-hidden="true">
             <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
           </svg>

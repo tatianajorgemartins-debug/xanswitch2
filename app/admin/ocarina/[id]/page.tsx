@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
 import { dificuldadesDaMusica, getAllOcarinaSongs, getOcarinaSong } from '@/lib/ocarinaDb';
-import type { Dificuldade } from '@/app/testes/ocarina-hero/ocarina';
+import type { Dificuldade } from '@/app/games-interativos/ocarina-hero/ocarina';
 import EditorMusica from './EditorMusica';
 import '../../admin.css';
 import '../editor.css';

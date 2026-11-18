@@ -1,6 +1,6 @@
 # Jogos interativos — como cuidar
 
-Página de jogos: **/testes** (Silhueta do Dia, Zelda Tour, Qual Link, Próximo jogo e o Feed).
+Página de jogos: **/games-interativos** (Silhueta do Dia, Zelda Tour, Qual Link, Próximo jogo e o Feed).
 
 ## Antes de tudo (uma vez só)
 
@@ -68,26 +68,26 @@ As 6 músicas originais (sem áudio, a ocarina toca em cada acerto) ficam em `da
 ## Trocar as teclas padrão
 
 Cada jogador troca as suas no menu do Zelda Tour (⌨️ Teclas). O padrão do site fica em
-`TECLAS_PADRAO`, em `app/testes/ocarina-hero/ocarina.ts` (nomes de tecla do navegador:
+`TECLAS_PADRAO`, em `app/games-interativos/ocarina-hero/ocarina.ts` (nomes de tecla do navegador:
 `KeyA`, `KeyS`...). Os números 1 a 5 sempre funcionam também.
 
 ## Precisão (quanto o toque pode sair do tempo)
 
 O jogador escolhe no menu do Zelda Tour: **Folgada**, **Normal** (padrão) ou **Exata**. Os
-valores ficam em `PRECISOES`, em `app/testes/ocarina-hero/ocarina.ts`.
+valores ficam em `PRECISOES`, em `app/games-interativos/ocarina-hero/ocarina.ts`.
 
 ## Visual da partida
 
 Imagens em `public/jogos/ocarina/ui/` (geradas a partir de
 `Jogos interativos\OCARINA HERO\elementos`). A pista e as notas são desenhadas em
-`app/testes/ocarina-hero/motor.ts`; placar, combo, corações e progresso em `Palco.tsx`.
+`app/games-interativos/ocarina-hero/motor.ts`; placar, combo, corações e progresso em `Palco.tsx`.
 
 ## Especial
 
 Acertar todas as Triforces de uma sequência enche meia barra. Com a barra pela metade (5 s) ou cheia
 (10 s), **Espaço** ou o botão **Especial** do celular ativa: as notas ficam douradas e valem o dobro.
 Completar outra sequência com o especial ligado soma 5 s (até 10 s). Os tempos ficam em
-`ESPECIAL_CHEIO` e `ESPECIAL_METADE`, em `app/testes/ocarina-hero/ocarina.ts`.
+`ESPECIAL_CHEIO` e `ESPECIAL_METADE`, em `app/games-interativos/ocarina-hero/ocarina.ts`.
 
 ## Classificação
 
@@ -97,7 +97,7 @@ terminou a música logado na conta. Aparece só o primeiro nome e a inicial do s
 
 ## Abrir o Zelda Tour pro público
 
-**Admin › 🎵 Zelda Tour › Publicar o jogo.** Enquanto estiver fora do ar, a página /testes mostra o
+**Admin › 🎵 Zelda Tour › Publicar o jogo.** Enquanto estiver fora do ar, a página /games-interativos mostra o
 banner "Em breve" e o jogo só abre no computador de teste. Cada música tem o próprio botão
 **Publicar** na lista.
 
@@ -109,4 +109,4 @@ banner "Em breve" e o jogo só abre no computador de teste. Cada música tem o p
   3, 7, 15 e 30 dias seguidos — é ali que se liga o programa de pontos/cupons.
 - **Testes automáticos**: `npm run test:jogos`.
 - **Conferir um personagem** (só no computador, com `npm run dev`):
-  `/testes/silhueta?ver=toad&nivel=dificil`.
+  `/games-interativos/silhueta?ver=toad&nivel=dificil`.

@@ -216,7 +216,8 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
       venceu: r.completou,
       pontos: r.pontos,
       resumo: `${chart.titulo} (${nomeDif}) · ${r.completou ? `${r.estrelas}★` : 'não completou'} · ${r.precisao}% · combo ${r.maiorCombo}`,
-      detalhes: { musica: chart.id, ...r }
+      // modoPrecisao: Folgada, Normal ou Exata (aparece na classificação)
+      detalhes: { musica: chart.id, modoPrecisao: precisaoJogo, ...r }
     });
     const linhas = textoCompartilhar({ numero: diario && dia ? numeroDoDia(dia, INICIO) : null, chart, r, sequencia: 1 }).split('\n');
     if (diario && dia) {
@@ -254,7 +255,7 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
   return (
     <main className="page-content oc-page">
       <div className="oc-topo">
-        <Link href="/testes" className="oc-voltar">
+        <Link href="/games-interativos" className="oc-voltar">
           <svg viewBox="0 0 24 24" width={16} height={16} aria-hidden="true">
             <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -864,7 +865,7 @@ function Resultado({
         <button type="button" className="oc-botao is-principal" onClick={compartilhar}>
           Compartilhar
         </button>
-        <Link className="oc-botao" href={`/testes/feed${idPublicar ? `?publicar=${encodeURIComponent(idPublicar)}` : ''}`}>
+        <Link className="oc-botao" href={`/games-interativos/feed${idPublicar ? `?publicar=${encodeURIComponent(idPublicar)}` : ''}`}>
           📣 Publicar no feed
         </Link>
         <button type="button" className="oc-botao" onClick={onDeNovo}>
