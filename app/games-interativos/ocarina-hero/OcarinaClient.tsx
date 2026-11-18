@@ -48,9 +48,39 @@ import { MotorOcarina, carregarImagensOcarina } from './motor';
 import Palco from './Palco';
 import Classificacao from './Classificacao';
 import { OC_FONTES } from './fontes';
+import { XanLoader, useLoaderPhase } from '@/app/XanLoader';
 import './ocarina.css';
 
 const Editor = dynamic(() => import('./Editor'), { ssr: false });
+
+// Imagens da partida: baixadas na entrada, pra ela abrir sem nada faltando.
+const IMAGENS_JOGO = ['cenario', 'pista', 'anel-vazio', 'brasao', 'triforce', 'coracao', 'placa-pontos', 'placa-mult', 'pausa', 'asa-esq', 'asa-dir'];
+const TEMPO_MINIMO_ENTRADA = 800;
+const TEMPO_MINIMO_PARTIDA = 1000;
+const LIMITE_IMAGENS = 5000;
+const LIMITE_AUDIO = 45000;
+
+const espera = (ms: number) => new Promise<void>((ok) => window.setTimeout(ok, ms));
+
+// Termina quando as imagens chegam (ou no limite: o jogo abre do mesmo jeito).
+function baixarImagens(aoCarregar: (fracao: number) => void): Promise<void> {
+  let prontas = 0;
+  const tarefas = IMAGENS_JOGO.map(
+    (nome) =>
+      new Promise<void>((ok) => {
+        const img = new Image();
+        const fim = () => {
+          prontas += 1;
+          aoCarregar(prontas / IMAGENS_JOGO.length);
+          ok();
+        };
+        img.onload = fim;
+        img.onerror = fim;
+        img.src = `/jogos/ocarina/ui/${nome}.webp`;
+      })
+  );
+  return Promise.race([Promise.all(tarefas).then(() => undefined), espera(LIMITE_IMAGENS)]);
+}
 
 type Tela =
   | { tipo: 'menu' }
@@ -117,6 +147,24 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
   // sobe quando a partida termina de ser gravada: atualiza a classificação
   const [versaoRanking, setVersaoRanking] = useState(0);
   const som = useRef<SomOcarina | null>(null);
+  // Tela de carregamento do site: ao entrar no jogo e ao começar uma música.
+  const [carregandoTela, setCarregandoTela] = useState(true);
+  const [progresso, setProgresso] = useState(0);
+  const [abriu, setAbriu] = useState(false);
+  const faseCarga = useLoaderPhase(carregandoTela, 0, true);
+
+  useEffect(() => {
+    let vivo = true;
+    Promise.all([baixarImagens((f) => vivo && setProgresso(f * 0.95)), espera(TEMPO_MINIMO_ENTRADA)]).then(() => {
+      if (!vivo) return;
+      setProgresso(1);
+      setCarregandoTela(false);
+      setAbriu(true);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   useEffect(() => {
     setEditor(new URLSearchParams(window.location.search).get('editor') === '1');
@@ -167,26 +215,38 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
   const geral = useMemo(() => (dia ? sequenciaGeralHoje(dia) : { atual: 0, melhor: 0 }), [dia, versao]);
 
   // Música com áudio: baixa e prepara antes de começar.
-  const [carregando, setCarregando] = useState<string | null>(null);
   const [erroAudio, setErroAudio] = useState<string | null>(null);
   async function jogar(chart: Chart, diario: boolean, jogarDeitado = deitado) {
     // antes de qualquer espera: o navegador só libera a tela cheia no toque
     if (toque && jogarDeitado) entrarTelaCheia();
-    const s = await liberar();
+    setErroAudio(null);
+    setProgresso(0.04);
+    setCarregandoTela(true);
+    // A barra anda sozinha até 90% quando o servidor não informa o tamanho.
+    const andando = window.setInterval(() => setProgresso((p) => p + (0.9 - p) * 0.05), 220);
+    const minimo = espera(TEMPO_MINIMO_PARTIDA);
     let audio: AudioBuffer | null = null;
-    if (chart.audio) {
-      setErroAudio(null);
-      setCarregando(chart.titulo);
-      try {
-        audio = await s.carregarAudio(chart.audio);
-      } catch {
-        setCarregando(null);
-        setErroAudio(`Não deu pra carregar "${chart.titulo}". Confira a internet e tente de novo.`);
-        return;
+    try {
+      const s = await liberar();
+      await baixarImagens(() => {});
+      if (chart.audio) {
+        audio = await Promise.race([
+          s.carregarAudio(chart.audio, (f) => setProgresso((p) => Math.max(p, f * 0.92))),
+          espera(LIMITE_AUDIO).then(() => Promise.reject(new Error('o áudio demorou demais')))
+        ]);
       }
-      setCarregando(null);
+      await minimo;
+    } catch {
+      window.clearInterval(andando);
+      setCarregandoTela(false);
+      sairTelaCheia();
+      setErroAudio(`Não deu pra carregar "${chart.titulo}". Confira a internet e tente de novo.`);
+      return;
     }
+    window.clearInterval(andando);
+    setProgresso(1);
     setTela((t) => ({ tipo: 'jogo', chart, diario, audio, rodada: (t.tipo === 'jogo' ? t.rodada : 0) + 1 }));
+    setCarregandoTela(false);
   }
 
   // Liga/desliga o "jogar deitado". Ligando no meio da partida (pausa),
@@ -253,7 +313,8 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
   }
 
   return (
-    <main className="page-content oc-page">
+    <main className={`page-content oc-page${abriu ? ' is-aberta' : ''}`}>
+      <XanLoader progress={progresso} phase={faseCarga} variant="page" />
       <div className="oc-topo">
         <Link href="/games-interativos" className="oc-voltar">
           <svg viewBox="0 0 24 24" width={16} height={16} aria-hidden="true">
@@ -271,7 +332,7 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
       {tela.tipo !== 'preparar' && <header className="oc-cabeca">
         <p className="oc-kicker">Jogo de ritmo</p>
         <h1 className="oc-titulo">
-          Zelda <em>Tour</em>
+          <span className="oc-palavra">Zelda</span> <em className="oc-palavra">Tour</em> <span className="oc-beta oc-palavra">Beta</span>
         </h1>
         <p className="oc-sub">As notas descem pela pista: toque no momento em que elas cruzam o círculo. Acerte as Triforces, encha a barra e ative o especial.</p>
       </header>}
@@ -282,14 +343,6 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
         </div>
       )}
 
-      {carregando && (
-        <div className="oc-carregando" role="status">
-          <span className="oc-carregando-icone" aria-hidden="true">
-            ♪
-          </span>
-          Carregando “{carregando}”…
-        </div>
-      )}
       {erroAudio && (
         <p className="oc-erro" role="alert">
           {erroAudio}
@@ -326,7 +379,7 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
           recordes={recordes}
           toque={toque}
           deitado={deitado}
-          carregando={carregando !== null}
+          carregando={carregandoTela}
           onVoltar={() => setTela({ tipo: 'menu' })}
           onJogar={(d, jogarDeitado) => {
             setDeitado(jogarDeitado);
@@ -695,6 +748,7 @@ function ListaMusicas({ charts, recordes, onJogar }: { charts: Chart[]; recordes
       ) : (
         <ul>{filtradas.map(cartao)}</ul>
       )}
+      <p className="oc-novas">🎶 Novas músicas serão adicionadas em breve.</p>
     </section>
   );
 }

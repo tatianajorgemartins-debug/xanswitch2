@@ -818,6 +818,25 @@
   outline-offset: 3px;
 }
 
+.redesign .oc-breve .oc-breve-titulo {
+  flex-wrap: wrap;
+}
+.redesign .oc-breve-nome {
+  white-space: nowrap;
+}
+.redesign .oc-breve .oc-beta {
+  flex: none;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: #ffd23e;
+  color: #1d1403;
+  -webkit-text-fill-color: #1d1403;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  line-height: 1;
+}
+
 /* A pista do jogo, encostada embaixo, com as notas descendo até os anéis */
 .redesign .oc-breve-pista {
   position: relative;

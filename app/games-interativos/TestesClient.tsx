@@ -300,7 +300,8 @@ function BannerZeldaTour({ disponivel }: { disponivel: boolean }) {
         <h2 className="oc-breve-titulo">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={`${OC_UI}brasao.webp`} alt="" width={220} height={131} decoding="async" />
-          Zelda Tour
+          <span className="oc-breve-nome">Zelda Tour</span>
+          <span className="oc-beta">Beta</span>
         </h2>
         <p className="oc-breve-sub">
           O jogo de ritmo da XAN: as notas descem pela pista e você toca no tempo da música. Acerte as Triforces, encha a barra e
@@ -310,6 +311,7 @@ function BannerZeldaTour({ disponivel }: { disponivel: boolean }) {
           <li>🎵 Músicas de Zelda</li>
           <li>🔺 Especial dourado</li>
           <li>📱 Celular e computador</li>
+          <li>🎶 Novas músicas em breve</li>
         </ul>
         {disponivel && (
           <Link className="oc-breve-jogar" href="/games-interativos/zelda-tour">

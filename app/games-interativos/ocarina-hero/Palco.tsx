@@ -220,6 +220,7 @@ export default function Palco({
   const topoZonas = geo ? geo.acerto - (geo.acerto - geo.topo) * 0.45 : 0;
   return (
     <div ref={palco} className={`oc-palco ${OC_FONTES}`} role="application" aria-label={`${NOME_JOGO}: ${chart.titulo}`}>
+      <div className="oc-cenario" aria-hidden="true" />
       <canvas ref={canvas} className="oc-canvas" />
 
       <div className="oc-hud" aria-hidden="true">

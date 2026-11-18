@@ -125,7 +125,9 @@ const Z_CAMPO = (1 / ((752 - P_HORIZONTE) / (P_ACERTO - P_HORIZONTE)) - 1) / K;
 const ACHATAMENTO = 0.55;
 
 const ANTECEDENCIA_SOM = 0.25;
-const ESPERA_INICIAL = 1.2;
+// Tempo da abertura (os elementos entrando na tela) antes da música.
+const ESPERA_INICIAL = 2.6;
+const ABERTURA = 1.2;
 
 type Particula = { x: number; y: number; vx: number; vy: number; vida: number; cor: string; r: number };
 // Partículas do cenário (vaga-lumes e folhas), em frações da tela.
@@ -153,6 +155,7 @@ export class MotorOcarina {
   private ini = 0;
   private faixa: { parar: () => void; abafar: () => void } | null = null;
   private comecarEm: number;
+  private espera = ESPERA_INICIAL;
   private janelaPerfeito: number;
   private janelaBom: number;
 
@@ -319,6 +322,7 @@ export class MotorOcarina {
     // Espera o bastante pra primeira nota ter tempo de descer a pista.
     const primeira = (this.notas[0]?.n.t ?? this.comecarEm) - this.comecarEm;
     const espera = Math.max(ESPERA_INICIAL, this.antecedencia - primeira + 0.4);
+    this.espera = espera;
     this.inicio = this.som.agora + espera;
     if (this.op.audio) this.faixa = this.som.faixa(this.op.audio, this.inicio, this.comecarEm, this.chart.fimEm);
     this.rodando = true;
@@ -999,7 +1003,7 @@ export class MotorOcarina {
     }
 
     // Contagem antes da música começar
-    if (t < this.comecarEm) {
+    if (t < this.comecarEm && this.comecarEm - t <= this.espera - ABERTURA) {
       const faltam = Math.ceil(this.comecarEm - t);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';

@@ -220,13 +220,32 @@ export class SomOcarina {
   private cacheAudio = new Map<string, Promise<AudioBuffer>>();
 
   // Baixa e decodifica o áudio (fica guardado pra próxima partida).
-  carregarAudio(url: string): Promise<AudioBuffer> {
+  // aoBaixar recebe de 0 a 1 enquanto o arquivo chega.
+  carregarAudio(url: string, aoBaixar?: (fracao: number) => void): Promise<AudioBuffer> {
     let p = this.cacheAudio.get(url);
     if (!p) {
       p = fetch(url)
-        .then((r) => {
+        .then(async (r) => {
           if (!r.ok) throw new Error(`áudio não carregou (${r.status})`);
-          return r.arrayBuffer();
+          const total = Number(r.headers.get('content-length')) || 0;
+          if (!aoBaixar || !total || !r.body) return r.arrayBuffer();
+          const leitor = r.body.getReader();
+          const partes: Uint8Array[] = [];
+          let recebido = 0;
+          for (;;) {
+            const { done, value } = await leitor.read();
+            if (done) break;
+            partes.push(value);
+            recebido += value.length;
+            aoBaixar(Math.min(1, recebido / total));
+          }
+          const tudo = new Uint8Array(recebido);
+          let pos = 0;
+          for (const parte of partes) {
+            tudo.set(parte, pos);
+            pos += parte.length;
+          }
+          return tudo.buffer;
         })
         .then((b) => this.ctx.decodeAudioData(b));
       p.catch(() => this.cacheAudio.delete(url));
