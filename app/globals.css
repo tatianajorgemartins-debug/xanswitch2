@@ -4117,3 +4117,112 @@ button.account-avatar {
 .promo-image-banner.is-static:hover .promo-banner-image {
   transform: none;
 }
+
+/* Faixa do evento de promoção no topo do site (PromoStrip.tsx). O espaço
+   reservado empurra a página, e o cabeçalho fixo desce a mesma altura. */
+:root {
+  --promo-strip-h: 40px;
+}
+html:has(.promo-strip-space) {
+  scroll-padding-top: var(--promo-strip-h);
+}
+.promo-strip-space {
+  height: var(--promo-strip-h);
+}
+.promo-strip-space ~ .site-header-bar {
+  top: var(--promo-strip-h);
+}
+.promo-strip {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 101; /* acima do cabeçalho (100) e abaixo das janelas (200) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  height: var(--promo-strip-h);
+  padding: 0 16px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: var(--strip-bg);
+  color: var(--strip-ink);
+  font-size: 0.875rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.promo-strip:focus-visible {
+  outline: 3px solid var(--strip-ink);
+  outline-offset: -5px;
+}
+.promo-strip-title {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.promo-strip-offer {
+  flex: none;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.promo-strip-cta {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--strip-ink);
+  color: var(--strip-bg);
+  font-size: 0.75rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* Brilho que passa 3 vezes ao abrir a página e para. */
+  .promo-strip::after {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 30%;
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+    pointer-events: none;
+    translate: -120% 0;
+    animation: promo-strip-shine 1.5s ease-in-out 3;
+  }
+  .promo-strip-cta svg {
+    transition: translate 0.2s ease;
+  }
+  .promo-strip:hover .promo-strip-cta svg {
+    translate: 3px 0;
+  }
+}
+@keyframes promo-strip-shine {
+  to {
+    translate: 440% 0;
+  }
+}
+@media (max-width: 640px) {
+  :root {
+    --promo-strip-h: 38px;
+  }
+  .promo-strip {
+    gap: 10px;
+    padding: 0 10px;
+    font-size: 0.8125rem;
+  }
+  .promo-strip-cta {
+    padding: 6px 10px;
+    font-size: 0.6875rem;
+  }
+}
+@media (max-width: 370px) {
+  .promo-strip-offer {
+    display: none;
+  }
+}

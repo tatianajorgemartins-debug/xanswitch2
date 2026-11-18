@@ -24,6 +24,7 @@ import { gamePrice } from './gamePrice';
 import { getWishlistCounts } from './supabaseAdmin';
 import { runningPromoBanner, PROMO_BANNER_KEY, type ActivePromoBanner } from './promoBanner';
 import { getPromoEventGames } from './db';
+import type { ActivePromoStrip } from './promoEvents';
 import type { Item, ReviewItem } from '@/app/CatalogClient';
 
 export function toItem(g: Game): Item {
@@ -83,6 +84,28 @@ async function loadPromoBanner(): Promise<ActivePromoBanner | null> {
   };
 }
 
+// Faixa do topo: o evento valendo agora com mais jogos em desconto. Sem
+// evento valendo, não tem faixa.
+function loadPromoStrip(games: Game[]): ActivePromoStrip | null {
+  const byEvent = new Map<number, Game[]>();
+  for (const g of games) {
+    if (!g.promo_event) continue;
+    byEvent.set(g.promo_event.id, [...(byEvent.get(g.promo_event.id) ?? []), g]);
+  }
+  const eventGames = [...byEvent.values()].sort((a, b) => b.length - a.length)[0];
+  const event = eventGames?.[0].promo_event;
+  if (!event) return null;
+  const maxPercent = Math.max(...eventGames.map((g) => toItem(g).salePercent ?? 0));
+  return {
+    name: event.name,
+    tagText: event.tagText,
+    color: event.tagColor,
+    endsAt: event.endsAt,
+    maxPercent: maxPercent > 0 ? maxPercent : null,
+    gameIds: eventGames.map((g) => g.id)
+  };
+}
+
 function byRecentFirst(games: Game[]): Game[] {
   // The Postgres driver hands back updated_at as a Date object, not the
   // string the Game type claims — compare via getTime() so it works
@@ -121,6 +144,8 @@ export type CatalogData = {
   // Banner promocional que entra no lugar dos "Destaques da semana" — null
   // fora do período marcado no admin (ver lib/promoBanner.ts).
   promoBanner: ActivePromoBanner | null;
+  // Faixa no topo do site — null quando nenhum evento está valendo.
+  promoStrip: ActivePromoStrip | null;
 };
 
 export const loadCatalogData = cache(async (): Promise<CatalogData> => {
@@ -166,6 +191,7 @@ export const loadCatalogData = cache(async (): Promise<CatalogData> => {
     whatsappContactUrl: buildWhatsAppContactLink(),
     reviewsBannerUrl,
     featuredFranchise,
-    promoBanner
+    promoBanner,
+    promoStrip: loadPromoStrip(games)
   };
 });

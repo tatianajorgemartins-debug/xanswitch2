@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import dynamic from 'next/dynamic';
 import type { User } from '@supabase/supabase-js';
 import type { ActivePromoBanner } from '@/lib/promoBanner';
@@ -18,6 +19,8 @@ import {
 import SiteHeader from './SiteHeader';
 import { getFreshPricesAction, type FreshPrice } from './catalogActions';
 import PromoSection from './PromoSection';
+import PromoStrip from './PromoStrip';
+import type { ActivePromoStrip } from '@/lib/promoEvents';
 import ReviewsSection, { HomeReviews } from './ReviewsSection';
 import HowItWorks from './HowItWorks';
 import FloatingWhatsApp from './FloatingWhatsApp';
@@ -172,6 +175,7 @@ export default function CatalogClient({
   reviewsBannerUrl,
   featuredFranchise,
   promoBanner = null,
+  promoStrip = null,
   initialGameId,
   initialFranchiseFilter,
   initialQualLink
@@ -199,6 +203,8 @@ export default function CatalogClient({
   featuredFranchise: { franchise: string; label: string } | null;
   // Banner promocional no lugar dos "Destaques da semana" (lib/promoBanner.ts).
   promoBanner?: ActivePromoBanner | null;
+  // Faixa no topo enquanto um evento de promoção está valendo (PromoStrip.tsx).
+  promoStrip?: ActivePromoStrip | null;
   // Só vem preenchido quando a página é acessada pelo link direto de um
   // jogo (app/jogo/[id]/page.tsx) — abre o modal de compra desse jogo
   // assim que a página carrega, sem precisar clicar em nada.
@@ -729,6 +735,22 @@ export default function CatalogClient({
 
   return (
     <>
+      {promoStrip && (
+        <PromoStrip
+          strip={promoStrip}
+          onClick={() => {
+            // Tira busca e filtros, pra nenhum jogo do evento ficar escondido.
+            // flushSync: filtrar encolhe a página, então a rolagem só calcula
+            // o destino depois disso, senão passa do começo da lista.
+            flushSync(() => {
+              setQuery('');
+              clearFilters();
+              setEventFilter({ label: promoStrip.tagText, ids: new Set(promoStrip.gameIds) });
+            });
+            scrollToResults(resultsRef.current, null);
+          }}
+        />
+      )}
       {/* viewTransitionName: deixa o cabeçalho FORA do crossfade da troca de
           catálogo (ver <ViewTransition> em page.tsx) — sem isso, ele
           esmaecia/dava um leve zoom junto com o resto da página, e os

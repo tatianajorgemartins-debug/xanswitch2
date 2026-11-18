@@ -141,7 +141,14 @@ async function attachPromoEvents(games: Game[]): Promise<Game[]> {
       if (!e.game_ids.includes(g.id)) continue;
       const price = priceWithEvent(base, e.discount_type, parseFloat(e.discount_value));
       if (price < base && (!best || price < best.price)) {
-        best = { id: e.id, tagText: e.tag_text, tagColor: e.tag_color, price };
+        best = {
+          id: e.id,
+          name: e.name,
+          tagText: e.tag_text,
+          tagColor: e.tag_color,
+          endsAt: e.ends_at ? new Date(e.ends_at).toISOString() : null,
+          price
+        };
       }
     }
     return best ? { ...g, promo_event: best } : g;

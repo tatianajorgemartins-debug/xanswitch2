@@ -26,9 +26,23 @@ export type PromoEventRow = {
 // O que fica pendurado em cada jogo enquanto o evento está valendo.
 export type GamePromoEvent = {
   id: number;
+  name: string;
   tagText: string;
   tagColor: string;
+  endsAt: string | null; // ISO
   price: number;
+};
+
+// Faixa no topo do site enquanto um evento está valendo (app/PromoStrip.tsx).
+// Montada em lib/catalogData.ts a partir dos jogos com desconto do evento.
+export type ActivePromoStrip = {
+  name: string;
+  tagText: string;
+  color: string;
+  endsAt: string | null; // ISO
+  // Maior desconto entre os jogos do evento, igual ao selo dos cards.
+  maxPercent: number | null;
+  gameIds: number[];
 };
 
 // Menor preço que um evento deixa um jogo custar.
