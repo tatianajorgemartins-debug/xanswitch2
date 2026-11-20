@@ -1,0 +1,107 @@
+/* Sorteio ao vivo (página do participante e telão do admin). Estrutura
+   básica, sem visual final: o design entra depois, por cima destas classes.
+   Só a roleta precisa destas regras pra funcionar (a janela com um nome
+   por vez e a lista andando por --pos). */
+
+.sorteio-pagina {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+  font-family: system-ui, sans-serif;
+  line-height: 1.45;
+}
+.sorteio-banner {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.sorteio-premios,
+.sorteio-ganhadores {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sorteio-premio {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.sorteio-premio img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+}
+.sorteio-confirmar,
+.sorteio-entrar,
+.sorteio-form {
+  display: grid;
+  gap: 10px;
+}
+.sorteio-form label {
+  display: grid;
+  gap: 4px;
+}
+.sorteio-botao {
+  min-height: 44px;
+  cursor: pointer;
+}
+.sorteio-botao:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.sorteio-erro {
+  color: #c62828;
+}
+.sorteio-regulamento-texto {
+  white-space: pre-line;
+}
+.sorteio-ganhadores li.is-meu {
+  font-weight: 800;
+}
+
+/* Roleta: uma janela do tamanho de um nome; a lista sobe por --pos itens. */
+.sorteio-roleta {
+  --altura: 64px;
+}
+.sorteio-roleta-janela {
+  height: var(--altura);
+  overflow: hidden;
+}
+.sorteio-roleta-lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transform: translateY(calc(var(--pos) * -1 * var(--altura)));
+  will-change: transform;
+}
+.sorteio-roleta-lista li {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--altura);
+  font-size: 1.6rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.sorteio-palco-contagem {
+  font-size: 3rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Telão do admin */
+.sorteio-telao {
+  min-height: 100vh;
+  padding: 32px;
+  background: #0b0716;
+  color: #fff;
+  font-family: system-ui, sans-serif;
+}
+.sorteio-telao .sorteio-roleta {
+  --altura: 120px;
+}
+.sorteio-telao .sorteio-roleta-lista li {
+  font-size: 3.4rem;
+}

@@ -21,6 +21,7 @@ import type { PromoBannerSetting } from '@/lib/promoBanner';
 import type { PromoEventRow } from '@/lib/promoEvents';
 import { setSalesStatusAction } from './salesActions';
 import './admin.css';
+import SorteiosPanel, { type SorteioLista } from './SorteiosPanel';
 import {
   createGameAction,
   updateGameAction,
@@ -48,7 +49,7 @@ import {
 
 const emptyFormState: GameFormState = { error: null };
 
-const TAB_IDS = ['inicio', 'pedidos', 'vendas', 'jogos', 'promocoes', 'clientes', 'comentarios', 'interativos', 'ocarina', 'divulgacao', 'config'] as const;
+const TAB_IDS = ['inicio', 'pedidos', 'vendas', 'jogos', 'promocoes', 'clientes', 'comentarios', 'interativos', 'ocarina', 'sorteios', 'divulgacao', 'config'] as const;
 type TabId = (typeof TAB_IDS)[number];
 
 export default function AdminClient({
@@ -71,7 +72,8 @@ export default function AdminClient({
   promoBanner,
   jogosInterativos,
   musicasOcarina,
-  ocarinaPublicado
+  ocarinaPublicado,
+  sorteios
 }: {
   initialGames: Game[];
   visitCount: number;
@@ -96,6 +98,8 @@ export default function AdminClient({
   // null = falta rodar db/migration-ocarina-musicas.sql.
   musicasOcarina: MusicaAdmin[] | null;
   ocarinaPublicado: boolean;
+  // null = falta rodar db/migration-sorteios.sql
+  sorteios: SorteioLista[] | null;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -320,6 +324,7 @@ export default function AdminClient({
     { id: 'comentarios', icon: '💬', label: 'Comentários', badge: pendingReviewCount },
     { id: 'interativos', icon: '🕹️', label: 'Jogos interativos' },
     { id: 'ocarina', icon: '🎵', label: 'Zelda Tour' },
+    { id: 'sorteios', icon: '🎁', label: 'Sorteios' },
     { id: 'divulgacao', icon: '📣', label: 'Divulgação' },
     { id: 'config', icon: '⚙️', label: 'Configurações' }
   ];
@@ -603,6 +608,18 @@ export default function AdminClient({
               </div>
             </div>
             <OcarinaAdminPanel musicas={musicasOcarina} jogoPublicado={ocarinaPublicado} />
+          </section>
+        )}
+
+        {tab === 'sorteios' && (
+          <section>
+            <div className="adm-section-head">
+              <div>
+                <h2>🎁 Sorteios</h2>
+                <p className="adm-help">Sorteios ao vivo: a pessoa confirma presença com a conta da loja e acompanha o resultado na hora.</p>
+              </div>
+            </div>
+            <SorteiosPanel sorteios={sorteios} />
           </section>
         )}
 

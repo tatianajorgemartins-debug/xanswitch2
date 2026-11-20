@@ -33,3 +33,22 @@ export async function verifyAccessTokenProfile(
     avatar: text(meta.photo_url) ?? text(meta.avatar_url) ?? text(meta.picture)
   };
 }
+
+// Pro sorteio ao vivo: quem é a conta, o nome e quando ela foi criada (a
+// regra "só contas criadas antes da live" usa essa data).
+export async function verifyAccessTokenAccount(
+  accessToken: string | null
+): Promise<{ id: string; email: string; name: string | null; createdAt: string | null } | null> {
+  if (!accessToken) return null;
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+  const { data, error } = await supabase.auth.getUser(accessToken);
+  if (error || !data.user?.email) return null;
+  const meta = (data.user.user_metadata ?? {}) as Record<string, unknown>;
+  const text = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+  return {
+    id: data.user.id,
+    email: data.user.email.toLowerCase(),
+    name: text(meta.full_name) ?? text(meta.name),
+    createdAt: data.user.created_at ?? null
+  };
+}
