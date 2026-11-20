@@ -1,3 +1,4 @@
+import { Archivo } from 'next/font/google';
 import { notFound, redirect } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth';
 import SorteioAdmin from './SorteioAdmin';
@@ -10,11 +11,18 @@ import '../sorteios-admin.css';
 // (privado: inscrições, participantes, sortear) e Telão (o que vai na live).
 export const dynamic = 'force-dynamic';
 
+// Mesma fonte da página pública (o telão fica igual ao que o público vê).
+const archivo = Archivo({ subsets: ['latin'], axes: ['wdth'], display: 'swap', variable: '--font-redesign' });
+
 export default async function SorteioAdminPage({ params }: { params: Promise<{ id: string }> }) {
   if (!(await isAuthenticated())) redirect('/admin/login');
   const id = Number((await params).id);
   if (!Number.isInteger(id) || id <= 0) notFound();
   const dados = await dadosControleAction(id).catch(() => null);
   if (!dados) notFound();
-  return <SorteioAdmin inicial={dados} />;
+  return (
+    <div className={archivo.variable}>
+      <SorteioAdmin inicial={dados} />
+    </div>
+  );
 }

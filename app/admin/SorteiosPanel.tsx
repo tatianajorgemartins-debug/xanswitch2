@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { NOME_STATUS, type StatusSorteio } from '@/lib/sorteio/regras';
 import { criarSorteioAction } from './sorteios/actions';
+import './sorteios/sorteios-admin.css';
 
 export type SorteioLista = {
   id: number;
@@ -61,45 +62,32 @@ export default function SorteiosPanel({ sorteios }: { sorteios: SorteioLista[] |
       </form>
 
       {sorteios.length === 0 ? (
-        <p className="adm-empty">Nenhum sorteio ainda.</p>
+        <p className="adm-empty">Nenhum sorteio ainda. Dê um nome acima e clique em criar.</p>
       ) : (
-        <div className="adm-card">
-          <table className="adm-jogos-tabela">
-            <thead>
-              <tr>
-                <th>Sorteio</th>
-                <th>Link</th>
-                <th>Situação</th>
-                <th>Prêmios</th>
-                <th>Participantes</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {sorteios.map((s) => (
-                <tr key={s.id}>
-                  <td>
-                    <strong>{s.titulo}</strong>
-                    {s.teste && <span className="adm-muted"> · modo de teste</span>}
-                  </td>
-                  <td>
-                    <code>/sorteio/{s.slug}</code>
-                  </td>
-                  <td>{NOME_STATUS[s.status]}</td>
-                  <td>{s.premios}</td>
-                  <td>{s.participantes}</td>
-                  <td>
-                    <Link className="btn ghost" href={`/admin/sorteios/${s.id}`}>
-                      Abrir
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ul className="sorteios-lista">
+          {sorteios.map((s) => (
+            <li key={s.id}>
+              <Link href={`/admin/sorteios/${s.id}`}>
+                <span className="sorteios-lista-topo">
+                  <span className={`sa-chip${s.status === 'abertas' || s.status === 'sorteando' ? ' is-verde' : ''}`}>{NOME_STATUS[s.status]}</span>
+                  {s.teste && <span className="sa-chip is-ouro">Modo de teste</span>}
+                </span>
+                <b>{s.titulo}</b>
+                <code>/sorteio/{s.slug}</code>
+                <span className="sorteios-lista-numeros">
+                  <span>
+                    <strong>{s.participantes}</strong> participantes
+                  </span>
+                  <span>
+                    <strong>{s.premios}</strong> prêmios
+                  </span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
       )}
-      <p className="adm-help">Como usar no dia da live: veja o arquivo SORTEIO-README.md.</p>
+      <p className="adm-help">Abra um sorteio pra configurar, ensaiar no modo de teste e, na live, sortear pelo telão.</p>
     </>
   );
 }

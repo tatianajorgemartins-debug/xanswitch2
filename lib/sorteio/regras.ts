@@ -42,6 +42,8 @@ export const LIMITE_TENTATIVAS_CONTA = 6;
 export type PedidoParticipacao = {
   status: StatusSorteio;
   aceitouRegulamento: boolean;
+  instagram: string | null; // já normalizado (normalizarInstagram); null = inválido
+  instagramDeOutraConta: boolean;
   jaParticipa: boolean;
   contaCriadaEm: string | null; // ISO
   participacoesNoIp: number; // de outras contas, neste sorteio
@@ -59,6 +61,8 @@ export function avaliarParticipacao(config: ConfigAntifraude, p: PedidoParticipa
   }
   if (p.status !== 'abertas') return nao('fechado', 'As inscrições deste sorteio não estão abertas.');
   if (p.jaParticipa) return nao('ja-participa', 'Você já está participando deste sorteio.');
+  if (!p.instagram) return nao('instagram', 'Coloque o @ do seu Instagram pra participar.');
+  if (p.instagramDeOutraConta) return nao('instagram-em-uso', 'Esse @ do Instagram já está participando com outra conta.');
   if (!p.aceitouRegulamento) return nao('regulamento', 'Marque que você aceita o regulamento pra confirmar.');
   if (config.contasCriadasAntes) {
     const limite = new Date(config.contasCriadasAntes).getTime();
@@ -74,6 +78,25 @@ export function avaliarParticipacao(config: ConfigAntifraude, p: PedidoParticipa
     return nao('limite-ip', 'O limite de participações desta conexão de internet já foi atingido.');
   }
   return { ok: true };
+}
+
+// "@Maria.Silva", "instagram.com/maria.silva/" → "maria.silva"; inválido → null.
+// Regras do Instagram: até 30 letras, números, ponto e _; sem ponto no
+// começo, no fim nem dois seguidos.
+export function normalizarInstagram(bruto: string | null | undefined): string | null {
+  let s = String(bruto ?? '').trim().toLowerCase();
+  s = s.replace(/^https?:\/\//, '').replace(/^(www\.)?instagram\.com\//, '').replace(/[/?#].*$/, '').replace(/^@+/, '');
+  if (!/^[a-z0-9._]{1,30}$/.test(s) || s.startsWith('.') || s.endsWith('.') || s.includes('..')) return null;
+  return s;
+}
+
+// "189.40.123.45" → "189.40.•••.•••" (IPv6: só o começo).
+export function mascararIp(ip: string | null): string {
+  if (!ip) return '—';
+  const v4 = ip.split('.');
+  if (v4.length === 4) return `${v4[0]}.${v4[1]}.•••.•••`;
+  const v6 = ip.split(':').filter(Boolean);
+  return v6.length > 2 ? `${v6[0]}:${v6[1]}:••••` : '•••';
 }
 
 // ---------- Como o participante aparece em público ----------

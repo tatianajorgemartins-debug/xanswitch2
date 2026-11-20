@@ -1,21 +1,1077 @@
-/* Sorteio ao vivo (página do participante e telão do admin). Estrutura
-   básica, sem visual final: o design entra depois, por cima destas classes.
-   Só a roleta precisa destas regras pra funcionar (a janela com um nome
-   por vez e a lista andando por --pos). */
+/* Sorteio ao vivo: página do participante (app/sorteio/[slug]) e telão do
+   admin (app/admin/sorteios/[id], aba Telão). Mesmas cores do site, no
+   estilo "motion": fundo escuro com brilho roxo, rótulos pequenos em caixa
+   alta espaçada, palavra de destaque em lilás, entradas rápidas com
+   desaceleração longa (sem quique) e cartas em cascata.
+   Tudo fica dentro de .sorteio-ui, que define as cores. */
 
-.sorteio-pagina {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 24px 16px 64px;
-  font-family: system-ui, sans-serif;
+.sorteio-ui {
+  --s-bg: #0a0716;
+  --s-bg-2: #120c26;
+  --s-card: #170f2e;
+  --s-card-2: #1f1540;
+  --s-borda: rgba(164, 99, 255, 0.24);
+  --s-borda-forte: rgba(185, 165, 255, 0.55);
+  --s-roxo: #7b4df5;
+  --s-roxo-2: #9068f2;
+  --s-lilas: #b9a5ff;
+  --s-tinta: #f4f1fb;
+  --s-apagado: #a59cc8;
+  --s-rotulo: #8e86b0;
+  --s-ouro: #ffd24e;
+  --s-verde: #4ef05f;
+  --s-erro: #ff8a8a;
+  --s-brilho: 0 0 40px rgba(123, 77, 245, 0.45);
+  --s-saida: cubic-bezier(0.16, 1, 0.3, 1);
+
+  position: relative;
+  color: var(--s-tinta);
+  font-family: var(--font-redesign), 'Archivo', 'Helvetica Neue', Arial, sans-serif;
   line-height: 1.45;
+}
+.sorteio-ui *,
+.sorteio-ui *::before,
+.sorteio-ui *::after {
+  box-sizing: border-box;
+}
+
+/* ---------- Página ---------- */
+.sorteio-pagina {
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: radial-gradient(ellipse 90% 60% at 50% -10%, #2b2053 0%, rgba(43, 32, 83, 0) 70%), var(--s-bg);
+}
+.sorteio-brilho {
+  position: absolute;
+  inset: -20% -10% auto;
+  height: 520px;
+  background:
+    radial-gradient(closest-side at 22% 40%, rgba(123, 77, 245, 0.32), transparent),
+    radial-gradient(closest-side at 80% 30%, rgba(210, 90, 255, 0.18), transparent);
+  filter: blur(10px);
+  pointer-events: none;
+  animation: sorteio-flutua 14s ease-in-out infinite alternate;
+}
+@keyframes sorteio-flutua {
+  to {
+    transform: translate3d(0, 30px, 0) scale(1.06);
+  }
+}
+.sorteio-barra {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 16px 16px 0;
+}
+.sorteio-logo img {
+  display: block;
+  height: 34px;
+  width: auto;
+}
+.sorteio-conteudo {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 28px;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 18px 16px 80px;
+}
+.sorteio-faixa {
+  position: relative;
+  z-index: 2;
+  max-width: 1048px;
+  margin: 14px auto 0;
+  padding: 10px 14px;
+  border: 1px dashed rgba(255, 210, 78, 0.55);
+  border-radius: 12px;
+  background: rgba(255, 210, 78, 0.08);
+  color: #ffe08a;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.sorteio-hero .sorteio-faixa {
+  margin: 0;
+}
+.sorteio-faixa.is-erro {
+  border-color: rgba(255, 138, 138, 0.55);
+  background: rgba(255, 138, 138, 0.08);
+  color: var(--s-erro);
+}
+
+/* ---------- Peças pequenas ---------- */
+.sorteio-rotulo {
+  display: block;
+  color: var(--s-rotulo);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.sorteio-pilula {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(123, 77, 245, 0.18);
+  box-shadow: inset 0 0 0 1px var(--s-borda);
+  color: var(--s-tinta);
+  font-size: 0.75rem;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.sorteio-pilula.is-vivo {
+  background: rgba(78, 240, 95, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(78, 240, 95, 0.35);
+}
+.sorteio-pilula.is-ouro {
+  background: linear-gradient(135deg, #ffd24e, #f0a93f);
+  box-shadow: 0 0 24px rgba(255, 210, 78, 0.45);
+  color: #2b1a00;
+}
+.sorteio-ponto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--s-verde);
+  animation: sorteio-pulso 1.8s ease-out infinite;
+}
+@keyframes sorteio-pulso {
+  from {
+    box-shadow: 0 0 0 0 rgba(78, 240, 95, 0.65);
+  }
+  to {
+    box-shadow: 0 0 0 10px rgba(78, 240, 95, 0);
+  }
+}
+.sorteio-vazio,
+.sorteio-carregando {
+  margin: 0;
+  color: var(--s-apagado);
+}
+
+/* Entradas: sobe ~10px, sai do desfoque e aparece, em cascata (--i). */
+.sorteio-entra,
+.sorteio-palavra {
+  animation: sorteio-entra 0.6s var(--s-saida) both;
+  animation-delay: calc(var(--i, 0) * 90ms + 120ms);
+}
+.sorteio-palavra {
+  display: inline-block;
+  white-space: pre;
+}
+@keyframes sorteio-entra {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(8px);
+  }
+}
+/* Na página da loja, espera a tela de carregamento sair (SiteMotion). */
+.redesign.motion-on:not(.motion-live) .sorteio-entra,
+.redesign.motion-on:not(.motion-live) .sorteio-palavra,
+.redesign.motion-on:not(.motion-live) .sorteio-premio {
+  animation-play-state: paused;
+}
+
+/* ---------- Abertura ---------- */
+.sorteio-hero {
+  display: grid;
+  gap: 14px;
+  padding-top: 18px;
 }
 .sorteio-banner {
   display: block;
   width: 100%;
-  height: auto;
+  max-height: 340px;
+  object-fit: cover;
+  border-radius: 20px;
+  box-shadow: 0 0 0 1px var(--s-borda), 0 20px 60px rgba(0, 0, 0, 0.45), var(--s-brilho);
+  animation: sorteio-entra 0.8s var(--s-saida) both;
 }
-.sorteio-premios,
+.sorteio-titulo {
+  margin: 0;
+  font-size: clamp(2.3rem, 1rem + 6vw, 4.8rem);
+  font-weight: 800;
+  font-stretch: 112%;
+  line-height: 0.98;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+.sorteio-palavra.is-destaque {
+  background: linear-gradient(100deg, #b9a5ff, #9068f2 60%, #d38bff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 22px rgba(123, 77, 245, 0.5));
+}
+.sorteio-descricao {
+  max-width: 680px;
+  margin: 0;
+  color: var(--s-apagado);
+  font-size: clamp(1rem, 0.95rem + 0.3vw, 1.2rem);
+  white-space: pre-line;
+}
+.sorteio-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.sorteio-contador {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 12px 18px;
+  border-radius: 16px;
+  background: rgba(23, 15, 46, 0.75);
+  box-shadow: inset 0 0 0 1px var(--s-borda);
+  backdrop-filter: blur(8px);
+}
+.sorteio-contador strong {
+  font-size: 2rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 0 24px rgba(123, 77, 245, 0.7);
+}
+.sorteio-contador span {
+  color: var(--s-apagado);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+.sorteio-contador.is-data {
+  align-items: center;
+}
+.sorteio-contador.is-data strong {
+  font-size: 1.2rem;
+  text-shadow: none;
+}
+.sorteio-contador.is-data span {
+  color: var(--s-tinta);
+}
+
+/* ---------- Cartão de participar ---------- */
+.sorteio-cartao {
+  position: relative;
+  max-width: 560px;
+  width: 100%;
+  padding: 22px;
+  border-radius: 22px;
+  background: linear-gradient(160deg, rgba(31, 21, 64, 0.95), rgba(20, 13, 39, 0.95));
+  box-shadow: inset 0 0 0 1px var(--s-borda), 0 30px 80px rgba(0, 0, 0, 0.45), var(--s-brilho);
+}
+.sorteio-passos {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+  counter-reset: passo;
+}
+.sorteio-passos li {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  color: var(--s-rotulo);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+}
+.sorteio-passos li:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 15px;
+  left: calc(50% + 20px);
+  width: calc(100% - 34px);
+  height: 2px;
+  background: rgba(164, 99, 255, 0.2);
+}
+.sorteio-passos li.is-feito:not(:last-child)::after {
+  background: var(--s-roxo-2);
+}
+.sorteio-passos span {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--s-card);
+  box-shadow: inset 0 0 0 1px var(--s-borda);
+  color: var(--s-apagado);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+.sorteio-passos li.is-atual {
+  color: var(--s-tinta);
+}
+.sorteio-passos li.is-atual span {
+  background: linear-gradient(135deg, var(--s-roxo), var(--s-roxo-2));
+  box-shadow: 0 0 0 4px rgba(123, 77, 245, 0.25), 0 0 20px rgba(123, 77, 245, 0.6);
+  color: #fff;
+}
+.sorteio-passos li.is-feito span {
+  background: rgba(78, 240, 95, 0.15);
+  box-shadow: inset 0 0 0 1px rgba(78, 240, 95, 0.5);
+  color: var(--s-verde);
+}
+
+.sorteio-entrar,
+.sorteio-confirmar,
+.sorteio-form {
+  display: grid;
+  gap: 14px;
+}
+.sorteio-entrar-texto {
+  margin: 0;
+  color: var(--s-apagado);
+}
+.sorteio-conta {
+  margin: 0;
+  color: var(--s-apagado);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+.sorteio-conta strong {
+  color: var(--s-tinta);
+}
+.sorteio-campo {
+  display: grid;
+  gap: 6px;
+}
+.sorteio-campo > span:first-child {
+  color: var(--s-tinta);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+.sorteio-campo small {
+  color: var(--s-rotulo);
+  font-size: 0.8rem;
+}
+.sorteio-campo input,
+.sorteio-campo-insta {
+  width: 100%;
+  min-height: 50px;
+  border: 1px solid rgba(164, 99, 255, 0.35);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--s-tinta);
+  font: inherit;
+  font-size: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.sorteio-campo > input {
+  padding: 0 14px;
+}
+.sorteio-campo input:focus {
+  outline: none;
+}
+.sorteio-campo > input:focus,
+.sorteio-campo-insta:focus-within {
+  border-color: var(--s-lilas);
+  box-shadow: 0 0 0 3px rgba(123, 77, 245, 0.3);
+}
+.sorteio-campo-insta {
+  display: flex;
+  align-items: center;
+}
+.sorteio-campo-insta b {
+  padding: 0 4px 0 14px;
+  color: var(--s-lilas);
+  font-size: 1.1rem;
+}
+.sorteio-campo-insta input {
+  min-height: 48px;
+  padding: 0 14px 0 0;
+  border: 0;
+  background: none;
+}
+.sorteio-campo-insta.is-erro {
+  border-color: var(--s-erro);
+}
+.sorteio-aceite {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--s-tinta);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.sorteio-aceite input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 1px 0 0;
+  accent-color: var(--s-roxo);
+}
+.sorteio-aceite a {
+  color: var(--s-lilas);
+}
+.sorteio-ou {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  color: var(--s-rotulo);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.sorteio-ou::before,
+.sorteio-ou::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(164, 99, 255, 0.22);
+}
+
+.sorteio-botao {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 22px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--s-roxo), #a463ff);
+  box-shadow: 0 10px 30px rgba(123, 77, 245, 0.45);
+  color: #fff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.25s var(--s-saida), box-shadow 0.25s, filter 0.2s;
+}
+/* Brilho que passa pelo botão. */
+.sorteio-botao::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 -60%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.7s var(--s-saida);
+}
+.sorteio-botao:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 36px rgba(123, 77, 245, 0.6);
+}
+.sorteio-botao:hover:not(:disabled)::after {
+  left: 120%;
+}
+.sorteio-botao:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.sorteio-botao:disabled {
+  cursor: not-allowed;
+  filter: saturate(0.4);
+  opacity: 0.55;
+  box-shadow: none;
+}
+.sorteio-botao.is-claro {
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  color: #1b1530;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.sorteio-link {
+  justify-self: center;
+  padding: 4px;
+  border: 0;
+  background: none;
+  color: var(--s-lilas);
+  font: inherit;
+  font-size: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.sorteio-conta .sorteio-link {
+  padding: 0;
+}
+.sorteio-erro {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 138, 138, 0.1);
+  color: var(--s-erro);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.sorteio-fechado {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.sorteio-fechado span {
+  font-size: 2rem;
+}
+.sorteio-fechado p {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Confirmado */
+.sorteio-confirmado {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+}
+.sorteio-confirmado h2 {
+  margin: 4px 0 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-stretch: 110%;
+  text-transform: uppercase;
+}
+.sorteio-confirmado p {
+  margin: 0;
+  max-width: 420px;
+  color: var(--s-apagado);
+}
+.sorteio-confirmado-icone {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4ef05f, #2ecb3f);
+  box-shadow: 0 0 0 8px rgba(78, 240, 95, 0.15), 0 0 40px rgba(78, 240, 95, 0.45);
+  color: #07230c;
+  font-size: 1.8rem;
+  font-weight: 900;
+  animation: sorteio-carimbo 0.7s var(--s-saida) both;
+}
+@keyframes sorteio-carimbo {
+  from {
+    opacity: 0;
+    transform: scale(1.8) rotate(-12deg);
+  }
+}
+.sorteio-selo-ok {
+  justify-self: center;
+  margin: 0;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(78, 240, 95, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(78, 240, 95, 0.4);
+  color: var(--s-verde);
+  font-weight: 800;
+}
+
+/* ---------- Seções ---------- */
+.sorteio-secao {
+  display: grid;
+  gap: 14px;
+}
+.sorteio-titulo-secao {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  font-size: clamp(1.5rem, 1.1rem + 1.4vw, 2.2rem);
+  font-weight: 800;
+  font-stretch: 110%;
+  text-transform: uppercase;
+}
+
+/* Prêmios */
+.sorteio-premios {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sorteio-premio {
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--s-card);
+  box-shadow: inset 0 0 0 1px var(--s-borda);
+  animation: sorteio-carta-entra 0.6s var(--s-saida) both;
+  animation-delay: calc(var(--i, 0) * 120ms + 300ms);
+  transition: transform 0.3s var(--s-saida), box-shadow 0.3s;
+}
+.sorteio-premio:hover {
+  transform: translateY(-4px);
+  box-shadow: inset 0 0 0 1px var(--s-borda-forte), var(--s-brilho);
+}
+@keyframes sorteio-carta-entra {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.92);
+  }
+}
+.sorteio-premio-foto {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  background: radial-gradient(circle at 50% 40%, #2b2053, #120c26);
+  font-size: 3rem;
+}
+.sorteio-premio-foto.is-vazia {
+  aspect-ratio: 5 / 2;
+}
+.sorteio-premio-foto.is-vazia .sorteio-pilula {
+  top: 10px;
+  bottom: auto;
+}
+.sorteio-premio-foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.sorteio-premio-foto .sorteio-pilula {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  background: rgba(10, 7, 22, 0.8);
+  backdrop-filter: blur(6px);
+}
+.sorteio-premio-texto {
+  padding: 12px 14px 16px;
+}
+.sorteio-premio-texto strong {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+.sorteio-premio-texto p {
+  margin: 4px 0 0;
+  color: var(--s-apagado);
+  font-size: 0.9rem;
+  white-space: pre-line;
+}
+
+/* Regulamento */
+.sorteio-regulamento {
+  border-radius: 16px;
+  background: var(--s-card);
+  box-shadow: inset 0 0 0 1px var(--s-borda);
+}
+.sorteio-regulamento summary {
+  padding: 16px 18px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.sorteio-regulamento-texto {
+  padding: 0 18px 18px;
+  color: var(--s-apagado);
+  white-space: pre-line;
+}
+
+/* ---------- Ao vivo ---------- */
+.sorteio-ao-vivo {
+  display: grid;
+  gap: 24px;
+}
+.sorteio-palco {
+  position: relative;
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+  overflow: hidden;
+  border-radius: 24px;
+  background: radial-gradient(ellipse 70% 80% at 50% 50%, #2b2053 0%, #0f0d1f 75%);
+  box-shadow: inset 0 0 0 1px var(--s-borda), 0 30px 80px rgba(0, 0, 0, 0.5);
+}
+.sorteio-palco.is-ativo {
+  box-shadow: inset 0 0 0 1px var(--s-borda-forte), 0 30px 80px rgba(0, 0, 0, 0.5), 0 0 60px rgba(123, 77, 245, 0.35);
+}
+.sorteio-palco-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.sorteio-palco-placar {
+  color: var(--s-apagado);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.sorteio-palco-premio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  animation: sorteio-entra 0.5s var(--s-saida) both;
+}
+.sorteio-palco-premio img {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px var(--s-borda-forte), var(--s-brilho);
+}
+.sorteio-palco-premio > div {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+.sorteio-palco-premio strong {
+  font-size: clamp(1.3rem, 1rem + 1.5vw, 2rem);
+  font-weight: 800;
+  font-stretch: 108%;
+  text-transform: uppercase;
+}
+.sorteio-palco-refeito {
+  color: var(--s-ouro);
+  font-size: 0.6em;
+  font-style: normal;
+}
+.sorteio-palco-espera {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 36px 10px;
+  text-align: center;
+}
+.sorteio-palco-espera p {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+.sorteio-palco-espera-icone {
+  font-size: 3rem;
+  animation: sorteio-boia 2.6s ease-in-out infinite;
+}
+@keyframes sorteio-boia {
+  50% {
+    transform: translateY(-8px) rotate(-4deg);
+  }
+}
+.sorteio-reticencias::after {
+  content: '';
+  animation: sorteio-pontinhos 1.4s steps(4) infinite;
+}
+@keyframes sorteio-pontinhos {
+  0% {
+    content: '';
+  }
+  25% {
+    content: '.';
+  }
+  50% {
+    content: '..';
+  }
+  75% {
+    content: '...';
+  }
+}
+
+/* Contagem antes da roleta */
+.sorteio-contagem {
+  display: grid;
+  place-items: center;
+  height: 230px;
+}
+.sorteio-contagem-num {
+  display: grid;
+  place-items: center;
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(123, 77, 245, 0.35), rgba(123, 77, 245, 0) 70%);
+  box-shadow: inset 0 0 0 2px var(--s-borda-forte), 0 0 60px rgba(123, 77, 245, 0.5);
+  color: #fff;
+  font-size: 6rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-shadow: 0 0 40px rgba(185, 165, 255, 0.9);
+  animation: sorteio-conta 0.9s var(--s-saida) both;
+}
+@keyframes sorteio-conta {
+  from {
+    opacity: 0;
+    transform: scale(1.7);
+    filter: blur(10px);
+  }
+}
+
+/* Roleta em carrossel: o trilho anda --pos cartas pra esquerda; a carta do
+   meio fica na mira. --d (0..3) = distância da mira, pra encolher e
+   apagar as das pontas. */
+.sorteio-carrossel {
+  --card: 138px;
+  --alt: 168px;
+  --gap: 12px;
+  --passo: calc(var(--card) + var(--gap));
+  position: relative;
+  display: grid;
+  gap: 16px;
+}
+.sorteio-carrossel-janela {
+  position: relative;
+  height: calc(var(--alt) + 36px);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
+}
+.sorteio-carrossel-trilho {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  gap: var(--gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transform: translate(calc(-1 * var(--pos) * var(--passo) - var(--card) / 2), -50%);
+  will-change: transform;
+}
+.sorteio-carta {
+  --d: 3;
+  display: flex;
+  flex: 0 0 var(--card);
+  flex-direction: column;
+  min-width: 0;
+  width: var(--card);
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: var(--alt);
+  padding: 10px;
+  border-radius: 18px;
+  background: linear-gradient(160deg, #241950, #150e2c);
+  box-shadow: inset 0 0 0 1px var(--s-borda);
+  opacity: calc(1 - var(--d) * 0.22);
+  transform: scale(calc(1 - var(--d) * 0.08));
+}
+.sorteio-carta.is-longe {
+  visibility: hidden;
+}
+.sorteio-carta-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, hsl(var(--tom, 265) 80% 66%), hsl(calc(var(--tom, 265) + 25) 70% 45%));
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.sorteio-carta-nome {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 1rem;
+  font-weight: 800;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Mira: a moldura acesa no meio, com setinhas em cima e embaixo. */
+.sorteio-carrossel-mira {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  width: calc(var(--card) + 16px);
+  height: calc(var(--alt) + 16px);
+  border-radius: 22px;
+  box-shadow: inset 0 0 0 2px var(--s-lilas), 0 0 30px rgba(185, 165, 255, 0.55);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.sorteio-carrossel-mira::before,
+.sorteio-carrossel-mira::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  border: 9px solid transparent;
+  transform: translateX(-50%);
+}
+.sorteio-carrossel-mira::before {
+  top: -6px;
+  border-top-color: var(--s-lilas);
+}
+.sorteio-carrossel-mira::after {
+  bottom: -6px;
+  border-bottom-color: var(--s-lilas);
+}
+.sorteio-carrossel.is-parou .sorteio-carrossel-mira {
+  box-shadow: inset 0 0 0 3px var(--s-ouro), 0 0 50px rgba(255, 210, 78, 0.6);
+  animation: sorteio-flash 0.8s ease-out;
+}
+.sorteio-carrossel.is-parou .sorteio-carrossel-mira::before {
+  border-top-color: var(--s-ouro);
+}
+.sorteio-carrossel.is-parou .sorteio-carrossel-mira::after {
+  border-bottom-color: var(--s-ouro);
+}
+@keyframes sorteio-flash {
+  from {
+    box-shadow: inset 0 0 0 3px #fff, 0 0 120px rgba(255, 210, 78, 1);
+  }
+}
+.sorteio-carta.is-ganhador {
+  background: linear-gradient(160deg, #7b4df5, #3a1f86);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35), 0 0 50px rgba(123, 77, 245, 0.8);
+  animation: sorteio-ganhou 0.7s var(--s-saida) both;
+}
+@keyframes sorteio-ganhou {
+  from {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.12);
+  }
+  to {
+    transform: scale(1.06);
+  }
+}
+
+/* Resultado embaixo da roleta */
+.sorteio-resultado {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  text-align: center;
+}
+.sorteio-resultado .sorteio-pilula {
+  animation: sorteio-entra 0.5s var(--s-saida) both;
+}
+.sorteio-resultado-nome {
+  margin: 0;
+  font-size: clamp(2rem, 1.2rem + 4vw, 3.4rem);
+  font-weight: 800;
+  font-stretch: 112%;
+  line-height: 1;
+  text-transform: uppercase;
+  text-shadow: 0 0 30px rgba(185, 165, 255, 0.6);
+}
+.sorteio-resultado-nome .sorteio-palavra {
+  animation-delay: calc(var(--i, 0) * 110ms + 200ms);
+}
+.sorteio-resultado-email {
+  margin: 0;
+  color: var(--s-apagado);
+  font-weight: 600;
+  animation: sorteio-entra 0.5s var(--s-saida) 0.5s both;
+}
+
+/* Confete (sai do centro e cai) */
+.sorteio-confete {
+  position: absolute;
+  z-index: 3;
+  top: 30%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.sorteio-confete i {
+  position: absolute;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--s-roxo-2);
+  opacity: 0;
+  animation: sorteio-confete 1.6s cubic-bezier(0.15, 0.8, 0.3, 1) var(--d) both;
+}
+.sorteio-confete i:nth-child(3n) {
+  background: var(--s-ouro);
+}
+.sorteio-confete i:nth-child(3n + 1) {
+  background: var(--s-lilas);
+}
+.sorteio-confete i:nth-child(5n) {
+  background: var(--s-verde);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+@keyframes sorteio-confete {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0) scale(0.4);
+  }
+  55% {
+    opacity: 1;
+    transform: translate(var(--x), var(--y)) rotate(var(--r)) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--x), calc(var(--y) + 140px)) rotate(calc(var(--r) + 360deg)) scale(0.9);
+  }
+}
+
+/* Você ganhou */
+.sorteio-voce-ganhou {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 28px 20px;
+  overflow: hidden;
+  border-radius: 24px;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255, 210, 78, 0.28), transparent 60%), linear-gradient(160deg, #3a1f86, #170f2e);
+  box-shadow: inset 0 0 0 2px rgba(255, 210, 78, 0.6), 0 0 60px rgba(255, 210, 78, 0.3);
+  text-align: center;
+  animation: sorteio-carta-entra 0.7s var(--s-saida) both;
+}
+.sorteio-voce-ganhou h2 {
+  margin: 0;
+  font-size: clamp(2.4rem, 1.4rem + 5vw, 4rem);
+  font-weight: 800;
+  font-stretch: 112%;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.sorteio-voce-ganhou em {
+  color: var(--s-ouro);
+  font-style: normal;
+  text-shadow: 0 0 30px rgba(255, 210, 78, 0.7);
+}
+.sorteio-voce-ganhou-premio {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+.sorteio-voce-ganhou-msg {
+  max-width: 520px;
+  margin: 6px 0 0;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  white-space: pre-line;
+}
+
+/* Ganhadores */
 .sorteio-ganhadores {
   display: grid;
   gap: 10px;
@@ -23,85 +1079,187 @@
   padding: 0;
   list-style: none;
 }
-.sorteio-premio {
+.sorteio-ganhadores li {
   display: flex;
-  gap: 12px;
   align-items: center;
-}
-.sorteio-premio img {
-  width: 72px;
-  height: 72px;
-  object-fit: cover;
-}
-.sorteio-confirmar,
-.sorteio-entrar,
-.sorteio-form {
-  display: grid;
-  gap: 10px;
-}
-.sorteio-form label {
-  display: grid;
-  gap: 4px;
-}
-.sorteio-botao {
-  min-height: 44px;
-  cursor: pointer;
-}
-.sorteio-botao:disabled {
-  cursor: default;
-  opacity: 0.55;
-}
-.sorteio-erro {
-  color: #c62828;
-}
-.sorteio-regulamento-texto {
-  white-space: pre-line;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: var(--s-card);
+  box-shadow: inset 0 0 0 1px var(--s-borda);
+  animation: sorteio-carta-entra 0.5s var(--s-saida) both;
+  animation-delay: calc(min(var(--i, 0), 8) * 70ms);
 }
 .sorteio-ganhadores li.is-meu {
-  font-weight: 800;
+  box-shadow: inset 0 0 0 2px var(--s-ouro), 0 0 30px rgba(255, 210, 78, 0.3);
 }
-
-/* Roleta: uma janela do tamanho de um nome; a lista sobe por --pos itens. */
-.sorteio-roleta {
-  --altura: 64px;
+.sorteio-ganhadores .sorteio-carta-avatar {
+  width: 44px;
+  height: 44px;
+  font-size: 0.9rem;
 }
-.sorteio-roleta-janela {
-  height: var(--altura);
-  overflow: hidden;
+.sorteio-ganhador-info {
+  display: grid;
+  flex: 1 1 180px;
+  min-width: 0;
 }
-.sorteio-roleta-lista {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  transform: translateY(calc(var(--pos) * -1 * var(--altura)));
-  will-change: transform;
-}
-.sorteio-roleta-lista li {
+.sorteio-ganhador-info strong {
   display: flex;
   align-items: center;
-  justify-content: center;
-  height: var(--altura);
-  font-size: 1.6rem;
+  gap: 8px;
   font-weight: 800;
-  white-space: nowrap;
 }
-.sorteio-palco-contagem {
-  font-size: 3rem;
-  font-weight: 900;
-  font-variant-numeric: tabular-nums;
+.sorteio-ganhador-info .sorteio-pilula {
+  padding: 3px 8px;
+  font-size: 0.65rem;
+}
+.sorteio-ganhador-email {
+  color: var(--s-apagado);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.sorteio-ganhador-premio {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 45%;
+  color: var(--s-lilas);
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-align: right;
+}
+.sorteio-ganhador-premio img {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  object-fit: cover;
 }
 
-/* Telão do admin */
+/* ---------- Tela grande: participar e prêmios lado a lado ---------- */
+@media (min-width: 900px) {
+  .sorteio-pagina .sorteio-conteudo {
+    grid-template-columns: minmax(0, 520px) minmax(0, 1fr);
+    align-items: start;
+    column-gap: 32px;
+  }
+  .sorteio-pagina .sorteio-conteudo > * {
+    grid-column: 1 / -1;
+  }
+  .sorteio-pagina .sorteio-conteudo > .sorteio-participar {
+    grid-column: 1;
+  }
+  .sorteio-pagina .sorteio-conteudo > .sorteio-participar + .sorteio-secao {
+    grid-column: 2;
+  }
+}
+
+/* ---------- Celular ---------- */
+@media (max-width: 560px) {
+  .sorteio-cartao {
+    padding: 18px 16px;
+  }
+  .sorteio-carrossel {
+    --card: 112px;
+    --alt: 140px;
+    --gap: 10px;
+  }
+  .sorteio-carta-avatar {
+    width: 48px;
+    height: 48px;
+    font-size: 1rem;
+  }
+  .sorteio-carta-nome {
+    font-size: 0.875rem;
+  }
+  .sorteio-contagem {
+    height: 196px;
+  }
+  .sorteio-contagem-num {
+    width: 140px;
+    height: 140px;
+    font-size: 4.6rem;
+  }
+  .sorteio-ganhadores li {
+    flex-wrap: wrap;
+  }
+  .sorteio-ganhador-premio {
+    flex-basis: 100%;
+    max-width: 100%;
+    padding-left: 56px;
+    text-align: left;
+  }
+}
+
+/* ---------- Telão (admin) ---------- */
 .sorteio-telao {
   min-height: 100vh;
-  padding: 32px;
-  background: #0b0716;
-  color: #fff;
-  font-family: system-ui, sans-serif;
+  padding: 28px clamp(16px, 4vw, 56px) 40px;
+  overflow: hidden;
+  background: radial-gradient(ellipse 90% 60% at 50% 0%, #2b2053 0%, rgba(43, 32, 83, 0) 70%), #0a0716;
 }
-.sorteio-telao .sorteio-roleta {
-  --altura: 120px;
+.sorteio-telao:fullscreen {
+  overflow-y: auto;
 }
-.sorteio-telao .sorteio-roleta-lista li {
-  font-size: 3.4rem;
+.sorteio-telao-cabeca {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.sorteio-telao-cabeca img {
+  height: 40px;
+  width: auto;
+}
+.sorteio-telao .sorteio-titulo {
+  font-size: clamp(2.2rem, 1rem + 4vw, 4.4rem);
+}
+.sorteio-telao .sorteio-contador strong {
+  font-size: 2.6rem;
+}
+.sorteio-telao .sorteio-carrossel {
+  --card: 200px;
+  --alt: 236px;
+  --gap: 16px;
+}
+.sorteio-telao .sorteio-carta-avatar {
+  width: 84px;
+  height: 84px;
+  font-size: 1.7rem;
+}
+.sorteio-telao .sorteio-carta-nome {
+  font-size: 1.35rem;
+}
+.sorteio-telao .sorteio-contagem {
+  height: 300px;
+}
+.sorteio-telao .sorteio-contagem-num {
+  width: 240px;
+  height: 240px;
+  font-size: 9rem;
+}
+.sorteio-telao .sorteio-ao-vivo {
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  align-items: start;
+}
+.sorteio-telao .sorteio-premios {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+}
+.sorteio-telao-rodape {
+  margin: 28px 0 0;
+  color: var(--s-rotulo);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.sorteio-telao-rodape strong {
+  color: var(--s-lilas);
+}
+@media (max-width: 900px) {
+  .sorteio-telao .sorteio-ao-vivo {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

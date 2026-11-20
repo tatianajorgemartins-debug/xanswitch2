@@ -86,3 +86,8 @@ CREATE TABLE IF NOT EXISTS raffle_attempts (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS raffle_attempts_idx ON raffle_attempts (raffle_id, created_at DESC);
+
+-- @ do Instagram de quem participa (obrigatório pra confirmar presença),
+-- um por sorteio. O mesmo está em db/migration-sorteios-instagram.sql.
+ALTER TABLE raffle_entries ADD COLUMN IF NOT EXISTS instagram TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS raffle_entries_instagram_uniq ON raffle_entries (raffle_id, instagram) WHERE instagram IS NOT NULL;

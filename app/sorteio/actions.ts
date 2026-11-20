@@ -11,12 +11,13 @@ import {
   contarNoIp,
   dispositivoDeOutraConta,
   inserirParticipacao,
+  instagramDeOutraConta,
   obterParticipacao,
   obterSorteioPorSlug,
   registrarTentativa,
   sorteioVisivel
 } from '@/lib/sorteioDb';
-import { avaliarParticipacao, ipDaRequisicao } from '@/lib/sorteio/regras';
+import { avaliarParticipacao, ipDaRequisicao, normalizarInstagram } from '@/lib/sorteio/regras';
 
 const COOKIE_DISPOSITIVO = 'xan_dispositivo';
 const ID_VALIDO = /^[a-f0-9-]{20,60}$/i;
@@ -44,7 +45,8 @@ export async function confirmarPresencaAction(
   token: string | null,
   slug: string,
   aceitou: boolean,
-  dispositivoLocal: string | null
+  dispositivoLocal: string | null,
+  instagramDigitado: string
 ): Promise<ResultadoConfirmar> {
   const conta = await verifyAccessTokenAccount(token).catch(() => null);
   if (!conta) return { ok: false, erro: 'Entre na sua conta pra participar.', login: true };
@@ -59,11 +61,13 @@ export async function confirmarPresencaAction(
     const doCookie = jarra.get(COOKIE_DISPOSITIVO)?.value;
     const dispositivos = [doCookie, dispositivoLocal].filter((d): d is string => typeof d === 'string' && ID_VALIDO.test(d));
 
+    const instagram = normalizarInstagram(instagramDigitado);
     const tentativas = await registrarTentativa(sorteio.id, ip, conta.id);
-    const [ja, noIp, outraConta] = await Promise.all([
+    const [ja, noIp, outraConta, instagramOcupado] = await Promise.all([
       obterParticipacao(sorteio.id, conta.id),
       ip ? contarNoIp(sorteio.id, ip, conta.id) : Promise.resolve(0),
-      dispositivoDeOutraConta(sorteio.id, dispositivos, conta.id)
+      dispositivoDeOutraConta(sorteio.id, dispositivos, conta.id),
+      instagram ? instagramDeOutraConta(sorteio.id, instagram, conta.id) : Promise.resolve(false)
     ]);
     if (ja) return { ok: false, erro: 'Você já está participando deste sorteio.', jaParticipa: true };
 
@@ -72,6 +76,8 @@ export async function confirmarPresencaAction(
       {
         status: sorteio.status,
         aceitouRegulamento: aceitou === true,
+        instagram,
+        instagramDeOutraConta: instagramOcupado,
         jaParticipa: false,
         contaCriadaEm: conta.createdAt,
         participacoesNoIp: noIp,
@@ -81,6 +87,7 @@ export async function confirmarPresencaAction(
       }
     );
     if (!avaliacao.ok) return { ok: false, erro: avaliacao.motivo };
+    if (!instagram) return { ok: false, erro: 'Coloque o @ do seu Instagram pra participar.' };
 
     const dispositivo = dispositivos[0] ?? randomUUID();
     const r = await inserirParticipacao({
@@ -88,11 +95,16 @@ export async function confirmarPresencaAction(
       usuario: conta.id,
       email: conta.email,
       nome: conta.name,
+      instagram,
       ip,
       navegador,
       dispositivo
     });
-    if (!r.ok) return { ok: false, erro: 'Você já está participando deste sorteio.', jaParticipa: true };
+    if (!r.ok) {
+      return r.repetido === 'conta'
+        ? { ok: false, erro: 'Você já está participando deste sorteio.', jaParticipa: true }
+        : { ok: false, erro: 'Esse @ do Instagram já está participando com outra conta.' };
+    }
 
     // Marca o aparelho (some só se a pessoa limpar os dados do navegador).
     jarra.set(COOKIE_DISPOSITIVO, dispositivo, {

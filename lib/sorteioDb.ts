@@ -29,6 +29,7 @@ export type Participacao = {
   usuario: string;
   email: string;
   nome: string | null;
+  instagram: string | null;
   ip: string | null;
   navegador: string | null;
   dispositivo: string | null;
@@ -52,7 +53,7 @@ export type SorteioFeito = {
   duracao: number;
   roleta: string[];
   criadoEm: string;
-  ganhador: { codigo: string; nome: string | null; email: string };
+  ganhador: { codigo: string; nome: string | null; email: string; instagram: string | null };
 };
 
 type Linha = Record<string, unknown>;
@@ -94,6 +95,7 @@ function paraParticipacao(r: Linha): Participacao {
     usuario: String(r.user_id),
     email: String(r.email),
     nome: (r.name as string | null) ?? null,
+    instagram: (r.instagram as string | null) ?? null,
     ip: (r.ip as string | null) ?? null,
     navegador: (r.user_agent as string | null) ?? null,
     dispositivo: (r.device_id as string | null) ?? null,
@@ -119,7 +121,12 @@ function paraSorteioFeito(r: Linha): SorteioFeito {
     duracao: Number(r.duration_ms),
     roleta: Array.isArray(r.reel) ? (r.reel as string[]) : [],
     criadoEm: new Date(r.created_at as string).toISOString(),
-    ganhador: { codigo: String(r.public_id), nome: (r.name as string | null) ?? null, email: String(r.email) }
+    ganhador: {
+      codigo: String(r.public_id),
+      nome: (r.name as string | null) ?? null,
+      email: String(r.email),
+      instagram: (r.instagram as string | null) ?? null
+    }
   };
 }
 
@@ -245,23 +252,35 @@ export async function dispositivoDeOutraConta(raffleId: number, dispositivos: st
   return rows.length > 0;
 }
 
-// 'duplicada' = a conta já tinha participação (UNIQUE do banco).
+// O mesmo @ do Instagram já participa com outra conta?
+export async function instagramDeOutraConta(raffleId: number, instagram: string, usuario: string): Promise<boolean> {
+  const rows = await getSql()`
+    SELECT 1 FROM raffle_entries WHERE raffle_id = ${raffleId} AND instagram = ${instagram} AND user_id <> ${usuario} LIMIT 1
+  `;
+  return rows.length > 0;
+}
+
+// Os UNIQUE do banco garantem uma participação por conta e por @:
+// 'conta' = a conta já participava; 'instagram' = o @ já está em uso.
 export async function inserirParticipacao(p: {
   raffleId: number;
   usuario: string;
   email: string;
   nome: string | null;
+  instagram: string;
   ip: string | null;
   navegador: string | null;
   dispositivo: string | null;
-}): Promise<{ ok: true; codigo: string } | { ok: false; duplicada: true }> {
+}): Promise<{ ok: true; codigo: string } | { ok: false; repetido: 'conta' | 'instagram' }> {
   const rows = await getSql()`
-    INSERT INTO raffle_entries (raffle_id, user_id, email, name, ip, user_agent, device_id)
-    VALUES (${p.raffleId}, ${p.usuario}, ${p.email}, ${p.nome}, ${p.ip}, ${p.navegador}, ${p.dispositivo})
-    ON CONFLICT (raffle_id, user_id) DO NOTHING
+    INSERT INTO raffle_entries (raffle_id, user_id, email, name, instagram, ip, user_agent, device_id)
+    VALUES (${p.raffleId}, ${p.usuario}, ${p.email}, ${p.nome}, ${p.instagram}, ${p.ip}, ${p.navegador}, ${p.dispositivo})
+    ON CONFLICT DO NOTHING
     RETURNING public_id
   `;
-  return rows[0] ? { ok: true, codigo: String((rows[0] as Linha).public_id) } : { ok: false, duplicada: true };
+  if (rows[0]) return { ok: true, codigo: String((rows[0] as Linha).public_id) };
+  const ja = await obterParticipacao(p.raffleId, p.usuario);
+  return { ok: false, repetido: ja ? 'conta' : 'instagram' };
 }
 
 export async function listarParticipacoes(raffleId: number): Promise<Participacao[]> {
@@ -285,12 +304,13 @@ export async function gerarParticipantesTeste(raffleId: number, quantos: number)
     usuario: `teste:${base}:${i}`,
     email: `teste${base % 100000}${i}@teste.xanswitch`,
     nome: `${nomes[i % nomes.length]} ${sobrenomes[(i * 7) % sobrenomes.length]}`,
-    ip: `10.0.${Math.floor(i / 250)}.${i % 250}`
+    ip: `10.0.${Math.floor(i / 250)}.${i % 250}`,
+    instagram: `teste_${base % 100000}_${i}`
   }));
   await getSql()`
-    INSERT INTO raffle_entries (raffle_id, user_id, email, name, ip, user_agent, device_id, is_test)
-    SELECT ${raffleId}, u, e, n, i, 'teste', 'teste:' || u, TRUE
-    FROM unnest(${linhas.map((l) => l.usuario)}::text[], ${linhas.map((l) => l.email)}::text[], ${linhas.map((l) => l.nome)}::text[], ${linhas.map((l) => l.ip)}::text[]) AS t(u, e, n, i)
+    INSERT INTO raffle_entries (raffle_id, user_id, email, name, ip, instagram, user_agent, device_id, is_test)
+    SELECT ${raffleId}, u, e, n, i, g, 'teste', 'teste:' || u, TRUE
+    FROM unnest(${linhas.map((l) => l.usuario)}::text[], ${linhas.map((l) => l.email)}::text[], ${linhas.map((l) => l.nome)}::text[], ${linhas.map((l) => l.ip)}::text[], ${linhas.map((l) => l.instagram)}::text[]) AS t(u, e, n, i, g)
     ON CONFLICT DO NOTHING
   `;
 }
@@ -315,7 +335,7 @@ export async function registrarTentativa(raffleId: number, ip: string | null, us
 
 export async function listarSorteiosFeitos(raffleId: number): Promise<SorteioFeito[]> {
   const rows = await getSql()`
-    SELECT d.*, e.public_id, e.name, e.email FROM raffle_draws d
+    SELECT d.*, e.public_id, e.name, e.email, to_jsonb(e)->>'instagram' AS instagram FROM raffle_draws d
     JOIN raffle_entries e ON e.id = d.entry_id
     WHERE d.raffle_id = ${raffleId} ORDER BY d.started_at, d.id
   `;

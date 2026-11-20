@@ -5,6 +5,8 @@ import {
   avaliarParticipacao,
   ipDaRequisicao,
   mascararEmail,
+  mascararIp,
+  normalizarInstagram,
   montarRoleta,
   nomePublico,
   progressoRoleta,
@@ -20,6 +22,8 @@ const CONFIG: ConfigAntifraude = { limitePorIp: 3, bloquearDispositivo: true, co
 const PEDIDO: PedidoParticipacao = {
   status: 'abertas',
   aceitouRegulamento: true,
+  instagram: 'maria.silva',
+  instagramDeOutraConta: false,
   jaParticipa: false,
   contaCriadaEm: '2026-10-01T12:00:00Z',
   participacoesNoIp: 0,
@@ -42,6 +46,22 @@ test('só com inscrições abertas e regulamento aceito', () => {
     assert.equal(codigo(avaliarParticipacao(CONFIG, { ...PEDIDO, status })), 'fechado');
   }
   assert.equal(codigo(avaliarParticipacao(CONFIG, { ...PEDIDO, aceitouRegulamento: false })), 'regulamento');
+});
+
+test('@ do Instagram é obrigatório e único por sorteio', () => {
+  assert.equal(codigo(avaliarParticipacao(CONFIG, { ...PEDIDO, instagram: null })), 'instagram');
+  assert.equal(codigo(avaliarParticipacao(CONFIG, { ...PEDIDO, instagramDeOutraConta: true })), 'instagram-em-uso');
+  assert.equal(normalizarInstagram(' @Maria.Silva '), 'maria.silva');
+  assert.equal(normalizarInstagram('https://www.instagram.com/xan_switch/?hl=pt'), 'xan_switch');
+  for (const ruim of ['', '@', 'com espaço', '.maria', 'maria.', 'ma..ria', 'a'.repeat(31), 'maria!']) {
+    assert.equal(normalizarInstagram(ruim), null, ruim);
+  }
+});
+
+test('IP aparece escondido no admin', () => {
+  assert.equal(mascararIp('189.40.123.45'), '189.40.•••.•••');
+  assert.equal(mascararIp('2804:14c:5b:1::1'), '2804:14c:••••');
+  assert.equal(mascararIp(null), '—');
 });
 
 test('limite por IP configurável (e desligável)', () => {
