@@ -129,7 +129,7 @@ export default async function AdminPage() {
   const ocarinaPublicado = await jogoOcarinaPublicado();
   // Sorteios ao vivo. null = falta rodar db/migration-sorteios.sql.
   const sorteios = await listarSorteios()
-    .then((l) => l.map((s) => ({ id: s.id, titulo: s.titulo, slug: s.slug, status: s.status, teste: s.teste, participantes: s.participantes, premios: s.premios })))
+    .then((l) => l.map((s) => ({ id: s.id, titulo: s.titulo, slug: s.slug, status: s.status, participantes: s.participantes, premios: s.premios })))
     .catch(() => null);
   // Músicas do Zelda Tour. null = falta rodar db/migration-ocarina-musicas.sql.
   const musicasOcarina = await getAllOcarinaSongs()

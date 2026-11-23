@@ -14,7 +14,6 @@ export type SorteioLista = {
   titulo: string;
   slug: string;
   status: StatusSorteio;
-  teste: boolean;
   participantes: number;
   premios: number;
 };
@@ -69,8 +68,7 @@ export default function SorteiosPanel({ sorteios }: { sorteios: SorteioLista[] |
             <li key={s.id}>
               <Link href={`/admin/sorteios/${s.id}`}>
                 <span className="sorteios-lista-topo">
-                  <span className={`sa-chip${s.status === 'abertas' || s.status === 'sorteando' ? ' is-verde' : ''}`}>{NOME_STATUS[s.status]}</span>
-                  {s.teste && <span className="sa-chip is-ouro">Modo de teste</span>}
+                  <span className={`sa-chip${s.status === 'abertas' ? ' is-verde' : ''}`}>{NOME_STATUS[s.status]}</span>
                 </span>
                 <b>{s.titulo}</b>
                 <code>/sorteio/{s.slug}</code>
@@ -79,7 +77,7 @@ export default function SorteiosPanel({ sorteios }: { sorteios: SorteioLista[] |
                     <strong>{s.participantes}</strong> participantes
                   </span>
                   <span>
-                    <strong>{s.premios}</strong> prêmios
+                    <strong>{s.premios}</strong> {s.premios === 1 ? 'item' : 'itens'}
                   </span>
                 </span>
               </Link>
@@ -87,7 +85,7 @@ export default function SorteiosPanel({ sorteios }: { sorteios: SorteioLista[] |
           ))}
         </ul>
       )}
-      <p className="adm-help">Abra um sorteio pra configurar, ensaiar no modo de teste e, na live, sortear pelo telão.</p>
+      <p className="adm-help">Cada sorteio pode ter vários itens, cada um com as próprias inscrições e a sua hora de sortear. Dá pra testar a roleta a qualquer momento no Telão.</p>
     </>
   );
 }

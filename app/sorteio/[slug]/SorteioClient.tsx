@@ -1,9 +1,10 @@
 'use client';
 
-// Página do participante (/sorteio/<slug>): entra com a conta da loja,
-// coloca o @ do Instagram, confirma presença e, quando o sorteio começa,
-// acompanha a roleta e os ganhadores ao vivo (só assistindo). O visual fica
-// em ../sorteio.css.
+// Página do participante (/sorteio/<slug>). O sorteio tem vários itens,
+// cada um com as próprias inscrições e a sua hora de sortear. A pessoa
+// entra com a conta da loja, coloca o @ do Instagram, aceita o regulamento
+// e escolhe de quais itens participa. Quando um item é sorteado, a página
+// mostra a roleta ao vivo (só assistindo). Visual em ../sorteio.css.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
@@ -20,9 +21,9 @@ import {
   translateAuthError
 } from '@/lib/wishlist';
 import { NOME_STATUS, normalizarInstagram } from '@/lib/sorteio/regras';
-import type { EstadoPublico } from '@/lib/sorteio/estado';
-import { confirmarPresencaAction, minhaParticipacaoAction, type MinhaParticipacao } from '../actions';
-import { Confete, ListaPremios, PainelAoVivo, buscarEstadoPublico, useEstadoSorteio } from '../AoVivo';
+import type { EstadoPublico, PremioPublico } from '@/lib/sorteio/estado';
+import { confirmarPresencaAction, minhaParticipacaoAction } from '../actions';
+import { ListaPremios, PainelAoVivo, VoceGanhou, buscarEstadoPublico, quando, sorteioAtual, useEstadoSorteio } from '../AoVivo';
 
 const CHAVE_DISPOSITIVO = 'xan_sorteio_dispositivo';
 
@@ -32,14 +33,6 @@ function lerDispositivo(): string | null {
   } catch {
     return null;
   }
-}
-
-// "2026-12-11T00:00:00Z" → "qui., 11 de dez. · 21h"
-function dataDaLive(iso: string) {
-  const d = new Date(iso);
-  const dia = d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'short', day: 'numeric', month: 'short' });
-  const hora = d.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).replace(':00', 'h');
-  return `${dia} · ${hora}`;
 }
 
 // Número que sobe até o valor (e acompanha quando ele muda).
@@ -67,15 +60,27 @@ function useNumeroAnimado(alvo: number) {
   return valor;
 }
 
+type Inscricao = { premioId: number; codigo: string };
+
 export default function SorteioClient({ inicial, previa = false }: { inicial: EstadoPublico; previa?: boolean }) {
   const slug = inicial.sorteio.slug;
   const buscar = useMemo(() => buscarEstadoPublico(slug), [slug]);
   const { estado, diferenca, falhou } = useEstadoSorteio(buscar, inicial);
   const e = estado ?? inicial;
 
+  // Conta, inscrições e o cadastro (@ + regulamento), que vale pra todos os itens.
   const [user, setUser] = useState<User | null>(null);
   const [pronto, setPronto] = useState(false);
-  const [minha, setMinha] = useState<MinhaParticipacao | null>(null);
+  const [inscricoes, setInscricoes] = useState<Inscricao[]>([]);
+  const [instagram, setInstagram] = useState('');
+  const [instaSalvo, setInstaSalvo] = useState<string | null>(null);
+  const [aceito, setAceito] = useState(false);
+  const [enviando, setEnviando] = useState<number[] | null>(null);
+  const [erros, setErros] = useState<Record<number, string>>({});
+  const [erroGeral, setErroGeral] = useState<string | null>(null);
+  const [lembrete, setLembrete] = useState(false);
+  const cadastro = useRef<HTMLElement>(null);
+
   useEffect(() => {
     getCurrentUser()
       .then(setUser)
@@ -84,14 +89,21 @@ export default function SorteioClient({ inicial, previa = false }: { inicial: Es
     return onAuthChange(setUser);
   }, []);
   useEffect(() => {
-    if (!user) {
-      setMinha(null);
-      return;
-    }
+    setInscricoes([]);
+    if (!user) return;
     let vivo = true;
     getAccessToken()
       .then((t) => minhaParticipacaoAction(t, slug))
-      .then((m) => vivo && setMinha(m))
+      .then((m) => vivo && setInscricoes(m.itens))
+      .catch(() => {});
+    // Quem já salvou o @ na conta da loja não precisa digitar de novo.
+    getInstagramHandle()
+      .then((h) => {
+        if (vivo && h) {
+          setInstaSalvo(h);
+          setInstagram((atual) => atual || h);
+        }
+      })
       .catch(() => {});
     return () => {
       vivo = false;
@@ -99,10 +111,71 @@ export default function SorteioClient({ inicial, previa = false }: { inicial: Es
   }, [user, slug]);
 
   const status = e.sorteio.status;
-  const aoVivo = status === 'sorteando' || status === 'finalizado';
+  const publicado = status === 'abertas';
   const participantes = useNumeroAnimado(e.participantes);
   const palavras = e.sorteio.titulo.trim().split(/\s+/);
-  const aceso = status === 'abertas' || status === 'sorteando';
+  const normalizado = normalizarInstagram(instagram);
+  const cadastroOk = user !== null && normalizado !== null && aceito;
+  const inscrito = (id: number) => inscricoes.some((i) => i.premioId === id);
+  const abertos = e.premios.filter((p) => publicado && p.status === 'abertas');
+  const faltam = abertos.filter((p) => !inscrito(p.id));
+  // O palco da roleta aparece quando tem sorteio rodando ou item pronto pra sortear.
+  const prontoPraSortear = e.premios.some((p) => p.status === 'encerradas' && e.sorteios.filter((x) => x.premioId === p.id).length < p.ganhadores);
+  const mostrarPalco = publicado && (prontoPraSortear || sorteioAtual(e, Date.now() + diferenca) !== null);
+
+  async function participar(ids: number[]) {
+    if (!cadastroOk || !normalizado) {
+      setLembrete(true);
+      cadastro.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    setEnviando(ids);
+    setErroGeral(null);
+    setErros((atual) => Object.fromEntries(Object.entries(atual).filter(([k]) => !ids.includes(Number(k)))));
+    const token = await getAccessToken().catch(() => null);
+    const r = await confirmarPresencaAction(token, slug, ids, aceito, lerDispositivo(), normalizado).catch(() => ({
+      ok: false as const,
+      erro: 'A conexão falhou. Tente de novo.'
+    }));
+    setEnviando(null);
+    if (!r.ok) {
+      setErroGeral(r.erro);
+      return;
+    }
+    try {
+      localStorage.setItem(CHAVE_DISPOSITIVO, r.dispositivo);
+    } catch {
+      // sem armazenamento: o cookie do aparelho já vale
+    }
+    setInscricoes((atual) => [...atual.filter((i) => !r.inscritos.some((n) => n.premioId === i.premioId)), ...r.inscritos]);
+    setErros((atual) => ({ ...atual, ...Object.fromEntries(r.erros.map((x) => [x.premioId, x.erro])) }));
+    // Guarda o @ na conta da loja também (se mudou).
+    if (r.inscritos.length && instaSalvo !== normalizado) {
+      saveInstagramHandle(normalizado)
+        .then(() => setInstaSalvo(normalizado))
+        .catch(() => {});
+    }
+  }
+
+  function botaoDoItem(p: PremioPublico) {
+    if (inscrito(p.id)) return <span className="sorteio-selo-ok is-pequeno">✔ Participando</span>;
+    if (!publicado || p.status === 'em_breve') {
+      return <span className="sorteio-premio-aviso">Inscrições abrem em breve</span>;
+    }
+    if (p.status === 'encerradas') return <span className="sorteio-premio-aviso">Inscrições encerradas</span>;
+    return (
+      <>
+        <button type="button" className="sorteio-botao is-item" disabled={enviando !== null} onClick={() => participar([p.id])}>
+          {enviando?.includes(p.id) ? 'Inscrevendo…' : 'Participar'}
+        </button>
+        {erros[p.id] && (
+          <p className="sorteio-erro" role="alert">
+            {erros[p.id]}
+          </p>
+        )}
+      </>
+    );
+  }
 
   return (
     <div className="sorteio-ui sorteio-pagina">
@@ -112,17 +185,15 @@ export default function SorteioClient({ inicial, previa = false }: { inicial: Es
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="XAN Switch" />
         </Link>
-        <span className={`sorteio-pilula${aceso ? ' is-vivo' : ''}`}>
-          {aceso && <i className="sorteio-ponto" />}
-          {NOME_STATUS[status]}
+        <span className={`sorteio-pilula${publicado ? ' is-vivo' : ''}`}>
+          {publicado && <i className="sorteio-ponto" />}
+          {publicado ? (abertos.length ? 'Inscrições abertas' : 'Ao vivo') : NOME_STATUS[status]}
         </span>
       </header>
 
-      {(previa || e.sorteio.teste) && (
+      {previa && (
         <p className="sorteio-faixa">
-          {previa
-            ? 'Prévia do admin: o público ainda não vê esta página. Ela abre quando você abrir as inscrições (ou ligar o modo de teste).'
-            : 'Modo de teste: este sorteio é um ensaio.'}
+          Prévia do admin: o público ainda não vê esta página. Ela abre quando você publicar o sorteio.
         </p>
       )}
 
@@ -150,45 +221,79 @@ export default function SorteioClient({ inicial, previa = false }: { inicial: Es
           <div className="sorteio-hero-meta sorteio-entra" style={{ '--i': palavras.length + 2 } as React.CSSProperties}>
             <div className="sorteio-contador" aria-live="polite">
               <strong>{participantes.toLocaleString('pt-BR')}</strong>
-              <span>{e.participantes === 1 ? 'participante confirmado' : 'participantes confirmados'}</span>
+              <span>{e.participantes === 1 ? 'pessoa participando' : 'pessoas participando'}</span>
+            </div>
+            <div className="sorteio-contador is-data">
+              <strong>{e.premios.length}</strong>
+              <span>{e.premios.length === 1 ? 'item pra sortear' : 'itens pra sortear'}</span>
             </div>
             {e.sorteio.data && (
               <div className="sorteio-contador is-data">
                 <strong aria-hidden="true">📅</strong>
-                <span>{dataDaLive(e.sorteio.data)}</span>
+                <span>{quando(e.sorteio.data)}</span>
               </div>
             )}
           </div>
           {falhou && <p className="sorteio-faixa is-erro">Sem conexão. Tentando de novo…</p>}
         </section>
 
-        {aoVivo ? (
-          <>
-            <PainelAoVivo estado={e} diferenca={diferenca} meuCodigo={minha?.codigo ?? null} />
-            {minha?.participando && <p className="sorteio-selo-ok">✔ Você está participando</p>}
-          </>
+        {mostrarPalco ? (
+          <PainelAoVivo estado={e} diferenca={diferenca} meusCodigos={inscricoes.map((i) => i.codigo)} mostrarGanhadores={false} />
         ) : (
-          <section className="sorteio-cartao sorteio-participar sorteio-entra" style={{ '--i': palavras.length + 3 } as React.CSSProperties}>
+          <VoceGanhou estado={e} agora={Date.now() + diferenca} meusCodigos={inscricoes.map((i) => i.codigo)} />
+        )}
+
+        {status !== 'finalizado' && (
+          <section
+            ref={cadastro}
+            className={`sorteio-cartao sorteio-participar sorteio-entra${lembrete && !cadastroOk ? ' is-lembrete' : ''}`}
+            style={{ '--i': palavras.length + 3 } as React.CSSProperties}
+          >
             {!pronto ? (
               <p className="sorteio-carregando">Carregando…</p>
-            ) : minha?.participando ? (
-              <Participando user={user} />
             ) : (
               <>
-                <Passos atual={!user ? 1 : 2} />
+                <Passos atual={!user ? 1 : !normalizado || !aceito ? 2 : 3} />
                 {!user ? (
                   <Entrar />
-                ) : status === 'abertas' ? (
-                  <Confirmar slug={slug} user={user} onConfirmou={(codigo) => setMinha({ logado: true, participando: true, codigo })} />
                 ) : (
-                  <div className="sorteio-fechado">
-                    <span aria-hidden="true">{status === 'encerradas' ? '🔒' : '⏳'}</span>
-                    <p>
-                      {status === 'encerradas'
-                        ? 'As inscrições foram encerradas. Acompanhe o sorteio por aqui!'
-                        : 'As inscrições ainda não abriram. Volte daqui a pouco!'}
+                  <div className="sorteio-confirmar">
+                    <p className="sorteio-conta">
+                      Entrou como <strong>{user.email}</strong> ·{' '}
+                      <button type="button" className="sorteio-link" onClick={() => signOut().catch(() => {})}>
+                        trocar de conta
+                      </button>
                     </p>
+                    <CampoInstagram valor={instagram} onChange={setInstagram} />
+                    <label className="sorteio-aceite">
+                      <input type="checkbox" checked={aceito} onChange={(ev) => setAceito(ev.target.checked)} />
+                      <span>
+                        Aceito o <a href="#regulamento">regulamento</a> do sorteio
+                      </span>
+                    </label>
+                    {cadastroOk ? (
+                      faltam.length > 1 ? (
+                        <button type="button" className="sorteio-botao" disabled={enviando !== null} onClick={() => participar(faltam.map((p) => p.id))}>
+                          {enviando && enviando.length > 1 ? 'Inscrevendo…' : `Participar de todos os ${faltam.length} itens abertos`}
+                        </button>
+                      ) : (
+                        <p className="sorteio-dica">
+                          {faltam.length === 1
+                            ? '👇 Agora é só tocar em "Participar" no item abaixo.'
+                            : abertos.length
+                              ? '✔ Você está em todos os itens abertos. Boa sorte!'
+                              : 'Nenhum item com inscrições abertas agora. Volte daqui a pouco!'}
+                        </p>
+                      )
+                    ) : (
+                      <p className="sorteio-dica">Preencha o @ e aceite o regulamento. Depois escolha os itens abaixo.</p>
+                    )}
                   </div>
+                )}
+                {erroGeral && (
+                  <p className="sorteio-erro" role="alert">
+                    {erroGeral}
+                  </p>
                 )}
               </>
             )}
@@ -197,11 +302,17 @@ export default function SorteioClient({ inicial, previa = false }: { inicial: Es
 
         <section className="sorteio-secao">
           <h2 className="sorteio-titulo-secao">
-            <span className="sorteio-rotulo">O que está em jogo</span>
-            Prêmios
+            <span className="sorteio-rotulo">Escolha do que participar</span>
+            {e.premios.length === 1 ? 'Item do sorteio' : 'Itens do sorteio'}
           </h2>
-          <ListaPremios estado={e} />
+          <ListaPremios estado={e} acao={status === 'finalizado' ? undefined : botaoDoItem} agora={Date.now() + diferenca} />
         </section>
+
+        {e.sorteios.length > 0 && (
+          <section className="sorteio-secao">
+            <PainelGanhadores estado={e} diferenca={diferenca} meusCodigos={inscricoes.map((i) => i.codigo)} />
+          </section>
+        )}
 
         {e.sorteio.regulamento && (
           <details className="sorteio-regulamento" id="regulamento">
@@ -214,8 +325,54 @@ export default function SorteioClient({ inicial, previa = false }: { inicial: Es
   );
 }
 
+// Só a lista de ganhadores (o palco fica lá em cima).
+function PainelGanhadores({ estado, diferenca, meusCodigos }: { estado: EstadoPublico; diferenca: number; meusCodigos: string[] }) {
+  const [, setTique] = useState(0);
+  useEffect(() => {
+    const t = window.setInterval(() => setTique((n) => n + 1), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+  const agora = Date.now() + diferenca;
+  const feitos = estado.sorteios.filter((s) => s.id > 0 && agora >= s.inicio + s.duracao);
+  if (!feitos.length) return null;
+  const premioDe = (id: number) => estado.premios.find((p) => p.id === id);
+  return (
+    <>
+      <h2 className="sorteio-titulo-secao">
+        <span className="sorteio-rotulo">Quem já levou</span>
+        Ganhadores
+      </h2>
+      <ol className="sorteio-ganhadores">
+        {feitos.map((s, i) => {
+          const premio = premioDe(s.premioId);
+          const meu = meusCodigos.includes(s.ganhador.codigo);
+          return (
+            <li key={s.id} className={meu ? 'is-meu' : undefined} style={{ '--i': i } as React.CSSProperties}>
+              <span className="sorteio-carta-avatar">{s.ganhador.nome.slice(0, 2).toUpperCase()}</span>
+              <span className="sorteio-ganhador-info">
+                <strong>
+                  {s.ganhador.nome}
+                  {meu && <em className="sorteio-pilula is-ouro">Você</em>}
+                </strong>
+                <span className="sorteio-ganhador-email">{s.ganhador.email}</span>
+              </span>
+              <span className="sorteio-ganhador-premio">
+                {premio?.imagem && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={premio.imagem} alt="" />
+                )}
+                {premio?.nome ?? 'Item'}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </>
+  );
+}
+
 function Passos({ atual }: { atual: number }) {
-  const nomes = ['Entrar na conta', 'Seu Instagram', 'Confirmar'];
+  const nomes = ['Entrar na conta', 'Instagram e regulamento', 'Escolher os itens'];
   return (
     <ol className="sorteio-passos" aria-label="Como participar">
       {nomes.map((n, i) => (
@@ -228,111 +385,26 @@ function Passos({ atual }: { atual: number }) {
   );
 }
 
-function Participando({ user }: { user: User | null }) {
+function CampoInstagram({ valor, onChange }: { valor: string; onChange: (v: string) => void }) {
+  const invalido = valor.trim() !== '' && !normalizarInstagram(valor);
   return (
-    <div className="sorteio-confirmado" role="status">
-      <Confete />
-      <span className="sorteio-confirmado-icone" aria-hidden="true">
-        ✔
+    <label className="sorteio-campo">
+      <span>@ do seu Instagram</span>
+      <span className={`sorteio-campo-insta${invalido ? ' is-erro' : ''}`}>
+        <b aria-hidden="true">@</b>
+        <input
+          value={valor}
+          onChange={(ev) => onChange(ev.target.value)}
+          placeholder="seu.usuario"
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          maxLength={60}
+          aria-invalid={invalido}
+        />
       </span>
-      <h2>Você está participando!</h2>
-      <p>Na hora do sorteio, esta página vira a roleta ao vivo. Deixa ela aberta durante a live pra ver se o seu nome aparece.</p>
-      {user?.email && <p className="sorteio-conta">Conta: {user.email}</p>}
-    </div>
-  );
-}
-
-function Confirmar({ slug, user, onConfirmou }: { slug: string; user: User; onConfirmou: (codigo: string) => void }) {
-  const [instagram, setInstagram] = useState('');
-  const [salvo, setSalvo] = useState<string | null>(null);
-  const [aceito, setAceito] = useState(false);
-  const [enviando, setEnviando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-
-  // Quem já salvou o @ na conta da loja não precisa digitar de novo.
-  useEffect(() => {
-    getInstagramHandle()
-      .then((h) => {
-        if (h) {
-          setSalvo(h);
-          setInstagram((atual) => atual || h);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  const normalizado = normalizarInstagram(instagram);
-  const mostrarErroInsta = instagram.trim() !== '' && !normalizado;
-
-  async function confirmar(ev: React.FormEvent) {
-    ev.preventDefault();
-    if (!normalizado) {
-      setErro('Coloque um @ do Instagram válido (só letras, números, ponto e _).');
-      return;
-    }
-    setEnviando(true);
-    setErro(null);
-    const token = await getAccessToken().catch(() => null);
-    const r = await confirmarPresencaAction(token, slug, aceito, lerDispositivo(), normalizado).catch(() => ({
-      ok: false as const,
-      erro: 'A conexão falhou. Tente de novo.'
-    }));
-    setEnviando(false);
-    if (r.ok) {
-      try {
-        localStorage.setItem(CHAVE_DISPOSITIVO, r.dispositivo);
-      } catch {
-        // sem armazenamento: o cookie do aparelho já vale
-      }
-      // Guarda o @ na conta da loja também (se mudou).
-      if (salvo !== normalizado) saveInstagramHandle(normalizado).catch(() => {});
-      onConfirmou(r.codigo);
-    } else if ('jaParticipa' in r && r.jaParticipa) {
-      onConfirmou('');
-    } else setErro(r.erro);
-  }
-
-  return (
-    <form className="sorteio-confirmar" onSubmit={confirmar}>
-      <p className="sorteio-conta">
-        Entrou como <strong>{user.email}</strong> ·{' '}
-        <button type="button" className="sorteio-link" onClick={() => signOut().catch(() => {})}>
-          trocar de conta
-        </button>
-      </p>
-      <label className="sorteio-campo">
-        <span>@ do seu Instagram</span>
-        <span className={`sorteio-campo-insta${mostrarErroInsta ? ' is-erro' : ''}`}>
-          <b aria-hidden="true">@</b>
-          <input
-            value={instagram}
-            onChange={(ev) => setInstagram(ev.target.value)}
-            placeholder="seu.usuario"
-            autoComplete="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            maxLength={60}
-            required
-            aria-invalid={mostrarErroInsta}
-          />
-        </span>
-        <small>{mostrarErroInsta ? 'Só letras, números, ponto e _ (até 30).' : 'É por ele que a gente fala com você se ganhar.'}</small>
-      </label>
-      <label className="sorteio-aceite">
-        <input type="checkbox" checked={aceito} onChange={(ev) => setAceito(ev.target.checked)} />
-        <span>
-          Confirmo minha participação e aceito o <a href="#regulamento">regulamento</a>
-        </span>
-      </label>
-      <button type="submit" className="sorteio-botao" disabled={!aceito || !normalizado || enviando}>
-        {enviando ? 'Confirmando…' : 'Confirmar presença'}
-      </button>
-      {erro && (
-        <p className="sorteio-erro" role="alert">
-          {erro}
-        </p>
-      )}
-    </form>
+      <small>{invalido ? 'Só letras, números, ponto e _ (até 30).' : 'É por ele que a gente fala com você se ganhar.'}</small>
+    </label>
   );
 }
 

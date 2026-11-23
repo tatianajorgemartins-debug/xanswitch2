@@ -80,7 +80,9 @@ export async function classificacaoAction(accessToken: string | null, chartId: s
       // o e-mail fica no servidor: o navegador só recebe se a linha é da pessoa
       linhas: recordes.map((r, i) => ({
         posicao: i + 1,
-        nome: r.nome,
+        // Conta sem nome: o começo do e-mail mascarado ("jo***"), pra não
+        // aparecerem vários "Jogador XAN" iguais.
+        nome: r.nome === 'Jogador XAN' ? `${r.customer_email.split('@')[0].slice(0, 2)}***` : r.nome,
         pontos: r.score,
         precisao: Number(r.precisao) || 0,
         estrelas: Number(r.estrelas) || 0,

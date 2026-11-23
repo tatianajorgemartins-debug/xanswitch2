@@ -634,7 +634,7 @@
   font-size: 3rem;
 }
 .sorteio-premio-foto.is-vazia {
-  aspect-ratio: 5 / 2;
+  aspect-ratio: 2 / 1;
 }
 .sorteio-premio-foto.is-vazia .sorteio-pilula {
   top: 10px;
@@ -1261,5 +1261,99 @@
 @media (max-width: 900px) {
   .sorteio-telao .sorteio-ao-vivo {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- Itens (vários por sorteio, cada um com as próprias inscrições) ---------- */
+.sorteio-premio {
+  display: flex;
+  flex-direction: column;
+}
+.sorteio-premio-texto {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+}
+.sorteio-premio-texto p {
+  margin: 0;
+}
+.sorteio-premio-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sorteio-premio-meta span {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(164, 99, 255, 0.12);
+  color: var(--s-apagado);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.sorteio-premio-ganhador {
+  color: var(--s-ouro);
+  font-weight: 800;
+}
+.sorteio-premio-acao {
+  display: grid;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 6px;
+}
+.sorteio-premio-aviso {
+  display: block;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--s-apagado);
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-align: center;
+}
+.sorteio-botao.is-item {
+  width: 100%;
+  min-height: 46px;
+}
+.sorteio-selo-ok.is-pequeno {
+  display: block;
+  padding: 11px;
+  border-radius: 12px;
+  text-align: center;
+}
+.sorteio-premio.is-abertas {
+  box-shadow: inset 0 0 0 1px rgba(78, 240, 95, 0.35);
+}
+.sorteio-premio.is-em_breve .sorteio-premio-foto {
+  filter: saturate(0.6) brightness(0.8);
+}
+.sorteio-premio.is-sorteado {
+  box-shadow: inset 0 0 0 1px rgba(255, 210, 78, 0.5), 0 0 30px rgba(255, 210, 78, 0.12);
+}
+.sorteio-premio-foto .sorteio-premio-status {
+  left: 10px;
+  bottom: 10px;
+}
+.sorteio-dica {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(123, 77, 245, 0.12);
+  color: var(--s-tinta);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.sorteio-participar.is-lembrete {
+  animation: sorteio-chacoalha 0.5s ease;
+  box-shadow: inset 0 0 0 2px var(--s-ouro), 0 30px 80px rgba(0, 0, 0, 0.45);
+}
+@keyframes sorteio-chacoalha {
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+  40%,
+  80% {
+    transform: translateX(6px);
   }
 }

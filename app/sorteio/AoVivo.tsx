@@ -6,8 +6,8 @@
 // está decidido); aqui só se mostra. Visual: classes "sorteio-*" em
 // sorteio.css (tokens em .sorteio-ui).
 import { useEffect, useRef, useState } from 'react';
-import { progressoRoleta } from '@/lib/sorteio/regras';
-import type { EstadoPublico, SorteioPublico } from '@/lib/sorteio/estado';
+import { NOME_STATUS_ITEM, progressoRoleta } from '@/lib/sorteio/regras';
+import type { EstadoPublico, PremioPublico, SorteioPublico } from '@/lib/sorteio/estado';
 
 // Depois que a roleta para, o ganhador fica em destaque por um tempo.
 const DESTAQUE_MS = 9000;
@@ -167,8 +167,45 @@ export function Roleta({ sorteio, agora }: { sorteio: SorteioPublico; agora: num
   );
 }
 
+// "11 de dez. · 21h" no horário de Brasília.
+export function quando(iso: string) {
+  const d = new Date(iso);
+  const dia = d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: 'numeric', month: 'short' });
+  const hora = d.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).replace(':00', 'h');
+  return `${dia} · ${hora}`;
+}
+
+// "Você ganhou!" pra quem foi sorteado (em qualquer item, depois que a roleta parou).
+export function VoceGanhou({ estado, agora, meusCodigos }: { estado: EstadoPublico; agora: number; meusCodigos: string[] }) {
+  const meusPremios = estado.sorteios.filter((s) => s.id > 0 && agora >= s.inicio + s.duracao && meusCodigos.includes(s.ganhador.codigo));
+  if (!meusPremios.length) return null;
+  const premioDe = (id: number) => estado.premios.find((p) => p.id === id);
+  return (
+    <div className="sorteio-voce-ganhou" role="status">
+      <Confete />
+      <span className="sorteio-rotulo">Parabéns</span>
+      <h2>
+        Você <em>ganhou!</em> 🎉
+      </h2>
+      <p className="sorteio-voce-ganhou-premio">{meusPremios.map((s) => premioDe(s.premioId)?.nome ?? 'Prêmio').join(' + ')}</p>
+      {estado.sorteio.mensagemGanhador && <p className="sorteio-voce-ganhou-msg">{estado.sorteio.mensagemGanhador}</p>}
+    </div>
+  );
+}
+
 // Área ao vivo: o sorteio da vez (contagem, roleta ou espera) e os ganhadores.
-export function PainelAoVivo({ estado, diferenca, meuCodigo = null }: { estado: EstadoPublico; diferenca: number; meuCodigo?: string | null }) {
+// Sorteio com id negativo = ensaio do telão (não conta nos ganhadores).
+export function PainelAoVivo({
+  estado,
+  diferenca,
+  meusCodigos = [],
+  mostrarGanhadores = true
+}: {
+  estado: EstadoPublico;
+  diferenca: number;
+  meusCodigos?: string[];
+  mostrarGanhadores?: boolean;
+}) {
   const [, setTique] = useState(0);
   // Liga o relógio por quadro só perto de um sorteio (antes, durante e no destaque).
   const agoraGrosso = Date.now() + diferenca;
@@ -180,31 +217,26 @@ export function PainelAoVivo({ estado, diferenca, meuCodigo = null }: { estado: 
   }, []);
 
   const premioDe = (id: number) => estado.premios.find((p) => p.id === id);
-  const terminados = estado.sorteios.filter((s) => agora >= s.inicio + s.duracao);
-  const meusPremios = meuCodigo ? terminados.filter((s) => s.ganhador.codigo === meuCodigo) : [];
+  const terminados = estado.sorteios.filter((s) => s.id > 0 && agora >= s.inicio + s.duracao);
+  const ensaio = atual !== null && atual.id < 0;
+  const proximoItem = estado.premios.find((p) => p.status === 'encerradas' && estado.sorteios.filter((s) => s.id > 0 && s.premioId === p.id).length < p.ganhadores);
   const totalVagas = estado.premios.reduce((n, p) => n + p.ganhadores, 0);
   const premioAtual = atual ? premioDe(atual.premioId) : undefined;
   const contagem = atual && agora < atual.inicio ? Math.max(1, Math.ceil((atual.inicio - agora) / 1000)) : null;
 
   return (
     <section className="sorteio-ao-vivo">
-      {meusPremios.length > 0 && (
-        <div className="sorteio-voce-ganhou" role="status">
-          <Confete />
-          <span className="sorteio-rotulo">Parabéns</span>
-          <h2>
-            Você <em>ganhou!</em> 🎉
-          </h2>
-          <p className="sorteio-voce-ganhou-premio">{meusPremios.map((s) => premioDe(s.premioId)?.nome ?? 'Prêmio').join(' + ')}</p>
-          {estado.sorteio.mensagemGanhador && <p className="sorteio-voce-ganhou-msg">{estado.sorteio.mensagemGanhador}</p>}
-        </div>
-      )}
+      <VoceGanhou estado={estado} agora={agora} meusCodigos={meusCodigos} />
 
       <div className={`sorteio-palco${atual ? ' is-ativo' : ''}`}>
         <div className="sorteio-palco-topo">
-          <span className="sorteio-pilula is-vivo">
-            <i className="sorteio-ponto" /> Ao vivo
-          </span>
+          {ensaio ? (
+            <span className="sorteio-pilula is-ouro">🧪 Ensaio · não vale</span>
+          ) : (
+            <span className="sorteio-pilula is-vivo">
+              <i className="sorteio-ponto" /> Ao vivo
+            </span>
+          )}
           <span className="sorteio-palco-placar">
             {terminados.length} de {totalVagas} sorteados
           </span>
@@ -241,16 +273,17 @@ export function PainelAoVivo({ estado, diferenca, meuCodigo = null }: { estado: 
             </span>
             <p>
               {estado.sorteio.status === 'finalizado'
-                ? 'Sorteio finalizado. Obrigado por participar!'
-                : estado.sorteio.status === 'sorteando'
-                  ? 'Aguardando o próximo sorteio'
-                  : 'O sorteio ainda não começou'}
+                ? 'Sorteio encerrado. Obrigado por participar!'
+                : proximoItem
+                  ? `Próximo: ${proximoItem.nome}`
+                  : 'Aguardando o próximo sorteio'}
               {estado.sorteio.status !== 'finalizado' && <span className="sorteio-reticencias" aria-hidden="true" />}
             </p>
           </div>
         )}
       </div>
 
+      {mostrarGanhadores && (
       <div className="sorteio-secao">
         <h2 className="sorteio-titulo-secao">
           <span className="sorteio-rotulo">Quem já levou</span>
@@ -263,14 +296,14 @@ export function PainelAoVivo({ estado, diferenca, meuCodigo = null }: { estado: 
             {terminados.map((s, i) => {
               const premio = premioDe(s.premioId);
               return (
-                <li key={s.id} className={s.ganhador.codigo === meuCodigo ? 'is-meu' : undefined} style={{ '--i': i } as React.CSSProperties}>
+                <li key={s.id} className={meusCodigos.includes(s.ganhador.codigo) ? 'is-meu' : undefined} style={{ '--i': i } as React.CSSProperties}>
                   <span className="sorteio-carta-avatar" style={{ '--tom': tom(s.ganhador.nome) } as React.CSSProperties}>
                     {iniciais(s.ganhador.nome)}
                   </span>
                   <span className="sorteio-ganhador-info">
                     <strong>
                       {s.ganhador.nome}
-                      {s.ganhador.codigo === meuCodigo && <em className="sorteio-pilula is-ouro">Você</em>}
+                      {meusCodigos.includes(s.ganhador.codigo) && <em className="sorteio-pilula is-ouro">Você</em>}
                     </strong>
                     <span className="sorteio-ganhador-email">{s.ganhador.email}</span>
                   </span>
@@ -287,31 +320,63 @@ export function PainelAoVivo({ estado, diferenca, meuCodigo = null }: { estado: 
           </ol>
         )}
       </div>
+      )}
     </section>
   );
 }
 
-export function ListaPremios({ estado }: { estado: EstadoPublico }) {
-  if (!estado.premios.length) return <p className="sorteio-vazio">Os prêmios serão anunciados em breve.</p>;
+// Os itens do sorteio: foto, situação das inscrições, hora do sorteio,
+// quantos inscritos, ganhadores (quando sair) e o botão de participar
+// (`acao`, só na página do participante).
+export function ListaPremios({
+  estado,
+  acao,
+  agora = Date.now()
+}: {
+  estado: EstadoPublico;
+  acao?: (p: PremioPublico) => React.ReactNode;
+  agora?: number;
+}) {
+  if (!estado.premios.length) return <p className="sorteio-vazio">Os itens serão anunciados em breve.</p>;
   return (
     <ul className="sorteio-premios">
-      {estado.premios.map((p, i) => (
-        <li key={p.id} className="sorteio-premio" style={{ '--i': i } as React.CSSProperties}>
-          <div className={`sorteio-premio-foto${p.imagem ? '' : ' is-vazia'}`}>
-            {p.imagem ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={p.imagem} alt="" loading="lazy" />
-            ) : (
-              <span aria-hidden="true">🎁</span>
-            )}
-            <span className="sorteio-pilula">{p.ganhadores === 1 ? '1 ganhador' : `${p.ganhadores} ganhadores`}</span>
-          </div>
-          <div className="sorteio-premio-texto">
-            <strong>{p.nome}</strong>
-            {p.descricao && <p>{p.descricao}</p>}
-          </div>
-        </li>
-      ))}
+      {estado.premios.map((p, i) => {
+        const ganhadores = estado.sorteios.filter((s) => s.id > 0 && s.premioId === p.id && agora >= s.inicio + s.duracao);
+        const sorteado = ganhadores.length >= p.ganhadores;
+        return (
+          <li key={p.id} className={`sorteio-premio is-${sorteado ? 'sorteado' : p.status}`} style={{ '--i': i } as React.CSSProperties}>
+            <div className={`sorteio-premio-foto${p.imagem ? '' : ' is-vazia'}`}>
+              {p.imagem ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={p.imagem} alt="" loading="lazy" />
+              ) : (
+                <span aria-hidden="true">🎁</span>
+              )}
+              <span className={`sorteio-pilula sorteio-premio-status${p.status === 'abertas' && !sorteado ? ' is-vivo' : ''}`}>
+                {p.status === 'abertas' && !sorteado && <i className="sorteio-ponto" />}
+                {sorteado ? '🏆 Sorteado' : NOME_STATUS_ITEM[p.status]}
+              </span>
+            </div>
+            <div className="sorteio-premio-texto">
+              <strong>{p.nome}</strong>
+              {p.descricao && <p>{p.descricao}</p>}
+              <div className="sorteio-premio-meta">
+                <span>{p.ganhadores === 1 ? '1 ganhador' : `${p.ganhadores} ganhadores`}</span>
+                <span>
+                  {p.participantes} {p.participantes === 1 ? 'inscrito' : 'inscritos'}
+                </span>
+                {p.data && <span>🕘 Sorteio {quando(p.data)}</span>}
+              </div>
+              {ganhadores.length > 0 && (
+                <p className="sorteio-premio-ganhador">
+                  🏆 {ganhadores.map((g) => g.ganhador.nome).join(', ')}
+                </p>
+              )}
+              {acao && <div className="sorteio-premio-acao">{acao(p)}</div>}
+            </div>
+          </li>
+        );
+      })}
     </ul>
   );
 }

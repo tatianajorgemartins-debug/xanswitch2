@@ -2,27 +2,43 @@
 // tests/sorteio). Quem usa: app/sorteio (participante), app/admin/sorteios
 // (painel) e lib/sorteio/sortear.ts (o sorteio em si).
 
-// ---------- Situação do sorteio ----------
+// ---------- Situação do sorteio e de cada item ----------
 
-export type StatusSorteio = 'rascunho' | 'abertas' | 'encerradas' | 'sorteando' | 'finalizado';
+// O sorteio (a página): rascunho (só o admin vê) → publicado → encerrado.
+// No banco "abertas" = publicado.
+export type StatusSorteio = 'rascunho' | 'abertas' | 'finalizado';
 
-export const ORDEM_STATUS: StatusSorteio[] = ['rascunho', 'abertas', 'encerradas', 'sorteando', 'finalizado'];
+export const ORDEM_STATUS: StatusSorteio[] = ['rascunho', 'abertas', 'finalizado'];
 
 export const NOME_STATUS: Record<StatusSorteio, string> = {
   rascunho: 'Rascunho',
-  abertas: 'Inscrições abertas',
-  encerradas: 'Inscrições encerradas',
-  sorteando: 'Sorteando',
-  finalizado: 'Finalizado'
+  abertas: 'Publicado',
+  finalizado: 'Encerrado'
 };
 
-export const ehStatus = (v: unknown): v is StatusSorteio => typeof v === 'string' && (ORDEM_STATUS as string[]).includes(v);
+// Lê do banco (as situações antigas "encerradas" e "sorteando" viram publicado).
+export function paraStatus(v: unknown): StatusSorteio {
+  if (v === 'rascunho' || v === 'finalizado') return v;
+  return v === 'abertas' || v === 'encerradas' || v === 'sorteando' ? 'abertas' : 'rascunho';
+}
 
 // Só anda pra frente, um passo por vez.
 export function proximoStatus(s: StatusSorteio): StatusSorteio | null {
   const i = ORDEM_STATUS.indexOf(s);
   return i >= 0 && i < ORDEM_STATUS.length - 1 ? ORDEM_STATUS[i + 1] : null;
 }
+
+// Cada item (prêmio) tem as próprias inscrições:
+// em breve → inscrições abertas → inscrições encerradas (aí dá pra sortear).
+export type StatusItem = 'em_breve' | 'abertas' | 'encerradas';
+
+export const NOME_STATUS_ITEM: Record<StatusItem, string> = {
+  em_breve: 'Em breve',
+  abertas: 'Inscrições abertas',
+  encerradas: 'Inscrições encerradas'
+};
+
+export const ehStatusItem = (v: unknown): v is StatusItem => v === 'em_breve' || v === 'abertas' || v === 'encerradas';
 
 // ---------- Confirmar presença ----------
 
@@ -40,13 +56,14 @@ export const LIMITE_TENTATIVAS_IP = 12;
 export const LIMITE_TENTATIVAS_CONTA = 6;
 
 export type PedidoParticipacao = {
-  status: StatusSorteio;
+  statusSorteio: StatusSorteio;
+  statusItem: StatusItem;
   aceitouRegulamento: boolean;
   instagram: string | null; // já normalizado (normalizarInstagram); null = inválido
   instagramDeOutraConta: boolean;
   jaParticipa: boolean;
   contaCriadaEm: string | null; // ISO
-  participacoesNoIp: number; // de outras contas, neste sorteio
+  participacoesNoIp: number; // de outras contas, neste item
   dispositivoDeOutraConta: boolean;
   tentativasIp: number; // no último minuto, contando esta
   tentativasConta: number;
@@ -59,8 +76,8 @@ export function avaliarParticipacao(config: ConfigAntifraude, p: PedidoParticipa
   if (p.tentativasIp > LIMITE_TENTATIVAS_IP || p.tentativasConta > LIMITE_TENTATIVAS_CONTA) {
     return nao('muitas-tentativas', 'Muitas tentativas seguidas. Espere um minuto e tente de novo.');
   }
-  if (p.status !== 'abertas') return nao('fechado', 'As inscrições deste sorteio não estão abertas.');
-  if (p.jaParticipa) return nao('ja-participa', 'Você já está participando deste sorteio.');
+  if (p.statusSorteio !== 'abertas' || p.statusItem !== 'abertas') return nao('fechado', 'As inscrições deste item não estão abertas.');
+  if (p.jaParticipa) return nao('ja-participa', 'Você já está participando deste item.');
   if (!p.instagram) return nao('instagram', 'Coloque o @ do seu Instagram pra participar.');
   if (p.instagramDeOutraConta) return nao('instagram-em-uso', 'Esse @ do Instagram já está participando com outra conta.');
   if (!p.aceitouRegulamento) return nao('regulamento', 'Marque que você aceita o regulamento pra confirmar.');
@@ -124,9 +141,9 @@ export function ipDaRequisicao(h: { get(nome: string): string | null }): string 
 
 // ---------- Sorteio ----------
 
-export type PremioBasico = { id: number; ganhadores: number; ordem: number };
+export type PremioBasico = { id: number; ganhadores: number; ordem: number; nome?: string };
 export type SorteioBasico = { id: number; premioId: number; entradaId: number; vaga: number; anulado: boolean };
-export type EntradaBasica = { id: number; desclassificado: boolean };
+export type EntradaBasica = { id: number; premioId: number; desclassificado: boolean };
 
 // O próximo prêmio com vaga livre (ou o escolhido) e o número da vaga.
 export function proximaVaga<P extends PremioBasico>(premios: P[], sorteios: SorteioBasico[], premioId?: number): { premio: P; vaga: number } | null {
@@ -139,11 +156,12 @@ export function proximaVaga<P extends PremioBasico>(premios: P[], sorteios: Sort
   return null;
 }
 
-// Quem ainda pode ganhar: não desclassificado e sem nenhum sorteio neste
-// sorteio (nem um anulado — quem foi re-sorteado não volta).
-export function elegiveis<E extends EntradaBasica>(entradas: E[], sorteios: SorteioBasico[]): E[] {
+// Quem ainda pode ganhar o item: inscrito nele, não desclassificado e sem
+// nenhum sorteio com essa inscrição (nem um anulado — quem foi re-sorteado
+// não volta). Ganhar outro item não tira ninguém deste.
+export function elegiveis<E extends EntradaBasica>(entradas: E[], sorteios: SorteioBasico[], premioId: number): E[] {
   const jaSorteados = new Set(sorteios.map((s) => s.entradaId));
-  return entradas.filter((e) => !e.desclassificado && !jaSorteados.has(e.id));
+  return entradas.filter((e) => e.premioId === premioId && !e.desclassificado && !jaSorteados.has(e.id));
 }
 
 // Nomes que passam na roleta, terminando no ganhador. aleatorio(n) devolve

@@ -1,7 +1,7 @@
 // Banco dos sorteios ao vivo (tabelas de db/migration-sorteios.sql). Só roda
 // no servidor. As regras ficam em lib/sorteio/regras.ts.
 import { getSql } from './sql';
-import { ehStatus, nomePublico, type StatusSorteio } from './sorteio/regras';
+import { ehStatusItem, nomePublico, paraStatus, type StatusItem, type StatusSorteio } from './sorteio/regras';
 import { ganhadorPublico, type EstadoPublico, type PremioPublico, type SorteioPublico } from './sorteio/estado';
 import type { DadosParaSortear, NovoSorteio } from './sorteio/sortear';
 
@@ -15,7 +15,6 @@ export type Sorteio = {
   banner: string | null;
   mensagemGanhador: string;
   status: StatusSorteio;
-  teste: boolean;
   limitePorIp: number | null;
   bloquearDispositivo: boolean;
   contasCriadasAntes: string | null; // ISO
@@ -25,6 +24,7 @@ export type Premio = PremioPublico;
 
 export type Participacao = {
   id: number;
+  premioId: number | null;
   codigo: string;
   usuario: string;
   email: string;
@@ -69,8 +69,7 @@ function paraSorteio(r: Linha): Sorteio {
     data: iso(r.event_at),
     banner: (r.banner_url as string | null) ?? null,
     mensagemGanhador: String(r.winner_message ?? ''),
-    status: ehStatus(r.status) ? r.status : 'rascunho',
-    teste: Boolean(r.test_mode),
+    status: paraStatus(r.status),
     limitePorIp: r.ip_limit === null || r.ip_limit === undefined ? null : Number(r.ip_limit),
     bloquearDispositivo: Boolean(r.block_same_device),
     contasCriadasAntes: iso(r.accounts_created_before)
@@ -84,13 +83,17 @@ function paraPremio(r: Linha): Premio {
     descricao: String(r.description ?? ''),
     imagem: (r.image_url as string | null) ?? null,
     ganhadores: Number(r.winners_count),
-    ordem: Number(r.sort_order)
+    ordem: Number(r.sort_order),
+    status: ehStatusItem(r.status) ? r.status : 'em_breve',
+    data: iso(r.draw_at),
+    participantes: Number(r.participantes ?? 0)
   };
 }
 
 function paraParticipacao(r: Linha): Participacao {
   return {
     id: Number(r.id),
+    premioId: r.prize_id === null || r.prize_id === undefined ? null : Number(r.prize_id),
     codigo: String(r.public_id),
     usuario: String(r.user_id),
     email: String(r.email),
@@ -137,7 +140,7 @@ export type ResumoSorteio = Sorteio & { participantes: number; premios: number }
 export async function listarSorteios(): Promise<ResumoSorteio[]> {
   const rows = await getSql()`
     SELECT r.*,
-      (SELECT count(*)::int FROM raffle_entries e WHERE e.raffle_id = r.id AND NOT e.disqualified) AS participantes,
+      (SELECT count(DISTINCT e.user_id)::int FROM raffle_entries e WHERE e.raffle_id = r.id AND NOT e.disqualified) AS participantes,
       (SELECT count(*)::int FROM raffle_prizes p WHERE p.raffle_id = r.id) AS premios
     FROM raffles r ORDER BY r.created_at DESC
   `;
@@ -159,7 +162,7 @@ export async function obterSorteioPorSlug(slug: string): Promise<Sorteio | null>
   return rows[0] ? paraSorteio(rows[0] as Linha) : null;
 }
 
-export type CamposSorteio = Omit<Sorteio, 'id' | 'status' | 'teste'>;
+export type CamposSorteio = Omit<Sorteio, 'id' | 'status'>;
 
 export async function salvarSorteio(id: number, c: CamposSorteio): Promise<void> {
   await getSql()`
@@ -176,46 +179,46 @@ export async function mudarStatus(id: number, de: StatusSorteio, para: StatusSor
   return rows.length > 0;
 }
 
-export async function ligarModoTeste(id: number, ligado: boolean): Promise<void> {
-  await getSql()`UPDATE raffles SET test_mode = ${ligado}, updated_at = now() WHERE id = ${id}`;
-}
-
-// Volta ao começo: apaga sorteios, participações e tentativas.
-export async function resetarSorteio(id: number): Promise<void> {
-  const sql = getSql();
-  await sql.transaction([
-    sql`DELETE FROM raffle_draws WHERE raffle_id = ${id}`,
-    sql`DELETE FROM raffle_entries WHERE raffle_id = ${id}`,
-    sql`DELETE FROM raffle_attempts WHERE raffle_id = ${id}`,
-    sql`UPDATE raffles SET status = 'rascunho', updated_at = now() WHERE id = ${id}`
-  ]);
-}
-
 export async function apagarSorteio(id: number): Promise<void> {
   await getSql()`DELETE FROM raffles WHERE id = ${id}`;
 }
 
 // ---------- Prêmios ----------
 
+// Os itens, cada um com quantas pessoas (não desclassificadas) se inscreveram.
 export async function listarPremios(raffleId: number): Promise<Premio[]> {
-  const rows = await getSql()`SELECT * FROM raffle_prizes WHERE raffle_id = ${raffleId} ORDER BY sort_order, id`;
+  const rows = await getSql()`
+    SELECT p.*, (SELECT count(*)::int FROM raffle_entries e WHERE e.prize_id = p.id AND NOT e.disqualified) AS participantes
+    FROM raffle_prizes p WHERE p.raffle_id = ${raffleId} ORDER BY p.sort_order, p.id
+  `;
   return (rows as Linha[]).map(paraPremio);
 }
 
-export async function salvarPremio(raffleId: number, id: number | null, p: Omit<Premio, 'id'>): Promise<void> {
+export type CamposPremio = Pick<Premio, 'nome' | 'descricao' | 'imagem' | 'ganhadores' | 'ordem' | 'data'>;
+
+export async function salvarPremio(raffleId: number, id: number | null, p: CamposPremio): Promise<void> {
   const sql = getSql();
   if (id === null) {
     await sql`
-      INSERT INTO raffle_prizes (raffle_id, name, description, image_url, winners_count, sort_order)
-      VALUES (${raffleId}, ${p.nome}, ${p.descricao}, ${p.imagem}, ${p.ganhadores}, ${p.ordem})
+      INSERT INTO raffle_prizes (raffle_id, name, description, image_url, winners_count, sort_order, draw_at)
+      VALUES (${raffleId}, ${p.nome}, ${p.descricao}, ${p.imagem}, ${p.ganhadores}, ${p.ordem}, ${p.data})
     `;
   } else {
     await sql`
       UPDATE raffle_prizes SET name = ${p.nome}, description = ${p.descricao}, image_url = ${p.imagem},
-        winners_count = ${p.ganhadores}, sort_order = ${p.ordem}
+        winners_count = ${p.ganhadores}, sort_order = ${p.ordem}, draw_at = ${p.data}
       WHERE id = ${id} AND raffle_id = ${raffleId}
     `;
   }
+}
+
+// Abre/encerra as inscrições de um item. Só muda se ainda estiver na
+// situação esperada (dois cliques não pulam etapas).
+export async function mudarStatusItem(raffleId: number, premioId: number, de: StatusItem, para: StatusItem): Promise<boolean> {
+  const rows = await getSql()`
+    UPDATE raffle_prizes SET status = ${para} WHERE id = ${premioId} AND raffle_id = ${raffleId} AND status = ${de} RETURNING id
+  `;
+  return rows.length > 0;
 }
 
 export async function apagarPremio(raffleId: number, id: number): Promise<void> {
@@ -224,46 +227,48 @@ export async function apagarPremio(raffleId: number, id: number): Promise<void> 
 
 // ---------- Participações ----------
 
+// Pessoas diferentes inscritas em pelo menos um item.
 export async function contarParticipantes(raffleId: number): Promise<number> {
-  const rows = await getSql()`SELECT count(*)::int AS n FROM raffle_entries WHERE raffle_id = ${raffleId} AND NOT disqualified`;
+  const rows = await getSql()`SELECT count(DISTINCT user_id)::int AS n FROM raffle_entries WHERE raffle_id = ${raffleId} AND NOT disqualified`;
   return Number((rows[0] as Linha).n);
 }
 
-export async function obterParticipacao(raffleId: number, usuario: string): Promise<Participacao | null> {
-  const rows = await getSql()`SELECT * FROM raffle_entries WHERE raffle_id = ${raffleId} AND user_id = ${usuario}`;
-  return rows[0] ? paraParticipacao(rows[0] as Linha) : null;
+// As inscrições da conta neste sorteio (uma por item).
+export async function listarMinhasParticipacoes(raffleId: number, usuario: string): Promise<Participacao[]> {
+  const rows = await getSql()`SELECT * FROM raffle_entries WHERE raffle_id = ${raffleId} AND user_id = ${usuario} AND prize_id IS NOT NULL`;
+  return (rows as Linha[]).map(paraParticipacao);
 }
 
-// Participações de OUTRAS contas no mesmo IP / no mesmo aparelho.
-export async function contarNoIp(raffleId: number, ip: string, usuario: string): Promise<number> {
+// Inscrições de OUTRAS contas no mesmo item com o mesmo IP / aparelho / @.
+export async function contarNoIp(premioId: number, ip: string, usuario: string): Promise<number> {
   const rows = await getSql()`
-    SELECT count(*)::int AS n FROM raffle_entries WHERE raffle_id = ${raffleId} AND ip = ${ip} AND user_id <> ${usuario} AND NOT is_test
+    SELECT count(*)::int AS n FROM raffle_entries WHERE prize_id = ${premioId} AND ip = ${ip} AND user_id <> ${usuario} AND NOT is_test
   `;
   return Number((rows[0] as Linha).n);
 }
 
-export async function dispositivoDeOutraConta(raffleId: number, dispositivos: string[], usuario: string): Promise<boolean> {
+export async function dispositivoDeOutraConta(premioId: number, dispositivos: string[], usuario: string): Promise<boolean> {
   if (!dispositivos.length) return false;
   const rows = await getSql()`
     SELECT 1 FROM raffle_entries
-    WHERE raffle_id = ${raffleId} AND device_id = ANY(${dispositivos}) AND user_id <> ${usuario} AND NOT is_test
+    WHERE prize_id = ${premioId} AND device_id = ANY(${dispositivos}) AND user_id <> ${usuario} AND NOT is_test
     LIMIT 1
   `;
   return rows.length > 0;
 }
 
-// O mesmo @ do Instagram já participa com outra conta?
-export async function instagramDeOutraConta(raffleId: number, instagram: string, usuario: string): Promise<boolean> {
+export async function instagramDeOutraConta(premioId: number, instagram: string, usuario: string): Promise<boolean> {
   const rows = await getSql()`
-    SELECT 1 FROM raffle_entries WHERE raffle_id = ${raffleId} AND instagram = ${instagram} AND user_id <> ${usuario} LIMIT 1
+    SELECT 1 FROM raffle_entries WHERE prize_id = ${premioId} AND instagram = ${instagram} AND user_id <> ${usuario} LIMIT 1
   `;
   return rows.length > 0;
 }
 
-// Os UNIQUE do banco garantem uma participação por conta e por @:
-// 'conta' = a conta já participava; 'instagram' = o @ já está em uso.
+// Os UNIQUE do banco garantem uma inscrição por conta e por @ em cada item:
+// 'conta' = a conta já estava no item; 'instagram' = o @ já está em uso nele.
 export async function inserirParticipacao(p: {
   raffleId: number;
+  premioId: number;
   usuario: string;
   email: string;
   nome: string | null;
@@ -272,15 +277,16 @@ export async function inserirParticipacao(p: {
   navegador: string | null;
   dispositivo: string | null;
 }): Promise<{ ok: true; codigo: string } | { ok: false; repetido: 'conta' | 'instagram' }> {
-  const rows = await getSql()`
-    INSERT INTO raffle_entries (raffle_id, user_id, email, name, instagram, ip, user_agent, device_id)
-    VALUES (${p.raffleId}, ${p.usuario}, ${p.email}, ${p.nome}, ${p.instagram}, ${p.ip}, ${p.navegador}, ${p.dispositivo})
+  const sql = getSql();
+  const rows = await sql`
+    INSERT INTO raffle_entries (raffle_id, prize_id, user_id, email, name, instagram, ip, user_agent, device_id)
+    VALUES (${p.raffleId}, ${p.premioId}, ${p.usuario}, ${p.email}, ${p.nome}, ${p.instagram}, ${p.ip}, ${p.navegador}, ${p.dispositivo})
     ON CONFLICT DO NOTHING
     RETURNING public_id
   `;
   if (rows[0]) return { ok: true, codigo: String((rows[0] as Linha).public_id) };
-  const ja = await obterParticipacao(p.raffleId, p.usuario);
-  return { ok: false, repetido: ja ? 'conta' : 'instagram' };
+  const ja = await sql`SELECT 1 FROM raffle_entries WHERE prize_id = ${p.premioId} AND user_id = ${p.usuario}`;
+  return { ok: false, repetido: ja.length ? 'conta' : 'instagram' };
 }
 
 export async function listarParticipacoes(raffleId: number): Promise<Participacao[]> {
@@ -292,26 +298,6 @@ export async function desclassificar(raffleId: number, entradaId: number, sim: b
   await getSql()`
     UPDATE raffle_entries SET disqualified = ${sim}, disqualified_reason = ${sim ? motivo : null}
     WHERE id = ${entradaId} AND raffle_id = ${raffleId}
-  `;
-}
-
-// Participantes fictícios pro ensaio (modo de teste).
-export async function gerarParticipantesTeste(raffleId: number, quantos: number): Promise<void> {
-  const nomes = ['Ana', 'Bruno', 'Carla', 'Diego', 'Elisa', 'Fábio', 'Gabi', 'Hugo', 'Iara', 'João', 'Kauã', 'Lara', 'Mateus', 'Nina', 'Otávio', 'Paula'];
-  const sobrenomes = ['Silva', 'Souza', 'Lima', 'Costa', 'Rocha', 'Alves', 'Pereira', 'Martins', 'Gomes', 'Ribeiro'];
-  const base = Date.now();
-  const linhas = Array.from({ length: quantos }, (_, i) => ({
-    usuario: `teste:${base}:${i}`,
-    email: `teste${base % 100000}${i}@teste.xanswitch`,
-    nome: `${nomes[i % nomes.length]} ${sobrenomes[(i * 7) % sobrenomes.length]}`,
-    ip: `10.0.${Math.floor(i / 250)}.${i % 250}`,
-    instagram: `teste_${base % 100000}_${i}`
-  }));
-  await getSql()`
-    INSERT INTO raffle_entries (raffle_id, user_id, email, name, ip, instagram, user_agent, device_id, is_test)
-    SELECT ${raffleId}, u, e, n, i, g, 'teste', 'teste:' || u, TRUE
-    FROM unnest(${linhas.map((l) => l.usuario)}::text[], ${linhas.map((l) => l.email)}::text[], ${linhas.map((l) => l.nome)}::text[], ${linhas.map((l) => l.ip)}::text[], ${linhas.map((l) => l.instagram)}::text[]) AS t(u, e, n, i, g)
-    ON CONFLICT DO NOTHING
   `;
 }
 
@@ -352,9 +338,11 @@ export async function carregarParaSortear(raffleId: number): Promise<DadosParaSo
   ]);
   return {
     status: sorteio?.status ?? 'rascunho',
-    premios,
+    premios: premios.map((p) => ({ id: p.id, nome: p.nome, ganhadores: p.ganhadores, ordem: p.ordem, status: p.status })),
     sorteios: sorteios.map((s) => ({ id: s.id, premioId: s.premioId, entradaId: s.entradaId, vaga: s.vaga, anulado: s.anulado, fimAnimacao: s.inicio + s.duracao })),
-    entradas: entradas.map((e) => ({ id: e.id, desclassificado: e.desclassificado, nomeExibicao: nomePublico(e.nome, e.email) }))
+    entradas: entradas
+      .filter((e) => e.premioId !== null)
+      .map((e) => ({ id: e.id, premioId: e.premioId as number, desclassificado: e.desclassificado, nomeExibicao: nomePublico(e.nome, e.email) }))
   };
 }
 
@@ -414,7 +402,6 @@ export async function montarEstadoPublico(sorteio: Sorteio): Promise<EstadoPubli
       banner: sorteio.banner,
       data: sorteio.data,
       status: sorteio.status,
-      teste: sorteio.teste,
       mensagemGanhador: sorteio.mensagemGanhador
     },
     premios,
@@ -423,5 +410,5 @@ export async function montarEstadoPublico(sorteio: Sorteio): Promise<EstadoPubli
   };
 }
 
-// Público pode ver: tudo que saiu do rascunho, ou o rascunho em modo de teste.
-export const sorteioVisivel = (s: Sorteio) => s.status !== 'rascunho' || s.teste;
+// Público pode ver: tudo que saiu do rascunho.
+export const sorteioVisivel = (s: Sorteio) => s.status !== 'rascunho';

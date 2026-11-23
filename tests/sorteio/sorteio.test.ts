@@ -10,6 +10,7 @@ import {
   montarRoleta,
   nomePublico,
   progressoRoleta,
+  paraStatus,
   proximoStatus,
   type ConfigAntifraude,
   type PedidoParticipacao
@@ -20,7 +21,8 @@ import { dispararSorteio, type DadosParaSortear, type DepsSorteio, type NovoSort
 
 const CONFIG: ConfigAntifraude = { limitePorIp: 3, bloquearDispositivo: true, contasCriadasAntes: '2026-12-11T21:00:00-03:00' };
 const PEDIDO: PedidoParticipacao = {
-  status: 'abertas',
+  statusSorteio: 'abertas',
+  statusItem: 'abertas',
   aceitouRegulamento: true,
   instagram: 'maria.silva',
   instagramDeOutraConta: false,
@@ -41,9 +43,12 @@ test('uma participação por conta', () => {
   assert.equal(codigo(avaliarParticipacao(CONFIG, { ...PEDIDO, jaParticipa: true })), 'ja-participa');
 });
 
-test('só com inscrições abertas e regulamento aceito', () => {
-  for (const status of ['rascunho', 'encerradas', 'sorteando', 'finalizado'] as const) {
-    assert.equal(codigo(avaliarParticipacao(CONFIG, { ...PEDIDO, status })), 'fechado');
+test('só com a página publicada, o item com inscrições abertas e o regulamento aceito', () => {
+  for (const statusSorteio of ['rascunho', 'finalizado'] as const) {
+    assert.equal(codigo(avaliarParticipacao(CONFIG, { ...PEDIDO, statusSorteio })), 'fechado');
+  }
+  for (const statusItem of ['em_breve', 'encerradas'] as const) {
+    assert.equal(codigo(avaliarParticipacao(CONFIG, { ...PEDIDO, statusItem })), 'fechado');
   }
   assert.equal(codigo(avaliarParticipacao(CONFIG, { ...PEDIDO, aceitouRegulamento: false })), 'regulamento');
 });
@@ -98,10 +103,13 @@ test('e-mail mascarado e nome curto', () => {
   assert.equal(ipDaRequisicao(new Map([['x-forwarded-for', '200.1.2.3, 10.0.0.1']]) as unknown as Headers), '200.1.2.3');
 });
 
-test('situação só anda pra frente', () => {
+test('situação só anda pra frente (e as antigas viram "publicado")', () => {
   assert.equal(proximoStatus('rascunho'), 'abertas');
-  assert.equal(proximoStatus('sorteando'), 'finalizado');
+  assert.equal(proximoStatus('abertas'), 'finalizado');
   assert.equal(proximoStatus('finalizado'), null);
+  assert.equal(paraStatus('sorteando'), 'abertas');
+  assert.equal(paraStatus('encerradas'), 'abertas');
+  assert.equal(paraStatus('lixo'), 'rascunho');
 });
 
 test('roleta termina no ganhador e a animação vai de 0 a 1', () => {
@@ -114,14 +122,22 @@ test('roleta termina no ganhador e a animação vai de 0 a 1', () => {
 // ---------- Sortear ----------
 
 // Banco de mentira com as mesmas travas do de verdade (índices únicos).
-function bancoFalso(opcoes: { participantes: number; premios: { id: number; ganhadores: number; ordem: number }[]; admin?: boolean }) {
+// Cada pessoa P1..Pn se inscreve em todos os itens (uma inscrição por item:
+// id = item * 1000 + pessoa).
+function bancoFalso(opcoes: {
+  participantes: number;
+  premios: { id: number; ganhadores: number; ordem: number; status?: 'em_breve' | 'abertas' | 'encerradas' }[];
+  admin?: boolean;
+}) {
   let relogio = 1_000_000;
   let proximoId = 1;
   const dados: DadosParaSortear = {
-    status: 'sorteando',
-    premios: opcoes.premios,
+    status: 'abertas',
+    premios: opcoes.premios.map((p) => ({ status: 'encerradas' as const, ...p })),
     sorteios: [],
-    entradas: Array.from({ length: opcoes.participantes }, (_, i) => ({ id: i + 1, desclassificado: false, nomeExibicao: `P${i + 1}` }))
+    entradas: opcoes.premios.flatMap((p) =>
+      Array.from({ length: opcoes.participantes }, (_, i) => ({ id: p.id * 1000 + i + 1, premioId: p.id, desclassificado: false, nomeExibicao: `P${i + 1}` }))
+    )
   };
   const gravados: NovoSorteio[] = [];
   let sorteio = 7;
@@ -150,13 +166,56 @@ test('só o admin dispara o sorteio', async () => {
   assert.equal(b.gravados.length, 0);
 });
 
-test('só sorteia com a situação "Sorteando"', async () => {
-  const b = bancoFalso({ participantes: 5, premios: [{ id: 1, ganhadores: 1, ordem: 1 }] });
-  b.dados.status = 'encerradas';
+test('só sorteia com a página publicada e as inscrições do item encerradas', async () => {
+  const b = bancoFalso({ participantes: 5, premios: [{ id: 1, ganhadores: 1, ordem: 1, status: 'abertas' }] });
   assert.equal((await dispararSorteio(b.deps)).ok, false);
+  assert.equal((await dispararSorteio(b.deps, { premioId: 1 })).ok, false);
+  b.dados.premios[0].status = 'encerradas';
+  b.dados.status = 'rascunho';
+  assert.equal((await dispararSorteio(b.deps)).ok, false);
+  b.dados.status = 'abertas';
+  assert.equal((await dispararSorteio(b.deps)).ok, true);
 });
 
-test('ninguém ganha duas vezes e os prêmios saem na ordem', async () => {
+test('cada item é sorteado na sua hora: um fechado não atrapalha o outro', async () => {
+  const b = bancoFalso({
+    participantes: 4,
+    premios: [
+      { id: 1, ganhadores: 1, ordem: 1, status: 'abertas' },
+      { id: 2, ganhadores: 1, ordem: 2, status: 'encerradas' }
+    ]
+  });
+  const r = await dispararSorteio(b.deps);
+  assert.equal(r.ok, true);
+  assert.equal(b.gravados[0].premioId, 2);
+  assert.equal(Math.floor(b.gravados[0].entradaId / 1000), 2); // inscrição do item 2
+});
+
+test('a mesma pessoa pode ganhar itens diferentes', async () => {
+  const b = bancoFalso({
+    participantes: 1,
+    premios: [
+      { id: 1, ganhadores: 1, ordem: 1 },
+      { id: 2, ganhadores: 1, ordem: 2 }
+    ]
+  });
+  assert.equal((await dispararSorteio(b.deps)).ok, true);
+  b.avancar(20_000);
+  assert.equal((await dispararSorteio(b.deps)).ok, true);
+  assert.deepEqual(
+    b.gravados.map((g) => g.roleta[g.roleta.length - 1]),
+    ['P1', 'P1']
+  );
+});
+
+test('só concorre quem se inscreveu no item', async () => {
+  const b = bancoFalso({ participantes: 3, premios: [{ id: 1, ganhadores: 1, ordem: 1 }, { id: 2, ganhadores: 1, ordem: 2 }] });
+  b.dados.entradas = b.dados.entradas.filter((e) => e.premioId === 1 || e.id === 2003);
+  assert.equal((await dispararSorteio(b.deps, { premioId: 2 })).ok, true);
+  assert.equal(b.gravados[0].entradaId, 2003);
+});
+
+test('ninguém ganha duas vezes o mesmo item e os itens saem na ordem', async () => {
   const b = bancoFalso({
     participantes: 6,
     premios: [
@@ -174,7 +233,7 @@ test('ninguém ganha duas vezes e os prêmios saem na ordem', async () => {
     [1, 1, 2, 2, 2]
   );
   assert.equal(new Set(b.gravados.map((g) => g.entradaId)).size, 5);
-  for (const g of b.gravados) assert.equal(g.roleta[g.roleta.length - 1], `P${g.entradaId}`);
+  for (const g of b.gravados) assert.equal(g.roleta[g.roleta.length - 1], `P${g.entradaId % 1000}`);
   // Tudo sorteado: não sorteia mais
   assert.equal((await dispararSorteio(b.deps)).ok, false);
 });
@@ -203,9 +262,9 @@ test('re-sortear anula o anterior, mantém no histórico e não sorteia a mesma 
 
 test('desclassificados não ganham', async () => {
   const b = bancoFalso({ participantes: 4, premios: [{ id: 1, ganhadores: 4, ordem: 1 }] });
-  b.dados.entradas = b.dados.entradas.map((e) => ({ ...e, desclassificado: e.id !== 3 }));
+  b.dados.entradas = b.dados.entradas.map((e) => ({ ...e, desclassificado: e.id !== 1003 }));
   assert.equal((await dispararSorteio(b.deps)).ok, true);
-  assert.equal(b.gravados[0].entradaId, 3);
+  assert.equal(b.gravados[0].entradaId, 1003);
   b.avancar(20_000);
   assert.equal((await dispararSorteio(b.deps)).ok, false);
 });
@@ -219,12 +278,12 @@ test('dois cliques ao mesmo tempo: o banco barra e o segundo tenta de novo', asy
     const d = await carregarOriginal();
     if (primeira) {
       primeira = false;
-      b.dados.sorteios.push({ id: 99, premioId: 1, entradaId: 1, vaga: 1, anulado: false, fimAnimacao: 0 });
+      b.dados.sorteios.push({ id: 99, premioId: 1, entradaId: 1001, vaga: 1, anulado: false, fimAnimacao: 0 });
     }
     return d;
   };
   const r = await dispararSorteio(b.deps);
   assert.equal(r.ok, true);
   assert.equal(b.gravados[0].vaga, 2);
-  assert.notEqual(b.gravados[0].entradaId, 1);
+  assert.notEqual(b.gravados[0].entradaId, 1001);
 });

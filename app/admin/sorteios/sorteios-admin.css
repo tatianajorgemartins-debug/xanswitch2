@@ -936,3 +936,98 @@ tr.is-suspeito:not(.is-desclassificado) td:first-child {
   max-width: 100%;
   overflow-x: auto;
 }
+
+/* ---------- Itens (cada um com as próprias inscrições) ---------- */
+.sa-passos.is-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+.sa-faixa {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px dashed rgba(255, 210, 78, 0.5);
+  border-radius: 12px;
+  background: rgba(255, 210, 78, 0.07);
+  color: #ffe08a;
+  font-weight: 600;
+}
+.sa-itens {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sorteios-adm .sa-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  animation: sa-entra 0.45s var(--sa-saida) both;
+}
+.sa-item.is-abertas {
+  box-shadow: inset 0 0 0 1px rgba(78, 240, 95, 0.4);
+}
+.sa-item.is-encerradas {
+  box-shadow: inset 0 0 0 1px rgba(255, 191, 94, 0.5), 0 0 30px rgba(123, 77, 245, 0.18);
+}
+.sa-item.is-sorteado {
+  box-shadow: inset 0 0 0 1px rgba(255, 210, 78, 0.45);
+}
+.sa-item-topo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sa-item-nome {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.sa-item-nome b {
+  font-size: 16px;
+}
+.sa-item-nome small {
+  color: var(--ink-dim);
+  font-weight: 600;
+}
+.sa-item-numeros {
+  display: flex;
+  gap: 18px;
+  color: var(--ink-dim);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.sa-item-numeros b {
+  color: var(--ink);
+  font-size: 20px;
+}
+.sa-item-ganhadores {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 210, 78, 0.07);
+  list-style: none;
+  font-size: 14px;
+}
+.sa-item-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
+.sa-chip.is-cinza {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink-dim);
+}
+.sorteios-adm select.sa-filtro-item {
+  width: auto;
+  max-width: 100%;
+  flex: 0 1 260px;
+}
+.sa-telao-dica {
+  margin: -4px 0 12px;
+  max-width: none;
+}

@@ -12,16 +12,14 @@ import {
   carregarParaSortear,
   criarSorteio,
   desclassificar,
-  gerarParticipantesTeste,
   gravarSorteio,
-  ligarModoTeste,
   listarParticipacoes,
   listarPremios,
   listarSorteiosFeitos,
   montarEstadoPublico,
   mudarStatus,
+  mudarStatusItem,
   obterSorteio,
-  resetarSorteio,
   salvarPremio,
   salvarSorteio,
   type Participacao,
@@ -29,7 +27,7 @@ import {
   type Sorteio,
   type SorteioFeito
 } from '@/lib/sorteioDb';
-import { proximoStatus, ehStatus, NOME_STATUS } from '@/lib/sorteio/regras';
+import { proximoStatus, ehStatusItem, paraStatus, NOME_STATUS, type StatusItem } from '@/lib/sorteio/regras';
 import { dispararSorteio } from '@/lib/sorteio/sortear';
 import type { EstadoPublico } from '@/lib/sorteio/estado';
 
@@ -119,58 +117,42 @@ export async function apagarSorteioAction(id: number): Promise<Resultado> {
   if (!(await isAuthenticated())) return SEM_LOGIN;
   const s = await obterSorteio(id).catch(() => null);
   if (!s) return { ok: false, erro: 'Sorteio não encontrado.' };
-  if (s.status !== 'rascunho' && !s.teste) return { ok: false, erro: 'Só dá pra apagar sorteio em rascunho ou em modo de teste.' };
   await apagarSorteio(id);
   atualizar();
   return { ok: true };
 }
 
+// Rascunho → publicado → encerrado.
 export async function avancarStatusAction(id: number, de: string): Promise<Resultado> {
   if (!(await isAuthenticated())) return SEM_LOGIN;
-  if (!ehStatus(de)) return { ok: false, erro: 'Situação inválida.' };
-  const para = proximoStatus(de);
-  if (!para) return { ok: false, erro: 'O sorteio já está finalizado.' };
-  if (para === 'abertas' && !(await listarPremios(id)).length) return { ok: false, erro: 'Cadastre pelo menos um prêmio antes de abrir.' };
-  const mudou = await mudarStatus(id, de, para);
+  const atual = paraStatus(de);
+  const para = proximoStatus(atual);
+  if (!para) return { ok: false, erro: 'O sorteio já está encerrado.' };
+  if (para === 'abertas' && !(await listarPremios(id)).length) return { ok: false, erro: 'Cadastre pelo menos um item antes de publicar.' };
+  const mudou = await mudarStatus(id, atual, para);
   atualizar(id);
-  return mudou ? { ok: true } : { ok: false, erro: `A situação mudou em outra tela. Atualize (agora: diferente de "${NOME_STATUS[de]}").` };
+  return mudou ? { ok: true } : { ok: false, erro: `A situação mudou em outra tela. Atualize (não está mais "${NOME_STATUS[atual]}").` };
 }
 
-// ---------- Modo de teste ----------
+// Inscrições de um item: abrir (em breve → abertas), encerrar (abertas →
+// encerradas) ou reabrir (encerradas → abertas, só antes de sortear).
+const PASSOS_ITEM: [StatusItem, StatusItem][] = [
+  ['em_breve', 'abertas'],
+  ['abertas', 'encerradas'],
+  ['encerradas', 'abertas']
+];
 
-// Ligar: só em rascunho. Desligar: apaga tudo do ensaio e volta pro rascunho.
-export async function modoTesteAction(id: number, ligar: boolean): Promise<Resultado> {
+export async function mudarStatusItemAction(id: number, premioId: number, de: string, para: string): Promise<Resultado> {
   if (!(await isAuthenticated())) return SEM_LOGIN;
-  const s = await obterSorteio(id).catch(() => null);
-  if (!s) return { ok: false, erro: 'Sorteio não encontrado.' };
-  if (ligar) {
-    if (s.status !== 'rascunho') return { ok: false, erro: 'O modo de teste só liga com o sorteio em rascunho.' };
-    await ligarModoTeste(id, true);
-  } else {
-    await resetarSorteio(id);
-    await ligarModoTeste(id, false);
+  if (!ehStatusItem(de) || !ehStatusItem(para) || !PASSOS_ITEM.some(([a, b]) => a === de && b === para)) {
+    return { ok: false, erro: 'Mudança inválida.' };
   }
+  if (de === 'encerradas' && (await listarSorteiosFeitos(id)).some((x) => x.premioId === premioId)) {
+    return { ok: false, erro: 'Esse item já foi sorteado. Não dá pra reabrir as inscrições.' };
+  }
+  const mudou = await mudarStatusItem(id, Number(premioId), de, para);
   atualizar(id);
-  return { ok: true };
-}
-
-export async function resetarAction(id: number): Promise<Resultado> {
-  if (!(await isAuthenticated())) return SEM_LOGIN;
-  const s = await obterSorteio(id).catch(() => null);
-  if (!s?.teste) return { ok: false, erro: 'O reset só funciona no modo de teste.' };
-  await resetarSorteio(id);
-  atualizar(id);
-  return { ok: true };
-}
-
-export async function gerarTesteAction(id: number, quantos: number): Promise<Resultado> {
-  if (!(await isAuthenticated())) return SEM_LOGIN;
-  const s = await obterSorteio(id).catch(() => null);
-  if (!s?.teste) return { ok: false, erro: 'Ligue o modo de teste antes de gerar participantes fictícios.' };
-  const n = Math.max(1, Math.min(500, Math.round(Number(quantos) || 0)));
-  await gerarParticipantesTeste(id, n);
-  atualizar(id);
-  return { ok: true };
+  return mudou ? { ok: true } : { ok: false, erro: 'A situação do item mudou em outra tela. Atualize.' };
 }
 
 // ---------- Prêmios ----------
@@ -178,7 +160,7 @@ export async function gerarTesteAction(id: number, quantos: number): Promise<Res
 export async function salvarPremioAction(id: number, premioId: number | null, form: FormData): Promise<Resultado> {
   if (!(await isAuthenticated())) return SEM_LOGIN;
   const nome = texto(form.get('nome'), 120);
-  if (!nome) return { ok: false, erro: 'Dê um nome pro prêmio.' };
+  if (!nome) return { ok: false, erro: 'Dê um nome pro item.' };
   const ganhadores = Number(form.get('ganhadores'));
   if (!Number.isInteger(ganhadores) || ganhadores < 1 || ganhadores > 100) return { ok: false, erro: 'Ganhadores: um número de 1 a 100.' };
   try {
@@ -189,7 +171,8 @@ export async function salvarPremioAction(id: number, premioId: number | null, fo
       descricao: texto(form.get('descricao'), 1000),
       imagem: form.get('removerImagem') === '1' ? null : (imagem ?? atual?.imagem ?? null),
       ganhadores,
-      ordem: Math.round(Number(form.get('ordem')) || 0)
+      ordem: Math.round(Number(form.get('ordem')) || 0),
+      data: horario(form.get('data'))
     });
     atualizar(id);
     return { ok: true };
@@ -202,7 +185,7 @@ export async function salvarPremioAction(id: number, premioId: number | null, fo
 export async function apagarPremioAction(id: number, premioId: number): Promise<Resultado> {
   if (!(await isAuthenticated())) return SEM_LOGIN;
   if ((await listarSorteiosFeitos(id)).some((s) => s.premioId === premioId)) {
-    return { ok: false, erro: 'Esse prêmio já foi sorteado. Não dá pra apagar.' };
+    return { ok: false, erro: 'Esse item já foi sorteado. Não dá pra apagar.' };
   }
   await apagarPremio(id, premioId);
   atualizar(id);

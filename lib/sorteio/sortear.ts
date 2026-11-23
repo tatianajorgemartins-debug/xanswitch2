@@ -10,15 +10,16 @@ import {
   proximaVaga,
   type PremioBasico,
   type SorteioBasico,
+  type StatusItem,
   type StatusSorteio
 } from './regras.ts';
 
-export type EntradaSorteavel = { id: number; desclassificado: boolean; nomeExibicao: string };
+export type EntradaSorteavel = { id: number; premioId: number; desclassificado: boolean; nomeExibicao: string };
 export type SorteioCarregado = SorteioBasico & { fimAnimacao: number };
 
 export type DadosParaSortear = {
   status: StatusSorteio;
-  premios: PremioBasico[];
+  premios: (PremioBasico & { status: StatusItem })[];
   sorteios: SorteioCarregado[];
   entradas: EntradaSorteavel[];
 };
@@ -56,7 +57,7 @@ export async function dispararSorteio(
 
   for (let tentativa = 0; tentativa < TENTATIVAS; tentativa++) {
     const d = await deps.carregar();
-    if (d.status !== 'sorteando') return { ok: false, erro: 'Mude o sorteio pra "Sorteando" antes de sortear.' };
+    if (d.status !== 'abertas') return { ok: false, erro: d.status === 'rascunho' ? 'Publique a página do sorteio antes de sortear.' : 'Este sorteio já foi encerrado.' };
     const agora = deps.agora();
     if (d.sorteios.some((s) => !s.anulado && s.fimAnimacao > agora)) {
       return { ok: false, erro: 'Espere a animação do sorteio anterior terminar.' };
@@ -72,11 +73,23 @@ export async function dispararSorteio(
       premioId = antigo.premioId;
     }
 
-    const vaga = proximaVaga(d.premios, sorteios, premioId);
-    if (!vaga) return { ok: false, erro: premioId ? 'Esse prêmio já tem todos os ganhadores.' : 'Todos os prêmios já foram sorteados.' };
+    // Sem item escolhido: o primeiro com inscrições encerradas e vaga livre.
+    const prontos = d.premios.filter((p) => p.status === 'encerradas');
+    if (premioId !== undefined) {
+      const item = d.premios.find((p) => p.id === premioId);
+      if (!item) return { ok: false, erro: 'Esse item não existe.' };
+      if (item.status !== 'encerradas') return { ok: false, erro: `Encerre as inscrições de "${item.nome ?? 'este item'}" antes de sortear.` };
+    }
+    const vaga = proximaVaga(prontos, sorteios, premioId);
+    if (!vaga) {
+      return {
+        ok: false,
+        erro: premioId !== undefined ? 'Esse item já tem todos os ganhadores.' : 'Nenhum item pronto pra sortear: encerre as inscrições de um item primeiro.'
+      };
+    }
     // Elegíveis contam também o anulado (quem foi re-sorteado não volta).
-    const candidatos = elegiveis(d.entradas, d.sorteios);
-    if (!candidatos.length) return { ok: false, erro: 'Não sobrou nenhum participante pra sortear.' };
+    const candidatos = elegiveis(d.entradas, d.sorteios, vaga.premio.id);
+    if (!candidatos.length) return { ok: false, erro: 'Ninguém (que ainda não ganhou) está inscrito neste item.' };
 
     const ganhador = candidatos[deps.aleatorio(candidatos.length)];
     const novo: NovoSorteio = {

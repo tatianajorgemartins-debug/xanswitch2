@@ -1,9 +1,20 @@
 // O que as telas públicas recebem (página do participante e telão): sem
 // e-mail completo, IP nem nada privado. Montado no servidor (lib/sorteioDb.ts
 // e o painel) e lido no navegador (app/sorteio).
-import { nomePublico, mascararEmail, type StatusSorteio } from './regras.ts';
+import { nomePublico, mascararEmail, type StatusItem, type StatusSorteio } from './regras.ts';
 
-export type PremioPublico = { id: number; nome: string; descricao: string; imagem: string | null; ganhadores: number; ordem: number };
+// Um item do sorteio: inscrições próprias (status) e horário previsto do sorteio (data).
+export type PremioPublico = {
+  id: number;
+  nome: string;
+  descricao: string;
+  imagem: string | null;
+  ganhadores: number;
+  ordem: number;
+  status: StatusItem;
+  data: string | null; // ISO
+  participantes: number;
+};
 
 export type SorteioPublico = {
   id: number;
@@ -26,11 +37,10 @@ export type EstadoPublico = {
     banner: string | null;
     data: string | null;
     status: StatusSorteio;
-    teste: boolean;
     mensagemGanhador: string;
   };
   premios: PremioPublico[];
-  participantes: number;
+  participantes: number; // pessoas diferentes, em qualquer item
   sorteios: SorteioPublico[]; // só os que valem (sem os anulados), do mais antigo pro mais novo
 };
 

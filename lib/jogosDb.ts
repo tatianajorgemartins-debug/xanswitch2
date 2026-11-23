@@ -59,14 +59,20 @@ export type RecordeJogador = { customer_email: string; nome: string; score: numb
 export async function getRecordesOcarina(chartId: string, limit = 100): Promise<RecordeJogador[]> {
   const rows = await getSql()`
     SELECT customer_email, nome, score, precisao, estrelas, modo FROM (
-      SELECT DISTINCT ON (customer_email) customer_email, score, created_at,
-        details -> 'jogador' ->> 'nome' AS nome, details ->> 'precisao' AS precisao, details ->> 'estrelas' AS estrelas,
-        details ->> 'modoPrecisao' AS modo
-      FROM game_plays
-      WHERE game = 'ocarina' AND customer_email IS NOT NULL AND score IS NOT NULL
-        AND details ->> 'chartId' = ${chartId} AND details ->> 'completou' = 'true'
-        AND details -> 'jogador' ->> 'nome' IS NOT NULL
-      ORDER BY customer_email, score DESC, created_at ASC
+      -- Uma linha por jogador: o mesmo nome em contas diferentes (ex: uma
+      -- pelo Google e outra por e-mail) conta como uma pessoa só. Contas sem
+      -- nome ("Jogador XAN") são pessoas diferentes: ficam separadas.
+      SELECT DISTINCT ON (CASE WHEN nome = 'Jogador XAN' THEN customer_email ELSE lower(nome) END) * FROM (
+        SELECT DISTINCT ON (customer_email) customer_email, score, created_at,
+          details -> 'jogador' ->> 'nome' AS nome, details ->> 'precisao' AS precisao, details ->> 'estrelas' AS estrelas,
+          details ->> 'modoPrecisao' AS modo
+        FROM game_plays
+        WHERE game = 'ocarina' AND customer_email IS NOT NULL AND score IS NOT NULL
+          AND details ->> 'chartId' = ${chartId} AND details ->> 'completou' = 'true'
+          AND details -> 'jogador' ->> 'nome' IS NOT NULL
+        ORDER BY customer_email, score DESC, created_at ASC
+      ) por_conta
+      ORDER BY CASE WHEN nome = 'Jogador XAN' THEN customer_email ELSE lower(nome) END, score DESC, created_at ASC
     ) melhores
     ORDER BY score DESC, created_at ASC
     LIMIT ${limit}
