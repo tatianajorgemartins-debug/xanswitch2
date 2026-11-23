@@ -148,7 +148,22 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
   const [velocidade, setVelocidade] = useState(1);
   const [metronomo, setMetronomo] = useState(false);
   const [palmas, setPalmas] = useState(true);
-  const [ferramenta, setFerramenta] = useState<'notas' | 'selecionar'>('notas');
+  // 'mao' (só no celular): arrastar com um dedo rola a linha do tempo.
+  const [ferramenta, setFerramenta] = useState<'notas' | 'selecionar' | 'mao'>('notas');
+  // Celular: layout próprio (abas, barra fixa embaixo, toque).
+  const [celular, setCelular] = useState(false);
+  const [aba, setAba] = useState<'editar' | 'musica' | 'ritmo'>('editar');
+  const [opcoes, setOpcoes] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 760px)');
+    const f = () => setCelular(mq.matches);
+    f();
+    mq.addEventListener('change', f);
+    return () => mq.removeEventListener('change', f);
+  }, []);
+  // Coluna das cores à esquerda (no celular, só a bolinha) e folga do toque.
+  const esq = celular ? 34 : ESQ;
+  const folga = celular ? 8 : 0;
   const [copia, setCopia] = useState<Copia | null>(null);
   const copiaRef = useRef<Copia | null>(null);
   copiaRef.current = copia;
@@ -173,8 +188,8 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
     (t: number) => (passo ? inicioBatida + Math.round((t - inicioBatida) / passo) * passo : Math.round(t * 1000) / 1000),
     [passo, inicioBatida]
   );
-  const xDe = useCallback((t: number) => ESQ + (t - vista) * zoom, [vista, zoom]);
-  const tDe = useCallback((x: number) => vista + (x - ESQ) / zoom, [vista, zoom]);
+  const xDe = useCallback((t: number) => esq + (t - vista) * zoom, [vista, zoom, esq]);
+  const tDe = useCallback((x: number) => vista + (x - esq) / zoom, [vista, zoom, esq]);
 
   // ---------- Histórico (desfazer/refazer) ----------
   const guardarHistorico = useCallback(() => {
@@ -334,17 +349,19 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
     PISTAS.forEach((p, i) => {
       const y = TOPO_PISTAS + i * PISTA_H;
       g.fillStyle = i % 2 ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0.045)';
-      g.fillRect(ESQ, y, largura - ESQ, PISTA_H);
+      g.fillRect(esq, y, largura - esq, PISTA_H);
       g.fillStyle = p.cor + '22';
-      g.fillRect(0, y, ESQ, PISTA_H);
+      g.fillRect(0, y, esq, PISTA_H);
       g.beginPath();
       g.arc(20, y + PISTA_H / 2, 9, 0, Math.PI * 2);
       g.fillStyle = p.cor;
       g.fill();
-      g.fillStyle = '#d9d0f5';
-      g.font = '700 11px system-ui, sans-serif';
-      g.textBaseline = 'middle';
-      g.fillText(`${i + 1} · ${TECLAS_PADRAO[p.id].slice(3)}`, 35, y + PISTA_H / 2);
+      if (!celular) {
+        g.fillStyle = '#d9d0f5';
+        g.font = '700 11px system-ui, sans-serif';
+        g.textBaseline = 'middle';
+        g.fillText(`${i + 1} · ${TECLAS_PADRAO[p.id].slice(3)}`, 35, y + PISTA_H / 2);
+      }
     });
 
     // Grade: compassos, batidas e subdivisões
@@ -355,7 +372,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
     for (let t = inicioBatida + k * p0; t <= tFim; k++, t = inicioBatida + k * p0) {
       if (t < 0) continue;
       const x = xDe(t);
-      if (x < ESQ) continue;
+      if (x < esq) continue;
       const ehBatida = k % sub === 0;
       const ehCompasso = k % (sub * 4) === 0;
       if (!ehBatida && zoom * p0 < 7) continue;
@@ -377,7 +394,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
     for (let s = Math.ceil(vista); s <= tFim; s++) {
       if (zoom < 60 && s % 5) continue;
       const x = xDe(s);
-      if (x > ESQ + 10) g.fillText(formatarDuracao(s), x + 2, 13);
+      if (x > esq + 10) g.fillText(formatarDuracao(s), x + 2, 13);
     }
 
     // Forma de onda
@@ -387,7 +404,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
       // fillRect por pixel, já que isso roda a cada quadro tocando)
       g.fillStyle = 'rgba(160, 120, 255, 0.55)';
       g.beginPath();
-      for (let x = ESQ; x < largura; x++) {
+      for (let x = esq; x < largura; x++) {
         const a = Math.floor(tDe(x) * PICOS_POR_SEG);
         if (a >= picos.length) break;
         const b = Math.max(a + 1, Math.floor(tDe(x + 1) * PICOS_POR_SEG));
@@ -401,7 +418,11 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
       g.fillStyle = 'rgba(220,210,255,0.4)';
       g.font = '700 12px system-ui, sans-serif';
       g.textBaseline = 'middle';
-      g.fillText(audioUrl ? 'Carregando o áudio…' : 'Envie o áudio da música (ao lado) pra ver a forma de onda', ESQ + 12, REGUA + ONDA / 2);
+      g.fillText(
+        audioUrl ? 'Carregando o áudio…' : celular ? 'Envie o áudio na aba Música' : 'Envie o áudio da música (ao lado) pra ver a forma de onda',
+        esq + 12,
+        REGUA + ONDA / 2
+      );
     }
     g.fillStyle = 'rgba(255,255,255,0.06)';
     g.fillRect(0, REGUA + ONDA - 1, largura, 1);
@@ -410,18 +431,18 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
     if (fimEm) {
       const xf = xDe(fimEm);
       const xa = xDe(fimEm - FADE_FIM);
-      if (xf > ESQ && xa < largura) {
+      if (xf > esq && xa < largura) {
         const gr = g.createLinearGradient(xa, 0, xf, 0);
         gr.addColorStop(0, 'rgba(255,77,94,0)');
         gr.addColorStop(1, 'rgba(255,77,94,0.28)');
         g.fillStyle = gr;
-        g.fillRect(Math.max(ESQ, xa), REGUA, xf - Math.max(ESQ, xa), ALTURA - REGUA);
+        g.fillRect(Math.max(esq, xa), REGUA, xf - Math.max(esq, xa), ALTURA - REGUA);
       }
       if (xf < largura) {
         g.fillStyle = 'rgba(0,0,0,0.55)';
-        g.fillRect(Math.max(ESQ, xf), REGUA, largura - Math.max(ESQ, xf), ALTURA - REGUA);
+        g.fillRect(Math.max(esq, xf), REGUA, largura - Math.max(esq, xf), ALTURA - REGUA);
       }
-      if (xf > ESQ && xf < largura) {
+      if (xf > esq && xf < largura) {
         g.strokeStyle = '#ff4d5e';
         g.lineWidth = 2;
         g.beginPath();
@@ -433,7 +454,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
         g.textBaseline = 'top';
         g.fillText('FIM', xf + 4, REGUA + 3);
       }
-      if (xa > ESQ && xa < largura) {
+      if (xa > esq && xa < largura) {
         g.fillStyle = '#ff8a95';
         g.font = '900 10px system-ui, sans-serif';
         g.textBaseline = 'top';
@@ -443,7 +464,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
     // Fim do áudio
     if (duracao) {
       const x = xDe(duracao);
-      if (x > ESQ && x < largura) {
+      if (x > esq && x < largura) {
         g.fillStyle = 'rgba(0,0,0,0.45)';
         g.fillRect(x, REGUA, largura - x, ALTURA - REGUA);
       }
@@ -454,7 +475,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
     for (const n of notasRef.current) {
       const x = xDe(n.t);
       const x2 = xDe(n.t + n.d);
-      if (x2 < ESQ - RAIO || x > largura + RAIO) continue;
+      if (x2 < esq - RAIO || x > largura + RAIO) continue;
       const y = TOPO_PISTAS + n.p * PISTA_H + PISTA_H / 2;
       const cor = PISTAS[n.p].cor;
       const marcada = s.has(n.id);
@@ -503,7 +524,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
 
     // Fantasma (onde o clique vai pôr a nota)
     const m = mouse.current;
-    if (m && !arrasto.current && m.y > TOPO_PISTAS && m.x > ESQ) {
+    if (m && !arrasto.current && m.y > TOPO_PISTAS && m.x > esq) {
       const p = Math.floor((m.y - TOPO_PISTAS) / PISTA_H);
       if (p >= 0 && p < PISTAS.length && !acharNota(m.x, m.y)) {
         const t = encaixar(tDe(m.x));
@@ -544,7 +565,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
           ini = Math.min(ini, n.t);
           fim = Math.max(fim, n.t + n.d);
         }
-      const xa = Math.max(ESQ, xDe(ini));
+      const xa = Math.max(esq, xDe(ini));
       const xb = Math.min(largura, xDe(fim));
       if (xb > xa - 1) {
         g.fillStyle = 'rgba(255,255,255,0.08)';
@@ -554,7 +575,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
 
     // Agulha
     const xp = xDe(pos.current);
-    if (xp >= ESQ - 1 && xp <= largura) {
+    if (xp >= esq - 1 && xp <= largura) {
       g.strokeStyle = gravandoVivo && tocando ? '#ff4d5e' : '#ffd23e';
       g.lineWidth = 2;
       g.beginPath();
@@ -569,7 +590,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
       g.fill();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [largura, vista, zoom, grade, batida, inicioBatida, picos, duracao, audioUrl, gravandoVivo, tocando, xDe, tDe, encaixar, notas, sel, fimEm]);
+  }, [largura, vista, zoom, grade, batida, inicioBatida, picos, duracao, audioUrl, gravandoVivo, tocando, xDe, tDe, encaixar, notas, sel, fimEm, esq, celular]);
 
   useEffect(() => {
     desenhar();
@@ -579,10 +600,10 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
   useEffect(() => {
     const el = caixa.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setLargura(Math.max(400, el.clientWidth)));
+    const ro = new ResizeObserver(() => setLargura(Math.max(celular ? 240 : 400, el.clientWidth)));
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [celular]);
 
   // Laço enquanto toca: anda a agulha, rola a tela, metrônomo e palmas.
   useEffect(() => {
@@ -618,7 +639,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
       }
       t.agendado = Math.max(t.agendado, ate);
       // rola junto
-      const larg = (largura - ESQ) / zoom;
+      const larg = (largura - esq) / zoom;
       if (p > vista + larg * 0.85 || p < vista) setVista(Math.max(0, p - larg * 0.15));
       if (agoraMs - ultimoTexto > 90) {
         setPosTexto(p);
@@ -631,7 +652,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [tocando, velocidade, metronomo, palmas, gravandoVivo, inicioBatida, batida, largura, zoom, vista, duracao, clique, desenhar, pararTocar]);
+  }, [tocando, velocidade, metronomo, palmas, gravandoVivo, inicioBatida, batida, largura, zoom, vista, duracao, clique, desenhar, pararTocar, esq]);
 
   // ---------- Mouse ----------
   type Arrasto =
@@ -640,8 +661,28 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
     | { modo: 'mover'; xIni: number; pIni: number; originais: Map<number, NotaEd>; mexeu: boolean }
     | { modo: 'esticar'; id: number; mexeu: boolean }
     | { modo: 'caixa'; x0: number; y0: number; x1: number; y1: number; somar: boolean }
-    | { modo: 'faixa'; x0: number; x1: number; mexeu: boolean; somar: boolean };
+    | { modo: 'faixa'; x0: number; x1: number; mexeu: boolean; somar: boolean }
+    // toque: um dedo rolando (ferramenta Mover) e dois dedos (pinça/rolar)
+    | { modo: 'rolar'; x0: number; vista0: number }
+    | { modo: 'pinca'; dist0: number; zoom0: number; tCentro: number }
+    | { modo: 'nada' };
   const arrasto = useRef<Arrasto | null>(null);
+  const dedos = useRef(new Map<number, { x: number; y: number }>());
+
+  // Segundo dedo encostou: desfaz o que o primeiro começou e vira pinça.
+  function comecarPinca() {
+    const a = arrasto.current;
+    if (a && (a.modo === 'criar' || a.modo === 'mover' || a.modo === 'esticar')) {
+      const antes = passado.current.pop();
+      if (antes) {
+        notasRef.current = antes;
+        setNotas(antes);
+      }
+    }
+    const [p1, p2] = [...dedos.current.values()];
+    const cx = (p1.x + p2.x) / 2;
+    arrasto.current = { modo: 'pinca', dist0: Math.max(20, Math.hypot(p1.x - p2.x, p1.y - p2.y)), zoom0: zoom, tCentro: tDe(cx) };
+  }
 
   function acharNota(x: number, y: number): { n: NotaEd; parte: 'corpo' | 'ponta' } | null {
     const p = Math.floor((y - TOPO_PISTAS) / PISTA_H);
@@ -651,7 +692,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
     for (const n of lista) {
       if (n.p !== p) continue;
       const xa = n.d > 0 ? xDe(n.t + n.d) : selRef.current.has(n.id) ? xDe(n.t) + RAIO + 6 : NaN;
-      if (Math.abs(x - xa) <= 7) return { n, parte: 'ponta' };
+      if (Math.abs(x - xa) <= 7 + folga / 2) return { n, parte: 'ponta' };
     }
     let melhor: NotaEd | null = null;
     let dist = Infinity;
@@ -659,7 +700,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
       if (n.p !== p) continue;
       const dx = Math.abs(x - xDe(n.t));
       const naBarra = n.d > 0 && x >= xDe(n.t) && x <= xDe(n.t + n.d);
-      if ((dx <= RAIO + 2 || naBarra) && dx < dist) {
+      if ((dx <= RAIO + 2 + folga || naBarra) && dx < dist) {
         melhor = n;
         dist = dx;
       }
@@ -675,17 +716,32 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
   function aoApertar(e: React.PointerEvent<HTMLCanvasElement>) {
     if (e.button === 2) return;
     canvas.current?.setPointerCapture(e.pointerId);
-    canvas.current?.focus();
+    if (e.pointerType !== 'touch') canvas.current?.focus();
     const { x, y } = coord(e);
-    if (y >= REGUA && y < TOPO_PISTAS && x >= ESQ) {
+    if (e.pointerType === 'touch') {
+      dedos.current.set(e.pointerId, { x, y });
+      if (dedos.current.size === 2) {
+        comecarPinca();
+        return;
+      }
+      if (dedos.current.size > 2) return;
+    }
+    if (ferramenta === 'mao' && y >= TOPO_PISTAS && x >= esq) {
+      // Mover: tocar numa nota só seleciona; arrastar rola.
+      const achou = acharNota(x, y);
+      if (achou) setSel(new Set([achou.n.id]));
+      arrasto.current = { modo: 'rolar', x0: x, vista0: vista };
+      return;
+    }
+    if (y >= REGUA && y < TOPO_PISTAS && x >= esq) {
       // forma de onda: clique = agulha; arrastar = seleciona o trecho todo
       arrasto.current = { modo: 'faixa', x0: x, x1: x, mexeu: false, somar: e.shiftKey || e.ctrlKey || e.metaKey };
       irPara(tDe(x));
       return;
     }
-    if (y < TOPO_PISTAS || x < ESQ) {
+    if (y < TOPO_PISTAS || x < esq) {
       arrasto.current = { modo: 'buscar' };
-      irPara(tDe(Math.max(ESQ, x)));
+      irPara(tDe(Math.max(esq, x)));
       return;
     }
     const achou = acharNota(x, y);
@@ -727,9 +783,27 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
 
   function aoMover(e: React.PointerEvent<HTMLCanvasElement>) {
     const { x, y } = coord(e);
-    mouse.current = { x, y };
+    if (e.pointerType === 'touch') {
+      if (!dedos.current.has(e.pointerId)) return;
+      dedos.current.set(e.pointerId, { x, y });
+    } else mouse.current = { x, y };
     const a = arrasto.current;
+    if (a?.modo === 'nada') return;
+    if (a?.modo === 'pinca') {
+      if (dedos.current.size < 2) return;
+      const [p1, p2] = [...dedos.current.values()];
+      const cx = (p1.x + p2.x) / 2;
+      const novo = Math.max(30, Math.min(1200, (a.zoom0 * Math.hypot(p1.x - p2.x, p1.y - p2.y)) / a.dist0));
+      setZoom(novo);
+      setVista(Math.max(0, Math.min(duracaoTotal, a.tCentro - (cx - esq) / novo)));
+      return;
+    }
+    if (a?.modo === 'rolar') {
+      setVista(Math.max(0, Math.min(duracaoTotal, a.vista0 - (x - a.x0) / zoom)));
+      return;
+    }
     if (!a) {
+      if (e.pointerType === 'touch') return;
       const achou = y > TOPO_PISTAS ? acharNota(x, y) : null;
       canvas.current!.style.cursor =
         y < REGUA ? 'col-resize' : y < TOPO_PISTAS ? 'text' : achou?.parte === 'ponta' ? 'ew-resize' : achou ? 'grab' : ferramenta === 'selecionar' ? 'cell' : 'crosshair';
@@ -737,7 +811,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
       return;
     }
     if (a.modo === 'buscar') {
-      irPara(tDe(Math.max(ESQ, x)));
+      irPara(tDe(Math.max(esq, x)));
     } else if (a.modo === 'criar') {
       const fim = encaixar(tDe(x));
       const d = fim - a.t0;
@@ -769,13 +843,21 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
       a.y1 = y;
       desenhar();
     } else if (a.modo === 'faixa') {
-      a.x1 = Math.max(ESQ, x);
+      a.x1 = Math.max(esq, x);
       if (Math.abs(a.x1 - a.x0) > 4) a.mexeu = true;
       desenhar();
     }
   }
 
-  function aoSoltar() {
+  function aoSoltar(e?: React.PointerEvent<HTMLCanvasElement>) {
+    if (e?.pointerType === 'touch') {
+      dedos.current.delete(e.pointerId);
+      // Saiu um dos dois dedos da pinça: o outro não faz mais nada até soltar.
+      if (arrasto.current?.modo === 'pinca' || arrasto.current?.modo === 'nada') {
+        arrasto.current = dedos.current.size ? { modo: 'nada' } : null;
+        return;
+      }
+    }
     const a = arrasto.current;
     arrasto.current = null;
     if (!a) return;
@@ -797,7 +879,12 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
       const dentro = notasRef.current.filter((n) => n.t >= t0 - 0.001 && n.t <= t1 + 0.001).map((n) => n.id);
       setSel((s) => new Set([...(a.somar ? s : []), ...dentro]));
       irPara(Math.max(0, encaixar(t0)));
-      setAviso({ tipo: 'info', texto: `${dentro.length} notas selecionadas no trecho. Ctrl+C copia, Ctrl+D duplica logo depois.` });
+      setAviso({
+        tipo: 'info',
+        texto: celular
+          ? `${dentro.length} notas selecionadas no trecho. Use Copiar ou Repetir na barra de baixo.`
+          : `${dentro.length} notas selecionadas no trecho. Ctrl+C copia, Ctrl+D duplica logo depois.`
+      });
     }
     desenhar();
   }
@@ -851,7 +938,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
     mudar((l) => [...l.filter((o) => !ocupa.has(`${o.p}:${Math.round(o.t * 1000)}`)), ...novas]);
     setSel(new Set(novas.map((n) => n.id)));
     irPara(destino + c.tam);
-    const larg = (largura - ESQ) / zoom;
+    const larg = (largura - esq) / zoom;
     if (destino + c.tam > vista + larg || destino < vista) setVista(Math.max(0, destino - larg * 0.2));
   }
 
@@ -944,10 +1031,10 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
       e.preventDefault();
       const r = c.getBoundingClientRect();
       if (e.ctrlKey || e.metaKey) {
-        const tMouse = vista + (e.clientX - r.left - ESQ) / zoom;
+        const tMouse = vista + (e.clientX - r.left - esq) / zoom;
         const novo = Math.max(30, Math.min(1200, zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
         setZoom(novo);
-        setVista(Math.max(0, tMouse - (e.clientX - r.left - ESQ) / novo));
+        setVista(Math.max(0, tMouse - (e.clientX - r.left - esq) / novo));
       } else {
         const d = (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) / zoom;
         setVista((v) => Math.max(0, Math.min(duracaoTotal, v + d)));
@@ -955,7 +1042,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
     };
     c.addEventListener('wheel', onWheel, { passive: false });
     return () => c.removeEventListener('wheel', onWheel);
-  }, [vista, zoom, duracaoTotal]);
+  }, [vista, zoom, duracaoTotal, esq]);
 
   // ---------- Teclado ----------
   const abertasVivo = useRef(new Map<number, number>()); // pista → id da nota sendo gravada
@@ -1049,7 +1136,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
           mudar((l) => l.map((n) => (selRef.current.has(n.id) ? { ...n, t: Math.max(0, n.t + dir * p) } : n)));
         } else {
           irPara(encaixar(pos.current) + dir * p);
-          const larg = (largura - ESQ) / zoom;
+          const larg = (largura - esq) / zoom;
           if (pos.current < vista || pos.current > vista + larg) setVista(Math.max(0, pos.current - larg / 2));
         }
         return;
@@ -1266,7 +1353,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
   );
 
   return (
-    <div className="oc-ed">
+    <div className={`oc-ed${opcoes ? ' com-opcoes' : ''}`} data-aba={aba}>
       <header className="oc-ed-topo">
         <Link href="/admin#ocarina" className="btn ghost">
           ← Músicas
@@ -1284,9 +1371,33 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
         </div>
       </header>
       {aviso && <p className={`oc-ed-aviso is-${aviso.tipo}`}>{aviso.texto}</p>}
+      {celular && (
+        <nav className="oc-ed-abas" role="tablist" aria-label="Partes do editor">
+          {(
+            [
+              ['editar', '✏️ Notas'],
+              ['musica', '🎵 Música'],
+              ['ritmo', '🥁 Ritmo']
+            ] as const
+          ).map(([v, nome]) => (
+            <button key={v} type="button" role="tab" aria-selected={aba === v} className={aba === v ? 'is-on' : ''} onClick={() => setAba(v)}>
+              {nome}
+            </button>
+          ))}
+        </nav>
+      )}
 
       <div className="oc-ed-grade">
         <section className="adm-card oc-ed-dados">
+          <div className="oc-ed-grupo" data-grupo="musica">
+          {celular && (
+            <div className="oc-ed-pub">
+              <span className={`oc-ed-status${publicada ? ' is-pub' : ''}`}>{publicada ? 'Publicada' : 'Rascunho'}</span>
+              <button type="button" className="btn ghost" onClick={alternarPublicada}>
+                {publicada ? 'Voltar pra rascunho' : 'Publicar no jogo'}
+              </button>
+            </div>
+          )}
           <h3>Música</h3>
           <label>
             Nome
@@ -1346,6 +1457,8 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
             ✨ Gerar notas do áudio
           </button>
           <p className="adm-help">Analisa o áudio (ou um mp3 que você enviar) e cria um chart base pra ajustar aqui.</p>
+          </div>
+          <div className="oc-ed-grupo" data-grupo="fim">
           <h3>Fim da música</h3>
           <p className="adm-help">
             {fimEm
@@ -1396,6 +1509,8 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
               Até o fim do áudio
             </button>
           </div>
+          </div>
+          <div className="oc-ed-grupo" data-grupo="ritmo">
           <h3>Ritmo (grade)</h3>
           <div className="oc-ed-linha">
             <label>
@@ -1445,6 +1560,18 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
           <p className="adm-help">
             Ligue o metrônomo e toque: se os cliques baterem com a música, a grade está certa e as notas encaixam no tempo.
           </p>
+          {celular && (
+            <>
+              <label className="oc-ed-check">
+                <input type="checkbox" checked={metronomo} onChange={(e) => setMetronomo(e.target.checked)} /> Metrônomo
+              </label>
+              <p className="adm-help">
+                A agulha fica onde você tocou por último na linha do tempo (aba Notas). O tempo dela aparece na barra de baixo.
+              </p>
+            </>
+          )}
+          </div>
+          <div className="oc-ed-grupo" data-grupo="resumo">
           <h3>Resumo</h3>
           <p className="adm-help">
             {notas.length} notas · {estatisticas.longas} longas · {estatisticas.acordes} acordes · {estatisticas.nps.toFixed(1).replace('.', ',')}{' '}
@@ -1454,11 +1581,14 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
           <p className="adm-help">
             {estatisticas.sequencias
               ? `${estatisticas.sequencias} sequência${estatisticas.sequencias > 1 ? 's' : ''} de Triforces. Cada uma enche meia barra de especial.`
-              : 'Nenhuma marcada: esta música fica sem Triforces. Selecione as notas e aperte E.'}
+              : celular
+                ? 'Nenhuma marcada: esta música fica sem Triforces. Selecione as notas e toque em 🔺 na barra de baixo.'
+                : 'Nenhuma marcada: esta música fica sem Triforces. Selecione as notas e aperte E.'}
           </p>
           <button type="button" className="btn ghost adm-danger" onClick={apagar}>
             Apagar música
           </button>
+          </div>
         </section>
 
         <section className="oc-ed-palco">
@@ -1501,13 +1631,13 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
             </div>
           </div>
           <div className="oc-ed-barra">
-            <button type="button" className="btn primary" onClick={() => (tocando ? pararTocar() : comecarTocar(pos.current))}>
+            <button type="button" className="btn primary oc-ed-so-pc" onClick={() => (tocando ? pararTocar() : comecarTocar(pos.current))}>
               {tocando ? '❚❚ Pausar' : '▶ Tocar'}
             </button>
-            <button type="button" className="btn ghost" onClick={() => { irPara(0); setVista(0); }} title="Voltar ao começo (Home)">
+            <button type="button" className="btn ghost oc-ed-so-pc" onClick={() => { irPara(0); setVista(0); }} title="Voltar ao começo (Home)">
               ⏮
             </button>
-            <span className="oc-ed-tempo">
+            <span className="oc-ed-tempo oc-ed-so-pc">
               {formatarDuracao(Math.floor(posTexto))}.{String(Math.floor((posTexto % 1) * 1000)).padStart(3, '0')}
             </span>
             <span className="oc-ed-ferramentas" role="group" aria-label="Ferramenta do mouse">
@@ -1527,10 +1657,29 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
               >
                 ⬚ Selecionar
               </button>
+              {celular && (
+                <button type="button" className={`btn ${ferramenta === 'mao' ? 'primary' : 'ghost'}`} onClick={() => setFerramenta('mao')}>
+                  ✋ Mover
+                </button>
+              )}
             </span>
-            <button type="button" className="btn green" onClick={testarDaqui} disabled={!notas.length} title="Testa no jogo a partir da agulha ou da 1ª nota selecionada (T)">
+            {celular && (
+              <span className="oc-ed-zoom-cel" role="group" aria-label="Zoom">
+                <button type="button" className="btn ghost" onClick={() => setZoom((z) => Math.max(30, z / 1.35))} aria-label="Afastar">
+                  −
+                </button>
+                <button type="button" className="btn ghost" onClick={() => setZoom((z) => Math.min(1200, z * 1.35))} aria-label="Aproximar">
+                  +
+                </button>
+                <button type="button" className={`btn ${opcoes ? 'primary' : 'ghost'}`} onClick={() => setOpcoes((o) => !o)} aria-expanded={opcoes} aria-label="Mais opções">
+                  ⚙
+                </button>
+              </span>
+            )}
+            <button type="button" className="btn green oc-ed-so-pc" onClick={testarDaqui} disabled={!notas.length} title="Testa no jogo a partir da agulha ou da 1ª nota selecionada (T)">
               🎮 Testar daqui
             </button>
+            <span className="oc-ed-opcoes">
             <label>
               Velocidade
               <select value={velocidade} onChange={(e) => { setVelocidade(Number(e.target.value)); if (tocar.current) setTimeout(() => comecarTocar(pos.current)); }}>
@@ -1555,13 +1704,14 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
             <label className="oc-ed-check">
               <input type="checkbox" checked={palmas} onChange={(e) => setPalmas(e.target.checked)} /> 🔊 Clique em cada nota
             </label>
-            <label className={`oc-ed-check oc-ed-gravar${gravandoVivo ? ' is-on' : ''}`}>
+            <label className={`oc-ed-check oc-ed-gravar oc-ed-so-pc${gravandoVivo ? ' is-on' : ''}`}>
               <input type="checkbox" checked={gravandoVivo} onChange={(e) => setGravandoVivo(e.target.checked)} /> ● Gravar ao vivo
             </label>
-            <label>
+            <label className="oc-ed-so-pc">
               Zoom
               <input type="range" min={30} max={1200} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} />
             </label>
+            </span>
           </div>
 
           <div ref={caixa} className="oc-ed-quadro">
@@ -1572,12 +1722,15 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
               onPointerDown={aoApertar}
               onPointerMove={aoMover}
               onPointerUp={aoSoltar}
+              onPointerCancel={aoSoltar}
               onPointerLeave={() => {
                 mouse.current = null;
                 desenhar();
               }}
               onContextMenu={(e) => {
                 e.preventDefault();
+                // no celular, segurar o dedo abre isso: não apaga nada
+                if (celular) return;
                 const { x, y } = coord(e);
                 const achou = acharNota(x, y);
                 if (achou) {
@@ -1595,9 +1748,9 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
             className="oc-ed-rolagem"
             type="range"
             min={0}
-            max={Math.max(0, duracaoTotal - (largura - ESQ) / zoom)}
+            max={Math.max(0, duracaoTotal - (largura - esq) / zoom)}
             step={0.01}
-            value={Math.min(vista, Math.max(0, duracaoTotal - (largura - ESQ) / zoom))}
+            value={Math.min(vista, Math.max(0, duracaoTotal - (largura - esq) / zoom))}
             onChange={(e) => setVista(Number(e.target.value))}
             aria-label="Rolar a linha do tempo"
           />
@@ -1627,7 +1780,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
                   </label>
                 </div>
               ) : null}
-              <div className="oc-ed-linha oc-ed-copia">
+              <div className="oc-ed-linha oc-ed-copia oc-ed-so-pc">
                 <button type="button" className="btn ghost" onClick={copiar} disabled={!selecionadas.length} title="Ctrl+C">
                   📋 Copiar
                 </button>
@@ -1644,10 +1797,12 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
               <p className="adm-help">
                 {copia
                   ? `Copiado: ${copia.notas.length} notas (${nomeTrecho(copia)}). Colar põe o começo do trecho no compasso da agulha; colar de novo continua logo depois.`
-                  : 'Dica: arraste na forma de onda pra selecionar um trecho inteiro, depois "Repetir em seguida" (Ctrl+D) quantas vezes precisar.'}
+                  : celular
+                    ? 'Dica: arraste o dedo na forma de onda pra selecionar um trecho inteiro, depois toque em "Repetir" quantas vezes precisar.'
+                    : 'Dica: arraste na forma de onda pra selecionar um trecho inteiro, depois "Repetir em seguida" (Ctrl+D) quantas vezes precisar.'}
               </p>
               {selecionadas.length > 0 && (
-                <div className="oc-ed-linha">
+                <div className="oc-ed-linha oc-ed-so-pc">
                   <button
                     type="button"
                     className="btn ghost"
@@ -1666,7 +1821,12 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
                   </button>
                 </div>
               )}
-              <div className="oc-ed-linha">
+              {celular && (
+                <button type="button" className="btn ghost" onClick={() => { pararTocar(); setTestando(0); }} disabled={!notas.length}>
+                  🎮 Testar do começo
+                </button>
+              )}
+              <div className="oc-ed-linha oc-ed-so-pc">
                 <button type="button" className="btn ghost" onClick={desfazer} disabled={!passado.current.length}>
                   ↶ Desfazer
                 </button>
@@ -1681,7 +1841,21 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
                 </button>
               </div>
             </div>
-            <details className="adm-card oc-ed-ajuda" open>
+            {celular && (
+              <details className="adm-card oc-ed-ajuda">
+                <summary>Como editar no celular</summary>
+                <ul>
+                  <li><b>Toque</b> numa pista: põe nota · <b>toque e arraste →</b>: nota longa</li>
+                  <li><b>Arraste a nota</b>: move (tempo e cor) · <b>puxe a ponta</b>: muda a duração</li>
+                  <li><b>Dois dedos</b>: abrir/fechar dá zoom, arrastar rola a música</li>
+                  <li><b>✋ Mover</b>: um dedo rola a linha do tempo sem criar notas</li>
+                  <li><b>⬚ Selecionar</b>: arraste um retângulo pra pegar várias notas</li>
+                  <li><b>Arrastar na forma de onda</b>: seleciona o trecho inteiro; tocar nela põe a agulha ali</li>
+                  <li>Apagar, copiar, repetir, Triforce e desfazer ficam na <b>barra de baixo</b></li>
+                </ul>
+              </details>
+            )}
+            <details className="adm-card oc-ed-ajuda oc-ed-so-pc" open>
               <summary>Atalhos</summary>
               <ul>
                 <li><b>Clique</b> numa pista: põe nota · <b>clique e arraste →</b>: nota longa</li>
@@ -1699,6 +1873,78 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
           </div>
         </section>
       </div>
+
+      {celular && (
+        <div className="oc-ed-cel-barra">
+          {aba === 'editar' && (
+            <div className="oc-ed-cel-acoes" role="toolbar" aria-label="Ações nas notas">
+              <button type="button" onClick={desfazer} disabled={!passado.current.length}>
+                <span>↶</span>Desfazer
+              </button>
+              <button type="button" onClick={refazer} disabled={!futuro.current.length}>
+                <span>↷</span>Refazer
+              </button>
+              <button type="button" className="is-perigo" onClick={apagarSelecionadas} disabled={!selecionadas.length}>
+                <span>🗑</span>Apagar
+              </button>
+              <button type="button" onClick={duplicar} disabled={!selecionadas.length}>
+                <span>⧉</span>Repetir
+              </button>
+              <button type="button" onClick={copiar} disabled={!selecionadas.length}>
+                <span>📋</span>Copiar
+              </button>
+              <button type="button" onClick={() => colar(pos.current)} disabled={!copia}>
+                <span>📥</span>Colar
+              </button>
+              <button
+                type="button"
+                onClick={() => mudar((l) => l.map((n) => (sel.has(n.id) ? { ...n, d: n.d > 0 ? 0 : Math.max(batida, passo) } : n)))}
+                disabled={!selecionadas.length}
+              >
+                <span>⇄</span>Longa
+              </button>
+              <button type="button" onClick={alternarEstrela} disabled={!selecionadas.length}>
+                <span>🔺</span>Triforce
+              </button>
+              <button type="button" onClick={() => mudar((l) => l.map((n) => (sel.has(n.id) ? { ...n, t: encaixar(n.t) } : n)))} disabled={!selecionadas.length}>
+                <span>⌖</span>Encaixar
+              </button>
+              <button type="button" onClick={() => setSel(new Set(notasRef.current.map((n) => n.id)))} disabled={!notas.length}>
+                <span>☰</span>Tudo
+              </button>
+              <button type="button" onClick={() => setSel(new Set())} disabled={!selecionadas.length}>
+                <span>✕</span>Soltar
+              </button>
+            </div>
+          )}
+          <div className="oc-ed-cel-transporte">
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={() => {
+                irPara(0);
+                setVista(0);
+              }}
+              aria-label="Voltar ao começo"
+            >
+              ⏮
+            </button>
+            <button type="button" className="btn primary oc-ed-cel-play" onClick={() => (tocando ? pararTocar() : comecarTocar(pos.current))}>
+              {tocando ? '❚❚' : '▶'}
+            </button>
+            <span className="oc-ed-tempo">
+              {formatarDuracao(Math.floor(posTexto))}.{String(Math.floor((posTexto % 1) * 1000)).padStart(3, '0')}
+              {selecionadas.length > 0 && <small>{selecionadas.length} sel.</small>}
+            </span>
+            <button type="button" className="btn green" onClick={testarDaqui} disabled={!notas.length} aria-label="Testar no jogo daqui">
+              🎮
+            </button>
+            <button type="button" className={`btn primary oc-ed-cel-salvar${sujo ? ' is-sujo' : ''}`} onClick={salvar} disabled={salvando}>
+              {salvando ? '…' : sujo ? '💾 Salvar' : '✓ Salvo'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {gerador && (
         <GeradorNotas

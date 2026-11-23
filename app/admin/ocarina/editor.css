@@ -333,3 +333,350 @@
 .oc-ed-difs-acoes label {
   min-width: 170px;
 }
+
+/* ---------- Celular (até 760px): layout próprio ----------
+   Abas (Notas / Música / Ritmo), linha do tempo de ponta a ponta e uma barra
+   fixa embaixo com tocar, testar, salvar e as ações nas notas. No PC estes
+   invólucros não mudam nada (display: contents). */
+.oc-ed-grupo,
+.oc-ed-opcoes {
+  display: contents;
+}
+
+@media (max-width: 760px) {
+  .oc-ed {
+    padding: 10px 10px calc(150px + env(safe-area-inset-bottom));
+  }
+  .oc-ed:not([data-aba='editar']) {
+    padding-bottom: calc(90px + env(safe-area-inset-bottom));
+  }
+  .oc-ed-so-pc {
+    display: none !important;
+  }
+  .oc-ed .btn {
+    min-height: 42px;
+  }
+  .oc-ed input:not([type='checkbox']):not([type='range']):not([type='file']),
+  .oc-ed select {
+    min-height: 44px;
+    font-size: 16px; /* 16px: o iPhone não dá zoom ao tocar no campo */
+  }
+
+  /* Topo: voltar + nome */
+  .oc-ed-topo {
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .oc-ed-topo .btn {
+    flex: none;
+    padding-inline: 12px;
+  }
+  .oc-ed-topo h1 {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 17px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .oc-ed-topo .oc-ed-status {
+    flex: none;
+    font-size: 10.5px;
+  }
+  .oc-ed-topo-acoes,
+  .oc-ed-sujo {
+    display: none;
+  }
+
+  /* Abas */
+  .oc-ed-abas {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    margin-bottom: 10px;
+    padding: 4px;
+    border-radius: 13px;
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.2);
+  }
+  .oc-ed-abas button {
+    min-height: 40px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--ink-dim);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  .oc-ed-abas button.is-on {
+    background: #7b4df5;
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(123, 77, 245, 0.45);
+  }
+
+  /* O que aparece em cada aba */
+  .oc-ed-grade {
+    display: block;
+  }
+  .oc-ed[data-aba='editar'] .oc-ed-dados,
+  .oc-ed:not([data-aba='editar']) .oc-ed-palco {
+    display: none;
+  }
+  .oc-ed[data-aba='musica'] .oc-ed-grupo[data-grupo='ritmo'],
+  .oc-ed[data-aba='ritmo'] .oc-ed-grupo:not([data-grupo='ritmo']) {
+    display: none;
+  }
+  .oc-ed-dados {
+    gap: 18px;
+    padding: 14px;
+  }
+  .oc-ed-grupo {
+    display: grid;
+    gap: 10px;
+  }
+  .oc-ed-grupo + .oc-ed-grupo {
+    padding-top: 14px;
+    border-top: 1px solid rgba(164, 99, 255, 0.15);
+  }
+  .oc-ed-pub {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .oc-ed-linha .btn {
+    flex: 1 1 auto;
+  }
+
+  /* Dificuldades */
+  .oc-ed-difs {
+    gap: 8px;
+    margin-bottom: 8px;
+    padding: 6px;
+  }
+  .oc-ed-difs-abas {
+    gap: 5px;
+  }
+  .oc-ed-difs-abas button {
+    min-height: 46px;
+    padding: 5px 3px;
+  }
+  .oc-ed-difs-abas button strong {
+    font-size: 13px;
+  }
+  .oc-ed-difs-abas button small {
+    font-size: 10.5px;
+  }
+  .oc-ed-difs-acoes {
+    display: none;
+  }
+  .oc-ed.com-opcoes .oc-ed-difs-acoes {
+    display: grid;
+    gap: 8px;
+    padding: 4px;
+  }
+  .oc-ed-difs-acoes label {
+    min-width: 0;
+  }
+
+  /* Ferramentas, zoom e opções */
+  .oc-ed-barra {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .oc-ed-ferramentas {
+    display: grid;
+    flex: 1 1 0;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    min-width: 0;
+  }
+  .oc-ed-ferramentas .btn {
+    min-width: 0;
+    padding-inline: 4px;
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
+  .oc-ed-zoom-cel {
+    display: flex;
+    gap: 4px;
+  }
+  .oc-ed-zoom-cel .btn {
+    width: 40px;
+    padding: 0;
+    font-size: 18px;
+  }
+  .oc-ed-opcoes {
+    display: none;
+  }
+  .oc-ed.com-opcoes .oc-ed-opcoes {
+    display: grid;
+    flex-basis: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.2);
+    animation: xan-rise-in 0.25s ease both;
+  }
+  .oc-ed-opcoes label {
+    min-width: 0;
+  }
+  .oc-ed .oc-ed-opcoes .oc-ed-check {
+    min-height: 44px;
+  }
+
+  /* Linha do tempo */
+  .oc-ed-quadro {
+    border-radius: 12px;
+  }
+  .oc-ed-rolagem {
+    height: 28px;
+    margin: 4px 0 10px;
+    accent-color: #7b4df5;
+  }
+  .oc-ed-baixo {
+    gap: 10px;
+  }
+  .oc-ed-sel {
+    padding: 14px;
+  }
+  .oc-ed-sel h3 {
+    margin: 0;
+    font-size: 15px;
+  }
+  .oc-ed-sel .oc-ed-linha label {
+    flex: 1 1 calc(50% - 8px);
+  }
+
+  /* Avisos acima da barra de baixo */
+  .oc-ed-aviso {
+    bottom: calc(146px + env(safe-area-inset-bottom));
+    width: calc(100vw - 24px);
+    font-size: 13px;
+    text-align: center;
+  }
+  .oc-ed:not([data-aba='editar']) .oc-ed-aviso {
+    bottom: calc(84px + env(safe-area-inset-bottom));
+  }
+
+  /* Barra fixa de baixo */
+  .oc-ed-cel-barra {
+    position: fixed;
+    z-index: 40;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    gap: 7px;
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+    border-top: 1px solid rgba(164, 99, 255, 0.28);
+    background: rgba(17, 10, 34, 0.96);
+    box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(12px);
+  }
+  .oc-ed-cel-acoes {
+    display: flex;
+    gap: 5px;
+    margin: 0 -8px;
+    padding: 0 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+  .oc-ed-cel-acoes::-webkit-scrollbar {
+    display: none;
+  }
+  .oc-ed-cel-acoes button {
+    display: grid;
+    flex: 0 0 auto;
+    justify-items: center;
+    gap: 2px;
+    min-width: 60px;
+    padding: 6px 6px 5px;
+    border: 0;
+    border-radius: 11px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--ink, #fff);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.1;
+    cursor: pointer;
+    transition: opacity 0.2s, background 0.2s, transform 0.12s;
+  }
+  .oc-ed-cel-acoes button span {
+    font-size: 17px;
+    line-height: 1.15;
+  }
+  .oc-ed-cel-acoes button:active:not(:disabled) {
+    background: rgba(123, 77, 245, 0.35);
+    transform: scale(0.94);
+  }
+  .oc-ed-cel-acoes button:disabled {
+    opacity: 0.32;
+    cursor: default;
+  }
+  .oc-ed-cel-acoes button.is-perigo {
+    color: #ff9ba5;
+  }
+  .oc-ed-cel-transporte {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .oc-ed-cel-transporte .btn {
+    flex: none;
+    min-height: 46px;
+    padding: 0 13px;
+  }
+  .oc-ed-cel-transporte .oc-ed-cel-play {
+    width: 54px;
+    font-size: 18px;
+  }
+  .oc-ed-cel-transporte .oc-ed-tempo {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+    padding: 5px 6px;
+    font-size: 14px;
+    line-height: 1.2;
+  }
+  .oc-ed-tempo small {
+    color: #b9a5ff;
+    font: 800 10.5px system-ui, sans-serif;
+  }
+  .oc-ed-cel-salvar {
+    white-space: nowrap;
+  }
+  .oc-ed-cel-salvar.is-sujo {
+    box-shadow: 0 0 0 2px #ffd23e, 0 0 18px rgba(255, 210, 62, 0.35);
+  }
+
+  /* Testar no jogo: barra pequena no topo em vez da lateral */
+  /* à direita, abaixo do botão de especial (o pause do jogo já fecha) */
+  .oc-ed-teste-barra {
+    top: calc(150px + env(safe-area-inset-top));
+    right: 6px;
+    left: auto;
+    width: 92px;
+    padding: 6px;
+    transform: none;
+  }
+  .oc-ed-teste-barra > span,
+  .oc-ed-teste-barra .oc-ed-check {
+    display: none;
+  }
+  .oc-ed-teste-barra .btn {
+    min-height: 40px;
+    padding: 4px 6px;
+    font-size: 12px;
+    line-height: 1.15;
+    white-space: normal;
+  }
+}

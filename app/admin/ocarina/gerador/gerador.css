@@ -208,4 +208,26 @@
   .gn-campo.is-largo {
     grid-column: auto;
   }
+  .gn-fundo {
+    padding: 10px 6px;
+  }
+  .gn-janela {
+    padding: 12px;
+  }
+  /* rodapé fixo compacto, por cima dos campos que passam por baixo */
+  .gn-rodape {
+    z-index: 2;
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #140c2a;
+    box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.25), 0 -8px 20px rgba(0, 0, 0, 0.45);
+  }
+  .gn-rodape .adm-help {
+    font-size: 12px;
+    line-height: 1.3;
+  }
+  .gn-rodape .btn {
+    flex: none;
+  }
 }
