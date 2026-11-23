@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { DIFICULDADES, FADE_FIM, ORDEM_DIFICULDADES, PISTAS, TECLAS_PADRAO, formatarDuracao, sequenciasEstrela, type Chart, type Dificuldade, type NotaChart } from '@/app/games-interativos/ocarina-hero/ocarina';
 import { type MotorOcarina } from '@/app/games-interativos/ocarina-hero/motor';
 import { SomOcarina, tocarClique } from '@/app/games-interativos/ocarina-hero/som';
@@ -34,6 +35,10 @@ import {
 } from '../actions';
 import { compactarAudio, formatarBytes } from '../compactarAudio';
 import type { OcarinaNota } from '@/lib/ocarinaDb';
+import type { GeradoParaEditor } from '../gerador/GeradorNotas';
+
+// Gerador automático de notas (só baixa quando abre).
+const GeradorNotas = dynamic(() => import('../gerador/GeradorNotas'), { ssr: false });
 
 export type MusicaEditor = {
   id: number;
@@ -148,6 +153,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
   const copiaRef = useRef<Copia | null>(null);
   copiaRef.current = copia;
   const [gravandoVivo, setGravandoVivo] = useState(false);
+  const [gerador, setGerador] = useState(false);
   const [posTexto, setPosTexto] = useState(0);
   const pos = useRef(0);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -957,6 +963,8 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
     const desce = (e: KeyboardEvent) => {
       const alvo = e.target as HTMLElement;
       if (alvo && ['INPUT', 'TEXTAREA', 'SELECT'].includes(alvo.tagName)) return;
+      // Com o gerador de notas aberto, os atalhos do editor ficam desligados.
+      if (gerador) return;
       const ctrl = e.ctrlKey || e.metaKey;
       if (e.code === 'Space') {
         e.preventDefault();
@@ -1138,6 +1146,28 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
     } else setAviso({ tipo: 'erro', texto: r.erro });
   }
 
+  // Notas vindas do "Gerar notas do áudio": troca as da(s) dificuldade(s)
+  // escolhida(s). Na aberta, Ctrl+Z desfaz.
+  function aplicarGerado(r: GeradoParaEditor) {
+    let total = 0;
+    for (const d of ORDEM_DIFICULDADES) {
+      const lista = r.notas[d];
+      if (!lista) continue;
+      const ed: NotaEd[] = lista.map((n) => ({ id: novaId(), t: n.t, p: Math.max(0, PISTAS.findIndex((x) => x.id === n.pista)), d: n.dur ?? 0 }));
+      total += ed.length;
+      if (d === dificuldade) mudar(() => ed);
+      else outras.current[d] = ed;
+    }
+    if (r.bpm) setBpm(r.bpm);
+    if (r.inicioBatida !== null) setInicioBatida(r.inicioBatida);
+    setSel(new Set());
+    setSujo(true);
+    setGerador(false);
+    const difs = ORDEM_DIFICULDADES.filter((d) => r.notas[d]).map((d) => DIFICULDADES[d].nome);
+    setAviso({ tipo: 'ok', texto: `${total} notas geradas (${difs.join(', ')}). Revise, libere as dificuldades e clique em Salvar.` });
+    if (r.arquivoAudio) enviarAudio(r.arquivoAudio);
+  }
+
   async function enviarAudio(arquivo: File) {
     try {
       pararTocar();
@@ -1305,6 +1335,17 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
               }}
             />
           </label>
+          <button
+            type="button"
+            className="btn primary oc-ed-gerar"
+            onClick={() => {
+              pararTocar();
+              setGerador(true);
+            }}
+          >
+            ✨ Gerar notas do áudio
+          </button>
+          <p className="adm-help">Analisa o áudio (ou um mp3 que você enviar) e cria um chart base pra ajustar aqui.</p>
           <h3>Fim da música</h3>
           <p className="adm-help">
             {fimEm
@@ -1658,6 +1699,18 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
           </div>
         </section>
       </div>
+
+      {gerador && (
+        <GeradorNotas
+          audioUrlMusica={audioUrl}
+          bpmAtual={bpm}
+          inicioAtual={inicioBatida}
+          dificuldadeAtual={dificuldade}
+          notasExistentes={(d) => notasDe(d).length}
+          onAbrir={aplicarGerado}
+          onFechar={() => setGerador(false)}
+        />
+      )}
 
       {testando !== null && (
         <TesteNoJogo

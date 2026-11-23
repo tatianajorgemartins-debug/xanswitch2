@@ -8,7 +8,8 @@
     "start": "next start",
     "test:jogos": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/jogos/",
     "sincronizar-personagens": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/sincronizar-personagens.mjs",
-    "test:sorteio": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/sorteio/"
+    "test:sorteio": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/sorteio/",
+    "test:gerador": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/ocarina/"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
