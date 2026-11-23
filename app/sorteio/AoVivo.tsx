@@ -115,6 +115,16 @@ export function Confete() {
   );
 }
 
+// O @ do ganhador (link pro perfil); sem @, o e-mail mascarado.
+export function Arroba({ g }: { g: SorteioPublico['ganhador'] }) {
+  if (!g.instagram) return <span className="sorteio-ganhador-email">{g.email}</span>;
+  return (
+    <a className="sorteio-ganhador-insta" href={`https://instagram.com/${g.instagram}`} target="_blank" rel="noreferrer">
+      @{g.instagram}
+    </a>
+  );
+}
+
 // Roleta em carrossel: os nomes passam da direita pra esquerda e o card do
 // meio para no ganhador, no mesmo instante em todas as telas.
 export function Roleta({ sorteio, agora }: { sorteio: SorteioPublico; agora: number }) {
@@ -134,6 +144,7 @@ export function Roleta({ sorteio, agora }: { sorteio: SorteioPublico; agora: num
           {sorteio.roleta.map((nome, i) => {
             const d = Math.min(Math.abs(i - pos), 3);
             const ganhador = parou && i === total - 1;
+            const arroba = ganhador ? sorteio.ganhador.instagram : null;
             // Só desenha o que está perto da janela.
             if (Math.abs(i - pos) > 6) return <li key={i} className="sorteio-carta is-longe" />;
             return (
@@ -144,6 +155,7 @@ export function Roleta({ sorteio, agora }: { sorteio: SorteioPublico; agora: num
               >
                 <span className="sorteio-carta-avatar">{iniciais(nome)}</span>
                 <span className="sorteio-carta-nome">{nome}</span>
+                {arroba && <span className="sorteio-carta-insta">@{arroba}</span>}
               </li>
             );
           })}
@@ -160,7 +172,11 @@ export function Roleta({ sorteio, agora }: { sorteio: SorteioPublico; agora: num
               </span>
             ))}
           </p>
-          <p className="sorteio-resultado-email">{sorteio.ganhador.email}</p>
+          {sorteio.ganhador.instagram ? (
+            <p className="sorteio-resultado-insta">@{sorteio.ganhador.instagram}</p>
+          ) : (
+            <p className="sorteio-resultado-email">{sorteio.ganhador.email}</p>
+          )}
         </div>
       )}
     </div>
@@ -305,7 +321,7 @@ export function PainelAoVivo({
                       {s.ganhador.nome}
                       {meusCodigos.includes(s.ganhador.codigo) && <em className="sorteio-pilula is-ouro">Você</em>}
                     </strong>
-                    <span className="sorteio-ganhador-email">{s.ganhador.email}</span>
+                    <Arroba g={s.ganhador} />
                   </span>
                   <span className="sorteio-ganhador-premio">
                     {premio?.imagem && (
@@ -369,7 +385,7 @@ export function ListaPremios({
               </div>
               {ganhadores.length > 0 && (
                 <p className="sorteio-premio-ganhador">
-                  🏆 {ganhadores.map((g) => g.ganhador.nome).join(', ')}
+                  🏆 {ganhadores.map((g) => (g.ganhador.instagram ? `${g.ganhador.nome} (@${g.ganhador.instagram})` : g.ganhador.nome)).join(', ')}
                 </p>
               )}
               {acao && <div className="sorteio-premio-acao">{acao(p)}</div>}

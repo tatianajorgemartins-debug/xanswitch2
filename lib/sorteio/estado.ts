@@ -23,7 +23,8 @@ export type SorteioPublico = {
   inicio: number; // ms (relógio do servidor)
   duracao: number;
   roleta: string[];
-  ganhador: { codigo: string; nome: string; email: string };
+  // instagram: o @ do ganhador (sem o @), aparece na roleta e nas listas
+  ganhador: { codigo: string; nome: string; email: string; instagram: string | null };
   refeito: boolean;
 };
 
@@ -44,6 +45,6 @@ export type EstadoPublico = {
   sorteios: SorteioPublico[]; // só os que valem (sem os anulados), do mais antigo pro mais novo
 };
 
-export function ganhadorPublico(e: { public_id: string; name: string | null; email: string }) {
-  return { codigo: e.public_id, nome: nomePublico(e.name, e.email), email: mascararEmail(e.email) };
+export function ganhadorPublico(e: { public_id: string; name: string | null; email: string; instagram: string | null }) {
+  return { codigo: e.public_id, nome: nomePublico(e.name, e.email), email: mascararEmail(e.email), instagram: e.instagram };
 }

@@ -390,7 +390,7 @@ export async function montarEstadoPublico(sorteio: Sorteio): Promise<EstadoPubli
       duracao: s.duracao,
       roleta: s.roleta,
       refeito: s.refeito,
-      ganhador: ganhadorPublico({ public_id: s.ganhador.codigo, name: s.ganhador.nome, email: s.ganhador.email })
+      ganhador: ganhadorPublico({ public_id: s.ganhador.codigo, name: s.ganhador.nome, email: s.ganhador.email, instagram: s.ganhador.instagram })
     }));
   return {
     agora: Date.now(),

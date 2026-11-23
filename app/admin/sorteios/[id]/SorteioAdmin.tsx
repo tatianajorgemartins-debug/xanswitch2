@@ -982,7 +982,7 @@ function sorteioDeEnsaio(premioId: number, agoraServidor: number): SorteioPublic
       ganhador,
       sortear
     ),
-    ganhador: { codigo: 'ensaio', nome: ganhador, email: 'en***@teste.com' },
+    ganhador: { codigo: 'ensaio', nome: ganhador, email: 'en***@teste.com', instagram: 'perfil.de.teste' },
     refeito: false
   };
 }

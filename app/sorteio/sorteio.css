@@ -1357,3 +1357,39 @@
     transform: translateX(6px);
   }
 }
+
+/* @ do Instagram do ganhador (roleta, resultado e listas) */
+.sorteio-carta-insta {
+  max-width: 100%;
+  overflow: hidden;
+  color: #ffe08a;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  animation: sorteio-entra 0.5s var(--s-saida) 0.3s both;
+}
+.sorteio-resultado-insta {
+  margin: 0;
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(255, 210, 78, 0.18), rgba(123, 77, 245, 0.25));
+  box-shadow: inset 0 0 0 1px rgba(255, 210, 78, 0.5);
+  color: #ffe08a;
+  font-size: clamp(1.1rem, 0.9rem + 1.2vw, 1.6rem);
+  font-weight: 800;
+  animation: sorteio-entra 0.5s var(--s-saida) 0.5s both;
+}
+.sorteio-telao .sorteio-resultado-insta {
+  font-size: 2rem;
+}
+.sorteio-ganhador-insta {
+  color: var(--s-lilas);
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.sorteio-ganhador-insta:hover {
+  text-decoration: underline;
+}

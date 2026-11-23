@@ -23,7 +23,7 @@ import {
 import { NOME_STATUS, normalizarInstagram } from '@/lib/sorteio/regras';
 import type { EstadoPublico, PremioPublico } from '@/lib/sorteio/estado';
 import { confirmarPresencaAction, minhaParticipacaoAction } from '../actions';
-import { ListaPremios, PainelAoVivo, VoceGanhou, buscarEstadoPublico, quando, sorteioAtual, useEstadoSorteio } from '../AoVivo';
+import { Arroba, ListaPremios, PainelAoVivo, VoceGanhou, buscarEstadoPublico, quando, sorteioAtual, useEstadoSorteio } from '../AoVivo';
 
 const CHAVE_DISPOSITIVO = 'xan_sorteio_dispositivo';
 
@@ -354,7 +354,7 @@ function PainelGanhadores({ estado, diferenca, meusCodigos }: { estado: EstadoPu
                   {s.ganhador.nome}
                   {meu && <em className="sorteio-pilula is-ouro">Você</em>}
                 </strong>
-                <span className="sorteio-ganhador-email">{s.ganhador.email}</span>
+                <Arroba g={s.ganhador} />
               </span>
               <span className="sorteio-ganhador-premio">
                 {premio?.imagem && (
