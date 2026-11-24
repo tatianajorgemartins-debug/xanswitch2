@@ -11,7 +11,7 @@
 //    "Selecionar"): seleciona várias; arrastar na forma de onda: seleciona
 //    o trecho inteiro;
 //  - Ctrl+C / Ctrl+X / Ctrl+V / Ctrl+D: copiar, recortar, colar no
-//    compasso da agulha e duplicar logo em seguida (pra repetir partes);
+//    ponto da agulha e duplicar logo em seguida (pra repetir partes);
 //  - Espaço toca/pausa; com "Gravar ao vivo" ligado, as teclas 1–5 (ou
 //    A S J K L) gravam as notas no ritmo enquanto a música toca;
 //  - E: liga/desliga a Triforce nas notas selecionadas;
@@ -61,7 +61,7 @@ export type MusicaEditor = {
 };
 
 type NotaEd = { id: number; t: number; p: number; d: number; e?: boolean };
-// Trecho copiado: notas com o tempo relativo ao começo do trecho, e o
+// Trecho copiado: notas com o tempo relativo à 1ª nota copiada, e o
 // tamanho do trecho (inteiro, em compassos ou batidas).
 type Copia = { notas: { t: number; p: number; d: number; e?: boolean }[]; tam: number; unidade: number };
 
@@ -99,10 +99,15 @@ const novaId = () => proximoId++;
 const paraEditor = (lista: OcarinaNota[] = []): NotaEd[] =>
   lista.map((n) => ({ id: novaId(), t: n.t, p: Math.max(0, PISTAS.findIndex((x) => x.id === n.pista)), d: n.dur ?? 0, e: n.estrela === true }));
 
+// Pista sempre válida (0 a 4). Tocar na sobra embaixo da última pista dava
+// uma pista "6" que não existe e derrubava o editor.
+const pistaOk = (p: number) => Math.max(0, Math.min(PISTAS.length - 1, Math.floor(p) || 0));
+const pistaDe = (p: number) => PISTAS[pistaOk(p)];
+
 const paraSalvar = (lista: NotaEd[]): OcarinaNota[] =>
   [...lista]
     .sort((a, b) => a.t - b.t || a.p - b.p)
-    .map((n) => ({ t: Math.round(n.t * 1000) / 1000, pista: PISTAS[n.p].id, ...(n.d > 0 ? { dur: Math.round(n.d * 1000) / 1000 } : {}), ...(n.e ? { estrela: true } : {}) }));
+    .map((n) => ({ t: Math.round(n.t * 1000) / 1000, pista: pistaDe(n.p).id, ...(n.d > 0 ? { dur: Math.round(n.d * 1000) / 1000 } : {}), ...(n.e ? { estrela: true } : {}) }));
 
 export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; jogos: string[] }) {
   const router = useRouter();
@@ -476,8 +481,8 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
       const x = xDe(n.t);
       const x2 = xDe(n.t + n.d);
       if (x2 < esq - RAIO || x > largura + RAIO) continue;
-      const y = TOPO_PISTAS + n.p * PISTA_H + PISTA_H / 2;
-      const cor = PISTAS[n.p].cor;
+      const y = TOPO_PISTAS + pistaOk(n.p) * PISTA_H + PISTA_H / 2;
+      const cor = pistaDe(n.p).cor;
       const marcada = s.has(n.id);
       if (n.d > 0) {
         g.fillStyle = cor + (marcada ? 'cc' : '88');
@@ -772,8 +777,8 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
       arrasto.current = { modo: 'caixa', x0: x, y0: y, x1: x, y1: y, somar: e.shiftKey || e.ctrlKey || e.metaKey };
       return;
     }
-    // Nota nova
-    const p = Math.floor((y - TOPO_PISTAS) / PISTA_H);
+    // Nota nova (a sobra embaixo da última pista conta como a última)
+    const p = pistaOk((y - TOPO_PISTAS) / PISTA_H);
     const t = Math.max(0, encaixar(tDe(x)));
     const nova: NotaEd = { id: novaId(), t, p, d: 0 };
     mudar((l) => [...l.filter((o) => !(o.p === p && Math.abs(o.t - t) < 0.001)), nova]);
@@ -920,19 +925,21 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
       setAviso({ tipo: 'info', texto: 'Selecione as notas primeiro (arraste na forma de onda pra pegar um trecho inteiro).' });
       return null;
     }
-    const { ini, tam, unidade } = trechoDe(lista);
-    const c: Copia = { notas: lista.map((n) => ({ t: n.t - ini, p: n.p, d: n.d, e: n.e })), tam, unidade };
+    const { tam, unidade } = trechoDe(lista);
+    // tempos contados a partir da 1ª nota copiada: ela é que vai pra agulha
+    const primeira = Math.min(...lista.map((n) => n.t));
+    const c: Copia = { notas: lista.map((n) => ({ t: n.t - primeira, p: n.p, d: n.d, e: n.e })), tam, unidade };
     setCopia(c);
     copiaRef.current = c;
-    setAviso({ tipo: 'info', texto: `Copiadas ${lista.length} notas (${nomeTrecho(c)}). Ponha a agulha onde quer e aperte Ctrl+V (ou "Colar na agulha").` });
+    setAviso({ tipo: 'info', texto: `Copiadas ${lista.length} notas (${nomeTrecho(c)}). Ponha a agulha onde quer que a 1ª nota fique e aperte Colar.` });
     return c;
   }
 
-  // Cola com o começo do trecho no compasso (ou batida) mais perto de "em";
-  // depois a agulha vai pro fim do trecho colado — Ctrl+V de novo continua.
+  // Cola com a 1ª nota do trecho exatamente na agulha (encaixada na grade);
+  // depois a agulha anda o tamanho do trecho — Colar de novo continua.
   function colar(em: number, c: Copia | null = copiaRef.current) {
     if (!c || !c.notas.length) return;
-    const destino = Math.max(0, inicioBatida + Math.round((em - inicioBatida) / c.unidade) * c.unidade);
+    const destino = Math.max(0, encaixar(em));
     const novas = c.notas.map((n) => ({ id: novaId(), t: Math.round((destino + n.t) * 1000) / 1000, p: n.p, d: n.d, e: n.e }));
     const ocupa = new Set(novas.map((n) => `${n.p}:${Math.round(n.t * 1000)}`));
     mudar((l) => [...l.filter((o) => !ocupa.has(`${o.p}:${Math.round(o.t * 1000)}`)), ...novas]);
@@ -951,8 +958,8 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
     }
     const c = copiar();
     if (!c) return;
-    const { ini, tam } = trechoDe(lista);
-    colar(ini + tam, c);
+    const primeira = Math.min(...lista.map((n) => n.t));
+    colar(primeira + c.tam, c);
     setAviso({ tipo: 'ok', texto: `Repetido logo em seguida (${nomeTrecho(c)}). Ctrl+D de novo repete mais uma vez.` });
   }
 
@@ -1320,7 +1327,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
   const uma = selecionadas.length === 1 ? selecionadas[0] : null;
   function ajustarUma(campo: 't' | 'd' | 'p', valor: number) {
     if (!uma || !Number.isFinite(valor)) return;
-    mudar((l) => l.map((n) => (n.id === uma.id ? { ...n, [campo]: campo === 'p' ? valor : Math.max(0, valor) } : n)));
+    mudar((l) => l.map((n) => (n.id === uma.id ? { ...n, [campo]: campo === 'p' ? pistaOk(valor) : Math.max(0, valor) } : n)));
   }
 
   const estatisticas = useMemo(() => {
@@ -1331,7 +1338,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
     const ultima = Math.max(0, ...notas.map((n) => n.t));
     const primeira = notas.length ? Math.min(...notas.map((n) => n.t)) : 0;
     const nps = notas.length > 1 ? notas.length / Math.max(1, ultima - primeira) : 0;
-    const marcadas = notas.map((n) => ({ t: n.t, pista: PISTAS[n.p].id, estrela: n.e }));
+    const marcadas = notas.map((n) => ({ t: n.t, pista: pistaDe(n.p).id, estrela: n.e }));
     const sequencias = new Set(sequenciasEstrela(marcadas).filter((s) => s >= 0)).size;
     return { acordes, longas, nps, sequencias };
   }, [notas]);
@@ -1787,7 +1794,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
                 <button type="button" className="btn ghost" onClick={recortar} disabled={!selecionadas.length} title="Ctrl+X">
                   ✂️ Recortar
                 </button>
-                <button type="button" className="btn ghost" onClick={() => colar(pos.current)} disabled={!copia} title="Ctrl+V — cola no compasso da agulha">
+                <button type="button" className="btn ghost" onClick={() => colar(pos.current)} disabled={!copia} title="Ctrl+V — cola com a 1ª nota na agulha">
                   📥 Colar na agulha
                 </button>
                 <button type="button" className="btn primary" onClick={duplicar} disabled={!selecionadas.length} title="Ctrl+D — repete logo depois do trecho">
@@ -1796,7 +1803,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
               </div>
               <p className="adm-help">
                 {copia
-                  ? `Copiado: ${copia.notas.length} notas (${nomeTrecho(copia)}). Colar põe o começo do trecho no compasso da agulha; colar de novo continua logo depois.`
+                  ? `Copiado: ${copia.notas.length} notas (${nomeTrecho(copia)}). Colar põe a 1ª nota exatamente na agulha; colar de novo continua logo depois.`
                   : celular
                     ? 'Dica: arraste o dedo na forma de onda pra selecionar um trecho inteiro, depois toque em "Repetir" quantas vezes precisar.'
                     : 'Dica: arraste na forma de onda pra selecionar um trecho inteiro, depois "Repetir em seguida" (Ctrl+D) quantas vezes precisar.'}
@@ -1862,7 +1869,7 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
                 <li><b>Arraste a nota</b>: move (tempo e cor) · <b>puxe a ponta</b>: muda a duração</li>
                 <li><b>Botão direito</b>: apaga · <b>Shift+arrastar</b> ou ferramenta <b>Selecionar</b> (Q): seleciona várias</li>
                 <li><b>Arrastar na forma de onda</b>: seleciona o trecho inteiro (todas as cores)</li>
-                <li><b>Ctrl+C / X / V</b>: copiar, recortar, colar no compasso da agulha · <b>Ctrl+D</b>: repetir logo em seguida</li>
+                <li><b>Ctrl+C / X / V</b>: copiar, recortar, colar com a 1ª nota na agulha · <b>Ctrl+D</b>: repetir logo em seguida</li>
                 <li><b>E</b>: liga/desliga a Triforce nas selecionadas (Triforces seguidas formam uma sequência)</li>
                 <li><b>Espaço</b>: toca/pausa · <b>← →</b>: anda 1 passo (Shift: 1 compasso) · <b>T</b>: testar no jogo daqui</li>
                 <li><b>1 a 5</b> (ou A S J K L): parado, põe/tira nota na agulha (várias = acorde); com <b>Gravar ao vivo</b>, grava tocando (segurar = longa)</li>
