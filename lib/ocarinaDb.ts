@@ -35,6 +35,8 @@ export type OcarinaSongRow = {
   end_at: number | null;
   // null = só tem a dificuldade principal (difficulty + notes)
   charts: OcarinaCharts | null;
+  // imagem de fundo do jogo nesta música (null = o cenário padrão)
+  background_url: string | null;
   published: boolean;
   published_at: Date | null;
   active_from: string | null;
@@ -55,7 +57,7 @@ function lerCharts(v: unknown): OcarinaCharts | null {
 // Fim da música e dificuldades ficam em site_settings (uma chave por música):
 // assim valem no jogo publicado sem depender de coluna nova no banco.
 const PREFIXO_EXTRA = 'ocarina_extra_';
-type ExtraMusica = { fimEm: number | null; charts: OcarinaCharts };
+type ExtraMusica = { fimEm: number | null; charts: OcarinaCharts; fundo?: string | null };
 
 async function lerExtras(): Promise<Map<number, ExtraMusica>> {
   const mapa = new Map<number, ExtraMusica>();
@@ -66,7 +68,8 @@ async function lerExtras(): Promise<Map<number, ExtraMusica>> {
       if (!v) continue;
       mapa.set(Number(r.key.slice(PREFIXO_EXTRA.length)), {
         fimEm: typeof v.fimEm === 'number' && v.fimEm > 0 ? v.fimEm : null,
-        charts: lerCharts(v.charts) ?? { notas: {}, liberadas: [] }
+        charts: lerCharts(v.charts) ?? { notas: {}, liberadas: [] },
+        fundo: typeof v.fundo === 'string' && v.fundo ? v.fundo : null
       });
     } catch {
       // valor quebrado: fica como se não tivesse
@@ -75,9 +78,27 @@ async function lerExtras(): Promise<Map<number, ExtraMusica>> {
   return mapa;
 }
 
-function comExtra<T extends { id: number; end_at: number | null; charts: OcarinaCharts | null }>(m: T, extras: Map<number, ExtraMusica>): T {
+function comExtra<T extends { id: number; end_at: number | null; charts: OcarinaCharts | null; background_url: string | null }>(
+  m: T,
+  extras: Map<number, ExtraMusica>
+): T {
   const e = extras.get(m.id);
-  return e ? { ...m, end_at: e.fimEm, charts: e.charts } : m;
+  return e ? { ...m, end_at: e.fimEm, charts: e.charts, background_url: e.fundo ?? null } : m;
+}
+
+async function lerExtra(id: number): Promise<ExtraMusica | null> {
+  const rows = await getSql()`SELECT value FROM site_settings WHERE key = ${PREFIXO_EXTRA + id}`;
+  try {
+    const v = JSON.parse((rows[0] as { value: string | null } | undefined)?.value ?? 'null') as Partial<ExtraMusica> | null;
+    if (!v) return null;
+    return {
+      fimEm: typeof v.fimEm === 'number' && v.fimEm > 0 ? v.fimEm : null,
+      charts: lerCharts(v.charts) ?? { notas: {}, liberadas: [] },
+      fundo: typeof v.fundo === 'string' && v.fundo ? v.fundo : null
+    };
+  } catch {
+    return null;
+  }
 }
 
 // As notas de cada dificuldade e as liberadas. A principal sempre vale.
@@ -98,7 +119,8 @@ function normalizar(r: Record<string, unknown>): OcarinaSongRow {
     audio_bytes: num(r.audio_bytes),
     end_at: r.end_at === null || r.end_at === undefined || r.end_at === '' ? null : Number(r.end_at),
     notes: Array.isArray(r.notes) ? (r.notes as OcarinaNota[]) : [],
-    charts: null
+    charts: null,
+    background_url: null
   };
 }
 
@@ -152,8 +174,25 @@ export async function updateOcarinaSong(
       beat_offset = ${s.beatOffset}, notes = ${JSON.stringify(s.notes)}::jsonb, updated_at = now()
     WHERE id = ${id}
   `;
-  const extra: ExtraMusica = { fimEm: s.endAt, charts: s.charts };
+  // mantém o fundo que já estava (ele é trocado à parte, ver abaixo)
+  const antes = await lerExtra(id);
+  const extra: ExtraMusica = { fimEm: s.endAt, charts: s.charts, fundo: antes?.fundo ?? null };
   await setSiteSetting(PREFIXO_EXTRA + id, JSON.stringify(extra));
+}
+
+// Troca (ou tira, com null) a imagem de fundo. Devolve a URL antiga.
+export async function setOcarinaSongBackground(id: number, url: string | null): Promise<string | null> {
+  const antes = await lerExtra(id);
+  let base: ExtraMusica;
+  if (antes) base = antes;
+  else {
+    // ainda não tinha extra: parte do que está nas colunas
+    const m = await getOcarinaSong(id);
+    base = { fimEm: m?.end_at ?? null, charts: m ? dificuldadesDaMusica(m) : { notas: {}, liberadas: [] } };
+  }
+  await setSiteSetting(PREFIXO_EXTRA + id, JSON.stringify({ ...base, fundo: url }));
+  await getSql()`UPDATE ocarina_songs SET updated_at = now() WHERE id = ${id}`;
+  return antes?.fundo ?? null;
 }
 
 export async function setOcarinaSongAudio(id: number, url: string, duration: number, bytes: number): Promise<void> {
@@ -175,8 +214,9 @@ export async function setOcarinaSongPublished(id: number, published: boolean, ac
   `;
 }
 
-export async function deleteOcarinaSong(id: number): Promise<string | null> {
+export async function deleteOcarinaSong(id: number): Promise<{ audio: string | null; fundo: string | null }> {
+  const fundo = (await lerExtra(id).catch(() => null))?.fundo ?? null;
   await getSql()`DELETE FROM site_settings WHERE key = ${PREFIXO_EXTRA + id}`;
   const rows = await getSql()`DELETE FROM ocarina_songs WHERE id = ${id} RETURNING audio_url`;
-  return (rows[0] as { audio_url: string | null } | undefined)?.audio_url ?? null;
+  return { audio: (rows[0] as { audio_url: string | null } | undefined)?.audio_url ?? null, fundo };
 }

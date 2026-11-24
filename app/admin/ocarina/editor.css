@@ -133,6 +133,23 @@
   cursor: pointer;
 }
 
+.oc-ed-fundo {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  background: center / cover no-repeat #0b0a14;
+  box-shadow: inset 0 0 0 1px rgba(164, 99, 255, 0.3);
+}
+.oc-ed-fundo.is-padrao {
+  background-image: linear-gradient(rgba(6, 4, 14, 0.55), rgba(6, 4, 14, 0.55)), url('/jogos/ocarina/ui/cenario.webp');
+}
+.oc-ed-fundo span {
+  color: var(--ink-dim);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .oc-ed-palco {
   min-width: 0;
 }

@@ -25,11 +25,14 @@ import { type MotorOcarina } from '@/app/games-interativos/ocarina-hero/motor';
 import { SomOcarina, tocarClique } from '@/app/games-interativos/ocarina-hero/som';
 import Palco from '@/app/games-interativos/ocarina-hero/Palco';
 import '@/app/games-interativos/ocarina-hero/ocarina.css';
-import { uploadAudioToSignedTicket } from '@/lib/supabaseBrowser';
+import { uploadAudioToSignedTicket, uploadToSignedTicket } from '@/lib/supabaseBrowser';
+import { compressImageFile } from '@/lib/imageCompression';
 import {
   apagarMusicaAction,
   autorizarAudioAction,
   confirmarAudioAction,
+  autorizarFundoAction,
+  definirFundoAction,
   publicarMusicaAction,
   salvarMusicaAction
 } from '../actions';
@@ -58,6 +61,8 @@ export type MusicaEditor = {
   ativaDesde: string | null;
   // onde a música termina no jogo (null = até o fim do áudio)
   fimEm: number | null;
+  // imagem de fundo do jogo nesta música (null = cenário padrão)
+  fundo: string | null;
 };
 
 type NotaEd = { id: number; t: number; p: number; d: number; e?: boolean };
@@ -143,6 +148,8 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
   const [aviso, setAviso] = useState<{ tipo: 'ok' | 'erro' | 'info'; texto: string } | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [envio, setEnvio] = useState<string | null>(null);
+  const [fundo, setFundo] = useState<string | null>(musica.fundo);
+  const [envioFundo, setEnvioFundo] = useState<string | null>(null);
 
   // ---------- Visual / tocar ----------
   const [grade, setGrade] = useState(4);
@@ -1291,6 +1298,43 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
     }
   }
 
+  // Fundo do jogo: comprime em webp aqui (até 1920 px) e sobe direto.
+  async function enviarFundo(arquivo: File) {
+    if (!arquivo.type.startsWith('image/')) {
+      setAviso({ tipo: 'erro', texto: 'Escolha uma imagem (jpg, png ou webp).' });
+      return;
+    }
+    try {
+      setEnvioFundo('Preparando…');
+      const img = await compressImageFile(arquivo, 1920, 82);
+      setEnvioFundo('Enviando…');
+      const tk = await autorizarFundoAction(musica.id);
+      if (!tk.ok) throw new Error(tk.erro);
+      await uploadToSignedTicket(tk.path, tk.token, img);
+      const ok = await definirFundoAction(musica.id, tk.publicUrl);
+      if (!ok.ok) throw new Error(ok.erro);
+      setFundo(tk.publicUrl);
+      setAviso({ tipo: 'ok', texto: 'Fundo trocado! Já vale no jogo (e no 🎮 teste).' });
+      router.refresh();
+    } catch (err) {
+      setAviso({ tipo: 'erro', texto: err instanceof Error ? err.message : 'Falha ao enviar a imagem.' });
+    } finally {
+      setEnvioFundo(null);
+    }
+  }
+
+  async function tirarFundo() {
+    if (!window.confirm('Tirar a imagem de fundo e voltar pro cenário padrão?')) return;
+    setEnvioFundo('Tirando…');
+    const r = await definirFundoAction(musica.id, null).catch(() => ({ ok: false as const, erro: 'A conexão falhou.' }));
+    setEnvioFundo(null);
+    if (r.ok) {
+      setFundo(null);
+      setAviso({ tipo: 'ok', texto: 'Voltou pro cenário padrão.' });
+      router.refresh();
+    } else setAviso({ tipo: 'erro', texto: r.erro });
+  }
+
   async function alternarPublicada() {
     if (sujo) await salvar();
     const r = await publicarMusicaAction(musica.id, !publicada).catch(() => ({ ok: false as const, erro: 'A conexão falhou.' }));
@@ -1353,7 +1397,8 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
       dificuldade,
       notas: notasParaSalvar() as NotaChart[],
       ...(duracao ? { duracaoAudio: duracao } : {}),
-      ...(fimEm ? { fimEm } : {})
+      ...(fimEm ? { fimEm } : {}),
+      ...(fundo ? { fundo } : {})
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [testando]
@@ -1464,6 +1509,31 @@ export default function EditorMusica({ musica, jogos }: { musica: MusicaEditor; 
             ✨ Gerar notas do áudio
           </button>
           <p className="adm-help">Analisa o áudio (ou um mp3 que você enviar) e cria um chart base pra ajustar aqui.</p>
+          <h3>Fundo do jogo</h3>
+          <div className={`oc-ed-fundo${fundo ? '' : ' is-padrao'}`} style={fundo ? { backgroundImage: `url("${fundo}")` } : undefined}>
+            {!fundo && <span>Cenário padrão (floresta)</span>}
+          </div>
+          <p className="adm-help">Imagem que aparece atrás da pista só nesta música. Deitada (paisagem) fica melhor; é cortada pra cobrir a tela.</p>
+          <div className="oc-ed-linha">
+            <label className="btn ghost oc-ed-arquivo">
+              {envioFundo ?? (fundo ? 'Trocar a imagem' : '🖼️ Escolher imagem')}
+              <input
+                type="file"
+                accept="image/*"
+                disabled={Boolean(envioFundo)}
+                onChange={(ev) => {
+                  const f = ev.target.files?.[0];
+                  ev.target.value = '';
+                  if (f) enviarFundo(f);
+                }}
+              />
+            </label>
+            {fundo && (
+              <button type="button" className="btn ghost" onClick={tirarFundo} disabled={Boolean(envioFundo)}>
+                Tirar
+              </button>
+            )}
+          </div>
           </div>
           <div className="oc-ed-grupo" data-grupo="fim">
           <h3>Fim da música</h3>

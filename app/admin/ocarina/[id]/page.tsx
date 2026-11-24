@@ -36,7 +36,8 @@ export default async function EditarMusicaPage({ params }: { params: Promise<{ i
         liberadas: liberadas as Dificuldade[],
         publicada: m.published,
         ativaDesde: m.active_from,
-        fimEm: m.end_at
+        fimEm: m.end_at,
+        fundo: m.background_url
       }}
     />
   );

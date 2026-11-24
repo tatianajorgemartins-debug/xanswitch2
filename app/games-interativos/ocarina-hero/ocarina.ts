@@ -84,6 +84,8 @@ export type Chart = {
   fimEm?: number;
   // Quando foi publicada (pra lista de "Novas").
   publicadaEm?: string;
+  // Imagem de fundo própria desta música (no lugar do cenário da floresta).
+  fundo?: string;
   // nota grave do acompanhamento (opcional, padrão D2)
   tom?: string;
   // "AAAA-MM-DD": só entra no sorteio da Música do Dia a partir desse dia
@@ -144,6 +146,7 @@ export function validarChart(raw: unknown): Chart | null {
     ...texto('jogo'),
     ...texto('audio'),
     ...texto('publicadaEm'),
+    ...(typeof c.fundo === 'string' && c.fundo.startsWith('https://') ? { fundo: c.fundo } : {}),
     ...numero('duracaoAudio'),
     ...numero('fimEm'),
     ...numero('inicioBatida'),

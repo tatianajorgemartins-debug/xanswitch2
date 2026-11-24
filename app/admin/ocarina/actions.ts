@@ -9,12 +9,19 @@ import {
   deleteOcarinaSong,
   getOcarinaSong,
   setOcarinaSongAudio,
+  setOcarinaSongBackground,
   setJogoOcarinaPublicado,
   setOcarinaSongPublished,
   updateOcarinaSong,
   type OcarinaNota
 } from '@/lib/ocarinaDb';
-import { createOcarinaAudioUploadTicket, deleteOcarinaAudioByUrl } from '@/lib/supabaseAdmin';
+import {
+  createOcarinaAudioUploadTicket,
+  createSignedUploadTicket,
+  deleteImageByUrl,
+  deleteOcarinaAudioByUrl,
+  getPublicUrl
+} from '@/lib/supabaseAdmin';
 import { addDias, diaEm } from '@/lib/jogos/dia';
 
 const PISTAS = ['verde', 'amarelo', 'vermelho', 'roxo', 'azul'];
@@ -128,6 +135,39 @@ export async function confirmarAudioAction(id: number, url: string, duracao: num
   }
 }
 
+// Fundo do jogo (imagem própria da música). Passo 1: autorização pro
+// navegador subir a imagem (já comprimida em webp) direto pro Storage.
+const PASTA_FUNDOS = 'ocarina-fundos/';
+
+export async function autorizarFundoAction(
+  id: number
+): Promise<{ ok: true; path: string; token: string; publicUrl: string } | { ok: false; erro: string }> {
+  if (!(await isAuthenticated())) return { ok: false, erro: 'Entre no admin de novo.' };
+  try {
+    const t = await createSignedUploadTicket(`${PASTA_FUNDOS}${id}-${Date.now()}.webp`);
+    return { ok: true, path: t.path, token: t.token, publicUrl: getPublicUrl(t.path) };
+  } catch (err) {
+    console.error('[ocarina] autorizar fundo:', err);
+    return { ok: false, erro: err instanceof Error ? err.message : 'Falha ao autorizar o envio.' };
+  }
+}
+
+// Passo 2: grava a imagem na música (ou tira, com null) e apaga a antiga.
+export async function definirFundoAction(id: number, url: string | null): Promise<Resultado> {
+  if (!(await isAuthenticated())) return { ok: false, erro: 'Entre no admin de novo.' };
+  if (url !== null && (typeof url !== 'string' || !url.includes('/' + PASTA_FUNDOS) || !url.startsWith('https://')))
+    return { ok: false, erro: 'Imagem inválida.' };
+  try {
+    const antiga = await setOcarinaSongBackground(id, url);
+    if (antiga && antiga !== url) await deleteImageByUrl(antiga).catch(() => {});
+    atualizarPaginas(id);
+    return { ok: true };
+  } catch (err) {
+    console.error('[ocarina] fundo:', err);
+    return { ok: false, erro: 'Não deu pra gravar o fundo agora. Tente de novo.' };
+  }
+}
+
 export async function publicarMusicaAction(id: number, publicar: boolean): Promise<Resultado> {
   if (!(await isAuthenticated())) return { ok: false, erro: 'Entre no admin de novo.' };
   try {
@@ -163,8 +203,9 @@ export async function publicarJogoAction(publicar: boolean): Promise<Resultado> 
 export async function apagarMusicaAction(id: number): Promise<Resultado> {
   if (!(await isAuthenticated())) return { ok: false, erro: 'Entre no admin de novo.' };
   try {
-    const audio = await deleteOcarinaSong(id);
+    const { audio, fundo } = await deleteOcarinaSong(id);
     if (audio) await deleteOcarinaAudioByUrl(audio).catch(() => {});
+    if (fundo) await deleteImageByUrl(fundo).catch(() => {});
     atualizarPaginas();
     return { ok: true };
   } catch (err) {
