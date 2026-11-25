@@ -1,0 +1,386 @@
+/* Banner do Zelda Tour na página inicial (ZeldaTourShowcase.tsx). Arquivo
+   pequeno e à parte: o CSS do jogo (ocarina.css) só baixa na partida. */
+.zt-showcase {
+  --zt-ouro: #f3d27a;
+  --zt-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 100%;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 16px;
+  background: #06120b;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(232, 196, 110, 0.34),
+    0 18px 40px -24px rgba(0, 0, 0, 0.8);
+  color: #fff;
+  text-decoration: none;
+}
+.redesign .zt-showcase {
+  border-radius: var(--radius, 16px);
+}
+
+/* Cenário da floresta andando devagar, escurecido à esquerda pro texto */
+.zt-cenario {
+  position: absolute;
+  z-index: -2;
+  inset: -8%;
+  background: url('/jogos/ocarina/ui/banner-cenario.webp') center 40% / cover no-repeat;
+  animation: zt-deriva 18s ease-in-out infinite alternate;
+}
+.zt-showcase::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(3, 12, 7, 0.95) 0%, rgba(3, 12, 7, 0.82) 38%, rgba(3, 12, 7, 0.15) 75%, rgba(3, 12, 7, 0.35) 100%),
+    radial-gradient(60% 80% at 78% 100%, rgba(255, 214, 110, 0.28), transparent 70%);
+  pointer-events: none;
+}
+@keyframes zt-deriva {
+  from {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.08) translate3d(-3%, -2%, 0);
+  }
+}
+
+/* Vaga-lumes */
+.zt-luzes {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+}
+.zt-luzes i {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #fff3b0;
+  box-shadow: 0 0 10px 3px rgba(255, 226, 120, 0.75);
+  opacity: 0;
+  animation: zt-vagalume 6s ease-in-out infinite;
+}
+.zt-luzes i:nth-child(1) { left: 8%; top: 70%; animation-delay: 0s; }
+.zt-luzes i:nth-child(2) { left: 30%; top: 20%; animation-delay: 1.2s; animation-duration: 7s; }
+.zt-luzes i:nth-child(3) { left: 48%; top: 60%; animation-delay: 2.4s; }
+.zt-luzes i:nth-child(4) { left: 62%; top: 14%; animation-delay: 0.6s; animation-duration: 8s; }
+.zt-luzes i:nth-child(5) { left: 80%; top: 30%; animation-delay: 3.1s; }
+.zt-luzes i:nth-child(6) { left: 92%; top: 66%; animation-delay: 1.8s; animation-duration: 7.5s; }
+.zt-luzes i:nth-child(7) { left: 20%; top: 40%; animation-delay: 4s; width: 3px; height: 3px; }
+@keyframes zt-vagalume {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+  30% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.5;
+    transform: translate(14px, -18px) scale(1);
+  }
+  75% {
+    opacity: 0.95;
+    transform: translate(-6px, -30px) scale(0.8);
+  }
+}
+
+/* Texto */
+.zt-conteudo {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 62%;
+  padding: 16px 0 16px 20px;
+}
+.zt-selo,
+.zt-titulo,
+.zt-cta {
+  font-family: var(--ql-cinzel), 'Cinzel', Georgia, serif;
+  --font: var(--ql-cinzel), 'Cinzel', Georgia, serif; /* o .redesign força var(--font) */
+}
+.zt-selo {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 6px;
+  color: #ffe6a3;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.zt-selo i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #55f07f;
+  animation: zt-pulso 1.8s ease-out infinite;
+}
+@keyframes zt-pulso {
+  from {
+    box-shadow: 0 0 0 0 rgba(85, 240, 127, 0.65);
+  }
+  to {
+    box-shadow: 0 0 0 8px rgba(85, 240, 127, 0);
+  }
+}
+.zt-titulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.zt-titulo img {
+  flex: none;
+  width: 46px;
+  height: auto;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
+  animation: zt-flutua 4s ease-in-out infinite;
+}
+.zt-titulo b {
+  position: relative;
+  font-size: clamp(22px, 1rem + 1vw, 30px);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: linear-gradient(100deg, #fff8dc 0%, #f3d27a 30%, #c8962f 48%, #fff4c4 52%, #f3d27a 62%, #c8962f 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.6));
+  animation: zt-brilho 5s ease-in-out infinite;
+}
+.zt-titulo em {
+  font-style: normal;
+}
+@keyframes zt-brilho {
+  0%,
+  55% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -50% 0;
+  }
+}
+@keyframes zt-flutua {
+  50% {
+    transform: translateY(-3px) rotate(-3deg);
+  }
+}
+.zt-sub {
+  margin: 6px 0 12px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 13px;
+  line-height: 1.3;
+}
+.zt-cta {
+  position: relative;
+  overflow: hidden;
+  padding: 9px 18px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff0b5, #f0bd45 55%, #cf8f1f);
+  color: #231703;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow:
+    0 4px 0 #6d5320,
+    0 8px 22px -8px rgba(240, 189, 69, 0.8);
+  transition:
+    transform 0.25s var(--zt-ease),
+    box-shadow 0.25s var(--zt-ease);
+}
+/* reflexo que atravessa o botão de tempos em tempos */
+.zt-cta::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.6) 50%, transparent 70%);
+  transform: translateX(-130%);
+  animation: zt-reflexo 4.5s var(--zt-ease) 1.5s infinite;
+}
+@keyframes zt-reflexo {
+  0% {
+    transform: translateX(-130%);
+  }
+  30%,
+  100% {
+    transform: translateX(130%);
+  }
+}
+@media (hover: hover) {
+  .zt-showcase:hover .zt-cta,
+  .zt-showcase:focus-visible .zt-cta {
+    transform: translateY(-2px);
+    box-shadow:
+      0 6px 0 #6d5320,
+      0 0 28px rgba(242, 205, 115, 0.6);
+  }
+  .zt-showcase:hover .zt-cenario {
+    animation-duration: 8s;
+  }
+}
+.zt-showcase:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+/* Pista do jogo, encostada embaixo à direita, com as notas descendo */
+.zt-pista {
+  position: absolute;
+  z-index: 1;
+  right: -4%;
+  bottom: -2px;
+  width: 58%;
+  aspect-ratio: 1622 / 877;
+  pointer-events: none;
+}
+.zt-pista-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.zt-anel,
+.zt-nota,
+.zt-acerto {
+  position: absolute;
+  top: 81%;
+  translate: -50% -50%;
+}
+.zt-anel {
+  width: 12.4%;
+  height: auto;
+}
+.zt-nota {
+  left: var(--x1);
+  width: 10.5%;
+  aspect-ratio: 1 / 0.55;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff 0, var(--cor) 32%);
+  box-shadow:
+    inset 0 0 0 2px rgba(0, 0, 0, 0.3),
+    0 0 12px color-mix(in srgb, var(--cor) 70%, transparent);
+  opacity: 0;
+  animation: zt-cai 2.4s cubic-bezier(0.45, 0, 0.85, 0.65) var(--d) infinite;
+}
+.zt-nota::after {
+  content: '';
+  position: absolute;
+  inset: 25%;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.85);
+}
+/* brilho no anel na hora do acerto */
+.zt-acerto {
+  left: var(--x1);
+  width: 16%;
+  aspect-ratio: 1 / 0.6;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, #fff 0, color-mix(in srgb, var(--cor) 85%, #fff) 35%, transparent 100%);
+  opacity: 0;
+  animation: zt-acerto 2.4s linear var(--d) infinite;
+}
+@keyframes zt-cai {
+  0% {
+    left: var(--x0);
+    top: 3%;
+    scale: 0.36;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  84% {
+    left: var(--x1);
+    top: 81%;
+    scale: 1;
+    opacity: 1;
+  }
+  90%,
+  100% {
+    left: var(--x1);
+    top: 81%;
+    scale: 1.25;
+    opacity: 0;
+  }
+}
+@keyframes zt-acerto {
+  0%,
+  82% {
+    opacity: 0;
+    scale: 0.5;
+  }
+  86% {
+    opacity: 1;
+    scale: 1.1;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.8;
+  }
+}
+
+/* Encaixe: no computador divide a coluna lateral com o "Qual Link";
+   no celular fica embaixo dele, numa faixa própria. */
+.promo-section-side .zt-showcase {
+  height: 100%;
+}
+@media (max-width: 600px) {
+  .promo-section-side-compact .zt-showcase {
+    flex: none;
+    height: 150px;
+  }
+  .zt-conteudo {
+    max-width: 60%;
+    padding: 14px 0 14px 16px;
+  }
+  .zt-titulo img {
+    width: 38px;
+  }
+  .zt-titulo b {
+    font-size: 23px;
+  }
+  .zt-sub {
+    font-size: 12px;
+    margin: 5px 0 10px;
+  }
+  .zt-pista {
+    width: 56%;
+    right: -6%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zt-cenario,
+  .zt-luzes i,
+  .zt-selo i,
+  .zt-titulo img,
+  .zt-titulo b,
+  .zt-cta::after,
+  .zt-acerto {
+    animation: none;
+  }
+  .zt-nota {
+    animation: none;
+    opacity: 1;
+  }
+}

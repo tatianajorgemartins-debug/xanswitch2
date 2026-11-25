@@ -24,6 +24,7 @@ import { gamePrice } from './gamePrice';
 import { getWishlistCounts } from './supabaseAdmin';
 import { runningPromoBanner, PROMO_BANNER_KEY, type ActivePromoBanner } from './promoBanner';
 import { getPromoEventGames } from './db';
+import { jogoOcarinaPublicado } from './ocarinaDb';
 import type { ActivePromoStrip } from './promoEvents';
 import type { Item, ReviewItem } from '@/app/CatalogClient';
 
@@ -146,6 +147,9 @@ export type CatalogData = {
   promoBanner: ActivePromoBanner | null;
   // Faixa no topo do site — null quando nenhum evento está valendo.
   promoStrip: ActivePromoStrip | null;
+  // Zelda Tour aberto pro público (admin > Zelda Tour)? Muda o botão do
+  // banner da página inicial entre "Jogar agora" e "em breve".
+  zeldaTourAberto: boolean;
 };
 
 export const loadCatalogData = cache(async (): Promise<CatalogData> => {
@@ -192,6 +196,8 @@ export const loadCatalogData = cache(async (): Promise<CatalogData> => {
     reviewsBannerUrl,
     featuredFranchise,
     promoBanner,
-    promoStrip: loadPromoStrip(games)
+    promoStrip: loadPromoStrip(games),
+    // fora do site oficial (computador de teste) o jogo sempre abre
+    zeldaTourAberto: process.env.VERCEL_ENV !== 'production' || (await jogoOcarinaPublicado().catch(() => false))
   };
 });

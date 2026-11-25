@@ -176,6 +176,7 @@ export default function CatalogClient({
   featuredFranchise,
   promoBanner = null,
   promoStrip = null,
+  zeldaTourAberto = false,
   initialGameId,
   initialFranchiseFilter,
   initialQualLink
@@ -205,6 +206,8 @@ export default function CatalogClient({
   promoBanner?: ActivePromoBanner | null;
   // Faixa no topo enquanto um evento de promoção está valendo (PromoStrip.tsx).
   promoStrip?: ActivePromoStrip | null;
+  // Zelda Tour aberto pro público (banner da página inicial).
+  zeldaTourAberto?: boolean;
   // Só vem preenchido quando a página é acessada pelo link direto de um
   // jogo (app/jogo/[id]/page.tsx) — abre o modal de compra desse jogo
   // assim que a página carrega, sem precisar clicar em nada.
@@ -1042,6 +1045,7 @@ export default function CatalogClient({
         onViewGame={handleViewGame}
         onOpenGame={openGame}
         onOpenQualLink={() => setQualLink({ resume: false })}
+        zeldaTourAberto={zeldaTourAberto}
         promoBanner={promoBanner}
         onPromoBannerClick={() => {
           // Clique no banner promocional: mostra só os jogos da promoção

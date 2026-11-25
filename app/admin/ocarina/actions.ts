@@ -193,6 +193,7 @@ export async function publicarJogoAction(publicar: boolean): Promise<Resultado> 
     atualizarPaginas();
     revalidatePath('/games-interativos');
     revalidatePath('/games-interativos/feed');
+    revalidatePath('/'); // banner da página inicial
     return { ok: true };
   } catch (err) {
     console.error('[ocarina] publicar o jogo:', err);

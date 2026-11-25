@@ -1,7 +1,7 @@
 import PromoCarousel, { type PromoSlide } from './PromoCarousel';
 import type { Item } from './CatalogClient';
 import { useDesignVariant } from './DesignVariant';
-import QuizShowcase from './quiz/QuizShowcase';
+import ZeldaTourShowcase from './games-interativos/ocarina-hero/ZeldaTourShowcase';
 import QualLinkShowcase from './qual-link/QualLinkShowcase';
 import type { ActivePromoBanner } from '@/lib/promoBanner';
 import { fallbackToOriginal } from '@/lib/imageVariants';
@@ -13,6 +13,7 @@ export default function PromoSection({
   onViewGame,
   onOpenGame,
   onOpenQualLink,
+  zeldaTourAberto = false,
   promoBanner = null,
   onPromoBannerClick
 }: {
@@ -24,6 +25,8 @@ export default function PromoSection({
   onOpenGame: (item: Item) => void;
   // Abre o quiz "Qual Link é você?" (qual-link/QualLinkQuiz.tsx).
   onOpenQualLink: () => void;
+  // Zelda Tour aberto pro público: o banner dele leva direto pro jogo.
+  zeldaTourAberto?: boolean;
   // Banner promocional do admin (lib/promoBanner.ts): enquanto está
   // valendo, entra no lugar do carrossel de "Destaque da semana".
   promoBanner?: ActivePromoBanner | null;
@@ -31,9 +34,6 @@ export default function PromoSection({
 }) {
   const isRedesign = useDesignVariant() === 'redesign';
   const hasFeatured = featuredItems.length > 0;
-  // O mostruário do quiz ocupa o lugar que era dos banners rotativos
-  // "Mais aguardados" (ver quiz/QuizShowcase.tsx).
-  const hasQuiz = allItems.some((it) => !it.isUpcoming && it.imageUrl);
   // O banner do "Qual Link é você?" fica no lugar do "Mais desejados"
   // (os mais desejados continuam na vitrine própria, mais abaixo).
   const hasSide = true;
@@ -69,21 +69,14 @@ export default function PromoSection({
               com seu próprio carrossel. */}
           <div className="promo-section-side promo-section-side-wide">
             <QualLinkShowcase onOpen={onOpenQualLink} />
-            {hasQuiz && <QuizShowcase items={allItems} onOpenGame={onOpenGame} />}
+            <ZeldaTourShowcase aberto={zeldaTourAberto} />
           </div>
-          {/* Celular: no lugar do carrossel compacto, só o mostruário do
-              quiz — os mais desejados já aparecem na vitrine própria logo
-              abaixo. Sem o quiz (catálogo sem capas), volta pro carrossel. */}
-          {hasQuiz ? (
-            <div className="promo-section-side-compact has-quiz">
-              <QualLinkShowcase onOpen={onOpenQualLink} variant="compact" />
-              <QuizShowcase items={allItems} onOpenGame={onOpenGame} variant="compact" />
-            </div>
-          ) : (
-            <div className="promo-section-side-compact">
-              <QualLinkShowcase onOpen={onOpenQualLink} variant="compact" />
-            </div>
-          )}
+          {/* Celular: os dois banners um embaixo do outro (os mais
+              desejados já aparecem na vitrine própria logo abaixo). */}
+          <div className="promo-section-side-compact has-quiz">
+            <QualLinkShowcase onOpen={onOpenQualLink} variant="compact" />
+            <ZeldaTourShowcase aberto={zeldaTourAberto} variant="compact" />
+          </div>
         </>
       )}
     </div>
