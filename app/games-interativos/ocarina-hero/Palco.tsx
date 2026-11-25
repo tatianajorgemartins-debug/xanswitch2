@@ -10,6 +10,7 @@ import { DIFICULDADES, NOME_JOGO, PISTAS, TECLA_ESPECIAL, formatarDuracao, nomeT
 import { MotorOcarina, type GeometriaMotor, type HudMotor } from './motor';
 import type { SomOcarina } from './som';
 import { OC_FONTES } from './fontes';
+import { lerControle, nomeBotao, rotulosControle, useControle, type MapaControle } from './controle';
 
 const UI = '/jogos/ocarina/ui/';
 const CORACOES = 3;
@@ -19,6 +20,8 @@ export type PropsPalco = {
   som: SomOcarina;
   audio: AudioBuffer | null;
   teclas: MapaTeclas;
+  // botões do controle (joystick); sem isso, usa o que o jogador salvou
+  controle?: MapaControle;
   latencia: number;
   comecarEm?: number;
   // clique seco em cada nota (referência, no teste do admin)
@@ -40,6 +43,7 @@ export default function Palco({
   som,
   audio,
   teclas,
+  controle: controleProp,
   latencia,
   comecarEm = 0,
   clique = false,
@@ -64,6 +68,30 @@ export default function Palco({
   fimRef.current = onFim;
   const pausaRef = useRef(onPausa);
   pausaRef.current = onPausa;
+
+  // Controle: os botões fazem o mesmo que as teclas, e com um controle
+  // ligado os anéis mostram os botões em vez das letras do teclado.
+  const [controleSalvo] = useState(lerControle);
+  const controle = controleProp ?? controleSalvo;
+  const tipoControle = useControle(controle, {
+    desce: (a) => {
+      if (a === 'pausa') pausaRef.current();
+      else if (a === 'especial') {
+        if (motor.current?.emJogo) motor.current.ativarEspecial();
+      } else motor.current?.pressionar(PISTAS.findIndex((p) => p.id === a));
+    },
+    sobe: (a) => {
+      if (a !== 'pausa' && a !== 'especial') motor.current?.soltar(PISTAS.findIndex((p) => p.id === a));
+    }
+  });
+  const rotulosRef = useRef<string[] | null>(null);
+  rotulosRef.current = tipoControle ? rotulosControle(controle, tipoControle) : null;
+  useEffect(() => {
+    const m = motor.current;
+    if (!m) return;
+    const coarse = window.matchMedia('(pointer: coarse)').matches;
+    m.trocarRotulos(rotulosRef.current ?? (coarse ? PISTAS.map(() => '') : PISTAS.map((p) => nomeTecla(teclas[p.id]))));
+  }, [tipoControle, controle, teclas]);
 
   // HUD: atualizado direto no DOM a cada quadro (sem re-renderizar o React).
   const pontosEl = useRef<HTMLSpanElement>(null);
@@ -127,7 +155,7 @@ export default function Palco({
     };
     const m = new MotorOcarina(canvas.current, chart, som, {
       latencia,
-      rotulos: coarse ? PISTAS.map(() => '') : PISTAS.map((p) => nomeTecla(teclas[p.id])),
+      rotulos: rotulosRef.current ?? (coarse ? PISTAS.map(() => '') : PISTAS.map((p) => nomeTecla(teclas[p.id]))),
       audio,
       comecarEm,
       clique,
@@ -264,7 +292,11 @@ export default function Palco({
             <span className="oc-hud-magia-barra">
               <i ref={magiaFill} />
             </span>
-            {!toque && <span className="oc-hud-magia-tecla">Espaço</span>}
+            {tipoControle ? (
+              <span className="oc-hud-magia-tecla">{nomeBotao(controle.especial, tipoControle)}</span>
+            ) : (
+              !toque && <span className="oc-hud-magia-tecla">Espaço</span>
+            )}
           </div>
         </div>
 

@@ -48,6 +48,19 @@ import { MotorOcarina, carregarImagensOcarina } from './motor';
 import Palco from './Palco';
 import Classificacao from './Classificacao';
 import { OC_FONTES } from './fontes';
+import {
+  ACOES_CONTROLE,
+  CHAVE_CONTROLE,
+  CONTROLE_PADRAO,
+  esperarBotao,
+  lerControle,
+  nomeBotao,
+  rotulosControle,
+  useControle,
+  type AcaoControle,
+  type MapaControle,
+  type TipoControle
+} from './controle';
 import { XanLoader, useLoaderPhase } from '@/app/XanLoader';
 import './ocarina.css';
 
@@ -88,6 +101,7 @@ type Tela =
   | { tipo: 'jogo'; chart: Chart; diario: boolean; rodada: number; audio: AudioBuffer | null }
   | { tipo: 'resultado'; chart: Chart; diario: boolean; r: ResultadoMusica; recorde: boolean }
   | { tipo: 'teclas' }
+  | { tipo: 'controle' }
   | { tipo: 'calibrar' };
 
 type Recordes = Record<string, ResultadoMusica>;
@@ -136,6 +150,9 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
   const [editor, setEditor] = useState(false);
   const [tela, setTela] = useState<Tela>({ tipo: 'menu' });
   const [teclas, setTeclas] = useState<MapaTeclas>(TECLAS_PADRAO);
+  const [controle, setControle] = useState<MapaControle>(CONTROLE_PADRAO);
+  // controle (joystick) ligado agora: muda os textos das teclas pros botões
+  const tipoControle = useControle(controle);
   const [latencia, setLatencia] = useState(0); // ms
   const [precisaoJogo, setPrecisaoJogo] = useState<Precisao>(PRECISAO_PADRAO);
   // celular: jogar deitado em tela cheia (padrão: ligado)
@@ -169,6 +186,7 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
   useEffect(() => {
     setEditor(new URLSearchParams(window.location.search).get('editor') === '1');
     setTeclas(lerTeclas());
+    setControle(lerControle());
     setLatencia(ler<number>(CHAVE_LATENCIA, 0));
     const pr = ler<string>(CHAVE_PRECISAO, PRECISAO_PADRAO);
     if (ehPrecisao(pr)) setPrecisaoJogo(pr);
@@ -357,6 +375,8 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
           feitoHoje={feitoHoje}
           recordes={recordes}
           teclas={teclas}
+          controle={controle}
+          tipoControle={tipoControle}
           latencia={latencia}
           toque={toque}
           precisao={precisaoJogo}
@@ -398,6 +418,7 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
           som={som.current}
           audio={tela.audio}
           teclas={teclas}
+          controle={controle}
           latencia={latencia / 1000}
           precisao={precisaoJogo}
           toque={toque}
@@ -438,10 +459,23 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
         />
       )}
 
+      {tela.tipo === 'controle' && (
+        <ConfigControle
+          controle={controle}
+          tipo={tipoControle}
+          onSalvar={(c) => {
+            setControle(c);
+            gravar(CHAVE_CONTROLE, c);
+          }}
+          onVoltar={() => setTela({ tipo: 'menu' })}
+        />
+      )}
+
       {tela.tipo === 'calibrar' && (
         <Calibrar
           liberar={liberar}
           teclas={teclas}
+          controle={controle}
           atual={latencia}
           onSalvar={(ms) => {
             setLatencia(ms);
@@ -476,6 +510,8 @@ function Menu({
   feitoHoje,
   recordes,
   teclas,
+  controle,
+  tipoControle,
   latencia,
   precisao,
   onPrecisao,
@@ -489,14 +525,17 @@ function Menu({
   feitoHoje: ReturnType<typeof resultadoDoDia>;
   recordes: Recordes;
   teclas: MapaTeclas;
+  controle: MapaControle;
+  tipoControle: TipoControle | null;
   latencia: number;
   precisao: Precisao;
   onPrecisao: (p: Precisao) => void;
   toque: boolean;
   onJogar: (c: Chart, diario: boolean) => void;
-  onTela: (t: 'teclas' | 'calibrar') => void;
+  onTela: (t: 'teclas' | 'controle' | 'calibrar') => void;
 }) {
   const r = feitoHoje?.detalhe as Partial<ResultadoMusica> | undefined;
+  const botoes = rotulosControle(controle, tipoControle).join(' ');
   return (
     <>
       {doDia && dia && (
@@ -550,18 +589,25 @@ function Menu({
             ⌨️ Teclas: {PISTAS.map((p) => nomeTecla(teclas[p.id])).join(' ')}
           </button>
         )}
+        {(!toque || tipoControle) && (
+          <button type="button" className={`oc-botao${tipoControle ? ' is-controle' : ''}`} onClick={() => onTela('controle')}>
+            🎮 Controle{tipoControle ? `: ${botoes}` : ''}
+          </button>
+        )}
         <button type="button" className="oc-botao" onClick={() => onTela('calibrar')}>
           🎚️ Calibrar atraso do som ({latencia} ms)
         </button>
       </section>
       <p className="oc-dica">
-        {toque
-          ? 'Toque nas pistas quando as notas chegarem nos círculos. Dá pra apertar duas de uma vez.'
-          : `Teclas ${PISTAS.map((p) => nomeTecla(teclas[p.id])).join(' ')} ou 1 a 5.`}
+        {tipoControle
+          ? `🎮 Controle conectado: botões ${botoes}. ${nomeBotao(controle.especial, tipoControle)} ativa o especial e Start pausa.`
+          : toque
+            ? 'Toque nas pistas quando as notas chegarem nos círculos. Dá pra apertar duas de uma vez.'
+            : `Teclas ${PISTAS.map((p) => nomeTecla(teclas[p.id])).join(' ')} ou 1 a 5. Tem controle? Conecte e aperte qualquer botão.`}
       </p>
       <p className="oc-dica">
         🔺 Acerte todas as Triforces douradas de uma sequência pra encher meia barra verde. Com ela pela metade ou cheia, aperte{' '}
-        <strong>{toque ? 'o botão Especial' : 'Espaço'}</strong>: as notas ficam douradas e valem o dobro por 5 ou 10 segundos.
+        <strong>{tipoControle ? nomeBotao(controle.especial, tipoControle) : toque ? 'o botão Especial' : 'Espaço'}</strong>: as notas ficam douradas e valem o dobro por 5 ou 10 segundos.
       </p>
     </>
   );
@@ -761,6 +807,7 @@ function Partida({
   som,
   audio,
   teclas,
+  controle,
   latencia,
   precisao,
   toque,
@@ -775,6 +822,7 @@ function Partida({
   som: SomOcarina;
   audio: AudioBuffer | null;
   teclas: MapaTeclas;
+  controle: MapaControle;
   latencia: number;
   precisao: Precisao;
   toque: boolean;
@@ -819,6 +867,7 @@ function Partida({
         som={som}
         audio={audio}
         teclas={teclas}
+        controle={controle}
         latencia={latencia}
         precisao={precisao}
         etiqueta={diario ? 'Música do Dia' : undefined}
@@ -998,6 +1047,100 @@ function ConfigTeclas({ teclas, onSalvar, onVoltar }: { teclas: MapaTeclas; onSa
   );
 }
 
+// ---------- Configurar controle (joystick) ----------
+
+const NOME_ACAO: Record<AcaoControle, string> = {
+  verde: 'Verde',
+  amarelo: 'Amarelo',
+  vermelho: 'Vermelho',
+  roxo: 'Roxo',
+  azul: 'Azul',
+  especial: 'Especial'
+};
+
+function ConfigControle({
+  controle,
+  tipo,
+  onSalvar,
+  onVoltar
+}: {
+  controle: MapaControle;
+  tipo: TipoControle | null;
+  onSalvar: (c: MapaControle) => void;
+  onVoltar: () => void;
+}) {
+  const [esperando, setEsperando] = useState<AcaoControle | null>(null);
+  // em ref: a espera pelo botão não recomeça a cada nova renderização
+  const atual = useRef({ controle, onSalvar });
+  atual.current = { controle, onSalvar };
+  useEffect(() => {
+    if (!esperando) return;
+    const cancelar = esperarBotao((bind) => {
+      // Se o botão já era de outra ação, as duas trocam.
+      const { controle: c, onSalvar: salvar } = atual.current;
+      const novo = { ...c };
+      const dono = ACOES_CONTROLE.find((a) => novo[a] === bind);
+      if (dono) novo[dono] = c[esperando];
+      novo[esperando] = bind;
+      salvar(novo);
+      setEsperando(null);
+    });
+    const tecla = (e: KeyboardEvent) => {
+      if (e.code === 'Escape') setEsperando(null);
+    };
+    window.addEventListener('keydown', tecla);
+    return () => {
+      cancelar();
+      window.removeEventListener('keydown', tecla);
+    };
+  }, [esperando]);
+
+  return (
+    <section className="oc-config">
+      <h2>Configurar controle</h2>
+      {tipo ? (
+        <p>
+          🎮 Controle conectado. Clique numa pista e aperte o botão do controle que você quer usar. Start (ou Select) pausa a música.
+        </p>
+      ) : (
+        <p className="oc-config-aviso">
+          Nenhum controle encontrado. Ligue o controle no computador (USB ou bluetooth) e <strong>aperte qualquer botão dele</strong>: o
+          navegador só mostra o controle depois disso. Funciona com controles de Xbox, PlayStation, Switch Pro e genéricos.
+        </p>
+      )}
+      <ul>
+        {ACOES_CONTROLE.map((a) => {
+          const pista = PISTAS.find((p) => p.id === a);
+          return (
+            <li key={a}>
+              <span className="oc-config-pista" style={{ '--cor': pista?.cor ?? '#e8c46e' } as React.CSSProperties} title={NOME_ACAO[a]}>
+                {pista ? NOME_ACAO[a].charAt(0) : '★'}
+              </span>
+              <button
+                type="button"
+                className={`oc-botao${esperando === a ? ' is-principal' : ''}`}
+                onClick={() => setEsperando(esperando === a ? null : a)}
+                disabled={!tipo}
+              >
+                {esperando === a ? 'Aperte um botão…' : nomeBotao(controle[a], tipo)}
+              </button>
+              <span className="oc-config-alt">{NOME_ACAO[a]}</span>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="oc-acoes">
+        <button type="button" className="oc-botao" onClick={() => onSalvar(CONTROLE_PADRAO)}>
+          Voltar ao padrão ({rotulosControle(CONTROLE_PADRAO, tipo ?? 'xbox').join(' ')})
+        </button>
+        <button type="button" className="oc-botao is-principal" onClick={onVoltar}>
+          Pronto
+        </button>
+      </div>
+    </section>
+  );
+}
+
 // ---------- Calibrar o atraso do som ----------
 
 const CAL_BPM = 100;
@@ -1007,12 +1150,14 @@ const CAL_IGNORAR = 4;
 function Calibrar({
   liberar,
   teclas,
+  controle,
   atual,
   onSalvar,
   onVoltar
 }: {
   liberar: () => Promise<SomOcarina>;
   teclas: MapaTeclas;
+  controle: MapaControle;
   atual: number;
   onSalvar: (ms: number) => void;
   onVoltar: () => void;
@@ -1037,6 +1182,12 @@ function Calibrar({
     if (!d || fase !== 'tocando') return;
     d.toques.push(d.som.agora - d.inicio);
   }, [fase]);
+  // qualquer botão de pista do controle também vale
+  useControle(controle, {
+    desce: (a) => {
+      if (a !== 'pausa' && a !== 'especial') tocar();
+    }
+  });
 
   useEffect(() => {
     if (fase !== 'tocando') return;

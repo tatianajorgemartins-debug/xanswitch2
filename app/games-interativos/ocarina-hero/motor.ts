@@ -252,6 +252,15 @@ export class MotorOcarina {
     return this.rodando && !this.acabou;
   }
 
+  // Troca o que aparece nos anéis (teclas ↔ botões do controle) sem
+  // recomeçar a partida. Só os textos: o tamanho da pista não muda.
+  trocarRotulos(rotulos: string[]) {
+    if (rotulos.join('|') === this.op.rotulos.join('|')) return;
+    this.op = { ...this.op, rotulos };
+    this.camadasCom = '';
+    if (!this.rodando) this.desenhar(this.tempo());
+  }
+
   // Quadros por segundo da última fração de segundo (pra conferir desempenho).
   get fps(): number {
     if (this.quadros.length < 2) return 0;

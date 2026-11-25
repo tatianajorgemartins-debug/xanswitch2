@@ -1364,6 +1364,21 @@
   color: var(--muted);
   font-size: var(--step-small);
 }
+/* controle: aviso de "aperte um botão" e botão do menu aceso quando ligado */
+.redesign .oc-config .oc-config-aviso {
+  padding: 12px 14px;
+  border: 1px dashed rgba(232, 196, 110, 0.5);
+  border-radius: 12px;
+  background: rgba(232, 196, 110, 0.08);
+  color: var(--text);
+}
+.redesign .oc-config li .oc-botao:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.redesign .oc-botao.is-controle {
+  box-shadow: inset 0 0 0 1.5px rgba(85, 240, 127, 0.7);
+}
 .redesign .oc-cal-alvo {
   display: grid;
   place-items: center;
