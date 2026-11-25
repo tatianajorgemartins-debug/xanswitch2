@@ -31,6 +31,10 @@ export type PropsPalco = {
   etiqueta?: string;
   // admin: segura todas as teclas pra não mexer no editor por trás
   capturarTeclado?: boolean;
+  // jogo: a música só começa depois de um toque/tecla/botão ("aperte pra começar")
+  esperarComeco?: boolean;
+  // a tela de pausa está aberta por cima (aí apertar não começa a música)
+  pausado?: boolean;
   onFim: (r: ResultadoMusica) => void;
   // Esc / P / botão de pausa
   onPausa: () => void;
@@ -50,6 +54,8 @@ export default function Palco({
   precisao,
   etiqueta,
   capturarTeclado = false,
+  esperarComeco = false,
+  pausado = false,
   onFim,
   onPausa,
   motorRef,
@@ -69,12 +75,33 @@ export default function Palco({
   const pausaRef = useRef(onPausa);
   pausaRef.current = onPausa;
 
+  // "Aperte pra começar": a pista fica parada até o primeiro toque, tecla
+  // ou botão do controle. Esse aperto só dá a partida (não vale como nota).
+  const [esperando, setEsperando] = useState(esperarComeco);
+  const esperandoRef = useRef(esperando);
+  esperandoRef.current = esperando;
+  const pausadoRef = useRef(pausado);
+  pausadoRef.current = pausado;
+  const comecar = () => {
+    if (!esperandoRef.current || pausadoRef.current) return false;
+    esperandoRef.current = false;
+    setEsperando(false);
+    motor.current?.iniciar();
+    return true;
+  };
+
   // Controle: os botões fazem o mesmo que as teclas, e com um controle
   // ligado os anéis mostram os botões em vez das letras do teclado.
   const [controleSalvo] = useState(lerControle);
   const controle = controleProp ?? controleSalvo;
   const tipoControle = useControle(controle, {
     desce: (a) => {
+      if (esperandoRef.current) {
+        // com a pausa aberta, o Start ainda fecha ela
+        if (pausadoRef.current && a === 'pausa') pausaRef.current();
+        else comecar();
+        return;
+      }
       if (a === 'pausa') pausaRef.current();
       else if (a === 'especial') {
         if (motor.current?.emJogo) motor.current.ativarEspecial();
@@ -166,7 +193,7 @@ export default function Palco({
     });
     motor.current = m;
     if (motorRef) motorRef.current = m;
-    m.iniciar();
+    if (!esperandoRef.current) m.iniciar();
     // fps no console do teste (window.__ocarina.fps)
     (window as unknown as { __ocarina?: MotorOcarina }).__ocarina = m;
     document.body.style.overflow = 'hidden';
@@ -205,6 +232,14 @@ export default function Palco({
   // Teclado
   useEffect(() => {
     const desce = (e: KeyboardEvent) => {
+      // esperando o começo: qualquer tecla (menos Esc/P, Tab, Shift, Ctrl, F1…) dá a partida
+      if (esperandoRef.current && !/^(Escape|KeyP|Tab|Shift|Control|Alt|Meta|OS|CapsLock|F\d+)/.test(e.code) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (!e.repeat && comecar()) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        return;
+      }
       if (e.code === 'Escape' || e.code === 'KeyP') {
         e.preventDefault();
         e.stopPropagation();
@@ -247,7 +282,7 @@ export default function Palco({
   const dif = DIFICULDADES[chart.dificuldade];
   const topoZonas = geo ? geo.acerto - (geo.acerto - geo.topo) * 0.45 : 0;
   return (
-    <div ref={palco} className={`oc-palco ${OC_FONTES}`} role="application" aria-label={`${NOME_JOGO}: ${chart.titulo}`}>
+    <div ref={palco} className={`oc-palco ${OC_FONTES}${esperando ? ' is-esperando' : ''}`}role="application" aria-label={`${NOME_JOGO}: ${chart.titulo}`}>
       <div
         className={`oc-cenario${chart.fundo ? ' is-proprio' : ''}`}
         aria-hidden="true"
@@ -318,6 +353,25 @@ export default function Palco({
           <span ref={progTotal}>0:00</span>
         </div>
       </div>
+
+      {esperando && (
+        <div
+          className="oc-comecar"
+          role="button"
+          tabIndex={-1}
+          aria-label="Começar a música"
+          onPointerDown={(e) => {
+            if (e.button > 0) return;
+            e.preventDefault();
+            comecar();
+          }}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          <p className="oc-comecar-texto">
+            {tipoControle || !toque ? 'Aperte qualquer botão para começar' : 'Aperte em qualquer lugar para começar'}
+          </p>
+        </div>
+      )}
 
       <button type="button" className="oc-hud-pausa" onClick={onPausa} aria-label="Pausar">
         <img src={`${UI}pausa.webp`} alt="" />

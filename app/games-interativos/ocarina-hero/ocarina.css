@@ -1176,6 +1176,57 @@
   }
 }
 
+/* "Aperte pra começar": cobre o palco até o primeiro toque/tecla/botão.
+   O botão de pausa fica por cima (dá pra sair sem começar). */
+.oc-comecar {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(60% 45% at 50% 48%, rgba(3, 12, 7, 0.72), rgba(3, 12, 7, 0.25) 70%, transparent);
+  cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  animation: oc-comecar-entra 0.5s ease-out both;
+}
+.oc-palco.is-esperando .oc-hud-pausa {
+  z-index: 5;
+}
+.oc-comecar-texto {
+  margin: 0;
+  padding: 0 24px;
+  max-width: 90%;
+  color: #ffe6a3;
+  font-family: var(--oc-cinzel), Georgia, serif !important;
+  font-size: clamp(20px, 2.6vw + 8px, 38px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-align: center;
+  text-transform: uppercase;
+  text-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.7),
+    0 0 22px rgba(255, 214, 110, 0.55);
+  animation: oc-comecar-pulsa 1.6s ease-in-out infinite;
+}
+@keyframes oc-comecar-entra {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes oc-comecar-pulsa {
+  50% {
+    opacity: 0.55;
+    transform: scale(0.97);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .oc-comecar-texto {
+    animation: none;
+  }
+}
+
 /* Pausa */
 .oc-pausa {
   position: absolute;
@@ -1363,6 +1414,38 @@
 .redesign .oc-config-alt {
   color: var(--muted);
   font-size: var(--step-small);
+}
+/* Aviso "também dá pra jogar com controle" (topo do jogo e antes da música);
+   fica verde quando um controle está conectado. */
+.redesign .oc-aviso-controle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  margin: 12px auto 0;
+  padding: 7px 14px;
+  border: 1px solid rgba(232, 196, 110, 0.45);
+  border-radius: 999px;
+  background: rgba(232, 196, 110, 0.1);
+  color: var(--text);
+  font-size: var(--step-small);
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
+}
+.redesign .oc-aviso-controle span {
+  flex: none;
+  font-size: 1.2em;
+}
+.redesign .oc-aviso-controle.is-ligado {
+  border-color: rgba(85, 240, 127, 0.6);
+  background: rgba(85, 240, 127, 0.12);
+}
+.redesign .oc-preparar .oc-aviso-controle {
+  display: flex;
+  width: fit-content;
+  margin: 18px auto 0;
+  border-radius: 14px;
 }
 /* controle: aviso de "aperte um botão" e botão do menu aceso quando ligado */
 .redesign .oc-config .oc-config-aviso {

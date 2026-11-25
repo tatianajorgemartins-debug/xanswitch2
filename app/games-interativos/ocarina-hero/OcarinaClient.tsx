@@ -353,6 +353,10 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
           <span className="oc-palavra">Zelda</span> <em className="oc-palavra">Tour</em> <span className="oc-beta oc-palavra">Beta</span>
         </h1>
         <p className="oc-sub">As notas descem pela pista: toque no momento em que elas cruzam o círculo. Acerte as Triforces, encha a barra e ative o especial.</p>
+        <p className={`oc-aviso-controle${tipoControle ? ' is-ligado' : ''}`}>
+          <span aria-hidden="true">🎮</span>
+          {tipoControle ? 'Controle conectado: é só jogar!' : 'Também dá pra jogar com controle: Xbox, PlayStation, Switch Pro ou genérico'}
+        </p>
       </header>}
 
       {marco !== null && (
@@ -400,6 +404,8 @@ export default function OcarinaClient({ charts }: { charts: Chart[] }) {
           toque={toque}
           deitado={deitado}
           carregando={carregandoTela}
+          controle={controle}
+          tipoControle={tipoControle}
           onVoltar={() => setTela({ tipo: 'menu' })}
           onJogar={(d, jogarDeitado) => {
             setDeitado(jogarDeitado);
@@ -621,6 +627,8 @@ function Preparar({
   toque,
   deitado,
   carregando,
+  controle,
+  tipoControle,
   onVoltar,
   onJogar
 }: {
@@ -629,6 +637,8 @@ function Preparar({
   toque: boolean;
   deitado: boolean;
   carregando: boolean;
+  controle: MapaControle;
+  tipoControle: TipoControle | null;
   onVoltar: () => void;
   onJogar: (d: Dificuldade, deitado: boolean) => void;
 }) {
@@ -676,7 +686,7 @@ function Preparar({
 
       {toque && (dif === 'dificil' || dif === 'insano') && (
         <p className="oc-preparar-aviso" role="status">
-          ⌨️ Recomendado jogar esta dificuldade no teclado
+          ⌨️ Recomendado jogar esta dificuldade no teclado ou com controle
         </p>
       )}
 
@@ -697,6 +707,13 @@ function Preparar({
           </div>
         </>
       )}
+
+      <p className={`oc-aviso-controle${tipoControle ? ' is-ligado' : ''}`}>
+        <span aria-hidden="true">🎮</span>
+        {tipoControle
+          ? `Controle conectado: ${rotulosControle(controle, tipoControle).join(' ')} nas pistas, ${nomeBotao(controle.especial, tipoControle)} no especial e Start pausa.`
+          : 'Tem controle? Conecte e aperte qualquer botão dele antes de começar.'}
+      </p>
 
       <button type="button" className="oc-botao is-principal oc-preparar-jogar" disabled={carregando} onClick={() => onJogar(dif, posicao)}>
         {carregando ? 'Carregando…' : '▶ Jogar'}
@@ -871,6 +888,8 @@ function Partida({
         latencia={latencia}
         precisao={precisao}
         etiqueta={diario ? 'Música do Dia' : undefined}
+        esperarComeco
+        pausado={pausado}
         motorRef={motor}
         onFim={onFim}
         onPausa={() => (pausado ? continuar() : pausar())}

@@ -311,6 +311,7 @@ function BannerZeldaTour({ disponivel }: { disponivel: boolean }) {
           <li>🎵 Músicas de Zelda</li>
           <li>🔺 Especial dourado</li>
           <li>📱 Celular e computador</li>
+          <li>🎮 Também com controle</li>
           <li>🎶 Novas músicas em breve</li>
         </ul>
         {disponivel && (

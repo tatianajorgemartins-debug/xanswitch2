@@ -16,7 +16,7 @@ import { PISTAS, type PistaId } from './ocarina';
 export type AcaoControle = PistaId | 'especial';
 // "b14" = botão 14; "a1+" / "a1-" = eixo 1 pra um lado / pro outro
 export type MapaControle = Record<AcaoControle, string>;
-export type TipoControle = 'xbox' | 'ps' | 'nintendo' | 'generico';
+export type TipoControle = 'xbox' | 'ps';
 
 export const CHAVE_CONTROLE = 'ocarina_controle';
 export const ACOES_CONTROLE: AcaoControle[] = [...PISTAS.map((p) => p.id), 'especial'];
@@ -68,19 +68,14 @@ function apertado(g: Gamepad, bind: string): boolean {
   return bind.endsWith('+') ? v > LIMIAR_EIXO : v < -LIMIAR_EIXO;
 }
 
+// Nomes dos botões: sempre os do Xbox, menos com controle de PlayStation.
 export function tipoDoControle(g: Gamepad): TipoControle {
-  const id = g.id.toLowerCase();
-  if (g.mapping !== 'standard') return 'generico';
-  if (/054c|playstation|dualshock|dualsense|wireless controller/.test(id)) return 'ps';
-  if (/057e|nintendo|pro controller|joy-con/.test(id)) return 'nintendo';
-  return 'xbox';
+  return /054c|playstation|dualshock|dualsense|wireless controller/i.test(g.id) ? 'ps' : 'xbox';
 }
 
-const NOMES: Record<Exclude<TipoControle, 'generico'>, string[]> = {
+const NOMES: Record<TipoControle, string[]> = {
   xbox: ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Back', 'Start', 'LS', 'RS', '↑', '↓', '←', '→'],
-  ps: ['✕', '○', '□', '△', 'L1', 'R1', 'L2', 'R2', 'Share', 'Options', 'L3', 'R3', '↑', '↓', '←', '→'],
-  // no Switch o botão de baixo é o B e o da direita é o A
-  nintendo: ['B', 'A', 'Y', 'X', 'L', 'R', 'ZL', 'ZR', '−', '+', 'LS', 'RS', '↑', '↓', '←', '→']
+  ps: ['✕', '○', '□', '△', 'L1', 'R1', 'L2', 'R2', 'Share', 'Options', 'L3', 'R3', '↑', '↓', '←', '→']
 };
 
 // Nome curto do botão pra aparecer nos anéis e nas telas.
@@ -94,9 +89,8 @@ export function nomeBotao(bind: string, tipo: TipoControle | null): string {
     return `E${eixo + 1}${mais ? '+' : '−'}`;
   }
   const n = Number(bind.slice(1));
-  if (tipo && tipo !== 'generico') return NOMES[tipo][n] ?? String(n + 1);
-  // genéricos costumam ter os botões numerados a partir do 1
-  return String(n + 1);
+  // botão além dos 16 do padrão (ex: o botão central): número a partir do 1
+  return NOMES[tipo ?? 'xbox'][n] ?? String(n + 1);
 }
 
 export const rotulosControle = (mapa: MapaControle, tipo: TipoControle | null) => PISTAS.map((p) => nomeBotao(mapa[p.id], tipo));

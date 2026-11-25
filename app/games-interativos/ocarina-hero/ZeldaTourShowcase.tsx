@@ -50,6 +50,10 @@ export default function ZeldaTourShowcase({ aberto, variant = 'side' }: { aberto
         ))}
       </span>
 
+      <span className="zt-controle">
+        <span aria-hidden="true">🎮</span> Com controle
+      </span>
+
       <span className="zt-conteudo">
         <span className="zt-selo">
           <i aria-hidden="true" />

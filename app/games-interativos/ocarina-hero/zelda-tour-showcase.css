@@ -243,6 +243,31 @@
   outline-offset: 3px;
 }
 
+/* Selo "também joga com controle", no canto de cima à direita */
+.zt-controle {
+  position: absolute;
+  z-index: 3;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid rgba(243, 210, 122, 0.55);
+  border-radius: 999px;
+  background: rgba(6, 18, 11, 0.72);
+  backdrop-filter: blur(4px);
+  color: #ffe6a3;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  animation: zt-flutua 4s ease-in-out 1s infinite;
+}
+.zt-controle span {
+  font-size: 13px;
+}
+
 /* Pista do jogo, encostada embaixo à direita, com as notas descendo */
 .zt-pista {
   position: absolute;
@@ -375,6 +400,7 @@
   .zt-selo i,
   .zt-titulo img,
   .zt-titulo b,
+  .zt-controle,
   .zt-cta::after,
   .zt-acerto {
     animation: none;

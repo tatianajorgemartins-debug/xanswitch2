@@ -324,10 +324,16 @@ export class MotorOcarina {
 
   // Tempo da música (segundos), já descontada a latência.
   private tempo(): number {
+    // antes do "aperte pra começar": pista vazia, sem nota nenhuma
+    if (!this.comecou) return this.comecarEm - this.antecedencia - 1;
     return this.som.agora - this.inicio - this.op.latencia + this.comecarEm;
   }
 
+  private comecou = false;
+
   iniciar() {
+    if (this.comecou) return;
+    this.comecou = true;
     // Espera o bastante pra primeira nota ter tempo de descer a pista.
     const primeira = (this.notas[0]?.n.t ?? this.comecarEm) - this.comecarEm;
     const espera = Math.max(ESPERA_INICIAL, this.antecedencia - primeira + 0.4);
@@ -348,7 +354,8 @@ export class MotorOcarina {
   }
 
   async continuar() {
-    if (this.rodando || this.acabou) return;
+    // pausou antes de começar: volta pro "aperte pra começar"
+    if (this.rodando || this.acabou || !this.comecou) return;
     await this.som.continuar();
     this.rodando = true;
     this.raf = requestAnimationFrame(this.quadro);
@@ -1012,7 +1019,7 @@ export class MotorOcarina {
     }
 
     // Contagem antes da música começar
-    if (t < this.comecarEm && this.comecarEm - t <= this.espera - ABERTURA) {
+    if (this.comecou && t < this.comecarEm && this.comecarEm - t <= this.espera - ABERTURA) {
       const faltam = Math.ceil(this.comecarEm - t);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
