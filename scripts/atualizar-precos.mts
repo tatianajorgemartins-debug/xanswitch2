@@ -65,7 +65,7 @@ async function main() {
   const readings: Record<number, AmazonResult> = {};
   let next = 0;
   await Promise.all(
-    Array.from({ length: 4 }, async () => {
+    Array.from({ length: 2 }, async () => {
       while (next < list.games.length) {
         const g = list.games[next++];
         readings[g.id] = await fetchAmazonYen(g.url);
@@ -75,7 +75,7 @@ async function main() {
   // Segunda tentativa, com calma, pros que falharam.
   for (const g of list.games) {
     if ('error' in readings[g.id]) {
-      await sleep(4000);
+      await sleep(10000);
       const again = await fetchAmazonYen(g.url);
       if ('yen' in again) readings[g.id] = again;
     }
