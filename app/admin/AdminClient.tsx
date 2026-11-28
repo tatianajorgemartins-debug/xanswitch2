@@ -2794,7 +2794,7 @@ function GameFormPanel({
             </label>
           </div>
           <p style={{ margin: '6px 2px 0', fontSize: 12.5, color: 'var(--ink-dim)' }}>
-            Todo dia de manhã o site confere o preço em ienes nesse link e, se o preço daqui ficou abaixo do
+            Todo dia de manhã o preço em ienes desse link é conferido e, se o preço daqui ficou abaixo do
             custo + margem, sobe sozinho (nunca baixa e nunca passa do preço da eShop). Desmarque pra esse
             jogo ficar só com o preço que você digitar.
             {game?.amazon_yen ? ` Última leitura: ¥${game.amazon_yen.toLocaleString('pt-BR')}.` : ''}

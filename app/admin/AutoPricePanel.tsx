@@ -69,13 +69,13 @@ export default function AutoPricePanel({
 
   async function runNow() {
     setBusy('run');
-    setMsg('Consultando a Amazon Japão... leva uns 30 segundos.');
+    setMsg('Recalculando...');
     const r = await runAutoPricingNowAction();
     setBusy(null);
     if (!r.ok) return setMsg(r.error);
     setRun(r.run);
     const up = r.run.items.filter((i) => i.status === 'raised').length;
-    setMsg(`Pronto! ${r.run.items.length} jogos conferidos, ${up} subiram.`);
+    setMsg(`Pronto! ${r.run.items.length} jogos recalculados, ${up} subiram.`);
     router.refresh();
   }
 
@@ -97,13 +97,13 @@ export default function AutoPricePanel({
             {!enabled
               ? 'Desligado — os preços não estão sendo conferidos.'
               : run
-                ? `Última conferência: ${fmtWhen(run.at)} · ¥1 = R$ ${run.rate.toFixed(5).replace('.', ',')} · ${raised.length} subiram · ${problems.length} com problema`
+                ? `Última conta${run.trigger === 'manual' ? ' (recalculada)' : ''}: ${fmtWhen(run.at)} · ¥1 = R$ ${run.rate.toFixed(5).replace('.', ',')} · ${raised.length} subiram · ${problems.length} com problema`
                 : 'Ainda não rodou nenhuma vez.'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button type="button" className="btn primary" onClick={runNow} disabled={busy !== null}>
-            {busy === 'run' ? 'Atualizando...' : '🔄 Atualizar agora'}
+            {busy === 'run' ? 'Recalculando...' : '🔄 Recalcular agora'}
           </button>
           <button type="button" className="btn ghost" onClick={() => setOpen((o) => !o)}>
             {open ? 'Fechar' : 'Detalhes'}
@@ -115,10 +115,14 @@ export default function AutoPricePanel({
       {open && (
         <div style={{ marginTop: 14 }}>
           <p style={small}>
-            Todo dia às 7h o site lê o preço em ienes de cada jogo na Amazon Japão, converte pela cotação do dia
+            Todo dia às 7h o seu PC lê o preço em ienes de cada jogo na Amazon Japão (a Amazon bloqueia o
+            site, então isso roda no Agendador de Tarefas do Windows; se o PC estiver desligado, roda quando
+            ligar — ou dê duplo clique em scripts\ATUALIZAR PRECOS.bat). O site converte pela cotação do dia
             e soma o acréscimo do cartão. Se o preço daqui estiver abaixo de <strong>custo + margem</strong>, ele
             sobe pra esse valor arredondado pra cima (múltiplo de R$5). Nunca baixa sozinho e nunca passa do
-            preço da eShop (o "preço original" do jogo). Você recebe o resumo no Telegram.
+            preço da eShop (o "preço original" do jogo). Você recebe o resumo no Telegram. O botão{' '}
+            <strong>Recalcular agora</strong> refaz a conta com a última leitura da Amazon e a cotação de agora
+            (use depois de mudar a margem).
           </p>
 
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end', margin: '12px 0' }}>

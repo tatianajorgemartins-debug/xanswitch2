@@ -1,5 +1,11 @@
-// Preço automático pela Amazon Japão. Roda todo dia de manhã (cron
-// /api/cron/precos, ver vercel.json) e pelo botão "Atualizar agora" do admin.
+// Preço automático pela Amazon Japão.
+//
+// A Amazon bloqueia consultas vindas dos servidores da Vercel (503/captcha),
+// então quem lê os preços é o script do seu PC (scripts/atualizar-precos.mjs,
+// agendado no Windows todo dia às 7h): ele pede a lista de jogos, lê cada
+// link na Amazon e manda as leituras + a cotação pra /api/cron/precos, que
+// chama runAutoPricing('pc', ...). O botão "Recalcular" do admin roda
+// runAutoPricing('manual') com o último preço em ienes salvo de cada jogo.
 //
 // Regra, jogo por jogo (só os não arquivados, com link da Amazon e com o
 // preço automático ligado):
@@ -12,7 +18,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { getSql } from './sql';
 import { getSiteSetting, setSiteSetting } from './db';
-import { autoPriceTarget, DEFAULT_MARGIN, DEFAULT_SPREAD, fetchAmazonYen, fetchJpyBrlRate } from './amazonPrice';
+import { autoPriceTarget, DEFAULT_MARGIN, DEFAULT_SPREAD, fetchJpyBrlRate, type AmazonResult } from './amazonPrice';
 import { sendTelegramMessage } from './notifications';
 
 export const AUTO_PRICE_MARGIN_KEY = 'auto_price_margin';
@@ -23,7 +29,6 @@ export const AUTO_PRICE_LAST_RUN_KEY = 'auto_price_last_run';
 // Um aumento maior que isso (ex.: de R$200 pra R$330) é tratado como leitura
 // suspeita da Amazon e NÃO é aplicado — fica no relatório pra você conferir.
 const MAX_RAISE_FACTOR = 1.6;
-const CONCURRENCY = 6;
 
 export type AutoPriceSettings = { enabled: boolean; margin: number; spread: number };
 
@@ -56,7 +61,7 @@ export type AutoPriceItem = {
 
 export type AutoPriceRun = {
   at: string;
-  trigger: 'cron' | 'manual';
+  trigger: 'pc' | 'manual' | 'cron';
   rate: number;
   rateSource: string;
   margin: number;
@@ -64,28 +69,46 @@ export type AutoPriceRun = {
   items: AutoPriceItem[];
 };
 
-type Row = { id: number; name: string; price: string; original_price: string | null; amazon_jp_url: string };
+type Row = {
+  id: number;
+  name: string;
+  price: string;
+  original_price: string | null;
+  amazon_jp_url: string;
+  amazon_yen: number | null;
+};
 
-export async function runAutoPricing(trigger: 'cron' | 'manual'): Promise<AutoPriceRun> {
-  const settings = await getAutoPriceSettings();
-  const { rate, source } = await fetchJpyBrlRate();
-  const sql = getSql();
-  const rows = (await sql`
-    SELECT id, name, price, original_price, amazon_jp_url FROM games
+// Jogos que entram no preço automático (o script do PC pede essa lista pra
+// saber quais links consultar).
+export async function getAutoPriceGames(): Promise<Row[]> {
+  return (await getSql()`
+    SELECT id, name, price, original_price, amazon_jp_url, amazon_yen FROM games
     WHERE archived = FALSE AND auto_price = TRUE AND amazon_jp_url IS NOT NULL AND amazon_jp_url <> ''
     ORDER BY id
   `) as Row[];
+}
+
+export async function runAutoPricing(
+  trigger: 'pc' | 'manual',
+  input: { readings?: Record<number, AmazonResult>; rate?: number; rateSource?: string } = {}
+): Promise<AutoPriceRun> {
+  const settings = await getAutoPriceSettings();
+  const { rate, source } =
+    input.rate && input.rate > 0.005 && input.rate < 0.2
+      ? { rate: input.rate, source: input.rateSource || 'PC' }
+      : await fetchJpyBrlRate();
+  const rows = await getAutoPriceGames();
+  const fresh = Boolean(input.readings);
 
   const items: AutoPriceItem[] = [];
-  let next = 0;
-  await Promise.all(
-    Array.from({ length: CONCURRENCY }, async () => {
-      while (next < rows.length) {
-        const g = rows[next++];
-        items.push(await priceOne(g, rate, settings));
-      }
-    })
-  );
+  for (const g of rows) {
+    const reading: AmazonResult = input.readings
+      ? input.readings[g.id] ?? { error: 'O PC não mandou leitura desse jogo' }
+      : g.amazon_yen
+        ? { yen: g.amazon_yen }
+        : { error: 'Ainda sem leitura da Amazon' };
+    items.push(await priceOne(g, reading, rate, settings, fresh));
+  }
   items.sort((a, b) => a.name.localeCompare(b.name));
 
   const run: AutoPriceRun = {
@@ -104,19 +127,26 @@ export async function runAutoPricing(trigger: 'cron' | 'manual'): Promise<AutoPr
     revalidatePath('/admin');
     revalidateTag('games', { expire: 0 });
   }
-  await sendTelegramMessage(telegramSummary(run)).catch((err) =>
-    console.error('[autoPricing] Falha ao avisar no Telegram:', err)
-  );
+  if (trigger === 'pc') {
+    await sendTelegramMessage(telegramSummary(run)).catch((err) =>
+      console.error('[autoPricing] Falha ao avisar no Telegram:', err)
+    );
+  }
   return run;
 }
 
-async function priceOne(g: Row, rate: number, settings: AutoPriceSettings): Promise<AutoPriceItem> {
+async function priceOne(
+  g: Row,
+  result: AmazonResult,
+  rate: number,
+  settings: AutoPriceSettings,
+  fresh: boolean
+): Promise<AutoPriceItem> {
   const sql = getSql();
   const oldPrice = parseFloat(g.price);
   const base = { id: g.id, name: g.name, oldPrice, newPrice: oldPrice };
-  const result = await fetchAmazonYen(g.amazon_jp_url);
   if ('error' in result) {
-    await sql`UPDATE games SET amazon_error = ${result.error}, amazon_checked_at = NOW() WHERE id = ${g.id}`;
+    if (fresh) await sql`UPDATE games SET amazon_error = ${result.error}, amazon_checked_at = NOW() WHERE id = ${g.id}`;
     return { ...base, yen: null, cost: null, status: 'error', capped: false, error: result.error };
   }
 
@@ -125,7 +155,7 @@ async function priceOne(g: Row, rate: number, settings: AutoPriceSettings): Prom
   const roundedCost = Math.round(cost * 100) / 100;
 
   if (target <= oldPrice) {
-    await sql`UPDATE games SET amazon_yen = ${result.yen}, amazon_error = NULL, amazon_checked_at = NOW() WHERE id = ${g.id}`;
+    if (fresh) await sql`UPDATE games SET amazon_yen = ${result.yen}, amazon_error = NULL, amazon_checked_at = NOW() WHERE id = ${g.id}`;
     return { ...base, yen: result.yen, cost: roundedCost, status: 'ok', capped };
   }
   if (oldPrice > 0 && target > oldPrice * MAX_RAISE_FACTOR) {
