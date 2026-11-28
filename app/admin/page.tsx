@@ -27,8 +27,12 @@ import { getAllPostsForAdmin, getGamePlayStats, getRecentGamePlays } from '@/lib
 import type { JogosInterativosData } from './JogosInterativosPanel';
 import { getAllOcarinaSongs, jogoOcarinaPublicado } from '@/lib/ocarinaDb';
 import { listarSorteios } from '@/lib/sorteioDb';
+import { getAutoPriceSettings, AUTO_PRICE_LAST_RUN_KEY, type AutoPriceRun } from '@/lib/autoPricing';
 
 export const dynamic = 'force-dynamic';
+// O botão "Atualizar agora" do preço automático consulta a Amazon jogo por
+// jogo (uns 30 s) — dá folga pra ação não ser cortada.
+export const maxDuration = 300;
 
 export default async function AdminPage() {
   // this is the real, authoritative check — the proxy only does a cheap
@@ -147,6 +151,10 @@ export default async function AdminPage() {
       }))
     )
     .catch(() => null);
+  const autoPriceSettings = await getAutoPriceSettings();
+  const autoPriceLastRun = await getSiteSetting(AUTO_PRICE_LAST_RUN_KEY)
+    .then((v) => (v ? (JSON.parse(v) as AutoPriceRun) : null))
+    .catch(() => null);
   return (
     <AdminClient
       initialGames={games}
@@ -170,6 +178,8 @@ export default async function AdminPage() {
       musicasOcarina={musicasOcarina}
       ocarinaPublicado={ocarinaPublicado}
       sorteios={sorteios}
+      autoPriceSettings={autoPriceSettings}
+      autoPriceLastRun={autoPriceLastRun}
     />
   );
 }

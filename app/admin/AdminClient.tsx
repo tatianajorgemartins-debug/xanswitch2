@@ -22,6 +22,8 @@ import type { PromoEventRow } from '@/lib/promoEvents';
 import { setSalesStatusAction } from './salesActions';
 import './admin.css';
 import SorteiosPanel, { type SorteioLista } from './SorteiosPanel';
+import AutoPricePanel from './AutoPricePanel';
+import type { AutoPriceRun, AutoPriceSettings } from '@/lib/autoPricing';
 import {
   createGameAction,
   updateGameAction,
@@ -73,7 +75,9 @@ export default function AdminClient({
   jogosInterativos,
   musicasOcarina,
   ocarinaPublicado,
-  sorteios
+  sorteios,
+  autoPriceSettings,
+  autoPriceLastRun
 }: {
   initialGames: Game[];
   visitCount: number;
@@ -100,6 +104,8 @@ export default function AdminClient({
   ocarinaPublicado: boolean;
   // null = falta rodar db/migration-sorteios.sql
   sorteios: SorteioLista[] | null;
+  autoPriceSettings: AutoPriceSettings;
+  autoPriceLastRun: AutoPriceRun | null;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -475,6 +481,8 @@ export default function AdminClient({
                 </a>
               </div>
             </div>
+
+            <AutoPricePanel games={games} settings={autoPriceSettings} lastRun={autoPriceLastRun} />
 
             <div className="adm-search">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={16} height={16} aria-hidden="true">
@@ -2769,6 +2777,28 @@ function GameFormPanel({
           <p style={{ margin: '6px 2px 0', fontSize: 12.5, color: 'var(--ink-dim)' }}>
             Só pra você: esse link vai junto no aviso de venda do Telegram, pra comprar o código rapidinho. O
             cliente nunca vê.
+          </p>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              id="autoPrice"
+              name="autoPrice"
+              type="checkbox"
+              defaultChecked={game?.auto_price ?? true}
+              style={{ width: 18, height: 18, accentColor: 'var(--green)' }}
+            />
+            <label htmlFor="autoPrice" style={{ margin: 0, textTransform: 'none', fontSize: 14, color: 'var(--ink)' }}>
+              Preço automático pela Amazon Japão
+            </label>
+          </div>
+          <p style={{ margin: '6px 2px 0', fontSize: 12.5, color: 'var(--ink-dim)' }}>
+            Todo dia de manhã o site confere o preço em ienes nesse link e, se o preço daqui ficou abaixo do
+            custo + margem, sobe sozinho (nunca baixa e nunca passa do preço da eShop). Desmarque pra esse
+            jogo ficar só com o preço que você digitar.
+            {game?.amazon_yen ? ` Última leitura: ¥${game.amazon_yen.toLocaleString('pt-BR')}.` : ''}
+            {game?.amazon_error ? ` ⚠️ ${game.amazon_error}` : ''}
           </p>
         </div>
 

@@ -49,6 +49,12 @@ export type Game = {
   // esse é o valor cobrado (ver toItem em lib/catalogData.ts). Vem do
   // driver como string, igual a price.
   promo_price: string | null;
+  // Preço automático pela Amazon JP (ver lib/autoPricing.ts): false = o
+  // sistema diário não mexe no preço. amazon_* = o que a última consulta leu.
+  auto_price: boolean;
+  amazon_yen: number | null;
+  amazon_checked_at: Date | null;
+  amazon_error: string | null;
   // Evento de promoção valendo agora pra esse jogo (Black Friday etc.) —
   // não é coluna da tabela: preenchido por attachPromoEvents. Ver
   // lib/promoEvents.ts.
@@ -227,10 +233,11 @@ export async function createGame(data: {
   discount_eligible: boolean;
   amazon_jp_url: string | null;
   promo_price: number | null;
+  auto_price: boolean;
 }): Promise<Game> {
   const rows = await getSql()`
-    INSERT INTO games (name, price, original_price, image_url, banner_image_url, has_badge, badge_text, badge_color, franchise, platform, game_type, is_featured, is_bestseller, is_upcoming, description, screenshots, credit_payment_url, card_points, discount_eligible, amazon_jp_url, promo_price)
-    VALUES (${data.name}, ${data.price}, ${data.original_price}, ${data.image_url}, ${data.banner_image_url}, ${data.has_badge}, ${data.badge_text}, ${data.badge_color}, ${data.franchise}, ${data.platform}, ${data.game_type}, ${data.is_featured}, ${data.is_bestseller}, ${data.is_upcoming}, ${data.description}, ${JSON.stringify(data.screenshots)}::jsonb, ${data.credit_payment_url}, ${data.card_points}, ${data.discount_eligible}, ${data.amazon_jp_url}, ${data.promo_price})
+    INSERT INTO games (name, price, original_price, image_url, banner_image_url, has_badge, badge_text, badge_color, franchise, platform, game_type, is_featured, is_bestseller, is_upcoming, description, screenshots, credit_payment_url, card_points, discount_eligible, amazon_jp_url, promo_price, auto_price)
+    VALUES (${data.name}, ${data.price}, ${data.original_price}, ${data.image_url}, ${data.banner_image_url}, ${data.has_badge}, ${data.badge_text}, ${data.badge_color}, ${data.franchise}, ${data.platform}, ${data.game_type}, ${data.is_featured}, ${data.is_bestseller}, ${data.is_upcoming}, ${data.description}, ${JSON.stringify(data.screenshots)}::jsonb, ${data.credit_payment_url}, ${data.card_points}, ${data.discount_eligible}, ${data.amazon_jp_url}, ${data.promo_price}, ${data.auto_price})
     RETURNING *
   `;
   return rows[0] as Game;
@@ -260,6 +267,7 @@ export async function updateGame(
     discount_eligible: boolean;
     amazon_jp_url: string | null;
     promo_price: number | null;
+    auto_price: boolean;
   }
 ): Promise<Game> {
   const rows = await getSql()`
@@ -285,6 +293,7 @@ export async function updateGame(
       discount_eligible = ${data.discount_eligible},
       amazon_jp_url = ${data.amazon_jp_url},
       promo_price = ${data.promo_price},
+      auto_price = ${data.auto_price},
       updated_at = now()
     WHERE id = ${id}
     RETURNING *

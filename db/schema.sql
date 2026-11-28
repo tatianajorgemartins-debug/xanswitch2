@@ -163,3 +163,9 @@ ALTER TABLE games ADD COLUMN IF NOT EXISTS amazon_jp_url TEXT;
 
 -- Preço promocional (ver db/migration-promo-price.sql).
 ALTER TABLE games ADD COLUMN IF NOT EXISTS promo_price NUMERIC(10, 2);
+
+-- Preço automático pela Amazon JP (ver db/migration-preco-automatico.sql).
+ALTER TABLE games ADD COLUMN IF NOT EXISTS auto_price BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE games ADD COLUMN IF NOT EXISTS amazon_yen INTEGER;
+ALTER TABLE games ADD COLUMN IF NOT EXISTS amazon_checked_at TIMESTAMPTZ;
+ALTER TABLE games ADD COLUMN IF NOT EXISTS amazon_error TEXT;

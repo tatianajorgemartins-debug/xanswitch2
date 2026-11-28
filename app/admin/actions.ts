@@ -212,6 +212,7 @@ export async function createGameAction(
   const { value: promoPrice, error: promoPriceError } = parsePromoPrice(formData, price);
   const cardPoints = parseCardPoints(formData);
   const discountEligible = formData.get('discountEligible') === 'on';
+  const autoPrice = formData.get('autoPrice') === 'on';
 
   if (!name) return { error: 'Digite o nome do jogo.' };
   if (Number.isNaN(price) || price < 0) return { error: 'Preço inválido.' };
@@ -246,7 +247,8 @@ export async function createGameAction(
     card_points: cardPoints,
     discount_eligible: discountEligible,
     amazon_jp_url: amazonJpUrl,
-    promo_price: promoPrice
+    promo_price: promoPrice,
+    auto_price: autoPrice
   });
 
   revalidatePath('/admin');
@@ -285,6 +287,7 @@ export async function updateGameAction(
   const { value: promoPrice, error: promoPriceError } = parsePromoPrice(formData, price);
   const cardPoints = parseCardPoints(formData);
   const discountEligible = formData.get('discountEligible') === 'on';
+  const autoPrice = formData.get('autoPrice') === 'on';
 
   if (!id) return { error: 'Jogo inválido.' };
   if (!name) return { error: 'Digite o nome do jogo.' };
@@ -355,7 +358,8 @@ export async function updateGameAction(
     card_points: cardPoints,
     discount_eligible: discountEligible,
     amazon_jp_url: amazonJpUrl,
-    promo_price: promoPrice
+    promo_price: promoPrice,
+    auto_price: autoPrice
   });
 
   revalidatePath('/admin');

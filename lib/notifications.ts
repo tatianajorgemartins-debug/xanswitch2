@@ -142,6 +142,24 @@ async function sendOrderTelegram(order: OrderNotification): Promise<void> {
   }
 }
 
+// Mensagem avulsa pro seu Telegram (ex.: o resumo diário dos preços, ver
+// lib/autoPricing.ts). Sem token/chat id configurados, não faz nada.
+export async function sendTelegramMessage(text: string): Promise<void> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!token || !chatId) return;
+  const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST',
+    signal: AbortSignal.timeout(NOTIFY_TIMEOUT_MS),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text: text.slice(0, 4000) })
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Telegram respondeu ${res.status}: ${body}`);
+  }
+}
+
 // Chamada depois que o pedido já foi salvo no banco (ver
 // confirmOrderAction / confirmBulkOrderAction em app/orderActions.ts).
 // Nunca lança erro pra quem chamou — o pior cenário aceitável aqui é você
