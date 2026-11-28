@@ -57,6 +57,8 @@ export type AutoPriceItem = {
   status: 'raised' | 'ok' | 'error' | 'suspicious';
   capped: boolean;
   error?: string;
+  // Quando esse jogo foi conferido (os lotes do dia se juntam no relatório).
+  at?: string;
 };
 
 export type AutoPriceRun = {
@@ -76,13 +78,14 @@ type Row = {
   original_price: string | null;
   amazon_jp_url: string;
   amazon_yen: number | null;
+  amazon_checked_at: Date | null;
 };
 
 // Jogos que entram no preço automático (o script do PC pede essa lista pra
-// saber quais links consultar).
+// saber quais links consultar e quando cada um foi conferido pela última vez).
 export async function getAutoPriceGames(): Promise<Row[]> {
   return (await getSql()`
-    SELECT id, name, price, original_price, amazon_jp_url, amazon_yen FROM games
+    SELECT id, name, price, original_price, amazon_jp_url, amazon_yen, amazon_checked_at FROM games
     WHERE archived = FALSE AND auto_price = TRUE AND amazon_jp_url IS NOT NULL AND amazon_jp_url <> ''
     ORDER BY id
   `) as Row[];
@@ -100,25 +103,28 @@ export async function runAutoPricing(
   const rows = await getAutoPriceGames();
   const fresh = Boolean(input.readings);
 
+  // O PC consulta aos poucos (um lote de jogos por vez, várias vezes ao
+  // dia), então com leituras só processa os jogos que vieram nelas.
+  const now = new Date().toISOString();
   const items: AutoPriceItem[] = [];
   for (const g of rows) {
+    if (input.readings && !(g.id in input.readings)) continue;
     const reading: AmazonResult = input.readings
-      ? input.readings[g.id] ?? { error: 'O PC não mandou leitura desse jogo' }
+      ? input.readings[g.id]
       : g.amazon_yen
         ? { yen: g.amazon_yen }
         : { error: 'Ainda sem leitura da Amazon' };
-    items.push(await priceOne(g, reading, rate, settings, fresh));
+    items.push({ ...(await priceOne(g, reading, rate, settings, fresh)), at: now });
   }
-  items.sort((a, b) => a.name.localeCompare(b.name));
 
   const run: AutoPriceRun = {
-    at: new Date().toISOString(),
+    at: now,
     trigger,
     rate,
     rateSource: source,
     margin: settings.margin,
     spread: settings.spread,
-    items,
+    items: mergeWithLastRun(await getLastRun(), items, rows.map((r) => r.id)),
   };
   await setSiteSetting(AUTO_PRICE_LAST_RUN_KEY, JSON.stringify(run));
 
@@ -127,12 +133,39 @@ export async function runAutoPricing(
     revalidatePath('/admin');
     revalidateTag('games', { expire: 0 });
   }
-  if (trigger === 'pc') {
-    await sendTelegramMessage(telegramSummary(run)).catch((err) =>
+  // Telegram só quando algo subiu ou deu problema nesse lote (senão seriam
+  // várias mensagens por dia sem novidade).
+  if (trigger === 'pc' && items.some((i) => i.status !== 'ok')) {
+    await sendTelegramMessage(telegramSummary({ ...run, items })).catch((err) =>
       console.error('[autoPricing] Falha ao avisar no Telegram:', err)
     );
   }
   return run;
+}
+
+// O relatório do admin junta os lotes: cada jogo fica com a sua última
+// conferência. Um "subiu" de mais de 3 dias vira "ok", pra lista de
+// aumentos mostrar só o que é recente.
+const RECENT_MS = 3 * 24 * 60 * 60 * 1000;
+async function getLastRun(): Promise<AutoPriceRun | null> {
+  const raw = await getSiteSetting(AUTO_PRICE_LAST_RUN_KEY);
+  try {
+    return raw ? (JSON.parse(raw) as AutoPriceRun) : null;
+  } catch {
+    return null;
+  }
+}
+function mergeWithLastRun(old: AutoPriceRun | null, items: AutoPriceItem[], activeIds: number[]): AutoPriceItem[] {
+  const byId = new Map<number, AutoPriceItem>();
+  const active = new Set(activeIds);
+  for (const i of old?.items ?? []) {
+    if (!active.has(i.id)) continue;
+    const at = i.at ?? old!.at;
+    const stale = Date.now() - new Date(at).getTime() > RECENT_MS;
+    byId.set(i.id, { ...i, at, status: stale && i.status === 'raised' ? 'ok' : i.status });
+  }
+  for (const i of items) byId.set(i.id, i);
+  return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 async function priceOne(

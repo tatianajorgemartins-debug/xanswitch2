@@ -115,12 +115,13 @@ export default function AutoPricePanel({
       {open && (
         <div style={{ marginTop: 14 }}>
           <p style={small}>
-            Todo dia às 7h o seu PC lê o preço em ienes de cada jogo na Amazon Japão (a Amazon bloqueia o
-            site, então isso roda no Agendador de Tarefas do Windows; se o PC estiver desligado, roda quando
-            ligar — ou dê duplo clique em scripts\ATUALIZAR PRECOS.bat). O site converte pela cotação do dia
+            O seu PC abre o link da Amazon Japão de cada jogo mais ou menos a cada 2 dias, aos poucos: de 2 em
+            2 horas (7h às 21h) ele confere uns 6 jogos, um de cada vez, pra Amazon não bloquear. Isso roda no
+            Agendador de Tarefas do Windows porque a Amazon bloqueia o site; se o PC estiver desligado, roda
+            quando ligar (ou dê duplo clique em scripts\ATUALIZAR PRECOS.bat). O site converte pela cotação do dia
             e soma o acréscimo do cartão. Se o preço daqui estiver abaixo de <strong>custo + margem</strong>, ele
             sobe pra esse valor arredondado pra cima (múltiplo de R$5). Nunca baixa sozinho e nunca passa do
-            preço da eShop (o "preço original" do jogo). Você recebe o resumo no Telegram. O botão{' '}
+            preço da eShop (o "preço original" do jogo). Você recebe aviso no Telegram quando algo sobe ou dá problema. O botão{' '}
             <strong>Recalcular agora</strong> refaz a conta com a última leitura da Amazon e a cotação de agora
             (use depois de mudar a margem).
           </p>
@@ -212,7 +213,10 @@ export default function AutoPricePanel({
                           {!g.amazon_jp_url && <span style={small}> (sem link)</span>}
                           {g.amazon_error && <div style={{ ...small, color: '#ff8a8a' }}>{g.amazon_error}</div>}
                         </td>
-                        <td style={{ padding: 6 }}>{g.amazon_yen ? `¥${g.amazon_yen.toLocaleString('pt-BR')}` : '—'}</td>
+                        <td style={{ padding: 6 }}>
+                          {g.amazon_yen ? `¥${g.amazon_yen.toLocaleString('pt-BR')}` : '—'}
+                          {g.amazon_checked_at && <div style={small}>{fmtWhen(new Date(g.amazon_checked_at).toISOString())}</div>}
+                        </td>
                         <td style={{ padding: 6 }}>{t ? `R$ ${formatPriceBR(t.cost)}` : '—'}</td>
                         <td style={{ padding: 6 }}>{t ? `R$ ${formatPriceBR(t.minimum)}` : '—'}</td>
                         <td style={{ padding: 6, color: below ? '#ff8a8a' : undefined, fontWeight: below ? 700 : undefined }}>

@@ -2,8 +2,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { getAutoPriceGames, getAutoPriceSettings, runAutoPricing } from '@/lib/autoPricing';
 import type { AmazonResult } from '@/lib/amazonPrice';
 
-// Usado pelo script do seu PC (scripts/atualizar-precos.mjs), que roda todo
-// dia às 7h pelo Agendador de Tarefas do Windows — a Amazon bloqueia
+// Usado pelo script do seu PC (scripts/atualizar-precos.mts), que roda de 2
+// em 2 horas pelo Agendador de Tarefas do Windows — a Amazon bloqueia
 // consultas vindas da Vercel, então a leitura dos preços em ienes é feita aí.
 //   GET  → lista de jogos com preço automático (id + link da Amazon)
 //   POST → recebe { rate, rateSource, readings: { [id]: { yen } | { error } } }
@@ -21,7 +21,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   if (!authorized(request)) return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
   const settings = await getAutoPriceSettings();
   const games = settings.enabled ? await getAutoPriceGames() : [];
-  return NextResponse.json({ enabled: settings.enabled, games: games.map((g) => ({ id: g.id, name: g.name, url: g.amazon_jp_url })) });
+  return NextResponse.json({ enabled: settings.enabled, games: games.map((g) => ({
+      id: g.id,
+      name: g.name,
+      url: g.amazon_jp_url,
+      checkedAt: g.amazon_checked_at ? new Date(g.amazon_checked_at).toISOString() : null
+    }))
+  });
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -39,13 +45,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     }
     const run = await runAutoPricing('pc', { readings, rate: Number(body.rate), rateSource: body.rateSource });
-    const count = (s: string) => run.items.filter((i) => i.status === s).length;
+    const batch = run.items.filter((i) => i.id in readings);
+    const count = (s: string) => batch.filter((i) => i.status === s).length;
     return NextResponse.json({
       rate: run.rate,
-      total: run.items.length,
+      total: batch.length,
       raised: count('raised'),
       errors: count('error') + count('suspicious'),
-      changes: run.items.filter((i) => i.status === 'raised').map((i) => `${i.name}: ${i.oldPrice} -> ${i.newPrice}`)
+      changes: batch.filter((i) => i.status === 'raised').map((i) => `${i.name}: ${i.oldPrice} -> ${i.newPrice}`)
     });
   } catch (error) {
     console.error('[cron/precos]', error);
